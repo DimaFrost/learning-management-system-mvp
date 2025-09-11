@@ -15,6 +15,12 @@ import {
   MessageSquare,
   GraduationCap
 } from 'lucide-react';
+import { 
+  View, 
+  Text, 
+  Button, 
+  Card
+} from 'reshaped';
 
 // Type definitions
 interface User {
@@ -323,21 +329,21 @@ const LearningManagementSystem = () => {
 
   // Components
   const Header = () => (
-    <div className="bg-white shadow-sm border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <GraduationCap className="w-8 h-8 text-blue-600" />
-          <h1 className="text-xl font-semibold text-gray-900">Learning Management System</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {currentUser.name} ({currentUser.roles.join(', ')})
-          </span>
-          <button className="p-2 text-gray-400 hover:text-gray-600">
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
+    <div className="bg-white border-b border-gray-200">
+      <View padding={4}>
+        <View direction="row" align="center" justify="space-between">
+          <View direction="row" align="center" gap={3}>
+            <GraduationCap className="w-8 h-8 text-blue-600" />
+            <Text variant="title-3" weight="bold">Learning Management System</Text>
+          </View>
+          <View direction="row" align="center" gap={3}>
+            <Text variant="body-2" color="neutral-faded">
+              {currentUser.name} ({currentUser.roles.join(', ')})
+            </Text>
+            <Button variant="ghost" size="small" icon={LogOut} />
+          </View>
+        </View>
+      </View>
     </div>
   );
 
@@ -353,25 +359,26 @@ const LearningManagementSystem = () => {
 
     return (
       <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200">
-        <nav className="mt-8">
-          {menuItems
-            .filter(item => item.roles.some(role => hasRole(role)))
-            .map(item => (
-              <button
-                key={item.id}
-                onClick={() => setActiveView(item.id)}
-                className={`w-full flex items-center px-6 py-3 text-left text-sm font-medium transition-colors ${
-                  activeView === item.id
-                    ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                }`}
-              >
-                <item.icon className="w-4 h-4 mr-3" />
-                {item.label}
-              </button>
-            ))
-          }
-        </nav>
+        <View paddingTop={8}>
+          <View gap={1}>
+            {menuItems
+              .filter(item => item.roles.some(role => hasRole(role)))
+              .map(item => (
+                <Button
+                  key={item.id}
+                  onClick={() => setActiveView(item.id)}
+                  variant={activeView === item.id ? "solid" : "ghost"}
+                  color={activeView === item.id ? "primary" : "neutral"}
+                  size="medium"
+                  fullWidth
+                  icon={item.icon}
+                >
+                  {item.label}
+                </Button>
+              ))
+            }
+          </View>
+        </View>
       </div>
     );
   };
@@ -1290,17 +1297,19 @@ const LearningManagementSystem = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <View minHeight="100vh" backgroundColor="neutral-faded">
       <Header />
-      <div className="flex">
+      <View direction="row">
         <Sidebar />
-        <main className="flex-1 p-8">
-          {renderMainContent()}
-        </main>
-      </div>
+        <View.Item grow>
+          <View padding={8}>
+            {renderMainContent()}
+          </View>
+        </View.Item>
+      </View>
       <EditModal />
       <LogCheckinModal />
-    </div>
+    </View>
   );
 };
 
