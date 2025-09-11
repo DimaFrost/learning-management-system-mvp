@@ -69,9 +69,13 @@ interface MentorshipLog {
   id: number;
   mentorId: number;
   studentId: number;
-  type: string;
+  type: 'digital' | 'in_person';
   date: string;
   notes: string;
+  duration?: number; // in minutes
+  topics?: string[]; // discussion topics
+  nextSteps?: string; // follow-up actions
+  studentProgress?: 'excellent' | 'good' | 'needs_improvement' | 'concern';
 }
 
 interface EditingItem {
@@ -95,13 +99,17 @@ const LearningManagementSystem = () => {
     roles: ['administrator']
   });
 
+  const [showRoleSelector, setShowRoleSelector] = useState(false);
+
   const [users, setUsers] = useState<User[]>([
     { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator'] },
     { id: 2, name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
     { id: 3, name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
     { id: 4, name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
     { id: 5, name: 'Alice Student', email: 'alice@example.com', roles: ['student'] },
-    { id: 6, name: 'David Student', email: 'david@example.com', roles: ['student'] }
+    { id: 6, name: 'David Student', email: 'david@example.com', roles: ['student'] },
+    { id: 7, name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'] },
+    { id: 8, name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'] }
   ]);
 
   const [courses, setCourses] = useState<Course[]>([
@@ -121,7 +129,12 @@ const LearningManagementSystem = () => {
           primaryTeacherId: 2,
           classes: [
             { id: 1, date: '2024-09-05', teacherId: 2, translatorId: 3, title: 'HTML Basics' },
-            { id: 2, date: '2024-09-12', teacherId: 2, translatorId: 3, title: 'CSS Introduction' }
+            { id: 2, date: '2024-09-12', teacherId: 2, translatorId: 3, title: 'CSS Introduction' },
+            { id: 3, date: '2024-09-19', teacherId: 7, translatorId: 3, title: 'JavaScript Fundamentals' },
+            { id: 4, date: '2024-09-26', teacherId: 8, translatorId: 7, title: 'React Basics' },
+            { id: 5, date: '2024-10-03', teacherId: 2, translatorId: 7, title: 'Advanced CSS' },
+            { id: 6, date: '2024-10-10', teacherId: 7, translatorId: 3, title: 'Node.js Backend' },
+            { id: 7, date: '2024-10-17', teacherId: 8, translatorId: 3, title: 'Database Design' }
           ]
         }
       ]
@@ -130,7 +143,7 @@ const LearningManagementSystem = () => {
 
   const [courseStudents, setCourseStudents] = useState<CourseStudent[]>([
     { courseId: 1, studentId: 5, mentorId: 4, enrollmentDate: '2024-08-15', status: 'active' },
-    { courseId: 1, studentId: 6, mentorId: 4, enrollmentDate: '2024-08-15', status: 'active' }
+    { courseId: 1, studentId: 6, mentorId: 7, enrollmentDate: '2024-08-15', status: 'active' }
   ]);
 
   const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>([
@@ -140,7 +153,35 @@ const LearningManagementSystem = () => {
       studentId: 5,
       type: 'digital',
       date: '2024-09-01',
-      notes: 'Initial check-in, discussed goals and expectations'
+      notes: 'Initial check-in, discussed goals and expectations',
+      duration: 30,
+      topics: ['goal setting', 'course expectations'],
+      nextSteps: 'Review HTML basics before next class',
+      studentProgress: 'good'
+    },
+    {
+      id: 2,
+      mentorId: 4,
+      studentId: 5,
+      type: 'in_person',
+      date: '2024-09-08',
+      notes: 'In-person meeting to discuss progress and challenges',
+      duration: 45,
+      topics: ['progress review', 'challenges', 'study habits'],
+      nextSteps: 'Practice CSS fundamentals daily',
+      studentProgress: 'excellent'
+    },
+    {
+      id: 3,
+      mentorId: 7,
+      studentId: 6,
+      type: 'digital',
+      date: '2024-09-05',
+      notes: 'Weekly check-in, student is struggling with JavaScript concepts',
+      duration: 25,
+      topics: ['javascript basics', 'learning strategies'],
+      nextSteps: 'Schedule additional practice sessions',
+      studentProgress: 'needs_improvement'
     }
   ]);
 
@@ -289,6 +330,33 @@ const LearningManagementSystem = () => {
     setUsers(users.filter(user => user.id !== id));
   };
 
+  // Mentorship Log CRUD Operations
+  const addMentorshipLog = (logData: Partial<MentorshipLog>) => {
+    const newLog: MentorshipLog = {
+      id: Math.max(...mentorshipLogs.map(l => l.id), 0) + 1,
+      mentorId: logData.mentorId || currentUser.id,
+      studentId: logData.studentId || 0,
+      type: logData.type || 'digital',
+      date: logData.date || new Date().toISOString().split('T')[0],
+      notes: logData.notes || '',
+      duration: logData.duration,
+      topics: logData.topics || [],
+      nextSteps: logData.nextSteps,
+      studentProgress: logData.studentProgress
+    };
+    setMentorshipLogs([...mentorshipLogs, newLog]);
+  };
+
+  const updateMentorshipLog = (id: number, updates: Partial<MentorshipLog>) => {
+    setMentorshipLogs(mentorshipLogs.map(log => 
+      log.id === id ? { ...log, ...updates } : log
+    ));
+  };
+
+  const deleteMentorshipLog = (id: number) => {
+    setMentorshipLogs(mentorshipLogs.filter(log => log.id !== id));
+  };
+
   const getMyClasses = () => {
     if (!hasRole('teacher') && !hasRole('translator')) return [];
     
@@ -327,121 +395,265 @@ const LearningManagementSystem = () => {
     return { ...course, mentor };
   };
 
+  // Role Selector Component
+  const RoleSelector = () => {
+    const availableRoles = [
+      { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator'] },
+      { id: 2, name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
+      { id: 3, name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
+      { id: 4, name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
+      { id: 5, name: 'Alice Student', email: 'alice@example.com', roles: ['student'] },
+      { id: 6, name: 'David Student', email: 'david@example.com', roles: ['student'] },
+      { id: 7, name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'] },
+      { id: 8, name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'] }
+    ];
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="text-lg font-semibold">Switch User Role</h3>
+            <button 
+              onClick={() => setShowRoleSelector(false)}
+              className="text-gray-400 hover:text-gray-600"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+          
+          <div className="space-y-2">
+            {availableRoles.map(user => (
+              <button
+                key={user.id}
+                onClick={() => {
+                  setCurrentUser(user);
+                  setShowRoleSelector(false);
+                  setActiveView('dashboard');
+                }}
+                className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                  currentUser.id === user.id 
+                    ? 'bg-blue-50 border-blue-200 text-blue-900' 
+                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+                }`}
+              >
+                <div className="font-medium">{user.name}</div>
+                <div className="text-sm text-gray-600">{user.email}</div>
+                <div className="text-xs text-gray-500 mt-1">
+                  Role: {user.roles.join(', ')}
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   // Components
   const Header = () => (
-    <div className="bg-white border-b border-gray-200">
-      <View padding={4}>
-        <View direction="row" align="center" justify="space-between">
-          <View direction="row" align="center" gap={3}>
-            <GraduationCap className="w-8 h-8 text-blue-600" />
-            <Text variant="title-3" weight="bold">Learning Management System</Text>
-          </View>
-          <View direction="row" align="center" gap={3}>
-            <Text variant="body-2" color="neutral-faded">
-              {currentUser.name} ({currentUser.roles.join(', ')})
-            </Text>
-            <Button variant="ghost" size="small" icon={LogOut} />
-          </View>
-        </View>
-      </View>
+    <div className="bg-white border-b border-gray-200 px-6 py-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center space-x-4">
+          <GraduationCap className="w-8 h-8 text-blue-600" />
+          <h1 className="text-xl font-semibold text-gray-900">Learning Management System</h1>
+        </div>
+        <div className="flex items-center space-x-4">
+          <span className="text-sm text-gray-600">
+            {currentUser.name} ({currentUser.roles.join(', ')})
+          </span>
+          <button 
+            onClick={() => setShowRoleSelector(true)}
+            className="p-2 text-gray-400 hover:text-gray-600"
+            title="Switch User Role"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
     </div>
   );
 
   const Sidebar = () => {
     const menuItems = [
-      { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator', 'teacher', 'translator', 'mentor', 'student'] },
+      { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator'] },
       { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
       { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
+      { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
       { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
+      { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
       { id: 'my-students', label: 'My Students', icon: UserCheck, roles: ['mentor'] },
       { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
     ];
 
+    // Filter menu items based on user's roles
+    const visibleMenuItems = menuItems.filter(item => 
+      item.roles.some(role => hasRole(role))
+    );
+
     return (
       <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200">
-        <View paddingTop={8}>
-          <View gap={1}>
-            {menuItems
-              .filter(item => item.roles.some(role => hasRole(role)))
-              .map(item => (
-                <Button
-                  key={item.id}
-                  onClick={() => setActiveView(item.id)}
-                  variant={activeView === item.id ? "solid" : "ghost"}
-                  color={activeView === item.id ? "primary" : "neutral"}
-                  size="medium"
-                  fullWidth
-                  icon={item.icon}
-                >
-                  {item.label}
-                </Button>
-              ))
-            }
-          </View>
-        </View>
+        <nav className="mt-8">
+          {visibleMenuItems.map(item => (
+            <button
+              key={item.id}
+              onClick={() => setActiveView(item.id)}
+              className={`w-full flex items-center px-6 py-3 text-left text-sm font-medium transition-colors ${
+                activeView === item.id
+                  ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+              }`}
+            >
+              <item.icon className="w-4 h-4 mr-3" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
     );
   };
 
-  const AdminDashboard = () => (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Administrator Dashboard</h2>
-      
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <BookOpen className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Active Courses</p>
-              <p className="text-2xl font-bold text-gray-900">{courses.filter(c => c.status === 'active').length}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <Users className="w-6 h-6 text-green-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Users</p>
-              <p className="text-2xl font-bold text-gray-900">{users.length}</p>
-            </div>
-          </div>
-        </div>
-        
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <GraduationCap className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Enrolled Students</p>
-              <p className="text-2xl font-bold text-gray-900">{courseStudents.filter(cs => cs.status === 'active').length}</p>
-            </div>
-          </div>
-        </div>
-      </div>
+  const AdminDashboard = () => {
+    const mentorshipStats = {
+      totalLogs: mentorshipLogs.length,
+      activeMentors: users.filter(u => u.roles.includes('mentor')).length,
+      totalMentorships: courseStudents.length,
+      recentLogs: mentorshipLogs.filter(log => {
+        const logDate = new Date(log.date);
+        const weekAgo = new Date();
+        weekAgo.setDate(weekAgo.getDate() - 7);
+        return logDate >= weekAgo;
+      }).length
+    };
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
-        <div className="space-y-3">
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <Calendar className="w-4 h-4 text-blue-600" />
-            <span className="text-sm text-gray-600">New class scheduled for HTML Basics</span>
-            <span className="text-xs text-gray-400 ml-auto">2 hours ago</span>
+    const progressDistribution = mentorshipLogs.reduce((acc, log) => {
+      if (log.studentProgress) {
+        acc[log.studentProgress] = (acc[log.studentProgress] || 0) + 1;
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">Administrator Dashboard</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <BookOpen className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Courses</p>
+                <p className="text-2xl font-bold text-gray-900">{courses.filter(c => c.status === 'active').length}</p>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-            <Users className="w-4 h-4 text-green-600" />
-            <span className="text-sm text-gray-600">2 new students enrolled in Web Development Course</span>
-            <span className="text-xs text-gray-400 ml-auto">1 day ago</span>
+          
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <Users className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Users</p>
+                <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <GraduationCap className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Enrolled Students</p>
+                <p className="text-2xl font-bold text-gray-900">{courseStudents.filter(cs => cs.status === 'active').length}</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <UserCheck className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Active Mentors</p>
+                <p className="text-2xl font-bold text-gray-900">{mentorshipStats.activeMentors}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Mentorship Overview</h3>
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Total Check-ins</span>
+                <span className="font-semibold">{mentorshipStats.totalLogs}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">This Week</span>
+                <span className="font-semibold">{mentorshipStats.recentLogs}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">Active Mentorships</span>
+                <span className="font-semibold">{mentorshipStats.totalMentorships}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress Distribution</h3>
+            <div className="space-y-3">
+              {Object.entries(progressDistribution).map(([progress, count]) => (
+                <div key={progress} className="flex justify-between items-center">
+                  <span className="text-sm text-gray-600 capitalize">{progress.replace('_', ' ')}</span>
+                  <div className="flex items-center space-x-2">
+                    <div className="w-20 bg-gray-200 rounded-full h-2">
+                      <div 
+                        className={`h-2 rounded-full ${
+                          progress === 'excellent' ? 'bg-green-500' :
+                          progress === 'good' ? 'bg-blue-500' :
+                          progress === 'needs_improvement' ? 'bg-yellow-500' :
+                          'bg-red-500'
+                        }`}
+                        style={{ width: `${(count / mentorshipStats.totalLogs) * 100}%` }}
+                      ></div>
+                    </div>
+                    <span className="text-sm font-medium w-8">{count}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h3>
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <Calendar className="w-4 h-4 text-blue-600" />
+              <span className="text-sm text-gray-600">New class scheduled for HTML Basics</span>
+              <span className="text-xs text-gray-400 ml-auto">2 hours ago</span>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <Users className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-gray-600">2 new students enrolled in Web Development Course</span>
+              <span className="text-xs text-gray-400 ml-auto">1 day ago</span>
+            </div>
+            <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+              <UserCheck className="w-4 h-4 text-purple-600" />
+              <span className="text-sm text-gray-600">3 mentorship check-ins completed this week</span>
+              <span className="text-xs text-gray-400 ml-auto">2 days ago</span>
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   const CurriculumView = () => (
     <div className="space-y-6">
@@ -647,47 +859,595 @@ const LearningManagementSystem = () => {
     </div>
   );
 
-  const MyClassesView = () => {
-    const myClasses = getMyClasses();
-    
+  const MentorshipView = () => {
+    const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
+    const [editingPair, setEditingPair] = useState<{studentId: number, mentorId: number} | null>(null);
+    const [newMentorId, setNewMentorId] = useState<number | ''>('');
+
+    const mentorshipPairs = courseStudents.map(enrollment => {
+      const student = getUserById(enrollment.studentId);
+      const mentor = getUserById(enrollment.mentorId);
+      const course = courses.find(c => c.id === enrollment.courseId);
+      const studentLogs = mentorshipLogs.filter(log => log.studentId === enrollment.studentId);
+      const latestLog = studentLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
+      return {
+        ...enrollment,
+        student,
+        mentor,
+        course,
+        totalCheckins: studentLogs.length,
+        latestCheckin: latestLog?.date,
+        latestProgress: latestLog?.studentProgress,
+        allLogs: studentLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+      };
+    });
+
+    // Find students without mentors
+    const allStudents = users.filter(u => u.roles.includes('student'));
+    const studentsWithMentors = new Set(courseStudents.map(cs => cs.studentId));
+    const studentsWithoutMentors = allStudents.filter(student => !studentsWithMentors.has(student.id));
+
+    const togglePairExpansion = (pairKey: string) => {
+      const newExpanded = new Set(expandedPairs);
+      if (newExpanded.has(pairKey)) {
+        newExpanded.delete(pairKey);
+      } else {
+        newExpanded.add(pairKey);
+      }
+      setExpandedPairs(newExpanded);
+    };
+
+    const handleMentorChange = (studentId: number, newMentorId: number) => {
+      setCourseStudents(prev => prev.map(cs => 
+        cs.studentId === studentId ? { ...cs, mentorId: newMentorId } : cs
+      ));
+      setEditingPair(null);
+      setNewMentorId('');
+    };
+
+    const availableMentors = users.filter(u => u.roles.includes('mentor'));
+
     return (
       <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">
-          My Classes ({hasRole('teacher') ? 'Teaching' : 'Translating'})
-        </h2>
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Mentorship Management</h2>
+          <div className="text-sm text-gray-600">
+            {mentorshipPairs.length} active mentorship pairs
+          </div>
+        </div>
 
-        <div className="space-y-4">
-          {myClasses.map(cls => (
-            <div key={cls.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
-                  <p className="text-sm text-gray-600">{cls.courseName} • {cls.subjectTitle}</p>
-                  <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{cls.date}</span>
+        {/* Students Without Mentors */}
+        {studentsWithoutMentors.length > 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
+            <h3 className="text-lg font-semibold text-yellow-900 mb-4">
+              Students Without Mentors ({studentsWithoutMentors.length})
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {studentsWithoutMentors.map(student => (
+                <div key={student.id} className="bg-white rounded-lg border border-yellow-200 p-4">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
+                      <User className="w-4 h-4 text-yellow-600" />
                     </div>
-                    <div className="flex items-center space-x-1">
-                      <User className="w-4 h-4" />
-                      <span>Teacher: {getUserById(cls.teacherId)?.name}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Translator: {getUserById(cls.translatorId)?.name}</span>
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{student.name}</p>
+                      <p className="text-xs text-gray-500">{student.email}</p>
                     </div>
                   </div>
+                  <button 
+                    onClick={() => setEditingPair({studentId: student.id, mentorId: 0})}
+                    className="w-full bg-yellow-600 text-white px-3 py-2 rounded text-sm hover:bg-yellow-700"
+                  >
+                    Assign Mentor
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Mentorship Pairs */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {mentorshipPairs.map(pair => {
+            const pairKey = `${pair.studentId}-${pair.mentorId}`;
+            const isExpanded = expandedPairs.has(pairKey);
+            
+            return (
+              <div key={pairKey} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+                <div className="flex items-start justify-between mb-4">
+                  <div className="flex-1">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Student-Mentor Pair</h3>
+                    <div className="space-y-2">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                          <User className="w-4 h-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{pair.student?.name}</p>
+                          <p className="text-xs text-gray-500">Student</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center">
+                          <UserCheck className="w-4 h-4 text-green-600" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{pair.mentor?.name}</p>
+                          <p className="text-xs text-gray-500">Mentor</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                      pair.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {pair.status}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-200 pt-4">
+                  <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                    <div>
+                      <p className="text-gray-500">Course</p>
+                      <p className="font-medium text-gray-900">{pair.course?.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Enrolled</p>
+                      <p className="font-medium text-gray-900">{pair.enrollmentDate}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Total Check-ins</p>
+                      <p className="font-medium text-gray-900">{pair.totalCheckins}</p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500">Latest Progress</p>
+                      <div className="mt-1">
+                        {pair.latestProgress ? (
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            pair.latestProgress === 'excellent' ? 'bg-green-100 text-green-800' :
+                            pair.latestProgress === 'good' ? 'bg-blue-100 text-blue-800' :
+                            pair.latestProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {pair.latestProgress.replace('_', ' ')}
+                          </span>
+                        ) : (
+                          <span className="text-gray-400 text-xs">No data</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {pair.latestCheckin && (
+                    <div className="mb-4 pt-3 border-t border-gray-100">
+                      <p className="text-xs text-gray-500">Last Check-in: {pair.latestCheckin}</p>
+                    </div>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex space-x-2 pt-3 border-t border-gray-100">
+                    <button
+                      onClick={() => togglePairExpansion(pairKey)}
+                      className="flex-1 bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
+                    >
+                      {isExpanded ? 'Hide' : 'View'} Check-ins ({pair.totalCheckins})
+                    </button>
+                    <button
+                      onClick={() => setEditingPair({studentId: pair.studentId, mentorId: pair.mentorId})}
+                      className="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700"
+                    >
+                      Change Mentor
+                    </button>
+                  </div>
+
+                  {/* Expanded Check-ins */}
+                  {isExpanded && (
+                    <div className="mt-4 pt-4 border-t border-gray-200">
+                      <h4 className="font-medium text-gray-900 mb-3">All Check-ins</h4>
+                      {pair.allLogs.length > 0 ? (
+                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                          {pair.allLogs.map(log => (
+                            <div key={log.id} className="bg-gray-50 rounded-lg p-3">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium text-gray-900">
+                                  {log.type === 'digital' ? '💻 Digital' : '🤝 In-person'} Check-in
+                                </span>
+                                <span className="text-xs text-gray-500">{log.date}</span>
+                              </div>
+                              <p className="text-sm text-gray-600 mb-2">{log.notes}</p>
+                              {log.topics && log.topics.length > 0 && (
+                                <div className="mb-2">
+                                  <span className="text-xs text-gray-500">Topics: </span>
+                                  <span className="text-xs text-gray-600">{log.topics.join(', ')}</span>
+                                </div>
+                              )}
+                              {log.nextSteps && (
+                                <div className="mb-2">
+                                  <span className="text-xs text-gray-500">Next Steps: </span>
+                                  <span className="text-xs text-gray-600">{log.nextSteps}</span>
+                                </div>
+                              )}
+                              {log.duration && (
+                                <div className="mb-2">
+                                  <span className="text-xs text-gray-500">Duration: </span>
+                                  <span className="text-xs text-gray-600">{log.duration} minutes</span>
+                                </div>
+                              )}
+                              {log.studentProgress && (
+                                <div className="mt-2">
+                                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                                    log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
+                                    log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
+                                    log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
+                                    'bg-red-100 text-red-800'
+                                  }`}>
+                                    {log.studentProgress.replace('_', ' ')}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p className="text-gray-500 text-sm">No check-ins recorded yet.</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {mentorshipPairs.length === 0 && (
+          <div className="text-center py-12">
+            <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">No mentorship pairs found.</p>
+          </div>
+        )}
+
+        {/* Edit Mentor Modal */}
+        {editingPair && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 w-full max-w-md">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-semibold">
+                  {editingPair.mentorId === 0 ? 'Assign Mentor' : 'Change Mentor'}
+                </h3>
+                <button 
+                  onClick={() => {
+                    setEditingPair(null);
+                    setNewMentorId('');
+                  }}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Student</label>
+                  <p className="text-sm text-gray-900">
+                    {getUserById(editingPair.studentId)?.name}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Select New Mentor</label>
+                  <select
+                    value={newMentorId}
+                    onChange={(e) => setNewMentorId(Number(e.target.value))}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="">Select a mentor</option>
+                    {availableMentors.map(mentor => (
+                      <option key={mentor.id} value={mentor.id}>{mentor.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end space-x-3 pt-4">
+                  <button
+                    onClick={() => {
+                      setEditingPair(null);
+                      setNewMentorId('');
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (newMentorId) {
+                        if (editingPair.mentorId === 0) {
+                          // Assign new mentor
+                          setCourseStudents(prev => [...prev, {
+                            courseId: 1, // Default course for now
+                            studentId: editingPair.studentId,
+                            mentorId: newMentorId,
+                            enrollmentDate: new Date().toISOString().split('T')[0],
+                            status: 'active'
+                          }]);
+                        } else {
+                          // Change existing mentor
+                          handleMentorChange(editingPair.studentId, newMentorId);
+                        }
+                      }
+                    }}
+                    disabled={!newMentorId}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
+                  >
+                    {editingPair.mentorId === 0 ? 'Assign' : 'Change'} Mentor
+                  </button>
                 </div>
               </div>
             </div>
-          ))}
-          
-          {myClasses.length === 0 && (
-            <div className="text-center py-12">
-              <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No classes assigned yet.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const MyClassesView = () => {
+    const myClasses = getMyClasses();
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Separate upcoming and past classes
+    const upcomingClasses = myClasses.filter(cls => cls.date >= today);
+    const pastClasses = myClasses.filter(cls => cls.date < today);
+    
+    // Sort upcoming classes by date (ascending), past classes by date (descending)
+    upcomingClasses.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    pastClasses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+    const getMyRoleInClass = (cls: any) => {
+      // A person can only have one role per class (teacher OR translator, not both)
+      if (cls.teacherId === currentUser.id) return ['Teacher'];
+      if (cls.translatorId === currentUser.id) return ['Translator'];
+      return [];
+    };
+
+    const getRoleBadgeColor = (role: string) => {
+      switch (role) {
+        case 'Teacher': return 'bg-blue-100 text-blue-800';
+        case 'Translator': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    const ClassCard = ({ cls, isUpcoming }: { cls: any, isUpcoming: boolean }) => {
+      const myRoles = getMyRoleInClass(cls);
+      const isPast = !isUpcoming;
+      
+      return (
+        <div className={`bg-white rounded-lg shadow border border-gray-200 p-6 ${isPast ? 'opacity-75' : ''}`}>
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex-1">
+              <div className="flex items-center space-x-3 mb-2">
+                <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
+                {myRoles.map(role => (
+                  <span key={role} className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}>
+                    {role}
+                  </span>
+                ))}
+              </div>
+              <p className="text-sm text-gray-600 mb-3">{cls.courseName} • {cls.subjectTitle}</p>
+              
+              <div className="flex items-center space-x-4 text-sm text-gray-500">
+                <div className="flex items-center space-x-1">
+                  <Calendar className="w-4 h-4" />
+                  <span className={isPast ? 'text-gray-400' : ''}>{cls.date}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <User className="w-4 h-4" />
+                  <span className={isPast ? 'text-gray-400' : ''}>Teacher: {getUserById(cls.teacherId)?.name}</span>
+                </div>
+                <div className="flex items-center space-x-1">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className={isPast ? 'text-gray-400' : ''}>Translator: {getUserById(cls.translatorId)?.name}</span>
+                </div>
+              </div>
             </div>
-          )}
+            
+            <div className="text-right">
+              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                isUpcoming ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+              }`}>
+                {isUpcoming ? 'Upcoming' : 'Past'}
+              </span>
+            </div>
+          </div>
+        </div>
+      );
+    };
+    
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold text-gray-900">
+            My Classes
+          </h2>
+          <div className="text-sm text-gray-600">
+            {upcomingClasses.length} upcoming • {pastClasses.length} past
+          </div>
+        </div>
+
+        {/* Upcoming Classes */}
+        {upcomingClasses.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              Upcoming Classes ({upcomingClasses.length})
+            </h3>
+            <div className="space-y-4">
+              {upcomingClasses.map(cls => (
+                <ClassCard key={cls.id} cls={cls} isUpcoming={true} />
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Past Classes */}
+        {pastClasses.length > 0 && (
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+              <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
+              Past Classes ({pastClasses.length})
+            </h3>
+            <div className="space-y-4">
+              {pastClasses.map(cls => (
+                <ClassCard key={cls.id} cls={cls} isUpcoming={false} />
+              ))}
+            </div>
+          </div>
+        )}
+          
+        {myClasses.length === 0 && (
+          <div className="text-center py-12">
+            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">No classes assigned yet.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const MentorDashboard = () => {
+    const myStudents = getMyStudents();
+    const myLogs = mentorshipLogs.filter(log => log.mentorId === currentUser.id);
+    const recentLogs = myLogs.slice(-5).reverse();
+    
+    const getProgressStats = () => {
+      const progressCounts = myLogs.reduce((acc, log) => {
+        if (log.studentProgress) {
+          acc[log.studentProgress] = (acc[log.studentProgress] || 0) + 1;
+        }
+        return acc;
+      }, {} as Record<string, number>);
+      
+      return progressCounts;
+    };
+
+    const progressStats = getProgressStats();
+    
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">Mentor Dashboard</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-blue-100 rounded-lg">
+                <UserCheck className="w-6 h-6 text-blue-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">My Students</p>
+                <p className="text-2xl font-bold text-gray-900">{myStudents.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-green-100 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-green-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Check-ins</p>
+                <p className="text-2xl font-bold text-gray-900">{myLogs.length}</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-purple-100 rounded-lg">
+                <Clock className="w-6 h-6 text-purple-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">This Month</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {myLogs.filter(log => {
+                    const logDate = new Date(log.date);
+                    const now = new Date();
+                    return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
+                  }).length}
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+            <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <GraduationCap className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Avg Progress</p>
+                <p className="text-2xl font-bold text-gray-900">
+                  {progressStats.excellent ? 'Excellent' : progressStats.good ? 'Good' : 'Needs Focus'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Check-ins</h3>
+            <div className="space-y-3">
+              {recentLogs.map(log => {
+                const student = getUserById(log.studentId);
+                return (
+                  <div key={log.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                    <div className="flex-shrink-0">
+                      {log.type === 'digital' ? '💻' : '🤝'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">{student?.name}</p>
+                      <p className="text-sm text-gray-500 truncate">{log.notes}</p>
+                    </div>
+                    <div className="flex-shrink-0 text-xs text-gray-400">
+                      {log.date}
+                    </div>
+                  </div>
+                );
+              })}
+              {recentLogs.length === 0 && (
+                <p className="text-gray-500 text-center py-4">No recent check-ins</p>
+              )}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress Overview</h3>
+            <div className="space-y-3">
+              {myStudents.map(enrollment => {
+                const studentLogs = myLogs.filter(log => log.studentId === enrollment.studentId);
+                const latestLog = studentLogs[studentLogs.length - 1];
+                const progressColor = latestLog?.studentProgress === 'excellent' ? 'text-green-600' :
+                                   latestLog?.studentProgress === 'good' ? 'text-blue-600' :
+                                   latestLog?.studentProgress === 'needs_improvement' ? 'text-yellow-600' :
+                                   latestLog?.studentProgress === 'concern' ? 'text-red-600' : 'text-gray-600';
+                
+                return (
+                  <div key={enrollment.studentId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">{enrollment.student?.name}</p>
+                      <p className="text-xs text-gray-500">{studentLogs.length} check-ins</p>
+                    </div>
+                    <div className={`text-sm font-medium ${progressColor}`}>
+                      {latestLog?.studentProgress ? latestLog.studentProgress.replace('_', ' ') : 'No data'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -704,9 +1464,9 @@ const LearningManagementSystem = () => {
           {myStudents.map(enrollment => (
             <div key={enrollment.studentId} className="bg-white rounded-lg shadow border border-gray-200 p-6">
               <div className="flex justify-between items-start">
-                                        <div>
-                                          <h3 className="text-lg font-semibold text-gray-900">{enrollment.student?.name}</h3>
-                                          <p className="text-sm text-gray-600">{enrollment.student?.email}</p>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{enrollment.student?.name}</h3>
+                  <p className="text-sm text-gray-600">{enrollment.student?.email}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     Course: {enrollment.course?.name} • Enrolled: {enrollment.enrollmentDate}
                   </p>
@@ -725,6 +1485,8 @@ const LearningManagementSystem = () => {
                 <h4 className="font-medium text-gray-900 mb-2">Recent Check-ins</h4>
                 {mentorshipLogs
                   .filter(log => log.studentId === enrollment.studentId)
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                  .slice(0, 3)
                   .map(log => (
                     <div key={log.id} className="bg-gray-50 rounded p-3 mb-2">
                       <div className="flex items-center justify-between mb-1">
@@ -734,6 +1496,21 @@ const LearningManagementSystem = () => {
                         <span className="text-xs text-gray-500">{log.date}</span>
                       </div>
                       <p className="text-sm text-gray-600">{log.notes}</p>
+                      {log.duration && (
+                        <p className="text-xs text-gray-500 mt-1">Duration: {log.duration} minutes</p>
+                      )}
+                      {log.studentProgress && (
+                        <div className="mt-2">
+                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                            log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
+                            log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
+                            log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
+                            'bg-red-100 text-red-800'
+                          }`}>
+                            {log.studentProgress.replace('_', ' ')}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   ))
                 }
@@ -764,6 +1541,9 @@ const LearningManagementSystem = () => {
       );
     }
 
+    const myMentorshipLogs = mentorshipLogs.filter(log => log.studentId === currentUser.id);
+    const latestLog = myMentorshipLogs.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
+
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
@@ -772,11 +1552,23 @@ const LearningManagementSystem = () => {
           
           {myCourse.mentor && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-              <h3 className="font-medium text-blue-900 mb-1">Your Mentor</h3>
-              <p className="text-blue-700">{myCourse.mentor.name} • {myCourse.mentor.email}</p>
+              <h3 className="font-medium text-blue-900 mb-2">Your Mentor</h3>
+              <div className="flex items-center space-x-4">
+                <div className="flex-1">
+                  <p className="text-blue-700 font-medium">{myCourse.mentor.name}</p>
+                  <p className="text-blue-600 text-sm">{myCourse.mentor.email}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-blue-600 text-sm">Total Check-ins: {myMentorshipLogs.length}</p>
+                  {latestLog && (
+                    <p className="text-blue-600 text-sm">Last: {latestLog.date}</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>
+
 
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-gray-900">Course Curriculum</h3>
@@ -1184,31 +1976,77 @@ const LearningManagementSystem = () => {
 
   // Log Check-in Modal
   const LogCheckinModal = () => {
-    const [logType, setLogType] = useState('digital');
+    const [logType, setLogType] = useState<'digital' | 'in_person'>('digital');
     const [notes, setNotes] = useState('');
+    const [duration, setDuration] = useState<number | ''>('');
+    const [topics, setTopics] = useState<string[]>([]);
+    const [nextSteps, setNextSteps] = useState('');
+    const [studentProgress, setStudentProgress] = useState<'excellent' | 'good' | 'needs_improvement' | 'concern' | ''>('');
+    const [errors, setErrors] = useState<{[key: string]: string}>({});
+
+    const availableTopics = [
+      'goal setting', 'progress review', 'challenges', 'study habits', 
+      'course expectations', 'javascript basics', 'learning strategies',
+      'time management', 'technical skills', 'career guidance'
+    ];
+
+    const handleTopicToggle = (topic: string) => {
+      setTopics(prev => 
+        prev.includes(topic) 
+          ? prev.filter(t => t !== topic)
+          : [...prev, topic]
+      );
+    };
 
     const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      const newLog = {
-        id: mentorshipLogs.length + 1,
+      const newErrors: {[key: string]: string} = {};
+
+      // Validation
+      if (!notes.trim()) {
+        newErrors.notes = 'Notes are required';
+      }
+      if (!studentProgress) {
+        newErrors.studentProgress = 'Student progress assessment is required';
+      }
+
+      if (Object.keys(newErrors).length > 0) {
+        setErrors(newErrors);
+        return;
+      }
+
+      const newLog: MentorshipLog = {
+        id: Math.max(...mentorshipLogs.map(l => l.id), 0) + 1,
         mentorId: currentUser.id,
         studentId: editingItem?.studentId || 0,
         type: logType,
         date: new Date().toISOString().split('T')[0],
-        notes
+        notes: notes.trim(),
+        duration: duration ? Number(duration) : undefined,
+        topics: topics.length > 0 ? topics : undefined,
+        nextSteps: nextSteps.trim() || undefined,
+        studentProgress: studentProgress as any
       };
-      setMentorshipLogs([...mentorshipLogs, newLog]);
+
+      addMentorshipLog(newLog);
       setEditingItem(null);
       setNotes('');
+      setDuration('');
+      setTopics([]);
+      setNextSteps('');
+      setStudentProgress('');
+      setErrors({});
     };
 
     if (!editingItem || editingItem.type !== 'log') return null;
 
+    const student = getUserById(editingItem.studentId || 0);
+
     return (
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
+        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Log Check-in</h3>
+            <h3 className="text-lg font-semibold">Log Check-in with {student?.name}</h3>
             <button 
               onClick={() => setEditingItem(null)}
               className="text-gray-400 hover:text-gray-600"
@@ -1218,16 +2056,65 @@ const LearningManagementSystem = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Type</label>
+                <select 
+                  value={logType} 
+                  onChange={(e) => setLogType(e.target.value as 'digital' | 'in_person')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="digital">💻 Digital Check-in</option>
+                  <option value="in_person">🤝 In-person Meeting</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
+                <input
+                  type="number"
+                  value={duration}
+                  onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., 30"
+                  min="1"
+                  max="300"
+                />
+              </div>
+            </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Discussion Topics</label>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                {availableTopics.map(topic => (
+                  <label key={topic} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={topics.includes(topic)}
+                      onChange={() => handleTopicToggle(topic)}
+                      className="mr-2"
+                    />
+                    <span className="text-sm text-gray-700 capitalize">{topic}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Student Progress</label>
               <select 
-                value={logType} 
-                onChange={(e) => setLogType(e.target.value)}
+                value={studentProgress} 
+                onChange={(e) => setStudentProgress(e.target.value as any)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                required
               >
-                <option value="digital">Digital Check-in</option>
-                <option value="in_person">In-person Meeting</option>
+                <option value="">Select progress level</option>
+                <option value="excellent">🌟 Excellent - Exceeding expectations</option>
+                <option value="good">👍 Good - Meeting expectations</option>
+                <option value="needs_improvement">⚠️ Needs Improvement - Below expectations</option>
+                <option value="concern">🚨 Concern - Significant issues</option>
               </select>
+              {errors.studentProgress && <p className="text-red-500 text-sm mt-1">{errors.studentProgress}</p>}
             </div>
 
             <div>
@@ -1237,12 +2124,24 @@ const LearningManagementSystem = () => {
                 onChange={(e) => setNotes(e.target.value)}
                 rows={4}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Add notes about this check-in..."
+                placeholder="Add detailed notes about this check-in..."
                 required
+              />
+              {errors.notes && <p className="text-red-500 text-sm mt-1">{errors.notes}</p>}
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Next Steps</label>
+              <textarea 
+                value={nextSteps}
+                onChange={(e) => setNextSteps(e.target.value)}
+                rows={2}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="What should the student focus on next?"
               />
             </div>
 
-            <div className="flex justify-end space-x-3">
+            <div className="flex justify-end space-x-3 pt-4">
               <button
                 type="button"
                 onClick={() => setEditingItem(null)}
@@ -1252,9 +2151,10 @@ const LearningManagementSystem = () => {
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
               >
-                Save Check-in
+                <Save className="w-4 h-4" />
+                <span>Save Check-in</span>
               </button>
             </div>
           </form>
@@ -1264,28 +2164,36 @@ const LearningManagementSystem = () => {
   };
 
   const renderMainContent = () => {
+    // Handle administrator role
     if (hasRole('administrator')) {
       switch (activeView) {
         case 'curriculum': return <CurriculumView />;
         case 'users': return <UsersView />;
+        case 'mentorship': return <MentorshipView />;
         default: return <AdminDashboard />;
       }
     }
     
+    // Handle teacher/translator roles (including multi-role users)
     if (hasRole('teacher') || hasRole('translator')) {
       switch (activeView) {
         case 'my-classes': return <MyClassesView />;
+        case 'mentor-dashboard': return hasRole('mentor') ? <MentorDashboard /> : <MyClassesView />;
+        case 'my-students': return hasRole('mentor') ? <MyStudentsView /> : <MyClassesView />;
         default: return <MyClassesView />;
       }
     }
     
+    // Handle mentor role (for users who are only mentors)
     if (hasRole('mentor')) {
       switch (activeView) {
+        case 'mentor-dashboard': return <MentorDashboard />;
         case 'my-students': return <MyStudentsView />;
-        default: return <MyStudentsView />;
+        default: return <MentorDashboard />;
       }
     }
     
+    // Handle student role
     if (hasRole('student')) {
       switch (activeView) {
         case 'my-course': return <MyCourseView />;
@@ -1297,19 +2205,18 @@ const LearningManagementSystem = () => {
   };
 
   return (
-    <View minHeight="100vh" backgroundColor="neutral-faded">
+    <div className="min-h-screen bg-gray-100">
       <Header />
-      <View direction="row">
+      <div className="flex">
         <Sidebar />
-        <View.Item grow>
-          <View padding={8}>
-            {renderMainContent()}
-          </View>
-        </View.Item>
-      </View>
+        <main className="flex-1 p-8">
+          {renderMainContent()}
+        </main>
+      </div>
       <EditModal />
       <LogCheckinModal />
-    </View>
+      {showRoleSelector && <RoleSelector />}
+    </div>
   );
 };
 
