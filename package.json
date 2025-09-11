@@ -1,0 +1,34 @@
+{
+  "name": "learning-management-system-mvp",
+  "version": "1.0.0",
+  "description": "A complete Learning Management System MVP with role-based access control",
+  "main": "learning_management_mvp_complete.tsx",
+  "scripts": {
+    "start": "npx create-react-app . --template typescript && npm start",
+    "dev": "npx vite",
+    "build": "npx vite build",
+    "preview": "npx vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "lucide-react": "^0.263.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.15",
+    "@types/react-dom": "^18.2.7",
+    "@vitejs/plugin-react": "^4.0.3",
+    "typescript": "^5.0.2",
+    "vite": "^4.4.5"
+  },
+  "keywords": [
+    "learning-management-system",
+    "lms",
+    "education",
+    "react",
+    "typescript",
+    "mvp"
+  ],
+  "author": "Your Name",
+  "license": "MIT"
+}
