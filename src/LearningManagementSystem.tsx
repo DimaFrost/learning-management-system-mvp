@@ -69,9 +69,14 @@ interface MentorshipLog {
 }
 
 interface EditingItem {
-  type: 'course' | 'user' | 'log';
-  data?: Course | User | null;
+  type: 'course' | 'user' | 'log' | 'subject';
+  data?: Course | User | Subject | null;
   studentId?: number;
+  courseId?: number;
+}
+
+interface FormData {
+  [key: string]: any;
 }
 
 const LearningManagementSystem = () => {
@@ -141,9 +146,13 @@ const LearningManagementSystem = () => {
 
   // CRUD Operations
   const addCourse = (courseData: Partial<Course>) => {
-    const newCourse = {
+    const newCourse: Course = {
       id: Math.max(...courses.map(c => c.id)) + 1,
-      ...courseData,
+      name: courseData.name || '',
+      year: courseData.year || 1,
+      startDate: courseData.startDate || '',
+      endDate: courseData.endDate || '',
+      status: courseData.status || 'active',
       subjects: []
     };
     setCourses([...courses, newCourse]);
@@ -159,10 +168,13 @@ const LearningManagementSystem = () => {
     setCourses(courses.filter(course => course.id !== id));
   };
 
-  const addSubject = (courseId, subjectData) => {
-    const newSubject = {
+  const addSubject = (courseId: number, subjectData: Partial<Subject>) => {
+    const newSubject: Subject = {
       id: Math.max(...courses.flatMap(c => c.subjects.map(s => s.id)), 0) + 1,
-      ...subjectData,
+      title: subjectData.title || '',
+      description: subjectData.description || '',
+      duration: subjectData.duration || '',
+      primaryTeacherId: subjectData.primaryTeacherId || 0,
       classes: []
     };
     setCourses(courses.map(course => 
@@ -172,7 +184,7 @@ const LearningManagementSystem = () => {
     ));
   };
 
-  const updateSubject = (courseId, subjectId, updates) => {
+  const updateSubject = (courseId: number, subjectId: number, updates: Partial<Subject>) => {
     setCourses(courses.map(course => 
       course.id === courseId 
         ? {
@@ -185,7 +197,7 @@ const LearningManagementSystem = () => {
     ));
   };
 
-  const deleteSubject = (courseId, subjectId) => {
+  const deleteSubject = (courseId: number, subjectId: number) => {
     setCourses(courses.map(course => 
       course.id === courseId 
         ? { ...course, subjects: course.subjects.filter(s => s.id !== subjectId) }
@@ -194,9 +206,11 @@ const LearningManagementSystem = () => {
   };
 
   const addUser = (userData: Partial<User>) => {
-    const newUser = {
+    const newUser: User = {
       id: Math.max(...users.map(u => u.id)) + 1,
-      ...userData
+      name: userData.name || '',
+      email: userData.email || '',
+      roles: userData.roles || []
     };
     setUsers([...users, newUser]);
   };
@@ -216,10 +230,10 @@ const LearningManagementSystem = () => {
     
     return courses.flatMap(course => 
       course.subjects.flatMap(subject =>
-        subject.classes.filter(cls => 
-          (hasRole('teacher') && cls.teacherId === currentUser.id) ||
-          (hasRole('translator') && cls.translatorId === currentUser.id)
-        ).map(cls => ({
+                        subject.classes.filter((cls: Class) => 
+                          (hasRole('teacher') && cls.teacherId === currentUser.id) ||
+                          (hasRole('translator') && cls.translatorId === currentUser.id)
+                        ).map((cls: Class) => ({
           ...cls,
           courseName: course.name,
           subjectTitle: subject.title
@@ -600,9 +614,9 @@ const LearningManagementSystem = () => {
           {myStudents.map(enrollment => (
             <div key={enrollment.studentId} className="bg-white rounded-lg shadow border border-gray-200 p-6">
               <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{enrollment.student.name}</h3>
-                  <p className="text-sm text-gray-600">{enrollment.student.email}</p>
+                                        <div>
+                                          <h3 className="text-lg font-semibold text-gray-900">{enrollment.student?.name}</h3>
+                                          <p className="text-sm text-gray-600">{enrollment.student?.email}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     Course: {enrollment.course?.name} • Enrolled: {enrollment.enrollmentDate}
                   </p>
@@ -677,7 +691,7 @@ const LearningManagementSystem = () => {
         <div className="space-y-4">
           <h3 className="text-xl font-semibold text-gray-900">Course Curriculum</h3>
           
-          {myCourse.subjects.map(subject => (
+          {myCourse.subjects?.map(subject => (
             <div key={subject.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
               <h4 className="text-lg font-semibold text-gray-900 mb-2">{subject.title}</h4>
               <p className="text-gray-600 mb-3">{subject.description}</p>
@@ -687,7 +701,7 @@ const LearningManagementSystem = () => {
               
               <div className="space-y-2">
                 <h5 className="font-medium text-gray-900">Classes</h5>
-                {subject.classes.map(cls => (
+                {subject.classes.map((cls: Class) => (
                   <div key={cls.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
                     <div className="flex items-center space-x-3">
                       <Calendar className="w-4 h-4 text-gray-400" />
@@ -709,8 +723,8 @@ const LearningManagementSystem = () => {
 
   // Edit Modal Component
   const EditModal = () => {
-    const [formData, setFormData] = useState({});
-    const [errors, setErrors] = useState({});
+    const [formData, setFormData] = useState<FormData>({});
+    const [errors, setErrors] = useState<{[key: string]: string | null}>({});
 
     useEffect(() => {
       if (editingItem && editingItem.data) {
@@ -721,18 +735,18 @@ const LearningManagementSystem = () => {
       setErrors({});
     }, [editingItem]);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
-      const newErrors = {};
+      const newErrors: {[key: string]: string | null} = {};
 
       // Validation
-      if (!formData.name && (editingItem.type === 'course' || editingItem.type === 'user')) {
+      if (!formData.name && editingItem && (editingItem.type === 'course' || editingItem.type === 'user')) {
         newErrors.name = 'Name is required';
       }
-      if (!formData.email && editingItem.type === 'user') {
+      if (!formData.email && editingItem && editingItem.type === 'user') {
         newErrors.email = 'Email is required';
       }
-      if (!formData.title && editingItem.type === 'subject') {
+      if (!formData.title && editingItem && editingItem.type === 'subject') {
         newErrors.title = 'Title is required';
       }
 
@@ -742,21 +756,21 @@ const LearningManagementSystem = () => {
       }
 
       // Handle different entity types
-      if (editingItem.type === 'course') {
+      if (editingItem && editingItem.type === 'course') {
         if (editingItem.data) {
-          updateCourse(editingItem.data.id, formData);
+          updateCourse((editingItem.data as Course).id, formData);
         } else {
           addCourse(formData);
         }
-      } else if (editingItem.type === 'subject') {
-        if (editingItem.data) {
-          updateSubject(editingItem.courseId, editingItem.data.id, formData);
-        } else {
+      } else if (editingItem && editingItem.type === 'subject') {
+        if (editingItem.data && editingItem.courseId) {
+          updateSubject(editingItem.courseId, (editingItem.data as Subject).id, formData);
+        } else if (editingItem.courseId) {
           addSubject(editingItem.courseId, formData);
         }
-      } else if (editingItem.type === 'user') {
+      } else if (editingItem && editingItem.type === 'user') {
         if (editingItem.data) {
-          updateUser(editingItem.data.id, formData);
+          updateUser((editingItem.data as User).id, formData);
         } else {
           addUser(formData);
         }
@@ -767,7 +781,7 @@ const LearningManagementSystem = () => {
       setErrors({});
     };
 
-    const handleChange = (field, value) => {
+    const handleChange = (field: string, value: any) => {
       setFormData(prev => ({ ...prev, [field]: value }));
       if (errors[field]) {
         setErrors(prev => ({ ...prev, [field]: null }));
@@ -930,7 +944,7 @@ const LearningManagementSystem = () => {
                           if (e.target.checked) {
                             handleChange('roles', [...currentRoles, role]);
                           } else {
-                            handleChange('roles', currentRoles.filter(r => r !== role));
+                                                                handleChange('roles', currentRoles.filter((r: string) => r !== role));
                           }
                         }}
                         className="mr-2"
@@ -990,12 +1004,12 @@ const LearningManagementSystem = () => {
     const [logType, setLogType] = useState('digital');
     const [notes, setNotes] = useState('');
 
-    const handleSubmit = (e) => {
+    const handleSubmit = (e: React.FormEvent) => {
       e.preventDefault();
       const newLog = {
         id: mentorshipLogs.length + 1,
         mentorId: currentUser.id,
-        studentId: editingItem.studentId,
+        studentId: editingItem?.studentId || 0,
         type: logType,
         date: new Date().toISOString().split('T')[0],
         notes
