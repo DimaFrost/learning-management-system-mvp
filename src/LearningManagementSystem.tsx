@@ -69,10 +69,11 @@ interface MentorshipLog {
 }
 
 interface EditingItem {
-  type: 'course' | 'user' | 'log' | 'subject';
-  data?: Course | User | Subject | null;
+  type: 'course' | 'user' | 'log' | 'subject' | 'class';
+  data?: Course | User | Subject | Class | null;
   studentId?: number;
   courseId?: number;
+  subjectId?: number;
 }
 
 interface FormData {
@@ -201,6 +202,63 @@ const LearningManagementSystem = () => {
     setCourses(courses.map(course => 
       course.id === courseId 
         ? { ...course, subjects: course.subjects.filter(s => s.id !== subjectId) }
+        : course
+    ));
+  };
+
+  const addClass = (courseId: number, subjectId: number, classData: Partial<Class>) => {
+    const newClass: Class = {
+      id: Math.max(...courses.flatMap(c => c.subjects.flatMap(s => s.classes.map(cls => cls.id))), 0) + 1,
+      title: classData.title || '',
+      date: classData.date || '',
+      teacherId: classData.teacherId || 0,
+      translatorId: classData.translatorId || 0
+    };
+    setCourses(courses.map(course => 
+      course.id === courseId 
+        ? {
+            ...course, 
+            subjects: course.subjects.map(subject => 
+              subject.id === subjectId 
+                ? { ...subject, classes: [...subject.classes, newClass] }
+                : subject
+            )
+          }
+        : course
+    ));
+  };
+
+  const updateClass = (courseId: number, subjectId: number, classId: number, updates: Partial<Class>) => {
+    setCourses(courses.map(course => 
+      course.id === courseId 
+        ? {
+            ...course, 
+            subjects: course.subjects.map(subject => 
+              subject.id === subjectId 
+                ? {
+                    ...subject, 
+                    classes: subject.classes.map(cls => 
+                      cls.id === classId ? { ...cls, ...updates } : cls
+                    )
+                  }
+                : subject
+            )
+          }
+        : course
+    ));
+  };
+
+  const deleteClass = (courseId: number, subjectId: number, classId: number) => {
+    setCourses(courses.map(course => 
+      course.id === courseId 
+        ? {
+            ...course, 
+            subjects: course.subjects.map(subject => 
+              subject.id === subjectId 
+                ? { ...subject, classes: subject.classes.filter(cls => cls.id !== classId) }
+                : subject
+            )
+          }
         : course
     ));
   };
@@ -458,7 +516,16 @@ const LearningManagementSystem = () => {
                   </div>
 
                   <div className="mt-3">
-                    <h6 className="text-sm font-medium text-gray-700 mb-2">Classes</h6>
+                    <div className="flex justify-between items-center mb-2">
+                      <h6 className="text-sm font-medium text-gray-700">Classes</h6>
+                      <button
+                        onClick={() => setEditingItem({ type: 'class', data: null, courseId: course.id, subjectId: subject.id })}
+                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Class</span>
+                      </button>
+                    </div>
                     <div className="space-y-2">
                       {subject.classes.map(cls => (
                         <div key={cls.id} className="flex items-center justify-between bg-white p-3 rounded border">
@@ -467,9 +534,25 @@ const LearningManagementSystem = () => {
                             <span className="text-sm font-medium">{cls.title}</span>
                             <span className="text-sm text-gray-500">{cls.date}</span>
                           </div>
-                          <div className="flex items-center space-x-4 text-xs text-gray-500">
-                            <span>Teacher: {getUserById(cls.teacherId)?.name}</span>
-                            <span>Translator: {getUserById(cls.translatorId)?.name}</span>
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-4 text-xs text-gray-500">
+                              <span>Teacher: {getUserById(cls.teacherId)?.name}</span>
+                              <span>Translator: {getUserById(cls.translatorId)?.name}</span>
+                            </div>
+                            <div className="flex space-x-1 ml-4">
+                              <button
+                                onClick={() => setEditingItem({ type: 'class', data: cls, courseId: course.id, subjectId: subject.id })}
+                                className="p-1 text-gray-400 hover:text-blue-600"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                              <button
+                                onClick={() => deleteClass(course.id, subject.id, cls.id)}
+                                className="p-1 text-gray-400 hover:text-red-600"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -746,8 +829,21 @@ const LearningManagementSystem = () => {
       if (!formData.email && editingItem && editingItem.type === 'user') {
         newErrors.email = 'Email is required';
       }
-      if (!formData.title && editingItem && editingItem.type === 'subject') {
+      if (!formData.title && editingItem && (editingItem.type === 'subject' || editingItem.type === 'class')) {
         newErrors.title = 'Title is required';
+      }
+      if (!formData.date && editingItem && editingItem.type === 'class') {
+        newErrors.date = 'Date is required';
+      }
+      if (!formData.teacherId && editingItem && editingItem.type === 'class') {
+        newErrors.teacherId = 'Teacher is required';
+      }
+      if (!formData.translatorId && editingItem && editingItem.type === 'class') {
+        newErrors.translatorId = 'Translator is required';
+      }
+      if (formData.teacherId && formData.translatorId && formData.teacherId === formData.translatorId && editingItem && editingItem.type === 'class') {
+        newErrors.teacherId = 'Teacher and Translator cannot be the same person';
+        newErrors.translatorId = 'Teacher and Translator cannot be the same person';
       }
 
       if (Object.keys(newErrors).length > 0) {
@@ -768,6 +864,12 @@ const LearningManagementSystem = () => {
         } else if (editingItem.courseId) {
           addSubject(editingItem.courseId, formData);
         }
+      } else if (editingItem && editingItem.type === 'class') {
+        if (editingItem.data && editingItem.courseId && editingItem.subjectId) {
+          updateClass(editingItem.courseId, editingItem.subjectId, (editingItem.data as Class).id, formData);
+        } else if (editingItem.courseId && editingItem.subjectId) {
+          addClass(editingItem.courseId, editingItem.subjectId, formData);
+        }
       } else if (editingItem && editingItem.type === 'user') {
         if (editingItem.data) {
           updateUser((editingItem.data as User).id, formData);
@@ -782,9 +884,28 @@ const LearningManagementSystem = () => {
     };
 
     const handleChange = (field: string, value: any) => {
-      setFormData(prev => ({ ...prev, [field]: value }));
+      setFormData(prev => {
+        const newData = { ...prev, [field]: value };
+        
+        // Clear conflicting role selection when changing teacher or translator
+        if (field === 'teacherId' && value && prev.translatorId === value) {
+          newData.translatorId = '';
+        } else if (field === 'translatorId' && value && prev.teacherId === value) {
+          newData.teacherId = '';
+        }
+        
+        return newData;
+      });
+      
+      // Clear errors for the changed field and related fields
       if (errors[field]) {
         setErrors(prev => ({ ...prev, [field]: null }));
+      }
+      if (field === 'teacherId' && errors.translatorId) {
+        setErrors(prev => ({ ...prev, translatorId: null }));
+      }
+      if (field === 'translatorId' && errors.teacherId) {
+        setErrors(prev => ({ ...prev, teacherId: null }));
       }
     };
 
@@ -795,6 +916,7 @@ const LearningManagementSystem = () => {
       switch (editingItem.type) {
         case 'course': return `${action} Course`;
         case 'subject': return `${action} Subject`;
+        case 'class': return `${action} Class`;
         case 'user': return `${action} User`;
         default: return 'Edit Item';
       }
@@ -903,6 +1025,60 @@ const LearningManagementSystem = () => {
                     <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
                   ))}
                 </select>
+              </div>
+            </>
+          );
+        case 'class':
+          return (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Class Title</label>
+                <input
+                  type="text"
+                  value={formData.title || ''}
+                  onChange={(e) => handleChange('title', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="Enter class title"
+                />
+                {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={formData.date || ''}
+                  onChange={(e) => handleChange('date', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+                {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Teacher</label>
+                <select
+                  value={formData.teacherId || ''}
+                  onChange={(e) => handleChange('teacherId', parseInt(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a teacher</option>
+                  {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => (
+                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
+                  ))}
+                </select>
+                {errors.teacherId && <p className="text-red-500 text-sm mt-1">{errors.teacherId}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Translator</label>
+                <select
+                  value={formData.translatorId || ''}
+                  onChange={(e) => handleChange('translatorId', parseInt(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a translator</option>
+                  {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => (
+                    <option key={translator.id} value={translator.id}>{translator.name}</option>
+                  ))}
+                </select>
+                {errors.translatorId && <p className="text-red-500 text-sm mt-1">{errors.translatorId}</p>}
               </div>
             </>
           );
