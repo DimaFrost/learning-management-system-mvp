@@ -33,6 +33,7 @@ interface User {
 interface Class {
   id: number;
   date: string;
+  hour: 'first' | 'second' | 'both';
   teacherId: number;
   translatorId: number;
   title: string;
@@ -42,15 +43,16 @@ interface Subject {
   id: number;
   title: string;
   description: string;
-  duration: string;
+  startDate: string;
+  duration: number; // number of classes to pre-create
   primaryTeacherId: number;
   classes: Class[];
 }
 
 interface Course {
   id: number;
-  name: string;
-  year: number;
+  courseType: 'first_year' | 'second_year';
+  graduationYear: number;
   startDate: string;
   endDate: string;
   status: string;
@@ -115,8 +117,8 @@ const LearningManagementSystem = () => {
   const [courses, setCourses] = useState<Course[]>([
     {
       id: 1,
-      name: 'Web Development Course',
-      year: 1,
+      courseType: 'first_year',
+      graduationYear: 2025,
       startDate: '2024-09-01',
       endDate: '2024-12-15',
       status: 'active',
@@ -125,16 +127,65 @@ const LearningManagementSystem = () => {
           id: 1,
           title: 'HTML & CSS Fundamentals',
           description: 'Learn the basics of web markup and styling',
-          duration: '4 weeks',
+          startDate: '2024-09-03',
+          duration: 7,
           primaryTeacherId: 2,
           classes: [
-            { id: 1, date: '2024-09-05', teacherId: 2, translatorId: 3, title: 'HTML Basics' },
-            { id: 2, date: '2024-09-12', teacherId: 2, translatorId: 3, title: 'CSS Introduction' },
-            { id: 3, date: '2024-09-19', teacherId: 7, translatorId: 3, title: 'JavaScript Fundamentals' },
-            { id: 4, date: '2024-09-26', teacherId: 8, translatorId: 7, title: 'React Basics' },
-            { id: 5, date: '2024-10-03', teacherId: 2, translatorId: 7, title: 'Advanced CSS' },
-            { id: 6, date: '2024-10-10', teacherId: 7, translatorId: 3, title: 'Node.js Backend' },
-            { id: 7, date: '2024-10-17', teacherId: 8, translatorId: 3, title: 'Database Design' }
+            { id: 1, date: '2024-09-03', hour: 'first', teacherId: 2, translatorId: 3, title: 'HTML Basics - Class 1' },
+            { id: 2, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 3, title: 'CSS Introduction - Class 2' },
+            { id: 3, date: '2024-09-10', hour: 'first', teacherId: 7, translatorId: 3, title: 'JavaScript Fundamentals - Class 3' },
+            { id: 4, date: '2024-09-10', hour: 'second', teacherId: 8, translatorId: 7, title: 'React Basics - Class 4' },
+            { id: 5, date: '2024-09-17', hour: 'first', teacherId: 2, translatorId: 7, title: 'Advanced CSS - Class 5' },
+            { id: 6, date: '2024-09-17', hour: 'second', teacherId: 7, translatorId: 3, title: 'Node.js Backend - Class 6' },
+            { id: 7, date: '2024-09-24', hour: 'both', teacherId: 8, translatorId: 3, title: 'Database Design - Class 7' },
+            { id: 8, date: '2024-09-24', hour: 'second', teacherId: 0, translatorId: 0, title: 'Final Project - Class 8' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 2,
+      courseType: 'first_year',
+      graduationYear: 2026,
+      startDate: '2024-09-01',
+      endDate: '2024-12-15',
+      status: 'active',
+      subjects: [
+        {
+          id: 2,
+          title: 'Python Fundamentals',
+          description: 'Learn Python programming basics',
+          startDate: '2024-09-03', // Tuesday
+          duration: 4,
+          primaryTeacherId: 7,
+          classes: [
+            { id: 8, date: '2024-09-03', hour: 'first', teacherId: 7, translatorId: 3, title: 'Python Introduction - Class 1' },
+            { id: 9, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 7, title: 'Data Types - Class 2' },
+            { id: 10, date: '2024-09-10', hour: 'first', teacherId: 8, translatorId: 3, title: 'Functions - Class 3' },
+            { id: 11, date: '2024-09-10', hour: 'second', teacherId: 7, translatorId: 3, title: 'Modules - Class 4' }
+          ]
+        }
+      ]
+    },
+    {
+      id: 3,
+      courseType: 'second_year',
+      graduationYear: 2025,
+      startDate: '2024-09-01',
+      endDate: '2024-12-15',
+      status: 'active',
+      subjects: [
+        {
+          id: 3,
+          title: 'Advanced Web Development',
+          description: 'Advanced topics in web development',
+          startDate: '2024-09-03',
+          duration: 3,
+          primaryTeacherId: 8,
+          classes: [
+            { id: 12, date: '2024-09-03', hour: 'first', teacherId: 8, translatorId: 7, title: 'Advanced React - Class 1' },
+            { id: 13, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 3, title: 'Node.js Advanced - Class 2' },
+            { id: 14, date: '2024-09-10', hour: 'first', teacherId: 7, translatorId: 8, title: 'Database Optimization - Class 3' }
           ]
         }
       ]
@@ -143,7 +194,9 @@ const LearningManagementSystem = () => {
 
   const [courseStudents, setCourseStudents] = useState<CourseStudent[]>([
     { courseId: 1, studentId: 5, mentorId: 4, enrollmentDate: '2024-08-15', status: 'active' },
-    { courseId: 1, studentId: 6, mentorId: 7, enrollmentDate: '2024-08-15', status: 'active' }
+    { courseId: 1, studentId: 6, mentorId: 7, enrollmentDate: '2024-08-15', status: 'active' },
+    { courseId: 2, studentId: 5, mentorId: 8, enrollmentDate: '2024-08-20', status: 'active' },
+    { courseId: 3, studentId: 6, mentorId: 4, enrollmentDate: '2024-08-20', status: 'active' }
   ]);
 
   const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>([
@@ -187,6 +240,7 @@ const LearningManagementSystem = () => {
 
   const [activeView, setActiveView] = useState('dashboard');
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [activeCurriculumTab, setActiveCurriculumTab] = useState('overview');
 
   // Helper functions
   const getUserById = (id: number): User | undefined => users.find(u => u.id === id);
@@ -196,8 +250,8 @@ const LearningManagementSystem = () => {
   const addCourse = (courseData: Partial<Course>) => {
     const newCourse: Course = {
       id: Math.max(...courses.map(c => c.id)) + 1,
-      name: courseData.name || '',
-      year: courseData.year || 1,
+      courseType: courseData.courseType || 'first_year',
+      graduationYear: courseData.graduationYear || new Date().getFullYear() + 1,
       startDate: courseData.startDate || '',
       endDate: courseData.endDate || '',
       status: courseData.status || 'active',
@@ -217,13 +271,75 @@ const LearningManagementSystem = () => {
   };
 
   const addSubject = (courseId: number, subjectData: Partial<Subject>) => {
+    const duration = subjectData.duration || 1;
+    const primaryTeacherId = subjectData.primaryTeacherId || 0;
+    const startDate = subjectData.startDate || '';
+    
+    // Helper function to get next Tuesday or Thursday
+    const getNextClassDate = (startDate: string, classIndex: number): string => {
+      if (!startDate) return '';
+      
+      const start = new Date(startDate);
+      const dayOfWeek = start.getDay(); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Find the next Tuesday (2) or Thursday (4) from start date
+      let daysToAdd = 0;
+      if (dayOfWeek <= 2) {
+        // If start is Sunday, Monday, or Tuesday, go to next Tuesday
+        daysToAdd = 2 - dayOfWeek;
+      } else if (dayOfWeek === 3) {
+        // If start is Wednesday, go to next Thursday
+        daysToAdd = 1;
+      } else if (dayOfWeek === 4) {
+        // If start is Thursday, go to next Tuesday
+        daysToAdd = 4;
+      } else {
+        // If start is Friday or Saturday, go to next Tuesday
+        daysToAdd = 9 - dayOfWeek;
+      }
+      
+      // Calculate which day to use based on class index
+      // Classes 0,1 use first day, classes 2,3 use second day, etc.
+      const dayIndex = Math.floor(classIndex / 2);
+      
+      // Alternate between Tuesday and Thursday for each day
+      const isEvenDay = dayIndex % 2 === 0;
+      
+      if (isEvenDay) {
+        // Even days (0, 2, 4...) use Tuesday
+        daysToAdd += dayIndex * 7;
+      } else {
+        // Odd days (1, 3, 5...) use Thursday
+        daysToAdd += (dayIndex - 1) * 7 + 2;
+      }
+      
+      const classDate = new Date(start);
+      classDate.setDate(start.getDate() + daysToAdd);
+      
+      return classDate.toISOString().split('T')[0];
+    };
+    
+    // Pre-create classes based on duration
+    const preCreatedClasses: Class[] = [];
+    for (let i = 1; i <= duration; i++) {
+      preCreatedClasses.push({
+        id: Math.max(...courses.flatMap(c => c.subjects.flatMap(s => s.classes.map(cls => cls.id))), 0) + i,
+        title: `${subjectData.title || ''} - Class ${i}`,
+        date: getNextClassDate(startDate, i - 1), // i-1 because we want 0-based indexing
+        hour: i % 2 === 1 ? 'first' : 'second', // Alternate between first and second hour
+        teacherId: primaryTeacherId,
+        translatorId: 0 // Vacant by default
+      });
+    }
+
     const newSubject: Subject = {
       id: Math.max(...courses.flatMap(c => c.subjects.map(s => s.id)), 0) + 1,
       title: subjectData.title || '',
       description: subjectData.description || '',
-      duration: subjectData.duration || '',
-      primaryTeacherId: subjectData.primaryTeacherId || 0,
-      classes: []
+      startDate: startDate,
+      duration: duration,
+      primaryTeacherId: primaryTeacherId,
+      classes: preCreatedClasses
     };
     setCourses(courses.map(course => 
       course.id === courseId 
@@ -258,6 +374,7 @@ const LearningManagementSystem = () => {
       id: Math.max(...courses.flatMap(c => c.subjects.flatMap(s => s.classes.map(cls => cls.id))), 0) + 1,
       title: classData.title || '',
       date: classData.date || '',
+      hour: classData.hour || 'first',
       teacherId: classData.teacherId || 0,
       translatorId: classData.translatorId || 0
     };
@@ -357,6 +474,94 @@ const LearningManagementSystem = () => {
     setMentorshipLogs(mentorshipLogs.filter(log => log.id !== id));
   };
 
+  // Course assignment operations
+  const assignUserToCourse = (userId: number, courseId: number, mentorId?: number) => {
+    const existingAssignment = courseStudents.find(cs => cs.courseId === courseId && cs.studentId === userId);
+    if (existingAssignment) {
+      // Update existing assignment
+      setCourseStudents(courseStudents.map(cs => 
+        cs.courseId === courseId && cs.studentId === userId 
+          ? { ...cs, mentorId: mentorId || cs.mentorId }
+          : cs
+      ));
+    } else {
+      // Create new assignment
+      const newAssignment: CourseStudent = {
+        courseId,
+        studentId: userId,
+        mentorId: mentorId || 0,
+        enrollmentDate: new Date().toISOString().split('T')[0],
+        status: 'active'
+      };
+      setCourseStudents([...courseStudents, newAssignment]);
+    }
+  };
+
+  const removeUserFromCourse = (userId: number, courseId: number) => {
+    setCourseStudents(courseStudents.filter(cs => !(cs.courseId === courseId && cs.studentId === userId)));
+  };
+
+  // Double-booking prevention: Check if a person is already assigned to another class on the same date AND hour
+  const checkDoubleBooking = (personId: number, date: string, hour: 'first' | 'second' | 'both', excludeClassId?: number): { hasConflict: boolean; conflictingClasses: any[] } => {
+    const conflictingClasses: any[] = [];
+    
+    // Check all classes across all courses for the same date AND hour
+    courses.forEach(course => {
+      course.subjects.forEach(subject => {
+        subject.classes.forEach(cls => {
+          // Skip the class being edited
+          if (excludeClassId && cls.id === excludeClassId) return;
+          
+          // Check if this class is on the same date and involves the same person
+          if (cls.date === date && (cls.teacherId === personId || cls.translatorId === personId)) {
+            // Check hour conflicts
+            const hasHourConflict = 
+              hour === 'both' || cls.hour === 'both' || hour === cls.hour;
+            
+            if (hasHourConflict) {
+              conflictingClasses.push({
+                ...cls,
+                courseName: getCourseDisplayName(course),
+                subjectTitle: subject.title,
+                role: cls.teacherId === personId ? 'Teacher' : 'Translator'
+              });
+            }
+          }
+        });
+      });
+    });
+    
+    return {
+      hasConflict: conflictingClasses.length > 0,
+      conflictingClasses
+    };
+  };
+
+  // Helper function to get course display name
+  const getCourseDisplayName = (course: Course): string => {
+    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+    return `${courseTypeLabel} ${course.graduationYear}`;
+  };
+
+  // Helper function to check if course type + graduation year combination already exists
+  const checkCourseUniqueness = (courseType: 'first_year' | 'second_year', graduationYear: number, excludeCourseId?: number): boolean => {
+    return courses.some(course => 
+      course.id !== excludeCourseId && 
+      course.courseType === courseType && 
+      course.graduationYear === graduationYear
+    );
+  };
+
+  // Helper function to get unique course options for dropdowns
+  const getCourseOptions = () => {
+    return courses.map(course => ({
+      id: course.id,
+      displayName: getCourseDisplayName(course),
+      courseType: course.courseType,
+      graduationYear: course.graduationYear
+    }));
+  };
+
   const getMyClasses = () => {
     if (!hasRole('teacher') && !hasRole('translator')) return [];
     
@@ -367,7 +572,7 @@ const LearningManagementSystem = () => {
                           (hasRole('translator') && cls.translatorId === currentUser.id)
                         ).map((cls: Class) => ({
           ...cls,
-          courseName: course.name,
+          courseName: getCourseDisplayName(course),
           subjectTitle: subject.title
         }))
       )
@@ -655,108 +860,187 @@ const LearningManagementSystem = () => {
     );
   };
 
-  const CurriculumView = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Curriculum Management</h2>
-        <button 
-          onClick={() => setEditingItem({ type: 'course', data: null })}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add Course</span>
-        </button>
+  const CurriculumView = () => {
+    const curriculumTabs = [
+      { id: 'overview', label: 'Overview' },
+      { id: 'date-view', label: 'Date View' }
+    ];
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">Curriculum Management</h2>
+          <button 
+            onClick={() => setEditingItem({ type: 'course', data: null })}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add Course</span>
+          </button>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="border-b border-gray-200">
+          <nav className="-mb-px flex space-x-8">
+            {curriculumTabs.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveCurriculumTab(tab.id)}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeCurriculumTab === tab.id
+                    ? 'border-blue-500 text-blue-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </nav>
+        </div>
+
+        {/* Tab Content */}
+        {activeCurriculumTab === 'overview' ? <CurriculumOverview /> : <CurriculumDateView />}
       </div>
+    );
+  };
 
-      <div className="space-y-4">
-        {courses.map(course => (
-          <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900">{course.name}</h3>
-                <p className="text-sm text-gray-600">Year {course.year} • {course.startDate} to {course.endDate}</p>
-                <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-                  course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-                }`}>
-                  {course.status}
-                </span>
-              </div>
-              <div className="flex space-x-2">
-                <button 
-                  onClick={() => setEditingItem({ type: 'course', data: course })}
-                  className="p-2 text-gray-400 hover:text-blue-600"
-                >
-                  <Edit3 className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => deleteCourse(course.id)}
-                  className="p-2 text-gray-400 hover:text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
+  const CurriculumOverview = () => (
+    <div className="space-y-4">
+      {courses.map(course => (
+        <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <div className="flex justify-between items-start mb-4">
+            <div>
+              <h3 className="text-lg font-semibold text-gray-900">{getCourseDisplayName(course)}</h3>
+              <p className="text-sm text-gray-600">{course.startDate} to {course.endDate}</p>
+              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+              }`}>
+                {course.status}
+              </span>
             </div>
+            <div className="flex space-x-2">
+              <button 
+                onClick={() => setEditingItem({ type: 'course', data: course })}
+                className="p-2 text-gray-400 hover:text-blue-600"
+              >
+                <Edit3 className="w-4 h-4" />
+              </button>
+              <button 
+                onClick={() => deleteCourse(course.id)}
+                className="p-2 text-gray-400 hover:text-red-600"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
 
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <h4 className="font-medium text-gray-900">Subjects</h4>
-                <button
-                  onClick={() => setEditingItem({ type: 'subject', data: null, courseId: course.id })}
-                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
-                >
-                  <Plus className="w-3 h-3" />
-                  <span>Add Subject</span>
-                </button>
-              </div>
-              {course.subjects.map(subject => (
-                <div key={subject.id} className="bg-gray-50 rounded-lg p-4">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center">
+              <h4 className="font-medium text-gray-900">Subjects</h4>
+              <button
+                onClick={() => setEditingItem({ type: 'subject', data: null, courseId: course.id })}
+                className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+              >
+                <Plus className="w-3 h-3" />
+                <span>Add Subject</span>
+              </button>
+            </div>
+            {course.subjects.map(subject => (
+              <div key={subject.id} className="bg-gray-50 rounded-lg p-4">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
                       <h5 className="font-medium text-gray-900">{subject.title}</h5>
                       <p className="text-sm text-gray-600">{subject.description}</p>
                       <p className="text-xs text-gray-500 mt-1">
-                        Duration: {subject.duration} • Teacher: {getUserById(subject.primaryTeacherId)?.name}
+                        Start: {subject.startDate} • {subject.duration} classes • Teacher: {getUserById(subject.primaryTeacherId)?.name}
                       </p>
-                    </div>
-                    <div className="flex space-x-1">
-                      <button
-                        onClick={() => setEditingItem({ type: 'subject', data: subject, courseId: course.id })}
-                        className="p-1 text-gray-400 hover:text-blue-600"
-                      >
-                        <Edit3 className="w-3 h-3" />
-                      </button>
-                      <button
-                        onClick={() => deleteSubject(course.id, subject.id)}
-                        className="p-1 text-gray-400 hover:text-red-600"
-                      >
-                        <Trash2 className="w-3 h-3" />
-                      </button>
-                    </div>
                   </div>
+                  <div className="flex space-x-1">
+                    <button
+                      onClick={() => setEditingItem({ type: 'subject', data: subject, courseId: course.id })}
+                      className="p-1 text-gray-400 hover:text-blue-600"
+                    >
+                      <Edit3 className="w-3 h-3" />
+                    </button>
+                    <button
+                      onClick={() => deleteSubject(course.id, subject.id)}
+                      className="p-1 text-gray-400 hover:text-red-600"
+                    >
+                      <Trash2 className="w-3 h-3" />
+                    </button>
+                  </div>
+                </div>
 
-                  <div className="mt-3">
-                    <div className="flex justify-between items-center mb-2">
-                      <h6 className="text-sm font-medium text-gray-700">Classes</h6>
-                      <button
-                        onClick={() => setEditingItem({ type: 'class', data: null, courseId: course.id, subjectId: subject.id })}
-                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
-                      >
-                        <Plus className="w-3 h-3" />
-                        <span>Add Class</span>
-                      </button>
-                    </div>
-                    <div className="space-y-2">
-                      {subject.classes.map(cls => (
-                        <div key={cls.id} className="flex items-center justify-between bg-white p-3 rounded border">
-                          <div className="flex items-center space-x-3">
-                            <Calendar className="w-4 h-4 text-gray-400" />
-                            <span className="text-sm font-medium">{cls.title}</span>
-                            <span className="text-sm text-gray-500">{cls.date}</span>
-                          </div>
+                <div className="mt-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <h6 className="text-sm font-medium text-gray-700">Classes</h6>
+                    <button
+                      onClick={() => setEditingItem({ type: 'class', data: null, courseId: course.id, subjectId: subject.id })}
+                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Class</span>
+                    </button>
+                  </div>
+                  <div className="space-y-2">
+                    {subject.classes.map(cls => {
+                      // Check for conflicts for this class
+                      const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
+                      const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
+                      const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
+                      const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
+                      const needsAttention = hasConflict || hasVacantRoles;
+                      
+                      return (
+                        <div key={cls.id} className={`flex items-center justify-between p-3 rounded border ${
+                          needsAttention ? 'bg-orange-50 border-orange-200' : 'bg-white'
+                        }`}>
+                            <div className="flex items-center space-x-3">
+                              <Calendar className="w-4 h-4 text-gray-400" />
+                              <span className="text-sm font-medium">{cls.title}</span>
+                              <span className="text-sm text-gray-500">{cls.date}</span>
+                              <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                cls.hour === 'first' ? 'bg-green-100 text-green-800' : 
+                                cls.hour === 'second' ? 'bg-purple-100 text-purple-800' : 
+                                'bg-blue-100 text-blue-800'
+                              }`}>
+                                {cls.hour === 'first' ? '1st Hour' : 
+                                 cls.hour === 'second' ? '2nd Hour' : 
+                                 'Both Hours'}
+                              </span>
+                              {hasConflict && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  ⚠️ Conflict
+                                </span>
+                              )}
+                              {hasVacantRoles && !hasConflict && (
+                                <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                                  ⚠️ Incomplete
+                                </span>
+                              )}
+                            </div>
                           <div className="flex items-center space-x-4">
                             <div className="flex items-center space-x-4 text-xs text-gray-500">
-                              <span>Teacher: {getUserById(cls.teacherId)?.name}</span>
-                              <span>Translator: {getUserById(cls.translatorId)?.name}</span>
+                              <span className={
+                                teacherConflict.hasConflict 
+                                  ? 'text-red-600 font-medium' 
+                                  : cls.teacherId === 0 
+                                    ? 'text-orange-600 font-medium' 
+                                    : ''
+                              }>
+                                Teacher: {cls.teacherId === 0 ? '⚠️ Vacant' : getUserById(cls.teacherId)?.name}
+                                {teacherConflict.hasConflict && ' (conflict)'}
+                              </span>
+                              <span className={
+                                translatorConflict.hasConflict 
+                                  ? 'text-red-600 font-medium' 
+                                  : cls.translatorId === 0 
+                                    ? 'text-orange-600 font-medium' 
+                                    : ''
+                              }>
+                                Translator: {cls.translatorId === 0 ? '⚠️ Vacant' : getUserById(cls.translatorId)?.name}
+                                {translatorConflict.hasConflict && ' (conflict)'}
+                              </span>
                             </div>
                             <div className="flex space-x-1 ml-4">
                               <button
@@ -774,17 +1058,290 @@ const LearningManagementSystem = () => {
                             </div>
                           </div>
                         </div>
-                      ))}
-                    </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-        ))}
-      </div>
+        </div>
+      ))}
     </div>
   );
+
+  const CurriculumDateView = () => {
+    // Collect all classes with their course and subject information
+    const allClasses = courses.flatMap(course =>
+      course.subjects.flatMap(subject =>
+        subject.classes.map(cls => ({
+          ...cls,
+          courseName: getCourseDisplayName(course),
+          courseId: course.id,
+          subjectTitle: subject.title,
+          subjectId: subject.id
+        }))
+      )
+    );
+
+    // Group classes by date and then by hour
+    // For "both hours" classes, create separate entries for first and second hour
+    const classesByDate = allClasses.reduce((acc, cls) => {
+      if (!acc[cls.date]) {
+        acc[cls.date] = { first: [], second: [] };
+      }
+      
+      if (cls.hour === 'both') {
+        // Create two separate entries for "both hours" classes
+        acc[cls.date].first.push({ ...cls, hour: 'first', originalHour: 'both' });
+        acc[cls.date].second.push({ ...cls, hour: 'second', originalHour: 'both' });
+      } else {
+        acc[cls.date][cls.hour].push(cls);
+      }
+      
+      return acc;
+    }, {} as Record<string, { first: any[], second: any[] }>);
+
+    // Sort dates
+    const sortedDates = Object.keys(classesByDate).sort();
+
+    const formatDate = (dateStr: string) => {
+      const date = new Date(dateStr);
+      return {
+        weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
+        monthDay: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        year: date.getFullYear()
+      };
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold text-gray-900">Schedule by Date</h3>
+          <div className="text-sm text-gray-600">
+            {sortedDates.length} days with classes • {allClasses.length} total classes
+          </div>
+        </div>
+
+        {sortedDates.length > 0 ? (
+          <div className="space-y-4">
+            {sortedDates.map(date => {
+              const dateInfo = formatDate(date);
+              const classesForDate = classesByDate[date];
+              const totalClasses = classesForDate.first.length + classesForDate.second.length;
+              
+              return (
+                <div key={date} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+                  <div className="flex items-center space-x-3 mb-4">
+                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h4 className="text-lg font-semibold text-gray-900">{dateInfo.weekday}</h4>
+                      <p className="text-sm text-gray-600">{dateInfo.monthDay}, {dateInfo.year}</p>
+                    </div>
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {totalClasses} {totalClasses === 1 ? 'class' : 'classes'}
+                    </span>
+                  </div>
+
+                  <div className="space-y-4">
+                    {/* First Hour */}
+                    {classesForDate.first.length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-green-600" />
+                          First Hour ({classesForDate.first.length} {classesForDate.first.length === 1 ? 'class' : 'classes'})
+                        </h5>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {classesForDate.first.map(cls => {
+                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
+                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
+                            const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
+                            const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
+                            const needsAttention = hasConflict || hasVacantRoles;
+                            
+                            return (
+                              <div key={cls.id} className={`border rounded-lg p-4 ${
+                                needsAttention ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                              }`}>
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h6 className="font-medium text-gray-900 mb-1">{cls.title}</h6>
+                                    <p className="text-sm text-gray-600 mb-2">
+                                      <span className="font-medium">{cls.courseName}</span> • {cls.subjectTitle}
+                                      {cls.originalHour === 'both' && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                          Both Hours Class
+                                        </span>
+                                      )}
+                                    </p>
+                                    {hasConflict && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2">
+                                        ⚠️ Scheduling Conflict
+                                      </span>
+                                    )}
+                                    {hasVacantRoles && !hasConflict && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mb-2">
+                                        ⚠️ Incomplete Setup
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-1">
+                                    <button
+                                      onClick={() => setEditingItem({ type: 'class', data: cls, courseId: cls.courseId, subjectId: cls.subjectId })}
+                                      className="p-1 text-gray-400 hover:text-blue-600"
+                                      title="Edit class"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteClass(cls.courseId, cls.subjectId, cls.id)}
+                                      className="p-1 text-gray-400 hover:text-red-600"
+                                      title="Delete class"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Teacher:</span>
+                                    <span className={`text-sm ${
+                                      teacherConflict.hasConflict 
+                                        ? 'text-red-600 font-medium' 
+                                        : cls.teacherId 
+                                          ? 'text-gray-900' 
+                                          : 'text-red-500 font-medium'
+                                    }`}>
+                                      {cls.teacherId ? getUserById(cls.teacherId)?.name : '⚠️ Vacant'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Translator:</span>
+                                    <span className={`text-sm ${
+                                      translatorConflict.hasConflict 
+                                        ? 'text-red-600 font-medium' 
+                                        : cls.translatorId 
+                                          ? 'text-gray-900' 
+                                          : 'text-red-500 font-medium'
+                                    }`}>
+                                      {cls.translatorId ? getUserById(cls.translatorId)?.name : '⚠️ Vacant'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Second Hour */}
+                    {classesForDate.second.length > 0 && (
+                      <div>
+                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
+                          <Clock className="w-4 h-4 mr-2 text-purple-600" />
+                          Second Hour ({classesForDate.second.length} {classesForDate.second.length === 1 ? 'class' : 'classes'})
+                        </h5>
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                          {classesForDate.second.map(cls => {
+                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
+                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
+                            const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
+                            const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
+                            const needsAttention = hasConflict || hasVacantRoles;
+                            
+                            return (
+                              <div key={cls.id} className={`border rounded-lg p-4 ${
+                                needsAttention ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
+                              }`}>
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <h6 className="font-medium text-gray-900 mb-1">{cls.title}</h6>
+                                    <p className="text-sm text-gray-600 mb-2">
+                                      <span className="font-medium">{cls.courseName}</span> • {cls.subjectTitle}
+                                      {cls.originalHour === 'both' && (
+                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                          Both Hours Class
+                                        </span>
+                                      )}
+                                    </p>
+                                    {hasConflict && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2">
+                                        ⚠️ Scheduling Conflict
+                                      </span>
+                                    )}
+                                    {hasVacantRoles && !hasConflict && (
+                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mb-2">
+                                        ⚠️ Incomplete Setup
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex space-x-1">
+                                    <button
+                                      onClick={() => setEditingItem({ type: 'class', data: cls, courseId: cls.courseId, subjectId: cls.subjectId })}
+                                      className="p-1 text-gray-400 hover:text-blue-600"
+                                      title="Edit class"
+                                    >
+                                      <Edit3 className="w-4 h-4" />
+                                    </button>
+                                    <button
+                                      onClick={() => deleteClass(cls.courseId, cls.subjectId, cls.id)}
+                                      className="p-1 text-gray-400 hover:text-red-600"
+                                      title="Delete class"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </button>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Teacher:</span>
+                                    <span className={`text-sm ${
+                                      teacherConflict.hasConflict 
+                                        ? 'text-red-600 font-medium' 
+                                        : cls.teacherId 
+                                          ? 'text-gray-900' 
+                                          : 'text-red-500 font-medium'
+                                    }`}>
+                                      {cls.teacherId ? getUserById(cls.teacherId)?.name : '⚠️ Vacant'}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center justify-between">
+                                    <span className="text-sm font-medium text-gray-700">Translator:</span>
+                                    <span className={`text-sm ${
+                                      translatorConflict.hasConflict 
+                                        ? 'text-red-600 font-medium' 
+                                        : cls.translatorId 
+                                          ? 'text-gray-900' 
+                                          : 'text-red-500 font-medium'
+                                    }`}>
+                                      {cls.translatorId ? getUserById(cls.translatorId)?.name : '⚠️ Vacant'}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-500">No classes scheduled yet.</p>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const UsersView = () => (
     <div className="space-y-6">
@@ -805,6 +1362,7 @@ const LearningManagementSystem = () => {
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
@@ -830,6 +1388,23 @@ const LearningManagementSystem = () => {
                         {role}
                       </span>
                     ))}
+                  </div>
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex flex-wrap gap-1">
+                    {courseStudents
+                      .filter(cs => cs.studentId === user.id)
+                      .map(cs => {
+                        const course = courses.find(c => c.id === cs.courseId);
+                        return course ? (
+                          <span key={`${cs.courseId}-${cs.studentId}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            {getCourseDisplayName(course)}
+                          </span>
+                        ) : null;
+                      })}
+                    {courseStudents.filter(cs => cs.studentId === user.id).length === 0 && (
+                      <span className="text-xs text-gray-500 italic">No courses</span>
+                    )}
                   </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
@@ -992,7 +1567,7 @@ const LearningManagementSystem = () => {
                   <div className="grid grid-cols-2 gap-4 text-sm mb-4">
                     <div>
                       <p className="text-gray-500">Course</p>
-                      <p className="font-medium text-gray-900">{pair.course?.name}</p>
+                      <p className="font-medium text-gray-900">{pair.course ? getCourseDisplayName(pair.course) : 'Unknown Course'}</p>
                     </div>
                     <div>
                       <p className="text-gray-500">Enrolled</p>
@@ -1468,7 +2043,7 @@ const LearningManagementSystem = () => {
                   <h3 className="text-lg font-semibold text-gray-900">{enrollment.student?.name}</h3>
                   <p className="text-sm text-gray-600">{enrollment.student?.email}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Course: {enrollment.course?.name} • Enrolled: {enrollment.enrollmentDate}
+                    Course: {enrollment.course ? getCourseDisplayName(enrollment.course) : 'Unknown Course'} • Enrolled: {enrollment.enrollmentDate}
                   </p>
                 </div>
                 <div className="flex space-x-2">
@@ -1547,8 +2122,8 @@ const LearningManagementSystem = () => {
     return (
       <div className="space-y-6">
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{myCourse.name}</h2>
-          <p className="text-gray-600 mb-4">Year {myCourse.year} • {myCourse.startDate} to {myCourse.endDate}</p>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2">{myCourse && myCourse.id ? getCourseDisplayName(myCourse as Course) : 'Unknown Course'}</h2>
+          <p className="text-gray-600 mb-4">{myCourse.startDate} to {myCourse.endDate}</p>
           
           {myCourse.mentor && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
@@ -1622,7 +2197,25 @@ const LearningManagementSystem = () => {
       const newErrors: {[key: string]: string | null} = {};
 
       // Validation
-      if (!formData.name && editingItem && (editingItem.type === 'course' || editingItem.type === 'user')) {
+      if (!formData.courseType && editingItem && editingItem.type === 'course') {
+        newErrors.courseType = 'Course Type is required';
+      }
+      if (!formData.graduationYear && editingItem && editingItem.type === 'course') {
+        newErrors.graduationYear = 'Year of Graduation is required';
+      }
+      
+      // Check for duplicate course type + graduation year combination
+      if (editingItem && editingItem.type === 'course' && formData.courseType && formData.graduationYear) {
+        const excludeCourseId = editingItem.data ? (editingItem.data as Course).id : undefined;
+        const isDuplicate = checkCourseUniqueness(formData.courseType, formData.graduationYear, excludeCourseId);
+        
+        if (isDuplicate) {
+          const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
+          newErrors.courseType = `${courseTypeLabel} ${formData.graduationYear} already exists`;
+          newErrors.graduationYear = `${courseTypeLabel} ${formData.graduationYear} already exists`;
+        }
+      }
+      if (!formData.name && editingItem && editingItem.type === 'user') {
         newErrors.name = 'Name is required';
       }
       if (!formData.email && editingItem && editingItem.type === 'user') {
@@ -1634,6 +2227,9 @@ const LearningManagementSystem = () => {
       if (!formData.date && editingItem && editingItem.type === 'class') {
         newErrors.date = 'Date is required';
       }
+      if (!formData.hour && editingItem && editingItem.type === 'class') {
+        newErrors.hour = 'Hour is required';
+      }
       if (!formData.teacherId && editingItem && editingItem.type === 'class') {
         newErrors.teacherId = 'Teacher is required';
       }
@@ -1643,6 +2239,33 @@ const LearningManagementSystem = () => {
       if (formData.teacherId && formData.translatorId && formData.teacherId === formData.translatorId && editingItem && editingItem.type === 'class') {
         newErrors.teacherId = 'Teacher and Translator cannot be the same person';
         newErrors.translatorId = 'Teacher and Translator cannot be the same person';
+      }
+
+      // Check for double-booking conflicts when creating/editing classes
+      if (editingItem && editingItem.type === 'class' && formData.date && formData.hour && (formData.teacherId || formData.translatorId)) {
+        const excludeClassId = editingItem.data ? (editingItem.data as Class).id : undefined;
+        
+        // Check teacher conflicts
+        if (formData.teacherId) {
+          const teacherConflict = checkDoubleBooking(formData.teacherId, formData.date, formData.hour, excludeClassId);
+          if (teacherConflict.hasConflict) {
+            const conflictDetails = teacherConflict.conflictingClasses
+              .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
+              .join(', ');
+            newErrors.teacherId = `Teacher is already assigned to: ${conflictDetails}`;
+          }
+        }
+        
+        // Check translator conflicts
+        if (formData.translatorId) {
+          const translatorConflict = checkDoubleBooking(formData.translatorId, formData.date, formData.hour, excludeClassId);
+          if (translatorConflict.hasConflict) {
+            const conflictDetails = translatorConflict.conflictingClasses
+              .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
+              .join(', ');
+            newErrors.translatorId = `Translator is already assigned to: ${conflictDetails}`;
+          }
+        }
       }
 
       if (Object.keys(newErrors).length > 0) {
@@ -1706,6 +2329,24 @@ const LearningManagementSystem = () => {
       if (field === 'translatorId' && errors.teacherId) {
         setErrors(prev => ({ ...prev, teacherId: null }));
       }
+      
+            // Clear double-booking errors when date, hour, teacher, or translator changes
+            if (field === 'date' || field === 'hour' || field === 'teacherId' || field === 'translatorId') {
+              setErrors(prev => ({
+                ...prev,
+                teacherId: field === 'teacherId' ? null : prev.teacherId,
+                translatorId: field === 'translatorId' ? null : prev.translatorId
+              }));
+            }
+            
+            // Clear course uniqueness errors when course type or graduation year changes
+            if (field === 'courseType' || field === 'graduationYear') {
+              setErrors(prev => ({
+                ...prev,
+                courseType: field === 'courseType' ? null : prev.courseType,
+                graduationYear: field === 'graduationYear' ? null : prev.graduationYear
+              }));
+            }
     };
 
     if (!editingItem || editingItem.type === 'log') return null;
@@ -1727,24 +2368,28 @@ const LearningManagementSystem = () => {
           return (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Course Name</label>
-                <input
-                  type="text"
-                  value={formData.name || ''}
-                  onChange={(e) => handleChange('name', e.target.value)}
+                <label className="block text-sm font-medium text-gray-700 mb-2">Course Type</label>
+                <select
+                  value={formData.courseType || ''}
+                  onChange={(e) => handleChange('courseType', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter course name"
-                />
-                {errors.name && <p className="text-red-500 text-sm mt-1">{errors.name}</p>}
+                >
+                  <option value="">Select course type</option>
+                  <option value="first_year">First Year</option>
+                  <option value="second_year">Second Year</option>
+                </select>
+                {errors.courseType && <p className="text-red-500 text-sm mt-1">{errors.courseType}</p>}
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Year</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Year of Graduation</label>
                 <input
                   type="number"
-                  value={formData.year || ''}
-                  onChange={(e) => handleChange('year', parseInt(e.target.value))}
+                  value={formData.graduationYear || ''}
+                  onChange={(e) => handleChange('graduationYear', parseInt(e.target.value))}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter year"
+                  placeholder="e.g., 2025"
+                  min="2024"
+                  max="2030"
                 />
               </div>
               <div>
@@ -1803,14 +2448,26 @@ const LearningManagementSystem = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Duration</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
                 <input
-                  type="text"
-                  value={formData.duration || ''}
-                  onChange={(e) => handleChange('duration', e.target.value)}
+                  type="date"
+                  value={formData.startDate || ''}
+                  onChange={(e) => handleChange('startDate', e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., 4 weeks"
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Number of Classes</label>
+                <input
+                  type="number"
+                  value={formData.duration || ''}
+                  onChange={(e) => handleChange('duration', parseInt(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., 5"
+                  min="1"
+                  max="20"
+                />
+                <p className="text-xs text-gray-500 mt-1">This will pre-create the specified number of classes</p>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Primary Teacher</label>
@@ -1852,6 +2509,20 @@ const LearningManagementSystem = () => {
                 {errors.date && <p className="text-red-500 text-sm mt-1">{errors.date}</p>}
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Hour</label>
+                <select
+                  value={formData.hour || ''}
+                  onChange={(e) => handleChange('hour', e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select hour</option>
+                  <option value="first">First Hour</option>
+                  <option value="second">Second Hour</option>
+                  <option value="both">Both Hours</option>
+                </select>
+                {errors.hour && <p className="text-red-500 text-sm mt-1">{errors.hour}</p>}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Teacher</label>
                 <select
                   value={formData.teacherId || ''}
@@ -1859,9 +2530,19 @@ const LearningManagementSystem = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select a teacher</option>
-                  {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => (
-                    <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
-                  ))}
+                  {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => {
+                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(teacher.id, formData.date, formData.hour).hasConflict : false;
+                    return (
+                      <option 
+                        key={teacher.id} 
+                        value={teacher.id}
+                        disabled={isBooked}
+                        className={isBooked ? 'text-red-500 bg-red-50' : ''}
+                      >
+                        {teacher.name}{isBooked ? ' (Already booked)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 {errors.teacherId && <p className="text-red-500 text-sm mt-1">{errors.teacherId}</p>}
               </div>
@@ -1873,9 +2554,19 @@ const LearningManagementSystem = () => {
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select a translator</option>
-                  {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => (
-                    <option key={translator.id} value={translator.id}>{translator.name}</option>
-                  ))}
+                  {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => {
+                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour).hasConflict : false;
+                    return (
+                      <option 
+                        key={translator.id} 
+                        value={translator.id}
+                        disabled={isBooked}
+                        className={isBooked ? 'text-red-500 bg-red-50' : ''}
+                      >
+                        {translator.name}{isBooked ? ' (Already booked)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
                 {errors.translatorId && <p className="text-red-500 text-sm mt-1">{errors.translatorId}</p>}
               </div>
@@ -1929,6 +2620,80 @@ const LearningManagementSystem = () => {
                   ))}
                 </div>
               </div>
+              
+              {/* Course Assignment Section - Only show for existing users */}
+              {editingItem.data && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Course Assignment</label>
+                  <div className="space-y-3">
+                    {/* Current Course Assignments */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-600 mb-2">Current Assignments</h4>
+                      {courseStudents
+                        .filter(cs => cs.studentId === (editingItem.data as User).id)
+                        .map(cs => {
+                          const course = courses.find(c => c.id === cs.courseId);
+                          const mentor = getUserById(cs.mentorId);
+                          return (
+                            <div key={`${cs.courseId}-${cs.studentId}`} className="bg-gray-50 rounded-lg p-3 mb-2">
+                              <div className="flex items-center justify-between">
+                                <div className="flex-1">
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {course ? getCourseDisplayName(course) : 'Unknown Course'}
+                                  </p>
+                                  <p className="text-xs text-gray-600">
+                                    Mentor: {mentor?.name || 'Not assigned'} • Enrolled: {cs.enrollmentDate}
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => removeUserFromCourse((editingItem.data as User).id, cs.courseId)}
+                                  className="text-red-600 hover:text-red-800 text-sm"
+                                >
+                                  Remove
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      {courseStudents.filter(cs => cs.studentId === (editingItem.data as User).id).length === 0 && (
+                        <p className="text-sm text-gray-500 italic">No course assignments</p>
+                      )}
+                    </div>
+                    
+                    {/* Add New Course Assignment */}
+                    <div>
+                      <h4 className="text-sm font-medium text-gray-600 mb-2">Assign to Course</h4>
+                      <div className="flex space-x-2">
+                        <select
+                          value={formData.assignedCourseId || ''}
+                          onChange={(e) => handleChange('assignedCourseId', parseInt(e.target.value))}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        >
+                          <option value="">Select a course</option>
+                          {getCourseOptions().map(course => (
+                            <option key={course.id} value={course.id}>
+                              {course.displayName}
+                            </option>
+                          ))}
+                        </select>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (formData.assignedCourseId) {
+                              assignUserToCourse((editingItem.data as User).id, formData.assignedCourseId);
+                              handleChange('assignedCourseId', '');
+                            }
+                          }}
+                          disabled={!formData.assignedCourseId}
+                          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-sm"
+                        >
+                          Assign
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           );
         default:
