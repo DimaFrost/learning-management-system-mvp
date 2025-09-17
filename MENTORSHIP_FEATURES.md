@@ -19,7 +19,7 @@ The Learning Management System now includes comprehensive mentorship functionali
 - **Update**: `updateMentorshipLog()` - Edit existing mentorship logs
 - **Delete**: `deleteMentorshipLog()` - Remove mentorship logs
 
-### 3. Mentor Dashboard
+### 3. Mentor Dashboard (Merged with My Students)
 - **Statistics Overview**: 
   - Total students assigned
   - Total check-ins completed
@@ -27,7 +27,9 @@ The Learning Management System now includes comprehensive mentorship functionali
   - Average student progress
 - **Recent Activity**: Last 5 check-ins with student details
 - **Student Progress Overview**: Visual progress tracking for each student
-- **Navigation**: Dedicated "Mentor Dashboard" menu item
+- **Student Management**: Comprehensive student list with individual check-in logs
+- **Quick Actions**: "Log Check-in" buttons for each student
+- **Navigation**: Dedicated "Mentor Dashboard" menu item (replaces separate "My Students")
 
 ### 4. Enhanced Check-in Modal
 - **Comprehensive Form Fields**:
@@ -37,8 +39,10 @@ The Learning Management System now includes comprehensive mentorship functionali
   - Student progress assessment
   - Detailed notes
   - Next steps planning
+  - **Date Selection**: Manual date picker (not just "today")
 - **Validation**: Required fields and error handling
 - **User Experience**: Larger modal with better organization
+- **Edit Functionality**: Mentors can edit their previously authored check-ins
 
 ### 5. Student-Mentor Relationship Management
 - **Student View Enhancements**:
@@ -75,6 +79,9 @@ The Learning Management System now includes comprehensive mentorship functionali
 3. **Check-in Logging**: Detailed form for recording mentorship sessions
 4. **Progress Assessment**: Standardized progress evaluation system
 5. **Topic Tracking**: Categorized discussion topics for better organization
+6. **Date Selection**: Manual date picker for check-ins (not just "today")
+7. **Edit Check-ins**: Ability to edit previously authored mentorship logs
+8. **Unified Interface**: Single dashboard combining overview and student management
 
 ### For Students:
 1. **Mentor Information**: Contact details and mentorship statistics
@@ -115,9 +122,11 @@ The system includes realistic sample data:
 
 ### Testing Mentor Features:
 1. Switch user role to "mentor" in the component state
-2. Navigate to "Mentor Dashboard" for overview
-3. Go to "My Students" to manage student relationships
-4. Click "Log Check-in" to add new mentorship sessions
+2. Navigate to "Mentor Dashboard" for comprehensive overview and student management
+3. View statistics, recent activity, and student progress overview
+4. Click "Log Check-in" to add new mentorship sessions with date selection
+5. Edit previously authored check-ins using the edit button
+6. Manage all student relationships from the unified dashboard
 
 ### Testing Student Features:
 1. Switch user role to "student" in the component state
