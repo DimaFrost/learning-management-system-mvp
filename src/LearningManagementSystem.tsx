@@ -13,7 +13,9 @@ import {
   Clock,
   UserCheck,
   MessageSquare,
-  GraduationCap
+  GraduationCap,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { 
   View, 
@@ -82,10 +84,11 @@ interface MentorshipLog {
 
 interface EditingItem {
   type: 'course' | 'user' | 'log' | 'subject' | 'class';
-  data?: Course | User | Subject | Class | null;
+  data?: Course | User | Subject | Class | MentorshipLog | null;
   studentId?: number;
   courseId?: number;
   subjectId?: number;
+  date?: string;
 }
 
 interface FormData {
@@ -98,13 +101,17 @@ const LearningManagementSystem = () => {
     id: 1,
     name: 'Admin User',
     email: 'admin@example.com',
-    roles: ['administrator']
+    roles: ['administrator', 'mentor']
   });
 
   const [showRoleSelector, setShowRoleSelector] = useState(false);
+  
+  // State for collapsible sections in curriculum overview
+  const [collapsedCourses, setCollapsedCourses] = useState<Set<number>>(new Set());
+  const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
 
   const [users, setUsers] = useState<User[]>([
-    { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator'] },
+    { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'] },
     { id: 2, name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
     { id: 3, name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
     { id: 4, name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
@@ -282,35 +289,56 @@ const LearningManagementSystem = () => {
       const start = new Date(startDate);
       const dayOfWeek = start.getDay(); // 0 = Sunday, 1 = Monday, etc.
       
-      // Find the next Tuesday (2) or Thursday (4) from start date
+      // Find the first valid class day (Tuesday or Thursday) from start date
       let daysToAdd = 0;
-      if (dayOfWeek <= 2) {
-        // If start is Sunday, Monday, or Tuesday, go to next Tuesday
+      if (dayOfWeek === 2) {
+        // If start is Tuesday, use it as the first class day
+        daysToAdd = 0;
+      } else if (dayOfWeek === 4) {
+        // If start is Thursday, use it as the first class day
+        daysToAdd = 0;
+      } else if (dayOfWeek <= 1) {
+        // If start is Sunday or Monday, go to next Tuesday
         daysToAdd = 2 - dayOfWeek;
       } else if (dayOfWeek === 3) {
         // If start is Wednesday, go to next Thursday
         daysToAdd = 1;
-      } else if (dayOfWeek === 4) {
-        // If start is Thursday, go to next Tuesday
-        daysToAdd = 4;
       } else {
         // If start is Friday or Saturday, go to next Tuesday
         daysToAdd = 9 - dayOfWeek;
       }
       
-      // Calculate which day to use based on class index
-      // Classes 0,1 use first day, classes 2,3 use second day, etc.
-      const dayIndex = Math.floor(classIndex / 2);
+      // Calculate which week and day to use based on class index
+      // Each day has 2 classes: first hour and second hour
+      // Classes are grouped by day: 0,1 = first day; 2,3 = second day; 4,5 = first day (next week); etc.
       
-      // Alternate between Tuesday and Thursday for each day
-      const isEvenDay = dayIndex % 2 === 0;
+      const dayIndex = Math.floor(classIndex / 2); // Which day (0 = first day week 0, 1 = second day week 0, 2 = first day week 1, etc.)
+      const weekIndex = Math.floor(dayIndex / 2); // Which week (0, 1, 2, ...)
+      const dayInWeek = dayIndex % 2; // Which day in the week (0 = first day, 1 = second day)
       
-      if (isEvenDay) {
-        // Even days (0, 2, 4...) use Tuesday
-        daysToAdd += dayIndex * 7;
+      // Determine what "first day" and "second day" mean based on the start date
+      const isStartTuesday = dayOfWeek === 2;
+      const isStartThursday = dayOfWeek === 4;
+      
+      // Add weeks
+      daysToAdd += weekIndex * 7;
+      
+      // Add days based on the pattern
+      if (isStartTuesday) {
+        // Start with Tuesday, so: 0 = Tuesday, 1 = Thursday
+        if (dayInWeek === 1) {
+          daysToAdd += 2; // Thursday is 2 days after Tuesday
+        }
+      } else if (isStartThursday) {
+        // Start with Thursday, so: 0 = Thursday, 1 = Tuesday (next week)
+        if (dayInWeek === 1) {
+          daysToAdd += 5; // Tuesday is 5 days after Thursday (next week)
+        }
       } else {
-        // Odd days (1, 3, 5...) use Thursday
-        daysToAdd += (dayIndex - 1) * 7 + 2;
+        // Start with Tuesday (default), so: 0 = Tuesday, 1 = Thursday
+        if (dayInWeek === 1) {
+          daysToAdd += 2; // Thursday is 2 days after Tuesday
+        }
       }
       
       const classDate = new Date(start);
@@ -554,12 +582,44 @@ const LearningManagementSystem = () => {
 
   // Helper function to get unique course options for dropdowns
   const getCourseOptions = () => {
-    return courses.map(course => ({
+    // Sort courses by graduation year first, then by course type within each year
+    const sortedCourses = [...courses].sort((a, b) => {
+      // First, sort by graduation year (ascending)
+      if (a.graduationYear !== b.graduationYear) {
+        return a.graduationYear - b.graduationYear;
+      }
+      // Then sort by course type (first_year comes before second_year)
+      return a.courseType === 'first_year' ? -1 : 1;
+    });
+    
+    return sortedCourses.map(course => ({
       id: course.id,
       displayName: getCourseDisplayName(course),
       courseType: course.courseType,
       graduationYear: course.graduationYear
     }));
+  };
+
+  // Helper functions for collapsible sections
+  const toggleCourseCollapse = (courseId: number) => {
+    const newCollapsed = new Set(collapsedCourses);
+    if (newCollapsed.has(courseId)) {
+      newCollapsed.delete(courseId);
+    } else {
+      newCollapsed.add(courseId);
+    }
+    setCollapsedCourses(newCollapsed);
+  };
+
+  const toggleSubjectCollapse = (courseId: number, subjectId: number) => {
+    const key = `${courseId}-${subjectId}`;
+    const newCollapsed = new Set(collapsedSubjects);
+    if (newCollapsed.has(key)) {
+      newCollapsed.delete(key);
+    } else {
+      newCollapsed.add(key);
+    }
+    setCollapsedSubjects(newCollapsed);
   };
 
   const getMyClasses = () => {
@@ -581,13 +641,43 @@ const LearningManagementSystem = () => {
 
   const getMyStudents = () => {
     if (!hasRole('mentor')) return [];
-    return courseStudents
-      .filter(cs => cs.mentorId === currentUser.id)
-      .map(cs => ({
-        ...cs,
-        student: getUserById(cs.studentId),
-        course: courses.find(c => c.id === cs.courseId)
-      }));
+    
+    // Get all course enrollments for this mentor
+    const mentorEnrollments = courseStudents.filter(cs => cs.mentorId === currentUser.id);
+    
+    // Group by student ID to get unique students
+    const studentMap = new Map<number, {
+      studentId: number;
+      student: User | undefined;
+      courses: Course[];
+      enrollments: CourseStudent[];
+    }>();
+    
+    mentorEnrollments.forEach(enrollment => {
+      const studentId = enrollment.studentId;
+      const student = getUserById(studentId);
+      const course = courses.find(c => c.id === enrollment.courseId);
+      
+      if (studentMap.has(studentId)) {
+        // Add course to existing student
+        const existing = studentMap.get(studentId)!;
+        if (course) {
+          existing.courses.push(course);
+        }
+        existing.enrollments.push(enrollment);
+      } else {
+        // Create new student entry
+        studentMap.set(studentId, {
+          studentId,
+          student,
+          courses: course ? [course] : [],
+          enrollments: [enrollment]
+        });
+      }
+    });
+    
+    // Convert map to array and return
+    return Array.from(studentMap.values());
   };
 
   const getMyCourse = () => {
@@ -686,7 +776,6 @@ const LearningManagementSystem = () => {
       { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
       { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
       { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
-      { id: 'my-students', label: 'My Students', icon: UserCheck, roles: ['mentor'] },
       { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
     ];
 
@@ -904,56 +993,111 @@ const LearningManagementSystem = () => {
     );
   };
 
-  const CurriculumOverview = () => (
-    <div className="space-y-4">
-      {courses.map(course => (
-        <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <div className="flex justify-between items-start mb-4">
-            <div>
-              <h3 className="text-lg font-semibold text-gray-900">{getCourseDisplayName(course)}</h3>
-              <p className="text-sm text-gray-600">{course.startDate} to {course.endDate}</p>
-              <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
-                course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
-              }`}>
-                {course.status}
-              </span>
-            </div>
-            <div className="flex space-x-2">
-              <button 
-                onClick={() => setEditingItem({ type: 'course', data: course })}
-                className="p-2 text-gray-400 hover:text-blue-600"
-              >
-                <Edit3 className="w-4 h-4" />
-              </button>
-              <button 
-                onClick={() => deleteCourse(course.id)}
-                className="p-2 text-gray-400 hover:text-red-600"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
+  const CurriculumOverview = () => {
+    // Sort courses by graduation year first, then by course type within each year
+    const sortedCourses = [...courses].sort((a, b) => {
+      // First, sort by graduation year (ascending)
+      if (a.graduationYear !== b.graduationYear) {
+        return a.graduationYear - b.graduationYear;
+      }
+      // Then sort by course type (first_year comes before second_year)
+      return a.courseType === 'first_year' ? -1 : 1;
+    });
 
-          <div className="space-y-3">
-            <div className="flex justify-between items-center">
-              <h4 className="font-medium text-gray-900">Subjects</h4>
-              <button
-                onClick={() => setEditingItem({ type: 'subject', data: null, courseId: course.id })}
-                className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
-              >
-                <Plus className="w-3 h-3" />
-                <span>Add Subject</span>
-              </button>
+    return (
+      <div className="space-y-4">
+        {sortedCourses.map(course => {
+          const isCourseCollapsed = collapsedCourses.has(course.id);
+          const totalSubjects = course.subjects.length;
+          const totalClasses = course.subjects.reduce((sum, subject) => sum + subject.classes.length, 0);
+          
+          return (
+          <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <div className="flex justify-between items-start mb-4">
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => toggleCourseCollapse(course.id)}
+                  className="p-1 hover:bg-gray-100 rounded"
+                >
+                  {isCourseCollapsed ? (
+                    <ChevronRight className="w-4 h-4 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="w-4 h-4 text-gray-500" />
+                  )}
+                </button>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900">{getCourseDisplayName(course)}</h3>
+                  <p className="text-sm text-gray-600">{course.startDate} to {course.endDate}</p>
+                  <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium mt-2 ${
+                    course.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {course.status}
+                  </span>
+                  {isCourseCollapsed && (
+                    <p className="text-xs text-gray-500 mt-1">
+                      {totalSubjects} subjects • {totalClasses} classes
+                    </p>
+                  )}
+                </div>
+              </div>
+              <div className="flex space-x-2">
+                <button 
+                  onClick={() => setEditingItem({ type: 'course', data: course })}
+                  className="p-2 text-gray-400 hover:text-blue-600"
+                >
+                  <Edit3 className="w-4 h-4" />
+                </button>
+                <button 
+                  onClick={() => deleteCourse(course.id)}
+                  className="p-2 text-gray-400 hover:text-red-600"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </div>
             </div>
-            {course.subjects.map(subject => (
+
+          {!isCourseCollapsed && (
+            <div className="space-y-3">
+              <div className="flex justify-between items-center">
+                <h4 className="font-medium text-gray-900">Subjects</h4>
+                <button
+                  onClick={() => setEditingItem({ type: 'subject', data: null, courseId: course.id })}
+                  className="text-blue-600 hover:text-blue-800 text-sm flex items-center space-x-1"
+                >
+                  <Plus className="w-3 h-3" />
+                  <span>Add Subject</span>
+                </button>
+              </div>
+              {course.subjects.map(subject => {
+                const isSubjectCollapsed = collapsedSubjects.has(`${course.id}-${subject.id}`);
+                const totalClasses = subject.classes.length;
+                
+                return (
               <div key={subject.id} className="bg-gray-50 rounded-lg p-4">
                 <div className="flex justify-between items-start mb-2">
-                  <div>
+                  <div className="flex items-center space-x-2">
+                    <button
+                      onClick={() => toggleSubjectCollapse(course.id, subject.id)}
+                      className="p-1 hover:bg-gray-200 rounded"
+                    >
+                      {isSubjectCollapsed ? (
+                        <ChevronRight className="w-3 h-3 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-3 h-3 text-gray-500" />
+                      )}
+                    </button>
+                    <div>
                       <h5 className="font-medium text-gray-900">{subject.title}</h5>
                       <p className="text-sm text-gray-600">{subject.description}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Start: {subject.startDate} • {subject.duration} classes • Teacher: {getUserById(subject.primaryTeacherId)?.name}
                       </p>
+                      {isSubjectCollapsed && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {totalClasses} classes
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="flex space-x-1">
                     <button
@@ -971,18 +1115,19 @@ const LearningManagementSystem = () => {
                   </div>
                 </div>
 
-                <div className="mt-3">
-                  <div className="flex justify-between items-center mb-2">
-                    <h6 className="text-sm font-medium text-gray-700">Classes</h6>
-                    <button
-                      onClick={() => setEditingItem({ type: 'class', data: null, courseId: course.id, subjectId: subject.id })}
-                      className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
-                    >
-                      <Plus className="w-3 h-3" />
-                      <span>Add Class</span>
-                    </button>
-                  </div>
-                  <div className="space-y-2">
+                {!isSubjectCollapsed && (
+                  <div className="mt-3">
+                    <div className="flex justify-between items-center mb-2">
+                      <h6 className="text-sm font-medium text-gray-700">Classes</h6>
+                      <button
+                        onClick={() => setEditingItem({ type: 'class', data: null, courseId: course.id, subjectId: subject.id })}
+                        className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
+                      >
+                        <Plus className="w-3 h-3" />
+                        <span>Add Class</span>
+                      </button>
+                    </div>
+                    <div className="space-y-2">
                     {subject.classes.map(cls => {
                       // Check for conflicts for this class
                       const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
@@ -1060,15 +1205,20 @@ const LearningManagementSystem = () => {
                         </div>
                       );
                     })}
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
-            ))}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </div>
-      ))}
-    </div>
-  );
+          );
+        })}
+      </div>
+    );
+  };
 
   const CurriculumDateView = () => {
     // Collect all classes with their course and subject information
@@ -1084,23 +1234,20 @@ const LearningManagementSystem = () => {
       )
     );
 
-    // Group classes by date and then by hour
-    // For "both hours" classes, create separate entries for first and second hour
+    // Group classes by date and then by course
     const classesByDate = allClasses.reduce((acc, cls) => {
       if (!acc[cls.date]) {
-        acc[cls.date] = { first: [], second: [] };
+        acc[cls.date] = {};
       }
       
-      if (cls.hour === 'both') {
-        // Create two separate entries for "both hours" classes
-        acc[cls.date].first.push({ ...cls, hour: 'first', originalHour: 'both' });
-        acc[cls.date].second.push({ ...cls, hour: 'second', originalHour: 'both' });
-      } else {
-        acc[cls.date][cls.hour].push(cls);
+      if (!acc[cls.date][cls.courseName]) {
+        acc[cls.date][cls.courseName] = [];
       }
+      
+      acc[cls.date][cls.courseName].push(cls);
       
       return acc;
-    }, {} as Record<string, { first: any[], second: any[] }>);
+    }, {} as Record<string, Record<string, any[]>>);
 
     // Sort dates
     const sortedDates = Object.keys(classesByDate).sort();
@@ -1128,31 +1275,55 @@ const LearningManagementSystem = () => {
             {sortedDates.map(date => {
               const dateInfo = formatDate(date);
               const classesForDate = classesByDate[date];
-              const totalClasses = classesForDate.first.length + classesForDate.second.length;
+              const totalClasses = Object.values(classesForDate).reduce((sum, courseClasses) => sum + courseClasses.length, 0);
               
               return (
                 <div key={date} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-                  <div className="flex items-center space-x-3 mb-4">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900">{dateInfo.weekday}</h4>
-                      <p className="text-sm text-gray-600">{dateInfo.monthDay}, {dateInfo.year}</p>
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center space-x-3">
+                      <Calendar className="w-5 h-5 text-blue-600" />
+                      <div>
+                        <h4 className="text-lg font-semibold text-gray-900">{dateInfo.weekday}</h4>
+                        <p className="text-sm text-gray-600">{dateInfo.monthDay}, {dateInfo.year}</p>
+                      </div>
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {totalClasses} {totalClasses === 1 ? 'class' : 'classes'}
+                      </span>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {totalClasses} {totalClasses === 1 ? 'class' : 'classes'}
-                    </span>
+                    <button
+                      onClick={() => setEditingItem({ type: 'class', data: null, date: date })}
+                      className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 flex items-center space-x-1 text-sm"
+                    >
+                      <Plus className="w-3 h-3" />
+                      <span>Add Class</span>
+                    </button>
                   </div>
 
                   <div className="space-y-4">
-                    {/* First Hour */}
-                    {classesForDate.first.length > 0 && (
-                      <div>
+                    {/* Group by Courses - sorted by graduation year then course type */}
+                    {Object.entries(classesForDate)
+                      .sort(([courseNameA], [courseNameB]) => {
+                        // Find the course objects to get their sorting properties
+                        const courseA = courses.find(c => getCourseDisplayName(c) === courseNameA);
+                        const courseB = courses.find(c => getCourseDisplayName(c) === courseNameB);
+                        
+                        if (!courseA || !courseB) return 0;
+                        
+                        // First, sort by graduation year (ascending)
+                        if (courseA.graduationYear !== courseB.graduationYear) {
+                          return courseA.graduationYear - courseB.graduationYear;
+                        }
+                        // Then sort by course type (first_year comes before second_year)
+                        return courseA.courseType === 'first_year' ? -1 : 1;
+                      })
+                      .map(([courseName, courseClasses]) => (
+                      <div key={courseName}>
                         <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-green-600" />
-                          First Hour ({classesForDate.first.length} {classesForDate.first.length === 1 ? 'class' : 'classes'})
+                          <BookOpen className="w-4 h-4 mr-2 text-blue-600" />
+                          {courseName} ({courseClasses.length} {courseClasses.length === 1 ? 'class' : 'classes'})
                         </h5>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {classesForDate.first.map(cls => {
+                          {courseClasses.map(cls => {
                             const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
                             const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
@@ -1165,14 +1336,20 @@ const LearningManagementSystem = () => {
                               }`}>
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="flex-1">
-                                    <h6 className="font-medium text-gray-900 mb-1">{cls.title}</h6>
+                                    <div className="flex items-center space-x-2 mb-2">
+                                      <h6 className="font-medium text-gray-900">{cls.title}</h6>
+                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                                        cls.hour === 'first' ? 'bg-green-100 text-green-800' : 
+                                        cls.hour === 'second' ? 'bg-purple-100 text-purple-800' : 
+                                        'bg-blue-100 text-blue-800'
+                                      }`}>
+                                        {cls.hour === 'first' ? '1st Hour' : 
+                                         cls.hour === 'second' ? '2nd Hour' : 
+                                         'Both Hours'}
+                                      </span>
+                                    </div>
                                     <p className="text-sm text-gray-600 mb-2">
-                                      <span className="font-medium">{cls.courseName}</span> • {cls.subjectTitle}
-                                      {cls.originalHour === 'both' && (
-                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                          Both Hours Class
-                                        </span>
-                                      )}
+                                      {cls.subjectTitle}
                                     </p>
                                     {hasConflict && (
                                       <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2">
@@ -1234,99 +1411,7 @@ const LearningManagementSystem = () => {
                           })}
                         </div>
                       </div>
-                    )}
-
-                    {/* Second Hour */}
-                    {classesForDate.second.length > 0 && (
-                      <div>
-                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                          <Clock className="w-4 h-4 mr-2 text-purple-600" />
-                          Second Hour ({classesForDate.second.length} {classesForDate.second.length === 1 ? 'class' : 'classes'})
-                        </h5>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                          {classesForDate.second.map(cls => {
-                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
-                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
-                            const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
-                            const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
-                            const needsAttention = hasConflict || hasVacantRoles;
-                            
-                            return (
-                              <div key={cls.id} className={`border rounded-lg p-4 ${
-                                needsAttention ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                              }`}>
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex-1">
-                                    <h6 className="font-medium text-gray-900 mb-1">{cls.title}</h6>
-                                    <p className="text-sm text-gray-600 mb-2">
-                                      <span className="font-medium">{cls.courseName}</span> • {cls.subjectTitle}
-                                      {cls.originalHour === 'both' && (
-                                        <span className="ml-2 inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                          Both Hours Class
-                                        </span>
-                                      )}
-                                    </p>
-                                    {hasConflict && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2">
-                                        ⚠️ Scheduling Conflict
-                                      </span>
-                                    )}
-                                    {hasVacantRoles && !hasConflict && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mb-2">
-                                        ⚠️ Incomplete Setup
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex space-x-1">
-                                    <button
-                                      onClick={() => setEditingItem({ type: 'class', data: cls, courseId: cls.courseId, subjectId: cls.subjectId })}
-                                      className="p-1 text-gray-400 hover:text-blue-600"
-                                      title="Edit class"
-                                    >
-                                      <Edit3 className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => deleteClass(cls.courseId, cls.subjectId, cls.id)}
-                                      className="p-1 text-gray-400 hover:text-red-600"
-                                      title="Delete class"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Teacher:</span>
-                                    <span className={`text-sm ${
-                                      teacherConflict.hasConflict 
-                                        ? 'text-red-600 font-medium' 
-                                        : cls.teacherId 
-                                          ? 'text-gray-900' 
-                                          : 'text-red-500 font-medium'
-                                    }`}>
-                                      {cls.teacherId ? getUserById(cls.teacherId)?.name : '⚠️ Vacant'}
-                                    </span>
-                                  </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Translator:</span>
-                                    <span className={`text-sm ${
-                                      translatorConflict.hasConflict 
-                                        ? 'text-red-600 font-medium' 
-                                        : cls.translatorId 
-                                          ? 'text-gray-900' 
-                                          : 'text-red-500 font-medium'
-                                    }`}>
-                                      {cls.translatorId ? getUserById(cls.translatorId)?.name : '⚠️ Vacant'}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
+                    ))}
 
                   </div>
                 </div>
@@ -1343,32 +1428,27 @@ const LearningManagementSystem = () => {
     );
   };
 
-  const UsersView = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        <button 
-          onClick={() => setEditingItem({ type: 'user', data: null })}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add User</span>
-        </button>
-      </div>
+  const UsersView = () => {
+    // Separate users into staff and students
+    const staffUsers = users.filter(user => !user.roles.includes('student'));
+    const studentUsers = users.filter(user => user.roles.includes('student'));
 
+    const renderUserTable = (userList: User[], showCoursesColumn: boolean = true) => (
       <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-gray-50">
             <tr>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+              {showCoursesColumn && (
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Courses</th>
+              )}
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {users.map(user => (
+            {userList.map(user => (
               <tr key={user.id}>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
@@ -1390,23 +1470,25 @@ const LearningManagementSystem = () => {
                     ))}
                   </div>
                 </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-wrap gap-1">
-                    {courseStudents
-                      .filter(cs => cs.studentId === user.id)
-                      .map(cs => {
-                        const course = courses.find(c => c.id === cs.courseId);
-                        return course ? (
-                          <span key={`${cs.courseId}-${cs.studentId}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {getCourseDisplayName(course)}
-                          </span>
-                        ) : null;
-                      })}
-                    {courseStudents.filter(cs => cs.studentId === user.id).length === 0 && (
-                      <span className="text-xs text-gray-500 italic">No courses</span>
-                    )}
-                  </div>
-                </td>
+                {showCoursesColumn && (
+                  <td className="px-6 py-4 whitespace-nowrap">
+                    <div className="flex flex-wrap gap-1">
+                      {courseStudents
+                        .filter(cs => cs.studentId === user.id)
+                        .map(cs => {
+                          const course = courses.find(c => c.id === cs.courseId);
+                          return course ? (
+                            <span key={`${cs.courseId}-${cs.studentId}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {getCourseDisplayName(course)}
+                            </span>
+                          ) : null;
+                        })}
+                      {courseStudents.filter(cs => cs.studentId === user.id).length === 0 && (
+                        <span className="text-xs text-gray-500 italic">No courses</span>
+                      )}
+                    </div>
+                  </td>
+                )}
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                     Active
@@ -1431,8 +1513,53 @@ const LearningManagementSystem = () => {
           </tbody>
         </table>
       </div>
-    </div>
-  );
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
+          <button 
+            onClick={() => setEditingItem({ type: 'user', data: null })}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+        </div>
+
+        {/* Staff Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-800">Staff</h3>
+            <span className="text-sm text-gray-500">{staffUsers.length} users</span>
+          </div>
+          {staffUsers.length > 0 ? (
+            renderUserTable(staffUsers, false)
+          ) : (
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
+              <p className="text-gray-500">No staff users found</p>
+            </div>
+          )}
+        </div>
+
+        {/* Students Section */}
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-xl font-semibold text-gray-800">Students</h3>
+            <span className="text-sm text-gray-500">{studentUsers.length} users</span>
+          </div>
+          {studentUsers.length > 0 ? (
+            renderUserTable(studentUsers, true)
+          ) : (
+            <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
+              <p className="text-gray-500">No students found</p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   const MentorshipView = () => {
     const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
@@ -1913,6 +2040,7 @@ const LearningManagementSystem = () => {
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-gray-900">Mentor Dashboard</h2>
         
+        {/* Overview Statistics */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
           <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
             <div className="flex items-center">
@@ -1971,6 +2099,7 @@ const LearningManagementSystem = () => {
           </div>
         </div>
 
+        {/* Recent Activity and Student Overview */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Check-ins</h3>
@@ -2024,85 +2153,102 @@ const LearningManagementSystem = () => {
             </div>
           </div>
         </div>
-      </div>
-    );
-  };
 
-  const MyStudentsView = () => {
-    const myStudents = getMyStudents();
-    
-    return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">My Students</h2>
-
-        <div className="space-y-4">
-          {myStudents.map(enrollment => (
-            <div key={enrollment.studentId} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="text-lg font-semibold text-gray-900">{enrollment.student?.name}</h3>
-                  <p className="text-sm text-gray-600">{enrollment.student?.email}</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Course: {enrollment.course ? getCourseDisplayName(enrollment.course) : 'Unknown Course'} • Enrolled: {enrollment.enrollmentDate}
-                  </p>
-                </div>
-                <div className="flex space-x-2">
-                  <button 
-                    className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
-                    onClick={() => setEditingItem({ type: 'log', studentId: enrollment.studentId })}
-                  >
-                    Log Check-in
-                  </button>
-                </div>
-              </div>
-
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <h4 className="font-medium text-gray-900 mb-2">Recent Check-ins</h4>
-                {mentorshipLogs
-                  .filter(log => log.studentId === enrollment.studentId)
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 3)
-                  .map(log => (
-                    <div key={log.id} className="bg-gray-50 rounded p-3 mb-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900">
-                          {log.type === 'digital' ? '💻 Digital' : '🤝 In-person'} Check-in
-                        </span>
-                        <span className="text-xs text-gray-500">{log.date}</span>
-                      </div>
-                      <p className="text-sm text-gray-600">{log.notes}</p>
-                      {log.duration && (
-                        <p className="text-xs text-gray-500 mt-1">Duration: {log.duration} minutes</p>
-                      )}
-                      {log.studentProgress && (
-                        <div className="mt-2">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
-                            log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
-                            log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {log.studentProgress.replace('_', ' ')}
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                }
-              </div>
-            </div>
-          ))}
+        {/* Detailed Student Management */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">My Students - Detailed View</h3>
           
-          {myStudents.length === 0 && (
-            <div className="text-center py-12">
-              <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No students assigned yet.</p>
-            </div>
-          )}
+          <div className="space-y-4">
+            {myStudents.map(studentData => (
+              <div key={studentData.studentId} className="bg-gray-50 rounded-lg p-6">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h4 className="text-lg font-semibold text-gray-900">{studentData.student?.name}</h4>
+                    <p className="text-sm text-gray-600">{studentData.student?.email}</p>
+                    <div className="text-sm text-gray-500 mt-1">
+                      <p className="font-medium">Courses ({studentData.courses.length}):</p>
+                      <div className="mt-1 space-y-1">
+                        {studentData.courses.map((course, index) => (
+                          <p key={course.id} className="text-xs">
+                            • {getCourseDisplayName(course)} • Enrolled: {studentData.enrollments[index]?.enrollmentDate}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex space-x-2">
+                    <button 
+                      className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
+                      onClick={() => setEditingItem({ type: 'log', studentId: studentData.studentId })}
+                    >
+                      Log Check-in
+                    </button>
+                  </div>
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <h5 className="font-medium text-gray-900 mb-2">Recent Check-ins</h5>
+                  {mentorshipLogs
+                    .filter(log => log.studentId === studentData.studentId)
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .slice(0, 3)
+                    .map(log => (
+                      <div key={log.id} className="bg-white rounded p-3 mb-2">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-900">
+                            {log.type === 'digital' ? '💻 Digital' : '🤝 In-person'} Check-in
+                          </span>
+                          <div className="flex items-center space-x-2">
+                            <span className="text-xs text-gray-500">{log.date}</span>
+                            {log.mentorId === currentUser.id && (
+                              <button
+                                onClick={() => setEditingItem({ type: 'log', data: log, studentId: log.studentId })}
+                                className="text-blue-600 hover:text-blue-800 text-xs"
+                                title="Edit check-in"
+                              >
+                                <Edit3 className="w-3 h-3" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="text-sm text-gray-600">{log.notes}</p>
+                        {log.duration && (
+                          <p className="text-xs text-gray-500 mt-1">Duration: {log.duration} minutes</p>
+                        )}
+                        {log.studentProgress && (
+                          <div className="mt-2">
+                            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                              log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
+                              log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
+                              log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {log.studentProgress.replace('_', ' ')}
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  }
+                  {mentorshipLogs.filter(log => log.studentId === studentData.studentId).length === 0 && (
+                    <p className="text-gray-500 text-sm">No check-ins yet</p>
+                  )}
+                </div>
+              </div>
+            ))}
+            
+            {myStudents.length === 0 && (
+              <div className="text-center py-12">
+                <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                <p className="text-gray-500">No students assigned yet.</p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     );
   };
+
 
   const MyCourseView = () => {
     const myCourse = getMyCourse();
@@ -2187,7 +2333,12 @@ const LearningManagementSystem = () => {
       if (editingItem && editingItem.data) {
         setFormData(editingItem.data);
       } else {
-        setFormData({});
+        // Pre-populate form with any provided properties
+        const initialData: FormData = {};
+        if (editingItem?.date) {
+          initialData.date = editingItem.date;
+        }
+        setFormData(initialData);
       }
       setErrors({});
     }, [editingItem]);
@@ -2230,12 +2381,10 @@ const LearningManagementSystem = () => {
       if (!formData.hour && editingItem && editingItem.type === 'class') {
         newErrors.hour = 'Hour is required';
       }
-      if (!formData.teacherId && editingItem && editingItem.type === 'class') {
-        newErrors.teacherId = 'Teacher is required';
+      if (!formData.subjectId && editingItem && editingItem.type === 'class') {
+        newErrors.subjectId = 'Subject is required';
       }
-      if (!formData.translatorId && editingItem && editingItem.type === 'class') {
-        newErrors.translatorId = 'Translator is required';
-      }
+      // Teacher and translator are no longer required - vacant roles are allowed and visually indicated
       if (formData.teacherId && formData.translatorId && formData.teacherId === formData.translatorId && editingItem && editingItem.type === 'class') {
         newErrors.teacherId = 'Teacher and Translator cannot be the same person';
         newErrors.translatorId = 'Teacher and Translator cannot be the same person';
@@ -2289,8 +2438,12 @@ const LearningManagementSystem = () => {
       } else if (editingItem && editingItem.type === 'class') {
         if (editingItem.data && editingItem.courseId && editingItem.subjectId) {
           updateClass(editingItem.courseId, editingItem.subjectId, (editingItem.data as Class).id, formData);
-        } else if (editingItem.courseId && editingItem.subjectId) {
-          addClass(editingItem.courseId, editingItem.subjectId, formData);
+        } else if (formData.subjectId) {
+          // Find the course that contains the selected subject
+          const course = courses.find(c => c.subjects.some(s => s.id === formData.subjectId));
+          if (course) {
+            addClass(course.id, formData.subjectId, formData);
+          }
         }
       } else if (editingItem && editingItem.type === 'user') {
         if (editingItem.data) {
@@ -2499,6 +2652,24 @@ const LearningManagementSystem = () => {
                 {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Subject <span className="text-red-500">*</span></label>
+                <select
+                  value={formData.subjectId || ''}
+                  onChange={(e) => handleChange('subjectId', parseInt(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Select a subject</option>
+                  {courses.flatMap(course => 
+                    course.subjects.map(subject => (
+                      <option key={subject.id} value={subject.id}>
+                        {getCourseDisplayName(course)} - {subject.title}
+                      </option>
+                    ))
+                  )}
+                </select>
+                {errors.subjectId && <p className="text-red-500 text-sm mt-1">{errors.subjectId}</p>}
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
                 <input
                   type="date"
@@ -2526,10 +2697,10 @@ const LearningManagementSystem = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Teacher</label>
                 <select
                   value={formData.teacherId || ''}
-                  onChange={(e) => handleChange('teacherId', parseInt(e.target.value))}
+                  onChange={(e) => handleChange('teacherId', e.target.value ? parseInt(e.target.value) : 0)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Select a teacher</option>
+                  <option value="">No teacher assigned (Vacant)</option>
                   {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => {
                     const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(teacher.id, formData.date, formData.hour).hasConflict : false;
                     return (
@@ -2550,10 +2721,10 @@ const LearningManagementSystem = () => {
                 <label className="block text-sm font-medium text-gray-700 mb-2">Translator</label>
                 <select
                   value={formData.translatorId || ''}
-                  onChange={(e) => handleChange('translatorId', parseInt(e.target.value))}
+                  onChange={(e) => handleChange('translatorId', e.target.value ? parseInt(e.target.value) : 0)}
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Select a translator</option>
+                  <option value="">No translator assigned (Vacant)</option>
                   {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => {
                     const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour).hasConflict : false;
                     return (
@@ -2747,13 +2918,40 @@ const LearningManagementSystem = () => {
     const [topics, setTopics] = useState<string[]>([]);
     const [nextSteps, setNextSteps] = useState('');
     const [studentProgress, setStudentProgress] = useState<'excellent' | 'good' | 'needs_improvement' | 'concern' | ''>('');
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
     const [errors, setErrors] = useState<{[key: string]: string}>({});
+    
+    // Check if we're editing an existing log
+    const isEditing = editingItem?.type === 'log' && editingItem?.data;
+    const existingLog = isEditing ? editingItem.data as MentorshipLog : null;
 
     const availableTopics = [
       'goal setting', 'progress review', 'challenges', 'study habits', 
       'course expectations', 'javascript basics', 'learning strategies',
       'time management', 'technical skills', 'career guidance'
     ];
+
+    // Populate form when editing existing log
+    useEffect(() => {
+      if (existingLog) {
+        setLogType(existingLog.type);
+        setNotes(existingLog.notes);
+        setDuration(existingLog.duration || '');
+        setTopics(existingLog.topics || []);
+        setNextSteps(existingLog.nextSteps || '');
+        setStudentProgress(existingLog.studentProgress || '');
+        setSelectedDate(new Date(existingLog.date));
+      } else {
+        // Reset form for new log
+        setLogType('digital');
+        setNotes('');
+        setDuration('');
+        setTopics([]);
+        setNextSteps('');
+        setStudentProgress('');
+        setSelectedDate(new Date());
+      }
+    }, [existingLog]);
 
     const handleTopicToggle = (topic: string) => {
       setTopics(prev => 
@@ -2780,12 +2978,9 @@ const LearningManagementSystem = () => {
         return;
       }
 
-      const newLog: MentorshipLog = {
-        id: Math.max(...mentorshipLogs.map(l => l.id), 0) + 1,
-        mentorId: currentUser.id,
-        studentId: editingItem?.studentId || 0,
+      const logData = {
         type: logType,
-        date: new Date().toISOString().split('T')[0],
+        date: selectedDate.toISOString().split('T')[0],
         notes: notes.trim(),
         duration: duration ? Number(duration) : undefined,
         topics: topics.length > 0 ? topics : undefined,
@@ -2793,13 +2988,25 @@ const LearningManagementSystem = () => {
         studentProgress: studentProgress as any
       };
 
-      addMentorshipLog(newLog);
+      if (isEditing && existingLog) {
+        // Update existing log
+        updateMentorshipLog(existingLog.id, logData);
+      } else {
+        // Create new log
+        addMentorshipLog({
+          ...logData,
+          mentorId: currentUser.id,
+          studentId: editingItem?.studentId || 0
+        });
+      }
+
       setEditingItem(null);
       setNotes('');
       setDuration('');
       setTopics([]);
       setNextSteps('');
       setStudentProgress('');
+      setSelectedDate(new Date());
       setErrors({});
     };
 
@@ -2811,7 +3018,9 @@ const LearningManagementSystem = () => {
       <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
         <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Log Check-in with {student?.name}</h3>
+            <h3 className="text-lg font-semibold">
+              {isEditing ? 'Edit Check-in' : 'Log Check-in'} with {student?.name}
+            </h3>
             <button 
               onClick={() => setEditingItem(null)}
               className="text-gray-400 hover:text-gray-600"
@@ -2821,7 +3030,7 @@ const LearningManagementSystem = () => {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Type</label>
                 <select 
@@ -2832,6 +3041,16 @@ const LearningManagementSystem = () => {
                   <option value="digital">💻 Digital Check-in</option>
                   <option value="in_person">🤝 In-person Meeting</option>
                 </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
+                <input
+                  type="date"
+                  value={selectedDate.toISOString().split('T')[0]}
+                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
 
               <div>
@@ -2919,7 +3138,7 @@ const LearningManagementSystem = () => {
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
               >
                 <Save className="w-4 h-4" />
-                <span>Save Check-in</span>
+                <span>{isEditing ? 'Update Check-in' : 'Save Check-in'}</span>
               </button>
             </div>
           </form>
@@ -2929,13 +3148,20 @@ const LearningManagementSystem = () => {
   };
 
   const renderMainContent = () => {
-    // Handle administrator role
+    // Handle administrator role screens
     if (hasRole('administrator')) {
       switch (activeView) {
         case 'curriculum': return <CurriculumView />;
         case 'users': return <UsersView />;
         case 'mentorship': return <MentorshipView />;
-        default: return <AdminDashboard />;
+        case 'dashboard': return <AdminDashboard />;
+      }
+    }
+    
+    // Handle mentor-specific screens (for users with mentor role, including admin+mentor)
+    if (hasRole('mentor')) {
+      switch (activeView) {
+        case 'mentor-dashboard': return <MentorDashboard />;
       }
     }
     
@@ -2943,18 +3169,6 @@ const LearningManagementSystem = () => {
     if (hasRole('teacher') || hasRole('translator')) {
       switch (activeView) {
         case 'my-classes': return <MyClassesView />;
-        case 'mentor-dashboard': return hasRole('mentor') ? <MentorDashboard /> : <MyClassesView />;
-        case 'my-students': return hasRole('mentor') ? <MyStudentsView /> : <MyClassesView />;
-        default: return <MyClassesView />;
-      }
-    }
-    
-    // Handle mentor role (for users who are only mentors)
-    if (hasRole('mentor')) {
-      switch (activeView) {
-        case 'mentor-dashboard': return <MentorDashboard />;
-        case 'my-students': return <MyStudentsView />;
-        default: return <MentorDashboard />;
       }
     }
     
@@ -2964,6 +3178,17 @@ const LearningManagementSystem = () => {
         case 'my-course': return <MyCourseView />;
         default: return <MyCourseView />;
       }
+    }
+    
+    // Default fallbacks based on available roles
+    if (hasRole('administrator')) {
+      return <AdminDashboard />;
+    }
+    if (hasRole('mentor')) {
+      return <MentorDashboard />;
+    }
+    if (hasRole('teacher') || hasRole('translator')) {
+      return <MyClassesView />;
     }
     
     return <div>No content available</div>;
