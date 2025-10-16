@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { 
   Users, 
   BookOpen, 
@@ -15,7 +15,15 @@ import {
   MessageSquare,
   GraduationCap,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  TrendingUp,
+  Target,
+  CheckCircle,
+  AlertCircle,
+  Settings,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { 
   View, 
@@ -109,6 +117,37 @@ const LearningManagementSystem = () => {
   // State for collapsible sections in curriculum overview
   const [collapsedCourses, setCollapsedCourses] = useState<Set<number>>(new Set());
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
+  
+  // State for confirmation dialogs
+  const [confirmationDialog, setConfirmationDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    confirmText: string;
+    onConfirm: () => void;
+  }>({
+    isOpen: false,
+    title: '',
+    message: '',
+    confirmText: 'Delete',
+    onConfirm: () => {}
+  });
+
+  // Cadence settings for mentorship risk management
+  const [cadenceSettings, setCadenceSettings] = useState({
+    digital: {
+      expectedDays: 7,
+      warningDays: 10,
+      criticalDays: 14,
+      label: 'Digital Check-ins'
+    },
+    inPerson: {
+      expectedDays: 30,
+      warningDays: 35,
+      criticalDays: 45,
+      label: 'In-Person Check-ins'
+    }
+  });
 
   const [users, setUsers] = useState<User[]>([
     { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'] },
@@ -274,7 +313,20 @@ const LearningManagementSystem = () => {
   };
 
   const deleteCourse = (id: number) => {
-    setCourses(courses.filter(course => course.id !== id));
+    const course = courses.find(c => c.id === id);
+    if (!course) return;
+    
+    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
+    
+    showConfirmation(
+      'Delete Course',
+      `Are you sure you want to delete "${courseName}"? This will also delete all subjects and classes within this course. This action cannot be undone.`,
+      'Delete Course',
+      () => {
+        setCourses(courses.filter(course => course.id !== id));
+      }
+    );
   };
 
   const addSubject = (courseId: number, subjectData: Partial<Subject>) => {
@@ -390,11 +442,25 @@ const LearningManagementSystem = () => {
   };
 
   const deleteSubject = (courseId: number, subjectId: number) => {
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? { ...course, subjects: course.subjects.filter(s => s.id !== subjectId) }
-        : course
-    ));
+    const course = courses.find(c => c.id === courseId);
+    const subject = course?.subjects.find(s => s.id === subjectId);
+    if (!course || !subject) return;
+    
+    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
+    
+    showConfirmation(
+      'Delete Subject',
+      `Are you sure you want to delete "${subject.title}" from "${courseName}"? This will also delete all classes within this subject. This action cannot be undone.`,
+      'Delete Subject',
+      () => {
+        setCourses(courses.map(course => 
+          course.id === courseId 
+            ? { ...course, subjects: course.subjects.filter(s => s.id !== subjectId) }
+            : course
+        ));
+      }
+    );
   };
 
   const addClass = (courseId: number, subjectId: number, classData: Partial<Class>) => {
@@ -441,18 +507,30 @@ const LearningManagementSystem = () => {
   };
 
   const deleteClass = (courseId: number, subjectId: number, classId: number) => {
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? {
-            ...course, 
-            subjects: course.subjects.map(subject => 
-              subject.id === subjectId 
-                ? { ...subject, classes: subject.classes.filter(cls => cls.id !== classId) }
-                : subject
-            )
-          }
-        : course
-    ));
+    const course = courses.find(c => c.id === courseId);
+    const subject = course?.subjects.find(s => s.id === subjectId);
+    const classToDelete = subject?.classes.find(cls => cls.id === classId);
+    if (!course || !subject || !classToDelete) return;
+    
+    showConfirmation(
+      'Delete Class',
+      `Are you sure you want to delete "${classToDelete.title}" from "${subject.title}"? This action cannot be undone.`,
+      'Delete Class',
+      () => {
+        setCourses(courses.map(course => 
+          course.id === courseId 
+            ? {
+                ...course, 
+                subjects: course.subjects.map(subject => 
+                  subject.id === subjectId 
+                    ? { ...subject, classes: subject.classes.filter(cls => cls.id !== classId) }
+                    : subject
+                )
+              }
+            : course
+        ));
+      }
+    );
   };
 
   const addUser = (userData: Partial<User>) => {
@@ -472,7 +550,21 @@ const LearningManagementSystem = () => {
   };
 
   const deleteUser = (id: number) => {
-    setUsers(users.filter(user => user.id !== id));
+    const user = users.find(u => u.id === id);
+    if (!user) return;
+    
+    showConfirmation(
+      'Delete User',
+      `Are you sure you want to delete user "${user.name}"? This will also remove them from all courses and delete all their mentorship logs. This action cannot be undone.`,
+      'Delete User',
+      () => {
+        setUsers(users.filter(user => user.id !== id));
+        // Also remove from course enrollments
+        setCourseStudents(courseStudents.filter(cs => cs.studentId !== id));
+        // Remove mentorship logs
+        setMentorshipLogs(mentorshipLogs.filter(log => log.studentId !== id && log.mentorId !== id));
+      }
+    );
   };
 
   // Mentorship Log CRUD Operations
@@ -499,7 +591,20 @@ const LearningManagementSystem = () => {
   };
 
   const deleteMentorshipLog = (id: number) => {
-    setMentorshipLogs(mentorshipLogs.filter(log => log.id !== id));
+    const log = mentorshipLogs.find(l => l.id === id);
+    if (!log) return;
+    
+    const student = getUserById(log.studentId);
+    const mentor = getUserById(log.mentorId);
+    
+    showConfirmation(
+      'Delete Check-in',
+      `Are you sure you want to delete this ${log.type} check-in between ${mentor?.name} and ${student?.name}? This action cannot be undone.`,
+      'Delete Check-in',
+      () => {
+        setMentorshipLogs(mentorshipLogs.filter(log => log.id !== id));
+      }
+    );
   };
 
   // Course assignment operations
@@ -526,7 +631,21 @@ const LearningManagementSystem = () => {
   };
 
   const removeUserFromCourse = (userId: number, courseId: number) => {
-    setCourseStudents(courseStudents.filter(cs => !(cs.courseId === courseId && cs.studentId === userId)));
+    const user = getUserById(userId);
+    const course = courses.find(c => c.id === courseId);
+    if (!user || !course) return;
+    
+    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
+    
+    showConfirmation(
+      'Remove from Course',
+      `Are you sure you want to remove "${user.name}" from "${courseName}"? This will also remove their mentorship assignment for this course. This action cannot be undone.`,
+      'Remove from Course',
+      () => {
+        setCourseStudents(courseStudents.filter(cs => !(cs.courseId === courseId && cs.studentId === userId)));
+      }
+    );
   };
 
   // Double-booking prevention: Check if a person is already assigned to another class on the same date AND hour
@@ -620,6 +739,97 @@ const LearningManagementSystem = () => {
       newCollapsed.add(key);
     }
     setCollapsedSubjects(newCollapsed);
+  };
+
+  // Cadence calculation functions
+  const calculateOverallStatus = (studentId: number) => {
+    const today = new Date();
+    const daysSince = (date: string) => Math.floor((today.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+    
+    // Get mentorship logs for this student
+    const studentLogs = mentorshipLogs.filter(log => log.studentId === studentId);
+    
+    // Get last check-ins by type
+    const digitalCheckIns = studentLogs.filter(c => c.type === 'digital').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const inPersonCheckIns = studentLogs.filter(c => c.type === 'in_person').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    const lastDigital = digitalCheckIns[0];
+    const lastInPerson = inPersonCheckIns[0];
+    
+    // Calculate individual status scores (0 = At Risk, 1 = Lagging, 2 = On Track)
+    const getStatusScore = (checkIn: any, type: 'digital' | 'in_person') => {
+      if (!checkIn) return 0; // No check-ins = At Risk
+      
+      const days = daysSince(checkIn.date);
+      const settings = type === 'digital' ? cadenceSettings.digital : cadenceSettings.inPerson;
+      
+      if (days >= settings.criticalDays) return 0; // At Risk
+      if (days >= settings.warningDays) return 1; // Lagging
+      return 2; // On Track
+    };
+    
+    const digitalScore = getStatusScore(lastDigital, 'digital');
+    const inPersonScore = getStatusScore(lastInPerson, 'in_person');
+    
+    // Calculate weighted average (50/50 split)
+    const overallScore = (digitalScore * 0.5) + (inPersonScore * 0.5);
+    
+    // Convert back to status
+    if (overallScore <= 0.5) return 'at_risk';
+    if (overallScore <= 1.5) return 'lagging';
+    return 'on_track';
+  };
+
+  const getCheckInStatus = (studentId: number, type: 'digital' | 'in_person') => {
+    const today = new Date();
+    const daysSince = (date: string) => Math.floor((today.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
+    
+    const checkIns = mentorshipLogs.filter(log => log.studentId === studentId && log.type === type).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const lastCheckIn = checkIns[0];
+    
+    if (!lastCheckIn) return { status: 'at_risk', daysSince: 999, message: 'No check-ins' };
+    
+    const days = daysSince(lastCheckIn.date);
+    const settings = type === 'digital' ? cadenceSettings.digital : cadenceSettings.inPerson;
+    
+    if (days >= settings.criticalDays) return { status: 'at_risk', daysSince: days, message: `${days}d overdue` };
+    if (days >= settings.warningDays) return { status: 'lagging', daysSince: days, message: `${days}d ago` };
+    return { status: 'on_track', daysSince: days, message: `${days}d ago` };
+  };
+
+  const updateCadenceSetting = (type: 'digital' | 'inPerson', field: string, value: number) => {
+    setCadenceSettings(prev => ({
+      ...prev,
+      [type]: {
+        ...prev[type],
+        [field]: value
+      }
+    }));
+  };
+
+  // Helper function to show confirmation dialog
+  const showConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => {
+    setConfirmationDialog({
+      isOpen: true,
+      title,
+      message,
+      confirmText,
+      onConfirm
+    });
+  };
+
+  // Helper function to close confirmation dialog
+  const closeConfirmation = () => {
+    setConfirmationDialog(prev => ({ ...prev, isOpen: false }));
+  };
+
+  const handleContactMentor = (mentorId: number, studentName: string) => {
+    const mentor = getUserById(mentorId);
+    if (mentor) {
+      // In a real application, this would open an email client or messaging system
+      // For now, we'll show an alert with the mentor's contact information
+      alert(`Contact ${mentor.name} about ${studentName}\n\nEmail: ${mentor.email || 'No email available'}`);
+    }
   };
 
   const getMyClasses = () => {
@@ -750,7 +960,7 @@ const LearningManagementSystem = () => {
       <div className="flex items-center justify-between">
         <div className="flex items-center space-x-4">
           <GraduationCap className="w-8 h-8 text-blue-600" />
-          <h1 className="text-xl font-semibold text-gray-900">Learning Management System</h1>
+          <h1 className="text-xl font-semibold text-gray-900">The Burning Ones</h1>
         </div>
         <div className="flex items-center space-x-4">
           <span className="text-sm text-gray-600">
@@ -774,6 +984,7 @@ const LearningManagementSystem = () => {
       { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
       { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
       { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
+      { id: 'mentorship-management', label: 'Mentorship Management', icon: TrendingUp, roles: ['administrator'] },
       { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
       { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
       { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
@@ -1894,6 +2105,465 @@ const LearningManagementSystem = () => {
     );
   };
 
+  // Enhanced Mentorship Management with Cadence Analytics
+  const MentorshipManagement = () => {
+    const [showCadenceSettings, setShowCadenceSettings] = useState(false);
+    const [statusFilter, setStatusFilter] = useState<string | null>(null);
+    const [tempCadenceSettings, setTempCadenceSettings] = useState(cadenceSettings);
+    const [isSaving, setIsSaving] = useState(false);
+    
+    // Calculate mentorship analytics (memoized to prevent unnecessary re-renders)
+    const mentorshipAnalytics = useMemo(() => {
+      // Group by student ID to get unique students (same logic as getMyStudents)
+      const studentMap = new Map<number, {
+        id: number;
+        studentName: string;
+        mentorName: string;
+        mentorId: number;
+        overallStatus: string;
+        digitalStatus: any;
+        inPersonStatus: any;
+        courses: number[];
+      }>();
+      
+      courseStudents.forEach(cs => {
+        const studentId = cs.studentId;
+        const student = getUserById(studentId);
+        const mentor = getUserById(cs.mentorId);
+        const overallStatus = calculateOverallStatus(studentId);
+        const digitalStatus = getCheckInStatus(studentId, 'digital');
+        const inPersonStatus = getCheckInStatus(studentId, 'in_person');
+        
+        if (studentMap.has(studentId)) {
+          // Add course to existing student
+          const existing = studentMap.get(studentId)!;
+          existing.courses.push(cs.courseId);
+        } else {
+          // Create new student entry
+          studentMap.set(studentId, {
+            id: studentId,
+            studentName: student?.name || 'Unknown',
+            mentorName: mentor?.name || 'Unassigned',
+            mentorId: cs.mentorId,
+            overallStatus,
+            digitalStatus,
+            inPersonStatus,
+            courses: [cs.courseId]
+          });
+        }
+      });
+      
+      const allStudents = Array.from(studentMap.values());
+
+      const atRiskPairs = allStudents.filter(pair => pair.overallStatus === 'at_risk');
+      const laggingPairs = allStudents.filter(pair => pair.overallStatus === 'lagging');
+      const onTrackPairs = allStudents.filter(pair => pair.overallStatus === 'on_track');
+
+      return {
+        totalPairs: allStudents.length,
+        atRiskPairs: atRiskPairs.length,
+        laggingPairs: laggingPairs.length,
+        onTrackPairs: onTrackPairs.length,
+        allStudents
+      };
+    }, [courseStudents, cadenceSettings]); // Dependencies for useMemo
+
+    const analytics = mentorshipAnalytics;
+
+    // Handle temporary cadence settings changes
+    const handleTempCadenceChange = useCallback((type: 'digital' | 'inPerson', field: string, value: number) => {
+      setTempCadenceSettings(prev => ({
+        ...prev,
+        [type]: {
+          ...prev[type],
+          [field]: value
+        }
+      }));
+    }, []);
+
+    // Save cadence settings
+    const saveCadenceSettings = useCallback(async () => {
+      setIsSaving(true);
+      
+      // Update the global cadence settings (this will trigger re-calculations)
+      setCadenceSettings(tempCadenceSettings);
+      
+      // Small delay to show the saving state and allow re-calculations to complete
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      setIsSaving(false);
+      setShowCadenceSettings(false);
+    }, [tempCadenceSettings]);
+
+    // Cancel cadence settings changes
+    const cancelCadenceSettings = useCallback(() => {
+      setTempCadenceSettings(cadenceSettings);
+      setShowCadenceSettings(false);
+    }, [cadenceSettings]);
+
+    // Reset temp settings when opening the panel
+    useEffect(() => {
+      if (showCadenceSettings) {
+        setTempCadenceSettings(cadenceSettings);
+      }
+    }, [showCadenceSettings, cadenceSettings]);
+
+    const getStatusColor = (status: string) => {
+      switch (status) {
+        case 'at_risk': return 'text-red-600 bg-red-50 border-red-200';
+        case 'lagging': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
+        case 'on_track': return 'text-green-600 bg-green-50 border-green-200';
+        default: return 'text-gray-600 bg-gray-50 border-gray-200';
+      }
+    };
+
+    const getStatusBadgeColor = (status: string) => {
+      switch (status) {
+        case 'at_risk': return 'bg-red-100 text-red-800';
+        case 'lagging': return 'bg-yellow-100 text-yellow-800';
+        case 'on_track': return 'bg-green-100 text-green-800';
+        default: return 'bg-gray-100 text-gray-800';
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        {/* Header with Settings and Cadence Requirements */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <div className="flex justify-between items-start mb-6">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Mentorship Risk Management</h2>
+              <p className="text-gray-600">Cadence-aware monitoring with configurable thresholds</p>
+            </div>
+            <button
+              onClick={() => setShowCadenceSettings(!showCadenceSettings)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              <Settings className="w-4 h-4" />
+              Configure Cadences
+            </button>
+          </div>
+          
+          {/* Current Cadence Requirements */}
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Cadence Requirements</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                  <Phone className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-blue-900">Digital Check-ins</h4>
+                  <p className="text-sm text-blue-700">
+                    Expected: Every {cadenceSettings.digital.expectedDays} days | 
+                    Warning: {cadenceSettings.digital.warningDays}+ days | 
+                    Critical: {cadenceSettings.digital.criticalDays}+ days
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                  <Users className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-green-900">In-Person Check-ins</h4>
+                  <p className="text-sm text-green-700">
+                    Expected: Every {cadenceSettings.inPerson.expectedDays} days | 
+                    Warning: {cadenceSettings.inPerson.warningDays}+ days | 
+                    Critical: {cadenceSettings.inPerson.criticalDays}+ days
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Cadence Settings Panel */}
+        {showCadenceSettings && (
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6 border-l-4 border-blue-500">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Check-in Cadence Settings</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {Object.entries(tempCadenceSettings).map(([type, settings]) => (
+                <div key={type} className="border border-gray-200 rounded-lg p-4">
+                  <h4 className="font-medium text-gray-900 mb-3 capitalize">
+                    {type === 'inPerson' ? 'In-Person' : 'Digital'} Check-ins
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Expected Frequency (days)
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.expectedDays}
+                        onChange={(e) => handleTempCadenceChange(type as 'digital' | 'inPerson', 'expectedDays', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Warning Threshold (days)
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.warningDays}
+                        onChange={(e) => handleTempCadenceChange(type as 'digital' | 'inPerson', 'warningDays', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">
+                        Critical Threshold (days)
+                      </label>
+                      <input
+                        type="number"
+                        value={settings.criticalDays}
+                        onChange={(e) => handleTempCadenceChange(type as 'digital' | 'inPerson', 'criticalDays', parseInt(e.target.value) || 0)}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            
+            {/* Save/Cancel Buttons */}
+            <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200">
+              <button
+                onClick={cancelCadenceSettings}
+                disabled={isSaving}
+                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={saveCadenceSettings}
+                disabled={isSaving}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                {isSaving ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
+                    Saving...
+                  </>
+                ) : (
+                  'Save Settings'
+                )}
+              </button>
+            </div>
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <strong>Note:</strong> Risk levels are calculated based on a 50/50 weighted average of digital and in-person check-ins. 
+                Changes will take effect and recalculate all risk assessments when you click "Save Settings".
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Priority Alerts - Only show when no filter or filtering by at_risk */}
+        {(statusFilter === null || statusFilter === 'at_risk') && (
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Priority Alerts</h3>
+            <div className="space-y-3">
+              {analytics.allStudents
+                .filter(pair => pair.overallStatus === 'at_risk')
+                .map((pair) => (
+                  <div key={pair.id} className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <AlertTriangle className="w-5 h-5 text-red-500 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-red-800">
+                        {pair.studentName} & {pair.mentorName}
+                      </p>
+                      <div className="text-sm text-red-600 mt-1">
+                        {pair.digitalStatus.status === 'at_risk' && (
+                          <div>• Digital check-ins overdue: {pair.digitalStatus.message}</div>
+                        )}
+                        {pair.inPersonStatus.status === 'at_risk' && (
+                          <div>• In-person check-ins overdue: {pair.inPersonStatus.message}</div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <button 
+                        onClick={() => setEditingItem({ type: 'log', studentId: pair.id })}
+                        className="px-3 py-1 bg-red-600 text-white text-xs rounded-md hover:bg-red-700"
+                      >
+                        Log Check-in
+                      </button>
+                      <button 
+                        onClick={() => handleContactMentor(pair.mentorId, pair.studentName)}
+                        className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 flex items-center gap-1"
+                      >
+                        <Mail className="w-3 h-3" />
+                        Contact Mentor
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              {analytics.atRiskPairs === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <CheckCircle className="w-12 h-12 mx-auto mb-2 text-green-500" />
+                  <p>No critical alerts - all pairs are meeting cadence requirements!</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Key Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div 
+            className={`bg-white rounded-lg shadow border p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+              statusFilter === null 
+                ? 'border-blue-500 bg-blue-50' 
+                : 'border-gray-200 hover:border-blue-300'
+            }`}
+            onClick={() => setStatusFilter(null)}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Total Pairs</p>
+                <p className="text-2xl font-bold text-gray-900">{analytics.totalPairs}</p>
+              </div>
+              <Users className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+
+          <div 
+            className={`bg-white rounded-lg shadow border p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+              statusFilter === 'at_risk' 
+                ? 'border-red-500 bg-red-50' 
+                : 'border-gray-200 hover:border-red-300'
+            }`}
+            onClick={() => setStatusFilter('at_risk')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">At Risk</p>
+                <p className="text-2xl font-bold text-red-600">{analytics.atRiskPairs}</p>
+              </div>
+              <AlertTriangle className="w-8 h-8 text-red-500" />
+            </div>
+          </div>
+
+          <div 
+            className={`bg-white rounded-lg shadow border p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+              statusFilter === 'lagging' 
+                ? 'border-yellow-500 bg-yellow-50' 
+                : 'border-gray-200 hover:border-yellow-300'
+            }`}
+            onClick={() => setStatusFilter('lagging')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">Lagging</p>
+                <p className="text-2xl font-bold text-yellow-600">{analytics.laggingPairs}</p>
+              </div>
+              <AlertCircle className="w-8 h-8 text-yellow-500" />
+            </div>
+          </div>
+
+          <div 
+            className={`bg-white rounded-lg shadow border p-4 cursor-pointer transition-all duration-200 hover:shadow-lg ${
+              statusFilter === 'on_track' 
+                ? 'border-green-500 bg-green-50' 
+                : 'border-gray-200 hover:border-green-300'
+            }`}
+            onClick={() => setStatusFilter('on_track')}
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-gray-600">On Track</p>
+                <p className="text-2xl font-bold text-green-600">{analytics.onTrackPairs}</p>
+              </div>
+              <CheckCircle className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+        </div>
+
+        {/* Detailed Status Assessment Table */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg font-semibold text-gray-900">Mentorship Pair Status Assessment</h2>
+            {statusFilter && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-gray-600">Filtered by:</span>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(statusFilter)}`}>
+                  {statusFilter === 'at_risk' ? 'At Risk' : 
+                   statusFilter === 'lagging' ? 'Lagging' : 'On Track'}
+                </span>
+                <button
+                  onClick={() => setStatusFilter(null)}
+                  className="text-sm text-gray-500 hover:text-gray-700 underline"
+                >
+                  Clear filter
+                </button>
+              </div>
+            )}
+          </div>
+          <div className="overflow-x-auto">
+            <table className="min-w-full">
+              <thead>
+                <tr className="bg-gray-50">
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Student</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Mentor</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Digital Status</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">In-Person Status</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Overall Status</th>
+                  <th className="px-4 py-2 text-left text-sm font-medium text-gray-700">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {analytics.allStudents
+                  .filter(pair => statusFilter === null || pair.overallStatus === statusFilter)
+                  .map((pair) => (
+                  <tr key={pair.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm font-medium text-gray-900">{pair.studentName}</td>
+                    <td className="px-4 py-3 text-sm text-gray-700">{pair.mentorName}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(pair.digitalStatus.status)}`}>
+                        {pair.digitalStatus.message}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getStatusBadgeColor(pair.inPersonStatus.status)}`}>
+                        {pair.inPersonStatus.message}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(pair.overallStatus)}`}>
+                        {pair.overallStatus === 'at_risk' ? 'At Risk' : 
+                         pair.overallStatus === 'lagging' ? 'Lagging' : 'On Track'}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-3">
+                        <button 
+                          onClick={() => setEditingItem({ type: 'log', studentId: pair.id })}
+                          className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                        >
+                          Log Check-in
+                        </button>
+                        <button 
+                          onClick={() => handleContactMentor(pair.mentorId, pair.studentName)}
+                          className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
+                        >
+                          <Mail className="w-3 h-3" />
+                          Contact Mentor
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+    );
+  };
+
   const MyClassesView = () => {
     const myClasses = getMyClasses();
     const today = new Date().toISOString().split('T')[0];
@@ -2093,6 +2763,39 @@ const LearningManagementSystem = () => {
                 <p className="text-sm font-medium text-gray-600">Avg Progress</p>
                 <p className="text-2xl font-bold text-gray-900">
                   {progressStats.excellent ? 'Excellent' : progressStats.good ? 'Good' : 'Needs Focus'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Current Cadence Requirements */}
+        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Cadence Requirements</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+              <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
+                <Phone className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-medium text-blue-900">Digital Check-ins</h4>
+                <p className="text-sm text-blue-700">
+                  Expected: Every {cadenceSettings.digital.expectedDays} days | 
+                  Warning: {cadenceSettings.digital.warningDays}+ days | 
+                  Critical: {cadenceSettings.digital.criticalDays}+ days
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h4 className="font-medium text-green-900">In-Person Check-ins</h4>
+                <p className="text-sm text-green-700">
+                  Expected: Every {cadenceSettings.inPerson.expectedDays} days | 
+                  Warning: {cadenceSettings.inPerson.warningDays}+ days | 
+                  Critical: {cadenceSettings.inPerson.criticalDays}+ days
                 </p>
               </div>
             </div>
@@ -3147,6 +3850,50 @@ const LearningManagementSystem = () => {
     );
   };
 
+  // Confirmation Modal Component
+  const ConfirmationModal = () => {
+    if (!confirmationDialog.isOpen) return null;
+
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+          <div className="p-6">
+            <div className="flex items-center mb-4">
+              <div className="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="w-6 h-6 text-red-600" />
+              </div>
+            </div>
+            <div className="text-center">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                {confirmationDialog.title}
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                {confirmationDialog.message}
+              </p>
+              <div className="flex gap-3 justify-center">
+                <button
+                  onClick={closeConfirmation}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    confirmationDialog.onConfirm();
+                    closeConfirmation();
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
+                >
+                  {confirmationDialog.confirmText}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderMainContent = () => {
     // Handle administrator role screens
     if (hasRole('administrator')) {
@@ -3154,6 +3901,7 @@ const LearningManagementSystem = () => {
         case 'curriculum': return <CurriculumView />;
         case 'users': return <UsersView />;
         case 'mentorship': return <MentorshipView />;
+        case 'mentorship-management': return <MentorshipManagement />;
         case 'dashboard': return <AdminDashboard />;
       }
     }
@@ -3205,6 +3953,7 @@ const LearningManagementSystem = () => {
       </div>
       <EditModal />
       <LogCheckinModal />
+      <ConfirmationModal />
       {showRoleSelector && <RoleSelector />}
     </div>
   );
