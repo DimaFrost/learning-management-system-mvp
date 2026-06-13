@@ -1,4 +1,5 @@
-import type { Course, CourseStudent, EditingItem, FormData, User } from '../../../types/lms';
+import type { Course, CourseStudent, EditingItem, User } from '../../../types/lms';
+import type { FormData } from './EditModal';
 import { getCourseDisplayName, getCourseOptions } from '../../../utils/courseUtils';
 
 interface EditUserFormProps {

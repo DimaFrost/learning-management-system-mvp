@@ -1,10 +1,14 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { X, Save } from 'lucide-react';
-import type { User, Class, Subject, Course, CourseStudent, EditingItem, FormData } from '../../../types/lms';
+import type { User, Class, Subject, Course, CourseStudent, EditingItem } from '../../../types/lms';
 import { EditCourseForm } from './EditCourseForm';
 import { EditSubjectForm } from './EditSubjectForm';
 import { EditClassForm } from './EditClassForm';
 import { EditUserForm } from './EditUserForm';
+
+export interface FormData {
+  [key: string]: any;
+}
 
 interface EditModalProps {
   editingItem: EditingItem | null;

@@ -1,4 +1,4 @@
-import type { FormData } from '../../../types/lms';
+import type { FormData } from './EditModal';
 
 interface EditCourseFormProps {
   formData: FormData;

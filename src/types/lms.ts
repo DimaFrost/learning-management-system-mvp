@@ -63,7 +63,3 @@ export interface EditingItem {
   subjectId?: number;
   date?: string;
 }
-
-export interface FormData {
-  [key: string]: any;
-}

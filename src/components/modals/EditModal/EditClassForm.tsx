@@ -1,4 +1,5 @@
-import type { Course, FormData, User } from '../../../types/lms';
+import type { Course, User } from '../../../types/lms';
+import type { FormData } from './EditModal';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { checkDoubleBooking } from '../../../utils/scheduling';
 
