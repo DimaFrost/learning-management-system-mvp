@@ -4,7 +4,6 @@ import {
   BookOpen, 
   Calendar, 
   User as UserIcon, 
-  LogOut, 
   Plus, 
   Edit3, 
   Trash2, 
@@ -44,6 +43,11 @@ import { useCourses } from './hooks/useCourses';
 import { useEnrollments } from './hooks/useEnrollments';
 import { useMentorshipLogs } from './hooks/useMentorshipLogs';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
+import { ConfirmationModal } from './components/modals/ConfirmationModal';
+import { RoleSelector } from './components/modals/RoleSelector';
+import { LogCheckinModal } from './components/modals/LogCheckinModal';
+import { Header } from './components/layout/Header';
+import { Sidebar } from './components/layout/Sidebar';
 
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
@@ -165,123 +169,7 @@ const LearningManagementSystem = () => {
     return { ...course, mentor };
   };
 
-  // Role Selector Component
-  const RoleSelector = () => {
-    const availableRoles = [
-      { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator'] },
-      { id: 2, name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
-      { id: 3, name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
-      { id: 4, name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
-      { id: 5, name: 'Alice Student', email: 'alice@example.com', roles: ['student'] },
-      { id: 6, name: 'David Student', email: 'david@example.com', roles: ['student'] },
-      { id: 7, name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'] },
-      { id: 8, name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'] }
-    ];
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-md">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">Switch User Role</h3>
-            <button 
-              onClick={() => setShowRoleSelector(false)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-          
-          <div className="space-y-2">
-            {availableRoles.map(user => (
-              <button
-                key={user.id}
-                onClick={() => {
-                  setCurrentUser(user);
-                  setShowRoleSelector(false);
-                  setActiveView('dashboard');
-                }}
-                className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                  currentUser.id === user.id 
-                    ? 'bg-blue-50 border-blue-200 text-blue-900' 
-                    : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
-                }`}
-              >
-                <div className="font-medium">{user.name}</div>
-                <div className="text-sm text-gray-600">{user.email}</div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Role: {user.roles.join(', ')}
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   // Components
-  const Header = () => (
-    <div className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center space-x-4">
-          <GraduationCap className="w-8 h-8 text-blue-600" />
-          <h1 className="text-xl font-semibold text-gray-900">The Burning Ones</h1>
-        </div>
-        <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {currentUser.name} ({currentUser.roles.join(', ')})
-          </span>
-          <button 
-            onClick={() => setShowRoleSelector(true)}
-            className="p-2 text-gray-400 hover:text-gray-600"
-            title="Switch User Role"
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-
-  const Sidebar = () => {
-    const menuItems = [
-      { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator'] },
-      { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
-      { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
-      { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
-      { id: 'mentorship-management', label: 'Mentorship Management', icon: TrendingUp, roles: ['administrator'] },
-      { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
-      { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
-      { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
-    ];
-
-    // Filter menu items based on user's roles
-    const visibleMenuItems = menuItems.filter(item => 
-      item.roles.some(role => hasRole(role))
-    );
-
-    return (
-      <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200">
-        <nav className="mt-8">
-          {visibleMenuItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveView(item.id)}
-              className={`w-full flex items-center px-6 py-3 text-left text-sm font-medium transition-colors ${
-                activeView === item.id
-                  ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                  : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-              }`}
-            >
-              <item.icon className="w-4 h-4 mr-3" />
-              {item.label}
-            </button>
-          ))}
-        </nav>
-      </div>
-    );
-  };
-
   const AdminDashboard = () => {
     const mentorshipStats = {
       totalLogs: mentorshipLogs.length,
@@ -2852,287 +2740,6 @@ const LearningManagementSystem = () => {
     );
   };
 
-  // Log Check-in Modal
-  const LogCheckinModal = () => {
-    const [logType, setLogType] = useState<'digital' | 'in_person'>('digital');
-    const [notes, setNotes] = useState('');
-    const [duration, setDuration] = useState<number | ''>('');
-    const [topics, setTopics] = useState<string[]>([]);
-    const [nextSteps, setNextSteps] = useState('');
-    const [studentProgress, setStudentProgress] = useState<'excellent' | 'good' | 'needs_improvement' | 'concern' | ''>('');
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-    const [errors, setErrors] = useState<{[key: string]: string}>({});
-    
-    // Check if we're editing an existing log
-    const isEditing = editingItem?.type === 'log' && editingItem?.data;
-    const existingLog = isEditing ? editingItem.data as MentorshipLog : null;
-
-    const availableTopics = [
-      'goal setting', 'progress review', 'challenges', 'study habits', 
-      'course expectations', 'javascript basics', 'learning strategies',
-      'time management', 'technical skills', 'career guidance'
-    ];
-
-    // Populate form when editing existing log
-    useEffect(() => {
-      if (existingLog) {
-        setLogType(existingLog.type);
-        setNotes(existingLog.notes);
-        setDuration(existingLog.duration || '');
-        setTopics(existingLog.topics || []);
-        setNextSteps(existingLog.nextSteps || '');
-        setStudentProgress(existingLog.studentProgress || '');
-        setSelectedDate(new Date(existingLog.date));
-      } else {
-        // Reset form for new log
-        setLogType('digital');
-        setNotes('');
-        setDuration('');
-        setTopics([]);
-        setNextSteps('');
-        setStudentProgress('');
-        setSelectedDate(new Date());
-      }
-    }, [existingLog]);
-
-    const handleTopicToggle = (topic: string) => {
-      setTopics(prev => 
-        prev.includes(topic) 
-          ? prev.filter(t => t !== topic)
-          : [...prev, topic]
-      );
-    };
-
-    const handleSubmit = (e: React.FormEvent) => {
-      e.preventDefault();
-      const newErrors: {[key: string]: string} = {};
-
-      // Validation
-      if (!notes.trim()) {
-        newErrors.notes = 'Notes are required';
-      }
-      if (!studentProgress) {
-        newErrors.studentProgress = 'Student progress assessment is required';
-      }
-
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        return;
-      }
-
-      const logData = {
-        type: logType,
-        date: selectedDate.toISOString().split('T')[0],
-        notes: notes.trim(),
-        duration: duration ? Number(duration) : undefined,
-        topics: topics.length > 0 ? topics : undefined,
-        nextSteps: nextSteps.trim() || undefined,
-        studentProgress: studentProgress as any
-      };
-
-      if (isEditing && existingLog) {
-        // Update existing log
-        updateMentorshipLog(existingLog.id, logData);
-      } else {
-        // Create new log
-        addMentorshipLog({
-          ...logData,
-          mentorId: currentUser.id,
-          studentId: editingItem?.studentId || 0
-        }, currentUser.id);
-      }
-
-      setEditingItem(null);
-      setNotes('');
-      setDuration('');
-      setTopics([]);
-      setNextSteps('');
-      setStudentProgress('');
-      setSelectedDate(new Date());
-      setErrors({});
-    };
-
-    if (!editingItem || editingItem.type !== 'log') return null;
-
-    const student = getUserById(editingItem.studentId || 0);
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-          <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold">
-              {isEditing ? 'Edit Check-in' : 'Log Check-in'} with {student?.name}
-            </h3>
-            <button 
-              onClick={() => setEditingItem(null)}
-              className="text-gray-400 hover:text-gray-600"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Check-in Type</label>
-                <select 
-                  value={logType} 
-                  onChange={(e) => setLogType(e.target.value as 'digital' | 'in_person')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                >
-                  <option value="digital">💻 Digital Check-in</option>
-                  <option value="in_person">🤝 In-person Meeting</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Date</label>
-                <input
-                  type="date"
-                  value={selectedDate.toISOString().split('T')[0]}
-                  onChange={(e) => setSelectedDate(new Date(e.target.value))}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Duration (minutes)</label>
-                <input
-                  type="number"
-                  value={duration}
-                  onChange={(e) => setDuration(e.target.value ? Number(e.target.value) : '')}
-                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="e.g., 30"
-                  min="1"
-                  max="300"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Discussion Topics</label>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                {availableTopics.map(topic => (
-                  <label key={topic} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={topics.includes(topic)}
-                      onChange={() => handleTopicToggle(topic)}
-                      className="mr-2"
-                    />
-                    <span className="text-sm text-gray-700 capitalize">{topic}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Student Progress</label>
-              <select 
-                value={studentProgress} 
-                onChange={(e) => setStudentProgress(e.target.value as any)}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                required
-              >
-                <option value="">Select progress level</option>
-                <option value="excellent">🌟 Excellent - Exceeding expectations</option>
-                <option value="good">👍 Good - Meeting expectations</option>
-                <option value="needs_improvement">⚠️ Needs Improvement - Below expectations</option>
-                <option value="concern">🚨 Concern - Significant issues</option>
-              </select>
-              {errors.studentProgress && <p className="text-red-500 text-sm mt-1">{errors.studentProgress}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Notes</label>
-              <textarea 
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                rows={4}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="Add detailed notes about this check-in..."
-                required
-              />
-              {errors.notes && <p className="text-red-500 text-sm mt-1">{errors.notes}</p>}
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Next Steps</label>
-              <textarea 
-                value={nextSteps}
-                onChange={(e) => setNextSteps(e.target.value)}
-                rows={2}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                placeholder="What should the student focus on next?"
-              />
-            </div>
-
-            <div className="flex justify-end space-x-3 pt-4">
-              <button
-                type="button"
-                onClick={() => setEditingItem(null)}
-                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-              >
-                Cancel
-              </button>
-              <button
-                type="submit"
-                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-              >
-                <Save className="w-4 h-4" />
-                <span>{isEditing ? 'Update Check-in' : 'Save Check-in'}</span>
-              </button>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  };
-
-  // Confirmation Modal Component
-  const ConfirmationModal = () => {
-    if (!confirmationDialog.isOpen) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
-          <div className="p-6">
-            <div className="flex items-center mb-4">
-              <div className="flex-shrink-0 w-10 h-10 mx-auto bg-red-100 rounded-full flex items-center justify-center">
-                <AlertTriangle className="w-6 h-6 text-red-600" />
-              </div>
-            </div>
-            <div className="text-center">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                {confirmationDialog.title}
-              </h3>
-              <p className="text-sm text-gray-500 mb-6">
-                {confirmationDialog.message}
-              </p>
-              <div className="flex gap-3 justify-center">
-                <button
-                  onClick={closeConfirmation}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    confirmationDialog.onConfirm();
-                    closeConfirmation();
-                  }}
-                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-red-500"
-                >
-                  {confirmationDialog.confirmText}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   const renderMainContent = () => {
     // Handle administrator role screens
     if (hasRole('administrator')) {
@@ -3183,17 +2790,29 @@ const LearningManagementSystem = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header />
+      <Header currentUser={currentUser} onOpenRoleSelector={() => setShowRoleSelector(true)} />
       <div className="flex">
-        <Sidebar />
+        <Sidebar activeView={activeView} onNavigate={setActiveView} hasRole={hasRole} />
         <main className="flex-1 p-8">
           {renderMainContent()}
         </main>
       </div>
       <EditModal />
-      <LogCheckinModal />
-      <ConfirmationModal />
-      {showRoleSelector && <RoleSelector />}
+      <LogCheckinModal
+        editingItem={editingItem}
+        currentUser={currentUser}
+        onClose={() => setEditingItem(null)}
+        onAddLog={addMentorshipLog}
+        onUpdateLog={updateMentorshipLog}
+        getUserById={getUserById}
+      />
+      <ConfirmationModal dialog={confirmationDialog} onClose={closeConfirmation} />
+      <RoleSelector
+        isOpen={showRoleSelector}
+        currentUser={currentUser}
+        onSelectUser={(user) => { setCurrentUser(user); setActiveView('dashboard'); }}
+        onClose={() => setShowRoleSelector(false)}
+      />
     </div>
   );
 };
