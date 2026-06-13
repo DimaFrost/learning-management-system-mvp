@@ -50,6 +50,7 @@ export interface AppRouterProps {
   deleteSubject: (courseId: number, subjectId: number) => void;
   deleteClass: (courseId: number, subjectId: number, classId: number) => void;
   deleteUser: (id: string) => void;
+  updateCourse: (id: number, data: Partial<Course>) => void;
 }
 
 export function AppRouter({
@@ -78,6 +79,7 @@ export function AppRouter({
   deleteSubject,
   deleteClass,
   deleteUser,
+  updateCourse,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
@@ -90,6 +92,7 @@ export function AppRouter({
             activeCurriculumTab={activeCurriculumTab}
             onCurriculumTabChange={onCurriculumTabChange}
             courses={courses}
+            users={users}
             collapsedCourses={collapsedCourses}
             collapsedSubjects={collapsedSubjects}
             toggleCourseCollapse={toggleCourseCollapse}
@@ -113,6 +116,7 @@ export function AppRouter({
             onDeleteCourse={deleteCourse}
             onDeleteSubject={deleteSubject}
             onDeleteClass={deleteClass}
+            onReactivate={(courseId) => updateCourse(courseId, { status: 'active' })}
           />
         );
       case 'users':

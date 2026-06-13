@@ -1,5 +1,6 @@
 import { ChevronRight, ChevronDown, Edit3, Trash2, Plus, Calendar } from 'lucide-react';
 import type { Course, User, Subject, Class } from '../../types/lms';
+import { isCourseActive } from '../../utils/courseUtils';
 
 interface CurriculumOverviewProps {
   courses: Course[];
@@ -34,7 +35,8 @@ export function CurriculumOverview({
   onDeleteSubject,
   onDeleteClass,
 }: CurriculumOverviewProps) {
-  const sortedCourses = [...courses].sort((a, b) => {
+  const activeCourses = courses.filter(isCourseActive);
+  const sortedCourses = [...activeCourses].sort((a, b) => {
     if (a.graduationYear !== b.graduationYear) {
       return a.graduationYear - b.graduationYear;
     }

@@ -1,5 +1,18 @@
 import type { Course } from '../types/lms';
 
+export function getTodayDateString(): string {
+  return new Date().toISOString().split('T')[0];
+}
+
+export function isCourseArchived(course: Course): boolean {
+  const today = getTodayDateString();
+  return course.status === 'inactive' || (!!course.endDate && course.endDate < today);
+}
+
+export function isCourseActive(course: Course): boolean {
+  return !isCourseArchived(course);
+}
+
 export const getCourseDisplayName = (course: Course): string => {
   const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
   return `${courseTypeLabel} ${course.graduationYear}`;

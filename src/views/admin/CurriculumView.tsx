@@ -2,11 +2,13 @@ import { Plus } from 'lucide-react';
 import type { Course, User, Subject, Class } from '../../types/lms';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
+import { CurriculumArchiveView } from './CurriculumArchiveView';
 
 interface CurriculumViewProps {
   activeCurriculumTab: string;
   onCurriculumTabChange: (tab: string) => void;
   courses: Course[];
+  users: User[];
   collapsedCourses: Set<number>;
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
@@ -20,12 +22,14 @@ interface CurriculumViewProps {
   onDeleteCourse: (id: number) => void;
   onDeleteSubject: (courseId: number, subjectId: number) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  onReactivate: (courseId: number) => void;
 }
 
 export function CurriculumView({
   activeCurriculumTab,
   onCurriculumTabChange,
   courses,
+  users,
   collapsedCourses,
   collapsedSubjects,
   toggleCourseCollapse,
@@ -39,10 +43,12 @@ export function CurriculumView({
   onDeleteCourse,
   onDeleteSubject,
   onDeleteClass,
+  onReactivate,
 }: CurriculumViewProps) {
   const curriculumTabs = [
     { id: 'overview', label: 'Overview' },
-    { id: 'date-view', label: 'Date View' }
+    { id: 'date-view', label: 'Date View' },
+    { id: 'archived', label: 'Archived' }
   ];
 
   return (
@@ -76,7 +82,7 @@ export function CurriculumView({
         </nav>
       </div>
 
-      {activeCurriculumTab === 'overview' ? (
+      {activeCurriculumTab === 'overview' && (
         <CurriculumOverview
           courses={courses}
           collapsedCourses={collapsedCourses}
@@ -93,7 +99,8 @@ export function CurriculumView({
           onDeleteSubject={onDeleteSubject}
           onDeleteClass={onDeleteClass}
         />
-      ) : (
+      )}
+      {activeCurriculumTab === 'date-view' && (
         <CurriculumDateView
           courses={courses}
           getUserById={getUserById}
@@ -101,6 +108,15 @@ export function CurriculumView({
           checkDoubleBooking={checkDoubleBooking}
           onEditClass={onEditClass}
           onDeleteClass={onDeleteClass}
+        />
+      )}
+      {activeCurriculumTab === 'archived' && (
+        <CurriculumArchiveView
+          courses={courses}
+          users={users}
+          getUserById={getUserById}
+          getCourseDisplayName={getCourseDisplayName}
+          onReactivate={onReactivate}
         />
       )}
     </div>

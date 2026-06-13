@@ -1,5 +1,6 @@
 import { Calendar, Plus, BookOpen, Edit3, Trash2 } from 'lucide-react';
 import type { Course, User, Class } from '../../types/lms';
+import { isCourseActive } from '../../utils/courseUtils';
 
 interface CurriculumDateViewProps {
   courses: Course[];
@@ -27,7 +28,8 @@ export function CurriculumDateView({
   onEditClass,
   onDeleteClass,
 }: CurriculumDateViewProps) {
-  const allClasses = courses.flatMap(course =>
+  const activeCourses = courses.filter(isCourseActive);
+  const allClasses = activeCourses.flatMap(course =>
     course.subjects.flatMap(subject =>
       subject.classes.map(cls => ({
         ...cls,
@@ -96,8 +98,8 @@ export function CurriculumDateView({
                 <div className="space-y-4">
                   {Object.entries(classesForDate)
                     .sort(([courseNameA], [courseNameB]) => {
-                      const courseA = courses.find(c => getCourseDisplayName(c) === courseNameA);
-                      const courseB = courses.find(c => getCourseDisplayName(c) === courseNameB);
+                      const courseA = activeCourses.find(c => getCourseDisplayName(c) === courseNameA);
+                      const courseB = activeCourses.find(c => getCourseDisplayName(c) === courseNameB);
 
                       if (!courseA || !courseB) return 0;
 
@@ -114,8 +116,8 @@ export function CurriculumDateView({
                         </h5>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           {courseClasses.map(cls => {
-                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
-                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
+                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, activeCourses, cls.id);
+                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, activeCourses, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
                             const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
                             const needsAttention = hasConflict || hasVacantRoles;
