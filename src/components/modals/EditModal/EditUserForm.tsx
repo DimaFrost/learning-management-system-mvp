@@ -7,10 +7,11 @@ interface EditUserFormProps {
   onChange: (field: string, value: any) => void;
   editingItem: EditingItem;
   courseStudents: CourseStudent[];
+  users: User[];
   courses: Course[];
   getUserById: (id: string | null) => User | undefined;
   assignUserToCourse: (userId: string, courseId: number) => void;
-  removeUserFromCourse: (userId: string, courseId: number) => void;
+  removeUserFromCourse: (userId: string, courseId: number, users: User[], courses: Course[]) => void;
 }
 
 export function EditUserForm({
@@ -19,6 +20,7 @@ export function EditUserForm({
   onChange,
   editingItem,
   courseStudents,
+  users,
   courses,
   getUserById,
   assignUserToCourse,
@@ -97,7 +99,7 @@ export function EditUserForm({
                           </p>
                         </div>
                         <button
-                          onClick={() => removeUserFromCourse((editingItem.data as User).id, cs.courseId)}
+                          onClick={() => removeUserFromCourse((editingItem.data as User).id, cs.courseId, users, courses)}
                           className="text-red-600 hover:text-red-800 text-sm"
                         >
                           Remove

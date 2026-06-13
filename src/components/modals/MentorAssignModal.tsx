@@ -7,7 +7,7 @@ interface MentorAssignModalProps {
   studentId: string | null;
   users: User[];
   courseStudents: CourseStudent[];
-  onAssign: (studentId: string, mentorId: string) => void;
+  onAssign: (studentId: string, mentorId: string) => void | Promise<void>;
   onClose: () => void;
 }
 
@@ -85,9 +85,9 @@ export function MentorAssignModal({
               Cancel
             </button>
             <button
-              onClick={() => {
+              onClick={async () => {
                 if (newMentorId) {
-                  onAssign(studentId, newMentorId);
+                  await onAssign(studentId, newMentorId);
                 }
               }}
               disabled={!newMentorId}

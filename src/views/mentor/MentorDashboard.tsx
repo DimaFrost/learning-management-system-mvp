@@ -7,7 +7,7 @@ import {
   Users,
   Edit3,
 } from 'lucide-react';
-import { initialCadenceSettings } from '../../data/seed';
+import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 
 interface MentorDashboardProps {
@@ -15,7 +15,7 @@ interface MentorDashboardProps {
   courseStudents: CourseStudent[];
   courses: Course[];
   mentorshipLogs: MentorshipLog[];
-  cadenceSettings: typeof initialCadenceSettings;
+  cadenceSettings: CadenceSettings;
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;

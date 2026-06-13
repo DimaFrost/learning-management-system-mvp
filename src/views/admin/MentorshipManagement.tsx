@@ -9,15 +9,15 @@ import {
   Mail,
 } from 'lucide-react';
 import type { User, CourseStudent, MentorshipLog } from '../../types/lms';
-import { initialCadenceSettings } from '../../data/seed';
+import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { getStatusColor, getStatusBadgeColor } from '../../utils/statusStyles';
 import { calculateOverallStatus, getCheckInStatus } from '../../utils/mentorshipUtils';
 
 interface MentorshipManagementProps {
   users: User[];
   courseStudents: CourseStudent[];
-  cadenceSettings: typeof initialCadenceSettings;
-  setCadenceSettings: React.Dispatch<React.SetStateAction<typeof initialCadenceSettings>>;
+  cadenceSettings: CadenceSettings;
+  setCadenceSettings: (newSettings: CadenceSettings) => void;
   mentorshipLogs: MentorshipLog[];
   getUserById: (id: string | null) => User | undefined;
   onOpenCheckin: (studentId: string) => void;

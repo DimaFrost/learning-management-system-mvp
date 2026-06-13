@@ -8,7 +8,7 @@ import type {
   MentorshipLog,
   EditingItem,
 } from '../types/lms';
-import { initialCadenceSettings } from '../data/seed';
+import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import { MyCourseView } from './student/MyCourseView';
 import { MyClassesView } from './teacher/MyClassesView';
 import { AdminDashboard } from './admin/AdminDashboard';
@@ -28,8 +28,8 @@ export interface AppRouterProps {
   users: User[];
   courseStudents: CourseStudent[];
   mentorshipLogs: MentorshipLog[];
-  cadenceSettings: typeof initialCadenceSettings;
-  setCadenceSettings: React.Dispatch<React.SetStateAction<typeof initialCadenceSettings>>;
+  cadenceSettings: CadenceSettings;
+  setCadenceSettings: (newSettings: CadenceSettings) => void;
   collapsedCourses: Set<number>;
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
@@ -45,6 +45,7 @@ export interface AppRouterProps {
   ) => { hasConflict: boolean; conflictingClasses: Class[] };
   setEditingItem: React.Dispatch<React.SetStateAction<EditingItem | null>>;
   setCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
+  assignUserToCourse: (userId: string, courseId: number, mentorId?: string | null) => void;
   deleteCourse: (id: number) => void;
   deleteSubject: (courseId: number, subjectId: number) => void;
   deleteClass: (courseId: number, subjectId: number, classId: number) => void;
@@ -72,6 +73,7 @@ export function AppRouter({
   checkDoubleBooking,
   setEditingItem,
   setCourseStudents,
+  assignUserToCourse,
   deleteCourse,
   deleteSubject,
   deleteClass,
@@ -133,7 +135,9 @@ export function AppRouter({
             mentorshipLogs={mentorshipLogs}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
-            onChangeCourseStudents={setCourseStudents}
+            onAssignMentor={async (studentId, courseId, mentorId) => {
+              assignUserToCourse(studentId, courseId, mentorId);
+            }}
             onOpenCheckin={openCheckin}
           />
         );

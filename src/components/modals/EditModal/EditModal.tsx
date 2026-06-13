@@ -21,7 +21,7 @@ interface EditModalProps {
   onAddUser: (data: Partial<User>) => void;
   onUpdateUser: (id: string, data: Partial<User>) => void;
   onAssignUserToCourse: (userId: string, courseId: number) => void;
-  onRemoveUserFromCourse: (userId: string, courseId: number) => void;
+  onRemoveUserFromCourse: (userId: string, courseId: number, users: User[], courses: Course[]) => void;
   checkCourseUniqueness: (courseType: string, graduationYear: number, courses: Course[], excludeCourseId?: number) => boolean;
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   getCourseOptions: (courses: Course[]) => { id: number; displayName: string; courseType: string; graduationYear: number }[];
@@ -262,6 +262,7 @@ export function EditModal({
             onChange={handleChange}
             editingItem={editingItem}
             courseStudents={courseStudents}
+            users={users}
             courses={courses}
             getUserById={getUserById}
             assignUserToCourse={onAssignUserToCourse}

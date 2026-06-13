@@ -10,7 +10,7 @@ interface MentorshipViewProps {
   mentorshipLogs: MentorshipLog[];
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
-  onChangeCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
+  onAssignMentor: (studentId: string, courseId: number, mentorId: string) => Promise<void>;
   onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;
 }
 
@@ -21,11 +21,11 @@ export function MentorshipView({
   mentorshipLogs,
   getUserById,
   getCourseDisplayName,
-  onChangeCourseStudents,
+  onAssignMentor,
   onOpenCheckin,
 }: MentorshipViewProps) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
-  const [editingPair, setEditingPair] = useState<{ studentId: string; mentorId: string | null } | null>(null);
+  const [editingPair, setEditingPair] = useState<{ studentId: string; mentorId: string | null; courseId?: number } | null>(null);
 
   const mentorshipPairs = courseStudents.map(enrollment => {
     const student = getUserById(enrollment.studentId);
@@ -185,7 +185,7 @@ export function MentorshipView({
                     {isExpanded ? 'Hide' : 'View'} Check-ins ({pair.totalCheckins})
                   </button>
                   <button
-                    onClick={() => setEditingPair({ studentId: pair.studentId, mentorId: pair.mentorId })}
+                    onClick={() => setEditingPair({ studentId: pair.studentId, mentorId: pair.mentorId, courseId: pair.courseId })}
                     className="flex-1 bg-gray-600 text-white px-3 py-2 rounded text-sm hover:bg-gray-700"
                   >
                     Change Mentor
@@ -263,21 +263,12 @@ export function MentorshipView({
         users={users}
         courseStudents={courseStudents}
         onClose={() => setEditingPair(null)}
-        onAssign={(studentId, mentorId) => {
-          const isNewAssignment = !courseStudents.some(cs => cs.studentId === studentId);
-          if (isNewAssignment) {
-            onChangeCourseStudents(prev => [...prev, {
-              courseId: 1,
-              studentId,
-              mentorId,
-              enrollmentDate: new Date().toISOString().split('T')[0],
-              status: 'active'
-            }]);
-          } else {
-            onChangeCourseStudents(prev => prev.map(cs =>
-              cs.studentId === studentId ? { ...cs, mentorId } : cs
-            ));
-          }
+        onAssign={async (studentId, mentorId) => {
+          const courseId = editingPair?.courseId
+            ?? courseStudents.find(cs => cs.studentId === studentId)?.courseId;
+          if (courseId == null) return;
+
+          await onAssignMentor(studentId, courseId, mentorId);
           setEditingPair(null);
         }}
       />

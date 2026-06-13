@@ -20,15 +20,16 @@ import { AppRouter } from './views/AppRouter';
 
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
-  const { courses, setCourses, collapsedCourses, collapsedSubjects, addCourse, updateCourse,
-    deleteCourse, addSubject, updateSubject, deleteSubject, addClass, updateClass, deleteClass,
-    toggleCourseCollapse, toggleSubjectCollapse } = useCourses(showConfirmation);
-  const { currentUser, loading, error, signInWithGoogle, signOut } = useAuth();
+  const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
+    addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
+    addClass, updateClass, deleteClass, toggleCourseCollapse, toggleSubjectCollapse }
+    = useCourses(showConfirmation);
+  const { currentUser, loading: authLoading, error, signInWithGoogle, signOut } = useAuth();
   const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
   const { users, getUserById, addUser, updateUser, deleteUser } = useUsers();
-  const { courseStudents, setCourseStudents, assignUserToCourse, removeUserFromCourse }
-    = useEnrollments(showConfirmation, users, courses);
-  const { mentorshipLogs, setMentorshipLogs, addMentorshipLog, updateMentorshipLog } = useMentorshipLogs();
+  const { courseStudents, setCourseStudents, assignUserToCourse, removeUserFromCourse, refetchEnrollments }
+    = useEnrollments(showConfirmation);
+  const { mentorshipLogs, addMentorshipLog, updateMentorshipLog } = useMentorshipLogs();
   const { cadenceSettings, setCadenceSettings } = useCadenceSettings();
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
@@ -36,15 +37,12 @@ const LearningManagementSystem = () => {
   const hasRole = (role: string) => currentUser?.roles.includes(role) ?? false;
 
   const handleDeleteUser = (id: string) => {
-    deleteUser(id, showConfirmation, (deletedId) => {
-      setCourseStudents(prev => prev.filter(cs => cs.studentId !== deletedId));
-      setMentorshipLogs(prev =>
-        prev.filter(log => log.studentId !== deletedId && log.mentorId !== deletedId)
-      );
+    deleteUser(id, showConfirmation, () => {
+      refetchEnrollments();
     });
   };
 
-  if (loading) {
+  if (authLoading || coursesLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
@@ -54,6 +52,14 @@ const LearningManagementSystem = () => {
 
   if (!currentUser) {
     return <AuthScreen onSignIn={signInWithGoogle} error={error} />;
+  }
+
+  if (coursesError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <p>{coursesError}</p>
+      </div>
+    );
   }
 
   return (
@@ -87,6 +93,7 @@ const LearningManagementSystem = () => {
             deleteClass={deleteClass}
             deleteUser={handleDeleteUser}
             setCourseStudents={setCourseStudents}
+            assignUserToCourse={assignUserToCourse}
           />
         </main>
       </div>
