@@ -58,7 +58,14 @@ export function EditModal({
 
   useEffect(() => {
     if (editingItem && editingItem.data) {
-      setFormData(editingItem.data);
+      if (editingItem.type === 'class') {
+        setFormData({
+          ...editingItem.data,
+          subjectId: editingItem.subjectId ?? (editingItem.data as FormData)?.subjectId ?? '',
+        });
+      } else {
+        setFormData(editingItem.data);
+      }
     } else {
       // Pre-populate form with any provided properties
       const initialData: FormData = {};
