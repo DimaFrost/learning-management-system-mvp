@@ -16,6 +16,8 @@ import { EditModal } from './components/modals/EditModal/EditModal';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { AuthScreen } from './components/AuthScreen';
+import { LoadingSpinner } from './components/ui/LoadingSpinner';
+import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
 
 const LearningManagementSystem = () => {
@@ -26,11 +28,27 @@ const LearningManagementSystem = () => {
     = useCourses(showConfirmation);
   const { currentUser, loading: authLoading, error, signInWithGoogle, signOut } = useAuth();
   const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
-  const { users, getUserById, addUser, updateUser, deleteUser } = useUsers();
-  const { courseStudents, setCourseStudents, assignUserToCourse, removeUserFromCourse, refetchEnrollments }
+  const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
+  const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
+    assignUserToCourse, removeUserFromCourse, refetchEnrollments }
     = useEnrollments(showConfirmation);
-  const { mentorshipLogs, addMentorshipLog, updateMentorshipLog } = useMentorshipLogs();
-  const { cadenceSettings, setCadenceSettings } = useCadenceSettings();
+  const { mentorshipLogs, loading: logsLoading, error: logsError, addMentorshipLog, updateMentorshipLog }
+    = useMentorshipLogs();
+  const { cadenceSettings, setCadenceSettings, loading: cadenceLoading, error: cadenceError } = useCadenceSettings();
+
+  const isLoading =
+    coursesLoading ||
+    usersLoading ||
+    logsLoading ||
+    enrollmentsLoading ||
+    cadenceLoading;
+
+  const globalError =
+    coursesError ||
+    usersError ||
+    logsError ||
+    enrollmentsError ||
+    cadenceError;
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
 
@@ -42,10 +60,10 @@ const LearningManagementSystem = () => {
     });
   };
 
-  if (authLoading || coursesLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+        <LoadingSpinner />
       </div>
     );
   }
@@ -54,10 +72,18 @@ const LearningManagementSystem = () => {
     return <AuthScreen onSignIn={signInWithGoogle} error={error} />;
   }
 
-  if (coursesError) {
+  if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <p>{coursesError}</p>
+        <LoadingSpinner message="Loading school data..." />
+      </div>
+    );
+  }
+
+  if (globalError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <ErrorMessage message={globalError} />
       </div>
     );
   }
