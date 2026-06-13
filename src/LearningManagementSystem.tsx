@@ -25,7 +25,7 @@ const LearningManagementSystem = () => {
     toggleCourseCollapse, toggleSubjectCollapse } = useCourses(showConfirmation);
   const { currentUser, loading, error, signInWithGoogle, signOut } = useAuth();
   const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
-  const { users, setUsers, getUserById, addUser, updateUser } = useUsers();
+  const { users, getUserById, addUser, updateUser, deleteUser } = useUsers();
   const { courseStudents, setCourseStudents, assignUserToCourse, removeUserFromCourse }
     = useEnrollments(showConfirmation, users, courses);
   const { mentorshipLogs, setMentorshipLogs, addMentorshipLog, updateMentorshipLog } = useMentorshipLogs();
@@ -35,20 +35,13 @@ const LearningManagementSystem = () => {
 
   const hasRole = (role: string) => currentUser?.roles.includes(role) ?? false;
 
-  const deleteUser = (id: string) => {
-    const user = users.find(u => u.id === id);
-    if (!user) return;
-
-    showConfirmation(
-      'Delete User',
-      `Are you sure you want to delete user "${user.name}"? This will also remove them from all courses and delete all their mentorship logs. This action cannot be undone.`,
-      'Delete User',
-      () => {
-        setUsers(prev => prev.filter(u => u.id !== id));
-        setCourseStudents(prev => prev.filter(cs => cs.studentId !== id));
-        setMentorshipLogs(prev => prev.filter(log => log.studentId !== id && log.mentorId !== id));
-      }
-    );
+  const handleDeleteUser = (id: string) => {
+    deleteUser(id, showConfirmation, (deletedId) => {
+      setCourseStudents(prev => prev.filter(cs => cs.studentId !== deletedId));
+      setMentorshipLogs(prev =>
+        prev.filter(log => log.studentId !== deletedId && log.mentorId !== deletedId)
+      );
+    });
   };
 
   if (loading) {
@@ -92,7 +85,7 @@ const LearningManagementSystem = () => {
             deleteCourse={deleteCourse}
             deleteSubject={deleteSubject}
             deleteClass={deleteClass}
-            deleteUser={deleteUser}
+            deleteUser={handleDeleteUser}
             setCourseStudents={setCourseStudents}
           />
         </main>
