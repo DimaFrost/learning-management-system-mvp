@@ -3,10 +3,10 @@ import { GraduationCap, LogOut } from 'lucide-react';
 
 interface HeaderProps {
   currentUser: User;
-  onOpenRoleSelector: () => void;
+  onSignOut: () => void;
 }
 
-export function Header({ currentUser, onOpenRoleSelector }: HeaderProps) {
+export function Header({ currentUser, onSignOut }: HeaderProps) {
   return (
     <div className="bg-white border-b border-gray-200 px-6 py-4">
       <div className="flex items-center justify-between">
@@ -19,9 +19,9 @@ export function Header({ currentUser, onOpenRoleSelector }: HeaderProps) {
             {currentUser.name} ({currentUser.roles.join(', ')})
           </span>
           <button 
-            onClick={onOpenRoleSelector}
+            onClick={onSignOut}
             className="p-2 text-gray-400 hover:text-gray-600"
-            title="Switch User Role"
+            title="Sign out"
           >
             <LogOut className="w-4 h-4" />
           </button>

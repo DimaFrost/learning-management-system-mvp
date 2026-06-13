@@ -3,9 +3,9 @@ import type { Course, User, Class } from '../../types/lms';
 
 interface CurriculumDateViewProps {
   courses: Course[];
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
-  checkDoubleBooking: (personId: number, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
+  checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   onEditClass: (courseId: number, subjectId: number, classData: Class | null, date?: string) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
 }
@@ -117,7 +117,7 @@ export function CurriculumDateView({
                             const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
                             const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
-                            const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
+                            const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
                             const needsAttention = hasConflict || hasVacantRoles;
 
                             return (

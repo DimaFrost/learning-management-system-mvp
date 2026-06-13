@@ -1,5 +1,5 @@
 export interface User {
-  id: number;
+  id: string;
   name: string;
   email: string;
   roles: string[];
@@ -9,8 +9,8 @@ export interface Class {
   id: number;
   date: string;
   hour: 'first' | 'second' | 'both';
-  teacherId: number;
-  translatorId: number;
+  teacherId: string | null;
+  translatorId: string | null;
   title: string;
 }
 
@@ -20,7 +20,7 @@ export interface Subject {
   description: string;
   startDate: string;
   duration: number; // number of classes to pre-create
-  primaryTeacherId: number;
+  primaryTeacherId: string | null;
   classes: Class[];
 }
 
@@ -36,16 +36,16 @@ export interface Course {
 
 export interface CourseStudent {
   courseId: number;
-  studentId: number;
-  mentorId: number;
+  studentId: string;
+  mentorId: string | null;
   enrollmentDate: string;
   status: string;
 }
 
 export interface MentorshipLog {
   id: number;
-  mentorId: number;
-  studentId: number;
+  mentorId: string;
+  studentId: string;
   type: 'digital' | 'in_person';
   date: string;
   notes: string;
@@ -58,7 +58,7 @@ export interface MentorshipLog {
 export interface EditingItem {
   type: 'course' | 'user' | 'log' | 'subject' | 'class';
   data?: Course | User | Subject | Class | MentorshipLog | null;
-  studentId?: number;
+  studentId?: string;
   courseId?: number;
   subjectId?: number;
   date?: string;

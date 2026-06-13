@@ -65,7 +65,11 @@ export function getNextClassDate(startDate: string, classIndex: number): string 
   return classDate.toISOString().split('T')[0];
 }
 
-export const checkDoubleBooking = (personId: number, date: string, hour: string, courses: Course[], excludeClassId?: number): { hasConflict: boolean; conflictingClasses: any[] } => {
+export const checkDoubleBooking = (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number): { hasConflict: boolean; conflictingClasses: any[] } => {
+  if (personId == null) {
+    return { hasConflict: false, conflictingClasses: [] };
+  }
+
   const conflictingClasses: any[] = [];
   
   // Check all classes across all courses for the same date AND hour

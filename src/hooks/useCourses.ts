@@ -49,7 +49,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
   const addSubject = (courseId: number, subjectData: Partial<Subject>) => {
     const duration = subjectData.duration || 1;
-    const primaryTeacherId = subjectData.primaryTeacherId || 0;
+    const primaryTeacherId = subjectData.primaryTeacherId ?? null;
     const startDate = subjectData.startDate || '';
     
     // Pre-create classes based on duration
@@ -61,7 +61,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
         date: getNextClassDate(startDate, i - 1), // i-1 because we want 0-based indexing
         hour: i % 2 === 1 ? 'first' : 'second', // Alternate between first and second hour
         teacherId: primaryTeacherId,
-        translatorId: 0 // Vacant by default
+        translatorId: null // Vacant by default
       });
     }
 
@@ -122,8 +122,8 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       title: classData.title || '',
       date: classData.date || '',
       hour: classData.hour || 'first',
-      teacherId: classData.teacherId || 0,
-      translatorId: classData.translatorId || 0
+      teacherId: classData.teacherId ?? null,
+      translatorId: classData.translatorId ?? null
     };
     setCourses(courses.map(course => 
       course.id === courseId 

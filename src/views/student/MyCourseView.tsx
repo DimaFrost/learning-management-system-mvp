@@ -6,7 +6,7 @@ interface MyCourseViewProps {
   courseStudents: CourseStudent[];
   courses: Course[];
   mentorshipLogs: MentorshipLog[];
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
 }
 

@@ -16,9 +16,9 @@ interface MentorDashboardProps {
   courses: Course[];
   mentorshipLogs: MentorshipLog[];
   cadenceSettings: typeof initialCadenceSettings;
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
-  onOpenCheckin: (studentId: number, existingLog?: MentorshipLog) => void;
+  onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;
 }
 
 export function MentorDashboard({
@@ -34,8 +34,8 @@ export function MentorDashboard({
   const getMyStudents = () => {
     const mentorEnrollments = courseStudents.filter(cs => cs.mentorId === currentUser.id);
 
-    const studentMap = new Map<number, {
-      studentId: number;
+    const studentMap = new Map<string, {
+      studentId: string;
       student: User | undefined;
       courses: Course[];
       enrollments: CourseStudent[];

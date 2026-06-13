@@ -11,9 +11,9 @@ interface CurriculumViewProps {
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
   toggleSubjectCollapse: (courseId: number, subjectId: number) => void;
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
-  checkDoubleBooking: (personId: number, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
+  checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   onEditCourse: (course?: Course) => void;
   onEditSubject: (courseId: number, subject?: Subject) => void;
   onEditClass: (courseId: number, subjectId: number, classData?: Class | null, date?: string) => void;

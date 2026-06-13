@@ -6,9 +6,9 @@ interface LogCheckinModalProps {
   editingItem: EditingItem | null;
   currentUser: User;
   onClose: () => void;
-  onAddLog: (logData: Partial<MentorshipLog>, currentUserId: number) => void;
+  onAddLog: (logData: Partial<MentorshipLog>, currentUserId: string) => void;
   onUpdateLog: (id: number, updates: Partial<MentorshipLog>) => void;
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
 }
 
 export function LogCheckinModal({ editingItem, currentUser, onClose, onAddLog, onUpdateLog, getUserById }: LogCheckinModalProps) {
@@ -96,7 +96,7 @@ export function LogCheckinModal({ editingItem, currentUser, onClose, onAddLog, o
       onAddLog({
         ...logData,
         mentorId: currentUser.id,
-        studentId: editingItem?.studentId || 0
+        studentId: editingItem?.studentId!
       }, currentUser.id);
     }
 
@@ -112,7 +112,7 @@ export function LogCheckinModal({ editingItem, currentUser, onClose, onAddLog, o
 
   if (!editingItem || editingItem.type !== 'log') return null;
 
-  const student = getUserById(editingItem.studentId || 0);
+  const student = editingItem.studentId ? getUserById(editingItem.studentId) : undefined;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -8,7 +8,7 @@ interface UsersViewProps {
   courseStudents: CourseStudent[];
   getCourseDisplayName: (course: Course) => string;
   onEditUser: (user?: User) => void;
-  onDeleteUser: (id: number) => void;
+  onDeleteUser: (id: string) => void;
 }
 
 export function UsersView({

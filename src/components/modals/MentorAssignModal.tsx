@@ -4,10 +4,10 @@ import type { User, CourseStudent } from '../../types/lms';
 
 interface MentorAssignModalProps {
   isOpen: boolean;
-  studentId: number | null;
+  studentId: string | null;
   users: User[];
   courseStudents: CourseStudent[];
-  onAssign: (studentId: number, mentorId: number) => void;
+  onAssign: (studentId: string, mentorId: string) => void;
   onClose: () => void;
 }
 
@@ -19,7 +19,7 @@ export function MentorAssignModal({
   onAssign,
   onClose,
 }: MentorAssignModalProps) {
-  const [newMentorId, setNewMentorId] = useState<number | ''>('');
+  const [newMentorId, setNewMentorId] = useState<string>('');
 
   useEffect(() => {
     if (!isOpen) {
@@ -67,7 +67,7 @@ export function MentorAssignModal({
             <label className="block text-sm font-medium text-gray-700 mb-2">Select New Mentor</label>
             <select
               value={newMentorId}
-              onChange={(e) => setNewMentorId(Number(e.target.value))}
+              onChange={(e) => setNewMentorId(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
             >
               <option value="">Select a mentor</option>

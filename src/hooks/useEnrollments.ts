@@ -8,13 +8,13 @@ type ShowConfirmation = (title: string, message: string, confirmText: string, on
 export function useEnrollments(showConfirmation: ShowConfirmation, users: User[], courses: Course[]) {
   const [courseStudents, setCourseStudents] = useState<CourseStudent[]>(initialCourseStudents);
 
-  function assignUserToCourse(userId: number, courseId: number, mentorId?: number): void {
+  function assignUserToCourse(userId: string, courseId: number, mentorId?: string | null): void {
     const existingAssignment = courseStudents.find(cs => cs.courseId === courseId && cs.studentId === userId);
     if (existingAssignment) {
       // Update existing assignment
       setCourseStudents(courseStudents.map(cs => 
         cs.courseId === courseId && cs.studentId === userId 
-          ? { ...cs, mentorId: mentorId || cs.mentorId }
+          ? { ...cs, mentorId: mentorId ?? cs.mentorId }
           : cs
       ));
     } else {
@@ -22,7 +22,7 @@ export function useEnrollments(showConfirmation: ShowConfirmation, users: User[]
       const newAssignment: CourseStudent = {
         courseId,
         studentId: userId,
-        mentorId: mentorId || 0,
+        mentorId: mentorId ?? null,
         enrollmentDate: new Date().toISOString().split('T')[0],
         status: 'active'
       };
@@ -30,7 +30,7 @@ export function useEnrollments(showConfirmation: ShowConfirmation, users: User[]
     }
   }
 
-  function removeUserFromCourse(userId: number, courseId: number): void {
+  function removeUserFromCourse(userId: string, courseId: number): void {
     const user = users.find(u => u.id === userId);
     const course = courses.find(c => c.id === courseId);
     if (!user || !course) return;

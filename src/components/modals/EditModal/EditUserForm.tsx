@@ -8,9 +8,9 @@ interface EditUserFormProps {
   editingItem: EditingItem;
   courseStudents: CourseStudent[];
   courses: Course[];
-  getUserById: (id: number) => User | undefined;
-  assignUserToCourse: (userId: number, courseId: number) => void;
-  removeUserFromCourse: (userId: number, courseId: number) => void;
+  getUserById: (id: string | null) => User | undefined;
+  assignUserToCourse: (userId: string, courseId: number) => void;
+  removeUserFromCourse: (userId: string, courseId: number) => void;
 }
 
 export function EditUserForm({

@@ -7,9 +7,9 @@ interface CurriculumOverviewProps {
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
   toggleSubjectCollapse: (courseId: number, subjectId: number) => void;
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
-  checkDoubleBooking: (personId: number, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
+  checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   onEditCourse: (course?: Course) => void;
   onEditSubject: (courseId: number, subject?: Subject) => void;
   onEditClass: (courseId: number, subjectId: number, classData?: Class) => void;
@@ -169,7 +169,7 @@ export function CurriculumOverview({
                               const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
                               const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
                               const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
-                              const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
+                              const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
                               const needsAttention = hasConflict || hasVacantRoles;
 
                               return (
@@ -205,21 +205,21 @@ export function CurriculumOverview({
                                       <span className={
                                         teacherConflict.hasConflict
                                           ? 'text-red-600 font-medium'
-                                          : cls.teacherId === 0
+                                          : cls.teacherId === null
                                             ? 'text-orange-600 font-medium'
                                             : ''
                                       }>
-                                        Teacher: {cls.teacherId === 0 ? '⚠️ Vacant' : getUserById(cls.teacherId)?.name}
+                                        Teacher: {cls.teacherId === null ? '⚠️ Vacant' : getUserById(cls.teacherId)?.name}
                                         {teacherConflict.hasConflict && ' (conflict)'}
                                       </span>
                                       <span className={
                                         translatorConflict.hasConflict
                                           ? 'text-red-600 font-medium'
-                                          : cls.translatorId === 0
+                                          : cls.translatorId === null
                                             ? 'text-orange-600 font-medium'
                                             : ''
                                       }>
-                                        Translator: {cls.translatorId === 0 ? '⚠️ Vacant' : getUserById(cls.translatorId)?.name}
+                                        Translator: {cls.translatorId === null ? '⚠️ Vacant' : getUserById(cls.translatorId)?.name}
                                         {translatorConflict.hasConflict && ' (conflict)'}
                                       </span>
                                     </div>

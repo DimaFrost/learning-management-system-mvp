@@ -34,10 +34,10 @@ export interface AppRouterProps {
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
   toggleSubjectCollapse: (courseId: number, subjectId: number) => void;
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   checkDoubleBooking: (
-    personId: number,
+    personId: string | null,
     date: string,
     hour: string,
     courses: Course[],
@@ -48,7 +48,7 @@ export interface AppRouterProps {
   deleteCourse: (id: number) => void;
   deleteSubject: (courseId: number, subjectId: number) => void;
   deleteClass: (courseId: number, subjectId: number, classId: number) => void;
-  deleteUser: (id: number) => void;
+  deleteUser: (id: string) => void;
 }
 
 export function AppRouter({
@@ -77,7 +77,7 @@ export function AppRouter({
   deleteClass,
   deleteUser,
 }: AppRouterProps) {
-  const openCheckin = (studentId: number, log?: MentorshipLog) =>
+  const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
 
   if (hasRole('administrator')) {

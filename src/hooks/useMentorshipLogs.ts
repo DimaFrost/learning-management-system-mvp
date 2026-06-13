@@ -5,11 +5,11 @@ import { initialMentorshipLogs } from '../data/seed';
 export function useMentorshipLogs() {
   const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>(initialMentorshipLogs);
 
-  function addMentorshipLog(logData: Partial<MentorshipLog>, currentUserId: number): void {
+  function addMentorshipLog(logData: Partial<MentorshipLog>, currentUserId: string): void {
     const newLog: MentorshipLog = {
       id: Math.max(...mentorshipLogs.map(l => l.id), 0) + 1,
       mentorId: logData.mentorId || currentUserId,
-      studentId: logData.studentId || 0,
+      studentId: logData.studentId!,
       type: logData.type || 'digital',
       date: logData.date || new Date().toISOString().split('T')[0],
       notes: logData.notes || '',

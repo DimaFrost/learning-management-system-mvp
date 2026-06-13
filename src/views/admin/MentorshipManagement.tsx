@@ -19,8 +19,8 @@ interface MentorshipManagementProps {
   cadenceSettings: typeof initialCadenceSettings;
   setCadenceSettings: React.Dispatch<React.SetStateAction<typeof initialCadenceSettings>>;
   mentorshipLogs: MentorshipLog[];
-  getUserById: (id: number) => User | undefined;
-  onOpenCheckin: (studentId: number) => void;
+  getUserById: (id: string | null) => User | undefined;
+  onOpenCheckin: (studentId: string) => void;
 }
 
 export function MentorshipManagement({
@@ -38,11 +38,11 @@ export function MentorshipManagement({
   const [isSaving, setIsSaving] = useState(false);
 
   const mentorshipAnalytics = useMemo(() => {
-    const studentMap = new Map<number, {
-      id: number;
+    const studentMap = new Map<string, {
+      id: string;
       studentName: string;
       mentorName: string;
-      mentorId: number;
+      mentorId: string | null;
       overallStatus: string;
       digitalStatus: any;
       inPersonStatus: any;
@@ -91,8 +91,8 @@ export function MentorshipManagement({
 
   const analytics = mentorshipAnalytics;
 
-  const handleContactMentor = (mentorId: number, studentName: string) => {
-    const mentor = getUserById(mentorId);
+  const handleContactMentor = (mentorId: string | null, studentName: string) => {
+    const mentor = mentorId ? getUserById(mentorId) : undefined;
     if (mentor) {
       alert(`Contact ${mentor.name} about ${studentName}\n\nEmail: ${mentor.email || 'No email available'}`);
     }

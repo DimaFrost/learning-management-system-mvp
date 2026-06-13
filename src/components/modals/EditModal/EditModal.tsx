@@ -19,13 +19,13 @@ interface EditModalProps {
   onAddClass: (courseId: number, subjectId: number, data: Partial<Class>) => void;
   onUpdateClass: (courseId: number, subjectId: number, classId: number, data: Partial<Class>) => void;
   onAddUser: (data: Partial<User>) => void;
-  onUpdateUser: (id: number, data: Partial<User>) => void;
-  onAssignUserToCourse: (userId: number, courseId: number) => void;
-  onRemoveUserFromCourse: (userId: number, courseId: number) => void;
+  onUpdateUser: (id: string, data: Partial<User>) => void;
+  onAssignUserToCourse: (userId: string, courseId: number) => void;
+  onRemoveUserFromCourse: (userId: string, courseId: number) => void;
   checkCourseUniqueness: (courseType: string, graduationYear: number, courses: Course[], excludeCourseId?: number) => boolean;
-  checkDoubleBooking: (personId: number, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
+  checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   getCourseOptions: (courses: Course[]) => { id: number; displayName: string; courseType: string; graduationYear: number }[];
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
 }
 
@@ -187,9 +187,9 @@ export function EditModal({
       
       // Clear conflicting role selection when changing teacher or translator
       if (field === 'teacherId' && value && prev.translatorId === value) {
-        newData.translatorId = '';
+        newData.translatorId = null;
       } else if (field === 'translatorId' && value && prev.teacherId === value) {
-        newData.teacherId = '';
+        newData.teacherId = null;
       }
       
       return newData;

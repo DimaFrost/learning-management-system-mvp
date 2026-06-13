@@ -8,10 +8,10 @@ interface MentorshipViewProps {
   courseStudents: CourseStudent[];
   courses: Course[];
   mentorshipLogs: MentorshipLog[];
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   onChangeCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
-  onOpenCheckin: (studentId: number, existingLog?: MentorshipLog) => void;
+  onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;
 }
 
 export function MentorshipView({
@@ -25,7 +25,7 @@ export function MentorshipView({
   onOpenCheckin,
 }: MentorshipViewProps) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
-  const [editingPair, setEditingPair] = useState<{ studentId: number; mentorId: number } | null>(null);
+  const [editingPair, setEditingPair] = useState<{ studentId: string; mentorId: string | null } | null>(null);
 
   const mentorshipPairs = courseStudents.map(enrollment => {
     const student = getUserById(enrollment.studentId);
@@ -87,7 +87,7 @@ export function MentorshipView({
                   </div>
                 </div>
                 <button
-                  onClick={() => setEditingPair({ studentId: student.id, mentorId: 0 })}
+                  onClick={() => setEditingPair({ studentId: student.id, mentorId: null })}
                   className="w-full bg-yellow-600 text-white px-3 py-2 rounded text-sm hover:bg-yellow-700"
                 >
                   Assign Mentor

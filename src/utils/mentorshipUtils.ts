@@ -10,7 +10,7 @@ function daysSince(dateStr: string): number {
   return Math.floor((today.getTime() - new Date(dateStr).getTime()) / (1000 * 60 * 60 * 24));
 }
 
-export const calculateOverallStatus = (studentId: number, mentorshipLogs: MentorshipLog[], cadenceSettings: CadenceSettings): 'at_risk' | 'lagging' | 'on_track' => {
+export const calculateOverallStatus = (studentId: string, mentorshipLogs: MentorshipLog[], cadenceSettings: CadenceSettings): 'at_risk' | 'lagging' | 'on_track' => {
   // Get mentorship logs for this student
   const studentLogs = mentorshipLogs.filter(log => log.studentId === studentId);
   
@@ -45,7 +45,7 @@ export const calculateOverallStatus = (studentId: number, mentorshipLogs: Mentor
   return 'on_track';
 };
 
-export const getCheckInStatus = (studentId: number, type: 'digital' | 'in_person', mentorshipLogs: MentorshipLog[], cadenceSettings: CadenceSettings): { status: string; daysSince: number | null; message: string } => {
+export const getCheckInStatus = (studentId: string, type: 'digital' | 'in_person', mentorshipLogs: MentorshipLog[], cadenceSettings: CadenceSettings): { status: string; daysSince: number | null; message: string } => {
   const checkIns = mentorshipLogs.filter(log => log.studentId === studentId && log.type === type).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const lastCheckIn = checkIns[0];
   

@@ -11,6 +11,7 @@
     "preview": "npx vite preview"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.108.1",
     "autoprefixer": "^10.4.21",
     "lucide-react": "^0.263.1",
     "postcss": "^8.5.6",

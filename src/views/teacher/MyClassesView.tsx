@@ -5,7 +5,7 @@ import { getRoleBadgeColor } from '../../utils/statusStyles';
 interface MyClassesViewProps {
   currentUser: User;
   courses: Course[];
-  getUserById: (id: number) => User | undefined;
+  getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
 }
 
