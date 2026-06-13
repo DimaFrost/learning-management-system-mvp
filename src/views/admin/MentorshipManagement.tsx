@@ -12,6 +12,7 @@ import type { User, CourseStudent, MentorshipLog } from '../../types/lms';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { getStatusColor, getStatusBadgeColor } from '../../utils/statusStyles';
 import { calculateOverallStatus, getCheckInStatus } from '../../utils/mentorshipUtils';
+import { ContactMentorModal } from '../../components/modals/ContactMentorModal';
 
 interface MentorshipManagementProps {
   users: User[];
@@ -36,6 +37,7 @@ export function MentorshipManagement({
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [tempCadenceSettings, setTempCadenceSettings] = useState(cadenceSettings);
   const [isSaving, setIsSaving] = useState(false);
+  const [contactMentor, setContactMentor] = useState<User | null>(null);
 
   const mentorshipAnalytics = useMemo(() => {
     const studentMap = new Map<string, {
@@ -90,13 +92,6 @@ export function MentorshipManagement({
   }, [courseStudents, cadenceSettings]);
 
   const analytics = mentorshipAnalytics;
-
-  const handleContactMentor = (mentorId: string | null, studentName: string) => {
-    const mentor = mentorId ? getUserById(mentorId) : undefined;
-    if (mentor) {
-      alert(`Contact ${mentor.name} about ${studentName}\n\nEmail: ${mentor.email || 'No email available'}`);
-    }
-  };
 
   const handleTempCadenceChange = useCallback((type: 'digital' | 'inPerson', field: string, value: number) => {
     setTempCadenceSettings(prev => ({
@@ -290,7 +285,7 @@ export function MentorshipManagement({
                       Log Check-in
                     </button>
                     <button
-                      onClick={() => handleContactMentor(pair.mentorId, pair.studentName)}
+                      onClick={() => setContactMentor(getUserById(pair.mentorId) ?? null)}
                       className="px-3 py-1 bg-blue-600 text-white text-xs rounded-md hover:bg-blue-700 flex items-center gap-1"
                     >
                       <Mail className="w-3 h-3" />
@@ -442,7 +437,7 @@ export function MentorshipManagement({
                         Log Check-in
                       </button>
                       <button
-                        onClick={() => handleContactMentor(pair.mentorId, pair.studentName)}
+                        onClick={() => setContactMentor(getUserById(pair.mentorId) ?? null)}
                         className="text-green-600 hover:text-green-800 text-sm font-medium flex items-center gap-1"
                       >
                         <Mail className="w-3 h-3" />
@@ -456,6 +451,11 @@ export function MentorshipManagement({
           </table>
         </div>
       </div>
+
+      <ContactMentorModal
+        mentor={contactMentor}
+        onClose={() => setContactMentor(null)}
+      />
     </div>
   );
 }
