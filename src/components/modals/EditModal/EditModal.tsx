@@ -72,6 +72,9 @@ export function EditModal({
       if (editingItem?.date) {
         initialData.date = editingItem.date;
       }
+      if (editingItem?.type === 'class') {
+        initialData.subjectId = editingItem.subjectId ?? '';
+      }
       setFormData(initialData);
     }
     setErrors({});
