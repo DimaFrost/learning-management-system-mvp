@@ -51,6 +51,13 @@ A complete, testable Learning Management System built with React and TypeScript,
 
 3. Open your browser to the provided local URL
 
+## How to run:
+4. Run in the Terminal:
+    cd learning-management-system-mvp
+    npm install (needed only once)
+    npm run dev
+# Opens http://localhost:3000
+
 ## Testing the MVP
 
 ### 1. Administrator Features

@@ -3,7 +3,7 @@ import {
   Users, 
   BookOpen, 
   Calendar, 
-  User, 
+  User as UserIcon, 
   LogOut, 
   Plus, 
   Edit3, 
@@ -31,86 +31,16 @@ import {
   Button, 
   Card
 } from 'reshaped';
-
-// Type definitions
-interface User {
-  id: number;
-  name: string;
-  email: string;
-  roles: string[];
-}
-
-interface Class {
-  id: number;
-  date: string;
-  hour: 'first' | 'second' | 'both';
-  teacherId: number;
-  translatorId: number;
-  title: string;
-}
-
-interface Subject {
-  id: number;
-  title: string;
-  description: string;
-  startDate: string;
-  duration: number; // number of classes to pre-create
-  primaryTeacherId: number;
-  classes: Class[];
-}
-
-interface Course {
-  id: number;
-  courseType: 'first_year' | 'second_year';
-  graduationYear: number;
-  startDate: string;
-  endDate: string;
-  status: string;
-  subjects: Subject[];
-}
-
-interface CourseStudent {
-  courseId: number;
-  studentId: number;
-  mentorId: number;
-  enrollmentDate: string;
-  status: string;
-}
-
-interface MentorshipLog {
-  id: number;
-  mentorId: number;
-  studentId: number;
-  type: 'digital' | 'in_person';
-  date: string;
-  notes: string;
-  duration?: number; // in minutes
-  topics?: string[]; // discussion topics
-  nextSteps?: string; // follow-up actions
-  studentProgress?: 'excellent' | 'good' | 'needs_improvement' | 'concern';
-}
-
-interface EditingItem {
-  type: 'course' | 'user' | 'log' | 'subject' | 'class';
-  data?: Course | User | Subject | Class | MentorshipLog | null;
-  studentId?: number;
-  courseId?: number;
-  subjectId?: number;
-  date?: string;
-}
-
-interface FormData {
-  [key: string]: any;
-}
+import type { User, Class, Subject, Course, CourseStudent, MentorshipLog, EditingItem, FormData } from './types/lms';
+import { initialCurrentUser, initialUsers, initialCourses, initialCourseStudents, initialMentorshipLogs, initialCadenceSettings } from './data/seed';
+import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
+import { getNextClassDate, checkDoubleBooking } from './utils/scheduling';
+import { calculateOverallStatus, getCheckInStatus } from './utils/mentorshipUtils';
+import { getStatusColor, getStatusBadgeColor, getRoleBadgeColor } from './utils/statusStyles';
 
 const LearningManagementSystem = () => {
   // Mock data - in real app this would come from your API
-  const [currentUser, setCurrentUser] = useState<User>({
-    id: 1,
-    name: 'Admin User',
-    email: 'admin@example.com',
-    roles: ['administrator', 'mentor']
-  });
+  const [currentUser, setCurrentUser] = useState<User>(initialCurrentUser);
 
   const [showRoleSelector, setShowRoleSelector] = useState(false);
   
@@ -134,155 +64,15 @@ const LearningManagementSystem = () => {
   });
 
   // Cadence settings for mentorship risk management
-  const [cadenceSettings, setCadenceSettings] = useState({
-    digital: {
-      expectedDays: 7,
-      warningDays: 10,
-      criticalDays: 14,
-      label: 'Digital Check-ins'
-    },
-    inPerson: {
-      expectedDays: 30,
-      warningDays: 35,
-      criticalDays: 45,
-      label: 'In-Person Check-ins'
-    }
-  });
+  const [cadenceSettings, setCadenceSettings] = useState(initialCadenceSettings);
 
-  const [users, setUsers] = useState<User[]>([
-    { id: 1, name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'] },
-    { id: 2, name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
-    { id: 3, name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
-    { id: 4, name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
-    { id: 5, name: 'Alice Student', email: 'alice@example.com', roles: ['student'] },
-    { id: 6, name: 'David Student', email: 'david@example.com', roles: ['student'] },
-    { id: 7, name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'] },
-    { id: 8, name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'] }
-  ]);
+  const [users, setUsers] = useState<User[]>(initialUsers);
 
-  const [courses, setCourses] = useState<Course[]>([
-    {
-      id: 1,
-      courseType: 'first_year',
-      graduationYear: 2025,
-      startDate: '2024-09-01',
-      endDate: '2024-12-15',
-      status: 'active',
-      subjects: [
-        {
-          id: 1,
-          title: 'HTML & CSS Fundamentals',
-          description: 'Learn the basics of web markup and styling',
-          startDate: '2024-09-03',
-          duration: 7,
-          primaryTeacherId: 2,
-          classes: [
-            { id: 1, date: '2024-09-03', hour: 'first', teacherId: 2, translatorId: 3, title: 'HTML Basics - Class 1' },
-            { id: 2, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 3, title: 'CSS Introduction - Class 2' },
-            { id: 3, date: '2024-09-10', hour: 'first', teacherId: 7, translatorId: 3, title: 'JavaScript Fundamentals - Class 3' },
-            { id: 4, date: '2024-09-10', hour: 'second', teacherId: 8, translatorId: 7, title: 'React Basics - Class 4' },
-            { id: 5, date: '2024-09-17', hour: 'first', teacherId: 2, translatorId: 7, title: 'Advanced CSS - Class 5' },
-            { id: 6, date: '2024-09-17', hour: 'second', teacherId: 7, translatorId: 3, title: 'Node.js Backend - Class 6' },
-            { id: 7, date: '2024-09-24', hour: 'both', teacherId: 8, translatorId: 3, title: 'Database Design - Class 7' },
-            { id: 8, date: '2024-09-24', hour: 'second', teacherId: 0, translatorId: 0, title: 'Final Project - Class 8' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 2,
-      courseType: 'first_year',
-      graduationYear: 2026,
-      startDate: '2024-09-01',
-      endDate: '2024-12-15',
-      status: 'active',
-      subjects: [
-        {
-          id: 2,
-          title: 'Python Fundamentals',
-          description: 'Learn Python programming basics',
-          startDate: '2024-09-03', // Tuesday
-          duration: 4,
-          primaryTeacherId: 7,
-          classes: [
-            { id: 8, date: '2024-09-03', hour: 'first', teacherId: 7, translatorId: 3, title: 'Python Introduction - Class 1' },
-            { id: 9, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 7, title: 'Data Types - Class 2' },
-            { id: 10, date: '2024-09-10', hour: 'first', teacherId: 8, translatorId: 3, title: 'Functions - Class 3' },
-            { id: 11, date: '2024-09-10', hour: 'second', teacherId: 7, translatorId: 3, title: 'Modules - Class 4' }
-          ]
-        }
-      ]
-    },
-    {
-      id: 3,
-      courseType: 'second_year',
-      graduationYear: 2025,
-      startDate: '2024-09-01',
-      endDate: '2024-12-15',
-      status: 'active',
-      subjects: [
-        {
-          id: 3,
-          title: 'Advanced Web Development',
-          description: 'Advanced topics in web development',
-          startDate: '2024-09-03',
-          duration: 3,
-          primaryTeacherId: 8,
-          classes: [
-            { id: 12, date: '2024-09-03', hour: 'first', teacherId: 8, translatorId: 7, title: 'Advanced React - Class 1' },
-            { id: 13, date: '2024-09-03', hour: 'second', teacherId: 2, translatorId: 3, title: 'Node.js Advanced - Class 2' },
-            { id: 14, date: '2024-09-10', hour: 'first', teacherId: 7, translatorId: 8, title: 'Database Optimization - Class 3' }
-          ]
-        }
-      ]
-    }
-  ]);
+  const [courses, setCourses] = useState<Course[]>(initialCourses);
 
-  const [courseStudents, setCourseStudents] = useState<CourseStudent[]>([
-    { courseId: 1, studentId: 5, mentorId: 4, enrollmentDate: '2024-08-15', status: 'active' },
-    { courseId: 1, studentId: 6, mentorId: 7, enrollmentDate: '2024-08-15', status: 'active' },
-    { courseId: 2, studentId: 5, mentorId: 8, enrollmentDate: '2024-08-20', status: 'active' },
-    { courseId: 3, studentId: 6, mentorId: 4, enrollmentDate: '2024-08-20', status: 'active' }
-  ]);
+  const [courseStudents, setCourseStudents] = useState<CourseStudent[]>(initialCourseStudents);
 
-  const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>([
-    {
-      id: 1,
-      mentorId: 4,
-      studentId: 5,
-      type: 'digital',
-      date: '2024-09-01',
-      notes: 'Initial check-in, discussed goals and expectations',
-      duration: 30,
-      topics: ['goal setting', 'course expectations'],
-      nextSteps: 'Review HTML basics before next class',
-      studentProgress: 'good'
-    },
-    {
-      id: 2,
-      mentorId: 4,
-      studentId: 5,
-      type: 'in_person',
-      date: '2024-09-08',
-      notes: 'In-person meeting to discuss progress and challenges',
-      duration: 45,
-      topics: ['progress review', 'challenges', 'study habits'],
-      nextSteps: 'Practice CSS fundamentals daily',
-      studentProgress: 'excellent'
-    },
-    {
-      id: 3,
-      mentorId: 7,
-      studentId: 6,
-      type: 'digital',
-      date: '2024-09-05',
-      notes: 'Weekly check-in, student is struggling with JavaScript concepts',
-      duration: 25,
-      topics: ['javascript basics', 'learning strategies'],
-      nextSteps: 'Schedule additional practice sessions',
-      studentProgress: 'needs_improvement'
-    }
-  ]);
+  const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>(initialMentorshipLogs);
 
   const [activeView, setActiveView] = useState('dashboard');
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
@@ -333,71 +123,6 @@ const LearningManagementSystem = () => {
     const duration = subjectData.duration || 1;
     const primaryTeacherId = subjectData.primaryTeacherId || 0;
     const startDate = subjectData.startDate || '';
-    
-    // Helper function to get next Tuesday or Thursday
-    const getNextClassDate = (startDate: string, classIndex: number): string => {
-      if (!startDate) return '';
-      
-      const start = new Date(startDate);
-      const dayOfWeek = start.getDay(); // 0 = Sunday, 1 = Monday, etc.
-      
-      // Find the first valid class day (Tuesday or Thursday) from start date
-      let daysToAdd = 0;
-      if (dayOfWeek === 2) {
-        // If start is Tuesday, use it as the first class day
-        daysToAdd = 0;
-      } else if (dayOfWeek === 4) {
-        // If start is Thursday, use it as the first class day
-        daysToAdd = 0;
-      } else if (dayOfWeek <= 1) {
-        // If start is Sunday or Monday, go to next Tuesday
-        daysToAdd = 2 - dayOfWeek;
-      } else if (dayOfWeek === 3) {
-        // If start is Wednesday, go to next Thursday
-        daysToAdd = 1;
-      } else {
-        // If start is Friday or Saturday, go to next Tuesday
-        daysToAdd = 9 - dayOfWeek;
-      }
-      
-      // Calculate which week and day to use based on class index
-      // Each day has 2 classes: first hour and second hour
-      // Classes are grouped by day: 0,1 = first day; 2,3 = second day; 4,5 = first day (next week); etc.
-      
-      const dayIndex = Math.floor(classIndex / 2); // Which day (0 = first day week 0, 1 = second day week 0, 2 = first day week 1, etc.)
-      const weekIndex = Math.floor(dayIndex / 2); // Which week (0, 1, 2, ...)
-      const dayInWeek = dayIndex % 2; // Which day in the week (0 = first day, 1 = second day)
-      
-      // Determine what "first day" and "second day" mean based on the start date
-      const isStartTuesday = dayOfWeek === 2;
-      const isStartThursday = dayOfWeek === 4;
-      
-      // Add weeks
-      daysToAdd += weekIndex * 7;
-      
-      // Add days based on the pattern
-      if (isStartTuesday) {
-        // Start with Tuesday, so: 0 = Tuesday, 1 = Thursday
-        if (dayInWeek === 1) {
-          daysToAdd += 2; // Thursday is 2 days after Tuesday
-        }
-      } else if (isStartThursday) {
-        // Start with Thursday, so: 0 = Thursday, 1 = Tuesday (next week)
-        if (dayInWeek === 1) {
-          daysToAdd += 5; // Tuesday is 5 days after Thursday (next week)
-        }
-      } else {
-        // Start with Tuesday (default), so: 0 = Tuesday, 1 = Thursday
-        if (dayInWeek === 1) {
-          daysToAdd += 2; // Thursday is 2 days after Tuesday
-        }
-      }
-      
-      const classDate = new Date(start);
-      classDate.setDate(start.getDate() + daysToAdd);
-      
-      return classDate.toISOString().split('T')[0];
-    };
     
     // Pre-create classes based on duration
     const preCreatedClasses: Class[] = [];
@@ -648,77 +373,6 @@ const LearningManagementSystem = () => {
     );
   };
 
-  // Double-booking prevention: Check if a person is already assigned to another class on the same date AND hour
-  const checkDoubleBooking = (personId: number, date: string, hour: 'first' | 'second' | 'both', excludeClassId?: number): { hasConflict: boolean; conflictingClasses: any[] } => {
-    const conflictingClasses: any[] = [];
-    
-    // Check all classes across all courses for the same date AND hour
-    courses.forEach(course => {
-      course.subjects.forEach(subject => {
-        subject.classes.forEach(cls => {
-          // Skip the class being edited
-          if (excludeClassId && cls.id === excludeClassId) return;
-          
-          // Check if this class is on the same date and involves the same person
-          if (cls.date === date && (cls.teacherId === personId || cls.translatorId === personId)) {
-            // Check hour conflicts
-            const hasHourConflict = 
-              hour === 'both' || cls.hour === 'both' || hour === cls.hour;
-            
-            if (hasHourConflict) {
-              conflictingClasses.push({
-                ...cls,
-                courseName: getCourseDisplayName(course),
-                subjectTitle: subject.title,
-                role: cls.teacherId === personId ? 'Teacher' : 'Translator'
-              });
-            }
-          }
-        });
-      });
-    });
-    
-    return {
-      hasConflict: conflictingClasses.length > 0,
-      conflictingClasses
-    };
-  };
-
-  // Helper function to get course display name
-  const getCourseDisplayName = (course: Course): string => {
-    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-    return `${courseTypeLabel} ${course.graduationYear}`;
-  };
-
-  // Helper function to check if course type + graduation year combination already exists
-  const checkCourseUniqueness = (courseType: 'first_year' | 'second_year', graduationYear: number, excludeCourseId?: number): boolean => {
-    return courses.some(course => 
-      course.id !== excludeCourseId && 
-      course.courseType === courseType && 
-      course.graduationYear === graduationYear
-    );
-  };
-
-  // Helper function to get unique course options for dropdowns
-  const getCourseOptions = () => {
-    // Sort courses by graduation year first, then by course type within each year
-    const sortedCourses = [...courses].sort((a, b) => {
-      // First, sort by graduation year (ascending)
-      if (a.graduationYear !== b.graduationYear) {
-        return a.graduationYear - b.graduationYear;
-      }
-      // Then sort by course type (first_year comes before second_year)
-      return a.courseType === 'first_year' ? -1 : 1;
-    });
-    
-    return sortedCourses.map(course => ({
-      id: course.id,
-      displayName: getCourseDisplayName(course),
-      courseType: course.courseType,
-      graduationYear: course.graduationYear
-    }));
-  };
-
   // Helper functions for collapsible sections
   const toggleCourseCollapse = (courseId: number) => {
     const newCollapsed = new Set(collapsedCourses);
@@ -739,62 +393,6 @@ const LearningManagementSystem = () => {
       newCollapsed.add(key);
     }
     setCollapsedSubjects(newCollapsed);
-  };
-
-  // Cadence calculation functions
-  const calculateOverallStatus = (studentId: number) => {
-    const today = new Date();
-    const daysSince = (date: string) => Math.floor((today.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Get mentorship logs for this student
-    const studentLogs = mentorshipLogs.filter(log => log.studentId === studentId);
-    
-    // Get last check-ins by type
-    const digitalCheckIns = studentLogs.filter(c => c.type === 'digital').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const inPersonCheckIns = studentLogs.filter(c => c.type === 'in_person').sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    
-    const lastDigital = digitalCheckIns[0];
-    const lastInPerson = inPersonCheckIns[0];
-    
-    // Calculate individual status scores (0 = At Risk, 1 = Lagging, 2 = On Track)
-    const getStatusScore = (checkIn: any, type: 'digital' | 'in_person') => {
-      if (!checkIn) return 0; // No check-ins = At Risk
-      
-      const days = daysSince(checkIn.date);
-      const settings = type === 'digital' ? cadenceSettings.digital : cadenceSettings.inPerson;
-      
-      if (days >= settings.criticalDays) return 0; // At Risk
-      if (days >= settings.warningDays) return 1; // Lagging
-      return 2; // On Track
-    };
-    
-    const digitalScore = getStatusScore(lastDigital, 'digital');
-    const inPersonScore = getStatusScore(lastInPerson, 'in_person');
-    
-    // Calculate weighted average (50/50 split)
-    const overallScore = (digitalScore * 0.5) + (inPersonScore * 0.5);
-    
-    // Convert back to status
-    if (overallScore <= 0.5) return 'at_risk';
-    if (overallScore <= 1.5) return 'lagging';
-    return 'on_track';
-  };
-
-  const getCheckInStatus = (studentId: number, type: 'digital' | 'in_person') => {
-    const today = new Date();
-    const daysSince = (date: string) => Math.floor((today.getTime() - new Date(date).getTime()) / (1000 * 60 * 60 * 24));
-    
-    const checkIns = mentorshipLogs.filter(log => log.studentId === studentId && log.type === type).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const lastCheckIn = checkIns[0];
-    
-    if (!lastCheckIn) return { status: 'at_risk', daysSince: 999, message: 'No check-ins' };
-    
-    const days = daysSince(lastCheckIn.date);
-    const settings = type === 'digital' ? cadenceSettings.digital : cadenceSettings.inPerson;
-    
-    if (days >= settings.criticalDays) return { status: 'at_risk', daysSince: days, message: `${days}d overdue` };
-    if (days >= settings.warningDays) return { status: 'lagging', daysSince: days, message: `${days}d ago` };
-    return { status: 'on_track', daysSince: days, message: `${days}d ago` };
   };
 
   const updateCadenceSetting = (type: 'digital' | 'inPerson', field: string, value: number) => {
@@ -1341,8 +939,8 @@ const LearningManagementSystem = () => {
                     <div className="space-y-2">
                     {subject.classes.map(cls => {
                       // Check for conflicts for this class
-                      const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
-                      const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
+                      const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
+                      const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
                       const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
                       const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
                       const needsAttention = hasConflict || hasVacantRoles;
@@ -1535,8 +1133,8 @@ const LearningManagementSystem = () => {
                         </h5>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           {courseClasses.map(cls => {
-                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, cls.id);
-                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, cls.id);
+                            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
+                            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
                             const hasVacantRoles = cls.teacherId === 0 || cls.translatorId === 0 || !cls.date;
                             const needsAttention = hasConflict || hasVacantRoles;
@@ -1664,7 +1262,7 @@ const LearningManagementSystem = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center">
                     <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-500" />
+                      <UserIcon className="h-4 w-4 text-gray-500" />
                     </div>
                     <div className="ml-4">
                       <div className="text-sm font-medium text-gray-900">{user.name}</div>
@@ -1841,7 +1439,7 @@ const LearningManagementSystem = () => {
                 <div key={student.id} className="bg-white rounded-lg border border-yellow-200 p-4">
                   <div className="flex items-center space-x-3 mb-3">
                     <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                      <User className="w-4 h-4 text-yellow-600" />
+                      <UserIcon className="w-4 h-4 text-yellow-600" />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-gray-900">{student.name}</p>
@@ -1874,7 +1472,7 @@ const LearningManagementSystem = () => {
                     <div className="space-y-2">
                       <div className="flex items-center space-x-3">
                         <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
-                          <User className="w-4 h-4 text-blue-600" />
+                          <UserIcon className="w-4 h-4 text-blue-600" />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{pair.student?.name}</p>
@@ -2130,9 +1728,9 @@ const LearningManagementSystem = () => {
         const studentId = cs.studentId;
         const student = getUserById(studentId);
         const mentor = getUserById(cs.mentorId);
-        const overallStatus = calculateOverallStatus(studentId);
-        const digitalStatus = getCheckInStatus(studentId, 'digital');
-        const inPersonStatus = getCheckInStatus(studentId, 'in_person');
+        const overallStatus = calculateOverallStatus(studentId, mentorshipLogs, cadenceSettings);
+        const digitalStatus = getCheckInStatus(studentId, 'digital', mentorshipLogs, cadenceSettings);
+        const inPersonStatus = getCheckInStatus(studentId, 'in_person', mentorshipLogs, cadenceSettings);
         
         if (studentMap.has(studentId)) {
           // Add course to existing student
@@ -2207,24 +1805,6 @@ const LearningManagementSystem = () => {
         setTempCadenceSettings(cadenceSettings);
       }
     }, [showCadenceSettings, cadenceSettings]);
-
-    const getStatusColor = (status: string) => {
-      switch (status) {
-        case 'at_risk': return 'text-red-600 bg-red-50 border-red-200';
-        case 'lagging': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
-        case 'on_track': return 'text-green-600 bg-green-50 border-green-200';
-        default: return 'text-gray-600 bg-gray-50 border-gray-200';
-      }
-    };
-
-    const getStatusBadgeColor = (status: string) => {
-      switch (status) {
-        case 'at_risk': return 'bg-red-100 text-red-800';
-        case 'lagging': return 'bg-yellow-100 text-yellow-800';
-        case 'on_track': return 'bg-green-100 text-green-800';
-        default: return 'bg-gray-100 text-gray-800';
-      }
-    };
 
     return (
       <div className="space-y-6">
@@ -2583,14 +2163,6 @@ const LearningManagementSystem = () => {
       return [];
     };
 
-    const getRoleBadgeColor = (role: string) => {
-      switch (role) {
-        case 'Teacher': return 'bg-blue-100 text-blue-800';
-        case 'Translator': return 'bg-green-100 text-green-800';
-        default: return 'bg-gray-100 text-gray-800';
-      }
-    };
-
     const ClassCard = ({ cls, isUpcoming }: { cls: any, isUpcoming: boolean }) => {
       const myRoles = getMyRoleInClass(cls);
       const isPast = !isUpcoming;
@@ -2615,7 +2187,7 @@ const LearningManagementSystem = () => {
                   <span className={isPast ? 'text-gray-400' : ''}>{cls.date}</span>
                 </div>
                 <div className="flex items-center space-x-1">
-                  <User className="w-4 h-4" />
+                  <UserIcon className="w-4 h-4" />
                   <span className={isPast ? 'text-gray-400' : ''}>Teacher: {getUserById(cls.teacherId)?.name}</span>
                 </div>
                 <div className="flex items-center space-x-1">
@@ -3061,7 +2633,7 @@ const LearningManagementSystem = () => {
       // Check for duplicate course type + graduation year combination
       if (editingItem && editingItem.type === 'course' && formData.courseType && formData.graduationYear) {
         const excludeCourseId = editingItem.data ? (editingItem.data as Course).id : undefined;
-        const isDuplicate = checkCourseUniqueness(formData.courseType, formData.graduationYear, excludeCourseId);
+        const isDuplicate = checkCourseUniqueness(formData.courseType, formData.graduationYear, courses, excludeCourseId);
         
         if (isDuplicate) {
           const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
@@ -3099,7 +2671,7 @@ const LearningManagementSystem = () => {
         
         // Check teacher conflicts
         if (formData.teacherId) {
-          const teacherConflict = checkDoubleBooking(formData.teacherId, formData.date, formData.hour, excludeClassId);
+          const teacherConflict = checkDoubleBooking(formData.teacherId, formData.date, formData.hour, courses, excludeClassId);
           if (teacherConflict.hasConflict) {
             const conflictDetails = teacherConflict.conflictingClasses
               .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
@@ -3110,7 +2682,7 @@ const LearningManagementSystem = () => {
         
         // Check translator conflicts
         if (formData.translatorId) {
-          const translatorConflict = checkDoubleBooking(formData.translatorId, formData.date, formData.hour, excludeClassId);
+          const translatorConflict = checkDoubleBooking(formData.translatorId, formData.date, formData.hour, courses, excludeClassId);
           if (translatorConflict.hasConflict) {
             const conflictDetails = translatorConflict.conflictingClasses
               .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
@@ -3405,7 +2977,7 @@ const LearningManagementSystem = () => {
                 >
                   <option value="">No teacher assigned (Vacant)</option>
                   {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => {
-                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(teacher.id, formData.date, formData.hour).hasConflict : false;
+                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(teacher.id, formData.date, formData.hour, courses).hasConflict : false;
                     return (
                       <option 
                         key={teacher.id} 
@@ -3429,7 +3001,7 @@ const LearningManagementSystem = () => {
                 >
                   <option value="">No translator assigned (Vacant)</option>
                   {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => {
-                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour).hasConflict : false;
+                    const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour, courses).hasConflict : false;
                     return (
                       <option 
                         key={translator.id} 
@@ -3544,7 +3116,7 @@ const LearningManagementSystem = () => {
                           className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         >
                           <option value="">Select a course</option>
-                          {getCourseOptions().map(course => (
+                          {getCourseOptions(courses).map(course => (
                             <option key={course.id} value={course.id}>
                               {course.displayName}
                             </option>
