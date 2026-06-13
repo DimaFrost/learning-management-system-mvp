@@ -32,247 +32,33 @@ import {
   Card
 } from 'reshaped';
 import type { User, Class, Subject, Course, CourseStudent, MentorshipLog, EditingItem, FormData } from './types/lms';
-import { initialCurrentUser, initialUsers, initialCourses, initialCourseStudents, initialMentorshipLogs, initialCadenceSettings } from './data/seed';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
-import { getNextClassDate, checkDoubleBooking } from './utils/scheduling';
+import { checkDoubleBooking } from './utils/scheduling';
 import { calculateOverallStatus, getCheckInStatus } from './utils/mentorshipUtils';
 import { getStatusColor, getStatusBadgeColor, getRoleBadgeColor } from './utils/statusStyles';
+import { useConfirmation } from './hooks/useConfirmation';
+import { useCurrentUser } from './hooks/useCurrentUser';
+import { useNavigation } from './hooks/useNavigation';
+import { useUsers } from './hooks/useUsers';
+import { useCourses } from './hooks/useCourses';
+import { useEnrollments } from './hooks/useEnrollments';
+import { useMentorshipLogs } from './hooks/useMentorshipLogs';
+import { useCadenceSettings } from './hooks/useCadenceSettings';
 
 const LearningManagementSystem = () => {
-  // Mock data - in real app this would come from your API
-  const [currentUser, setCurrentUser] = useState<User>(initialCurrentUser);
+  const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
+  const { courses, setCourses, collapsedCourses, collapsedSubjects, addCourse, updateCourse,
+    deleteCourse, addSubject, updateSubject, deleteSubject, addClass, updateClass, deleteClass,
+    toggleCourseCollapse, toggleSubjectCollapse } = useCourses(showConfirmation);
+  const { currentUser, setCurrentUser, showRoleSelector, setShowRoleSelector, hasRole } = useCurrentUser();
+  const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
+  const { users, setUsers, getUserById, addUser, updateUser } = useUsers();
+  const { courseStudents, setCourseStudents, assignUserToCourse, removeUserFromCourse }
+    = useEnrollments(showConfirmation, users, courses);
+  const { mentorshipLogs, setMentorshipLogs, addMentorshipLog, updateMentorshipLog } = useMentorshipLogs();
+  const { cadenceSettings, setCadenceSettings } = useCadenceSettings();
 
-  const [showRoleSelector, setShowRoleSelector] = useState(false);
-  
-  // State for collapsible sections in curriculum overview
-  const [collapsedCourses, setCollapsedCourses] = useState<Set<number>>(new Set());
-  const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
-  
-  // State for confirmation dialogs
-  const [confirmationDialog, setConfirmationDialog] = useState<{
-    isOpen: boolean;
-    title: string;
-    message: string;
-    confirmText: string;
-    onConfirm: () => void;
-  }>({
-    isOpen: false,
-    title: '',
-    message: '',
-    confirmText: 'Delete',
-    onConfirm: () => {}
-  });
-
-  // Cadence settings for mentorship risk management
-  const [cadenceSettings, setCadenceSettings] = useState(initialCadenceSettings);
-
-  const [users, setUsers] = useState<User[]>(initialUsers);
-
-  const [courses, setCourses] = useState<Course[]>(initialCourses);
-
-  const [courseStudents, setCourseStudents] = useState<CourseStudent[]>(initialCourseStudents);
-
-  const [mentorshipLogs, setMentorshipLogs] = useState<MentorshipLog[]>(initialMentorshipLogs);
-
-  const [activeView, setActiveView] = useState('dashboard');
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
-  const [activeCurriculumTab, setActiveCurriculumTab] = useState('overview');
-
-  // Helper functions
-  const getUserById = (id: number): User | undefined => users.find(u => u.id === id);
-  const hasRole = (role: string): boolean => currentUser.roles.includes(role);
-
-  // CRUD Operations
-  const addCourse = (courseData: Partial<Course>) => {
-    const newCourse: Course = {
-      id: Math.max(...courses.map(c => c.id)) + 1,
-      courseType: courseData.courseType || 'first_year',
-      graduationYear: courseData.graduationYear || new Date().getFullYear() + 1,
-      startDate: courseData.startDate || '',
-      endDate: courseData.endDate || '',
-      status: courseData.status || 'active',
-      subjects: []
-    };
-    setCourses([...courses, newCourse]);
-  };
-
-  const updateCourse = (id: number, updates: Partial<Course>) => {
-    setCourses(courses.map(course => 
-      course.id === id ? { ...course, ...updates } : course
-    ));
-  };
-
-  const deleteCourse = (id: number) => {
-    const course = courses.find(c => c.id === id);
-    if (!course) return;
-    
-    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
-    
-    showConfirmation(
-      'Delete Course',
-      `Are you sure you want to delete "${courseName}"? This will also delete all subjects and classes within this course. This action cannot be undone.`,
-      'Delete Course',
-      () => {
-        setCourses(courses.filter(course => course.id !== id));
-      }
-    );
-  };
-
-  const addSubject = (courseId: number, subjectData: Partial<Subject>) => {
-    const duration = subjectData.duration || 1;
-    const primaryTeacherId = subjectData.primaryTeacherId || 0;
-    const startDate = subjectData.startDate || '';
-    
-    // Pre-create classes based on duration
-    const preCreatedClasses: Class[] = [];
-    for (let i = 1; i <= duration; i++) {
-      preCreatedClasses.push({
-        id: Math.max(...courses.flatMap(c => c.subjects.flatMap(s => s.classes.map(cls => cls.id))), 0) + i,
-        title: `${subjectData.title || ''} - Class ${i}`,
-        date: getNextClassDate(startDate, i - 1), // i-1 because we want 0-based indexing
-        hour: i % 2 === 1 ? 'first' : 'second', // Alternate between first and second hour
-        teacherId: primaryTeacherId,
-        translatorId: 0 // Vacant by default
-      });
-    }
-
-    const newSubject: Subject = {
-      id: Math.max(...courses.flatMap(c => c.subjects.map(s => s.id)), 0) + 1,
-      title: subjectData.title || '',
-      description: subjectData.description || '',
-      startDate: startDate,
-      duration: duration,
-      primaryTeacherId: primaryTeacherId,
-      classes: preCreatedClasses
-    };
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? { ...course, subjects: [...course.subjects, newSubject] }
-        : course
-    ));
-  };
-
-  const updateSubject = (courseId: number, subjectId: number, updates: Partial<Subject>) => {
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? {
-            ...course, 
-            subjects: course.subjects.map(subject => 
-              subject.id === subjectId ? { ...subject, ...updates } : subject
-            )
-          }
-        : course
-    ));
-  };
-
-  const deleteSubject = (courseId: number, subjectId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    const subject = course?.subjects.find(s => s.id === subjectId);
-    if (!course || !subject) return;
-    
-    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
-    
-    showConfirmation(
-      'Delete Subject',
-      `Are you sure you want to delete "${subject.title}" from "${courseName}"? This will also delete all classes within this subject. This action cannot be undone.`,
-      'Delete Subject',
-      () => {
-        setCourses(courses.map(course => 
-          course.id === courseId 
-            ? { ...course, subjects: course.subjects.filter(s => s.id !== subjectId) }
-            : course
-        ));
-      }
-    );
-  };
-
-  const addClass = (courseId: number, subjectId: number, classData: Partial<Class>) => {
-    const newClass: Class = {
-      id: Math.max(...courses.flatMap(c => c.subjects.flatMap(s => s.classes.map(cls => cls.id))), 0) + 1,
-      title: classData.title || '',
-      date: classData.date || '',
-      hour: classData.hour || 'first',
-      teacherId: classData.teacherId || 0,
-      translatorId: classData.translatorId || 0
-    };
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? {
-            ...course, 
-            subjects: course.subjects.map(subject => 
-              subject.id === subjectId 
-                ? { ...subject, classes: [...subject.classes, newClass] }
-                : subject
-            )
-          }
-        : course
-    ));
-  };
-
-  const updateClass = (courseId: number, subjectId: number, classId: number, updates: Partial<Class>) => {
-    setCourses(courses.map(course => 
-      course.id === courseId 
-        ? {
-            ...course, 
-            subjects: course.subjects.map(subject => 
-              subject.id === subjectId 
-                ? {
-                    ...subject, 
-                    classes: subject.classes.map(cls => 
-                      cls.id === classId ? { ...cls, ...updates } : cls
-                    )
-                  }
-                : subject
-            )
-          }
-        : course
-    ));
-  };
-
-  const deleteClass = (courseId: number, subjectId: number, classId: number) => {
-    const course = courses.find(c => c.id === courseId);
-    const subject = course?.subjects.find(s => s.id === subjectId);
-    const classToDelete = subject?.classes.find(cls => cls.id === classId);
-    if (!course || !subject || !classToDelete) return;
-    
-    showConfirmation(
-      'Delete Class',
-      `Are you sure you want to delete "${classToDelete.title}" from "${subject.title}"? This action cannot be undone.`,
-      'Delete Class',
-      () => {
-        setCourses(courses.map(course => 
-          course.id === courseId 
-            ? {
-                ...course, 
-                subjects: course.subjects.map(subject => 
-                  subject.id === subjectId 
-                    ? { ...subject, classes: subject.classes.filter(cls => cls.id !== classId) }
-                    : subject
-                )
-              }
-            : course
-        ));
-      }
-    );
-  };
-
-  const addUser = (userData: Partial<User>) => {
-    const newUser: User = {
-      id: Math.max(...users.map(u => u.id)) + 1,
-      name: userData.name || '',
-      email: userData.email || '',
-      roles: userData.roles || []
-    };
-    setUsers([...users, newUser]);
-  };
-
-  const updateUser = (id: number, updates: Partial<User>) => {
-    setUsers(users.map(user => 
-      user.id === id ? { ...user, ...updates } : user
-    ));
-  };
 
   const deleteUser = (id: number) => {
     const user = users.find(u => u.id === id);
@@ -292,109 +78,6 @@ const LearningManagementSystem = () => {
     );
   };
 
-  // Mentorship Log CRUD Operations
-  const addMentorshipLog = (logData: Partial<MentorshipLog>) => {
-    const newLog: MentorshipLog = {
-      id: Math.max(...mentorshipLogs.map(l => l.id), 0) + 1,
-      mentorId: logData.mentorId || currentUser.id,
-      studentId: logData.studentId || 0,
-      type: logData.type || 'digital',
-      date: logData.date || new Date().toISOString().split('T')[0],
-      notes: logData.notes || '',
-      duration: logData.duration,
-      topics: logData.topics || [],
-      nextSteps: logData.nextSteps,
-      studentProgress: logData.studentProgress
-    };
-    setMentorshipLogs([...mentorshipLogs, newLog]);
-  };
-
-  const updateMentorshipLog = (id: number, updates: Partial<MentorshipLog>) => {
-    setMentorshipLogs(mentorshipLogs.map(log => 
-      log.id === id ? { ...log, ...updates } : log
-    ));
-  };
-
-  const deleteMentorshipLog = (id: number) => {
-    const log = mentorshipLogs.find(l => l.id === id);
-    if (!log) return;
-    
-    const student = getUserById(log.studentId);
-    const mentor = getUserById(log.mentorId);
-    
-    showConfirmation(
-      'Delete Check-in',
-      `Are you sure you want to delete this ${log.type} check-in between ${mentor?.name} and ${student?.name}? This action cannot be undone.`,
-      'Delete Check-in',
-      () => {
-        setMentorshipLogs(mentorshipLogs.filter(log => log.id !== id));
-      }
-    );
-  };
-
-  // Course assignment operations
-  const assignUserToCourse = (userId: number, courseId: number, mentorId?: number) => {
-    const existingAssignment = courseStudents.find(cs => cs.courseId === courseId && cs.studentId === userId);
-    if (existingAssignment) {
-      // Update existing assignment
-      setCourseStudents(courseStudents.map(cs => 
-        cs.courseId === courseId && cs.studentId === userId 
-          ? { ...cs, mentorId: mentorId || cs.mentorId }
-          : cs
-      ));
-    } else {
-      // Create new assignment
-      const newAssignment: CourseStudent = {
-        courseId,
-        studentId: userId,
-        mentorId: mentorId || 0,
-        enrollmentDate: new Date().toISOString().split('T')[0],
-        status: 'active'
-      };
-      setCourseStudents([...courseStudents, newAssignment]);
-    }
-  };
-
-  const removeUserFromCourse = (userId: number, courseId: number) => {
-    const user = getUserById(userId);
-    const course = courses.find(c => c.id === courseId);
-    if (!user || !course) return;
-    
-    const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-    const courseName = `${courseTypeLabel} ${course.graduationYear}`;
-    
-    showConfirmation(
-      'Remove from Course',
-      `Are you sure you want to remove "${user.name}" from "${courseName}"? This will also remove their mentorship assignment for this course. This action cannot be undone.`,
-      'Remove from Course',
-      () => {
-        setCourseStudents(courseStudents.filter(cs => !(cs.courseId === courseId && cs.studentId === userId)));
-      }
-    );
-  };
-
-  // Helper functions for collapsible sections
-  const toggleCourseCollapse = (courseId: number) => {
-    const newCollapsed = new Set(collapsedCourses);
-    if (newCollapsed.has(courseId)) {
-      newCollapsed.delete(courseId);
-    } else {
-      newCollapsed.add(courseId);
-    }
-    setCollapsedCourses(newCollapsed);
-  };
-
-  const toggleSubjectCollapse = (courseId: number, subjectId: number) => {
-    const key = `${courseId}-${subjectId}`;
-    const newCollapsed = new Set(collapsedSubjects);
-    if (newCollapsed.has(key)) {
-      newCollapsed.delete(key);
-    } else {
-      newCollapsed.add(key);
-    }
-    setCollapsedSubjects(newCollapsed);
-  };
-
   const updateCadenceSetting = (type: 'digital' | 'inPerson', field: string, value: number) => {
     setCadenceSettings(prev => ({
       ...prev,
@@ -403,22 +86,6 @@ const LearningManagementSystem = () => {
         [field]: value
       }
     }));
-  };
-
-  // Helper function to show confirmation dialog
-  const showConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => {
-    setConfirmationDialog({
-      isOpen: true,
-      title,
-      message,
-      confirmText,
-      onConfirm
-    });
-  };
-
-  // Helper function to close confirmation dialog
-  const closeConfirmation = () => {
-    setConfirmationDialog(prev => ({ ...prev, isOpen: false }));
   };
 
   const handleContactMentor = (mentorId: number, studentName: string) => {
@@ -3272,7 +2939,7 @@ const LearningManagementSystem = () => {
           ...logData,
           mentorId: currentUser.id,
           studentId: editingItem?.studentId || 0
-        });
+        }, currentUser.id);
       }
 
       setEditingItem(null);
