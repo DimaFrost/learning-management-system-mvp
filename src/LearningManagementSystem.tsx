@@ -42,9 +42,9 @@ const LearningManagementSystem = () => {
       `Are you sure you want to delete user "${user.name}"? This will also remove them from all courses and delete all their mentorship logs. This action cannot be undone.`,
       'Delete User',
       () => {
-        setUsers(users.filter(user => user.id !== id));
-        setCourseStudents(courseStudents.filter(cs => cs.studentId !== id));
-        setMentorshipLogs(mentorshipLogs.filter(log => log.studentId !== id && log.mentorId !== id));
+        setUsers(prev => prev.filter(u => u.id !== id));
+        setCourseStudents(prev => prev.filter(cs => cs.studentId !== id));
+        setMentorshipLogs(prev => prev.filter(log => log.studentId !== id && log.mentorId !== id));
       }
     );
   };

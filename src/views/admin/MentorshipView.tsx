@@ -22,7 +22,7 @@ export function MentorshipView({
   getUserById,
   getCourseDisplayName,
   onChangeCourseStudents,
-  onOpenCheckin: _onOpenCheckin,
+  onOpenCheckin,
 }: MentorshipViewProps) {
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
   const [editingPair, setEditingPair] = useState<{ studentId: number; mentorId: number } | null>(null);
