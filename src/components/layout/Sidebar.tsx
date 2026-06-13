@@ -11,9 +11,9 @@ export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
     { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator'] },
     { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
     { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
+    { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
     { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
     { id: 'mentorship-management', label: 'Mentorship Management', icon: TrendingUp, roles: ['administrator'] },
-    { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
     { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
     { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
   ];
