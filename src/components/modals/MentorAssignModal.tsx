@@ -31,7 +31,10 @@ export function MentorAssignModal({
     return null;
   }
 
-  const isAssignMode = !courseStudents.some(cs => cs.studentId === studentId);
+  const enrollment = courseStudents.find(cs => cs.studentId === studentId && !cs.mentorId)
+    ?? courseStudents.find(cs => cs.studentId === studentId);
+  const hasEnrollment = enrollment != null;
+  const isAssignMode = !enrollment?.mentorId;
   const availableMentors = users.filter(u => u.roles.includes('mentor'));
   const student = users.find(u => u.id === studentId);
 
@@ -63,19 +66,27 @@ export function MentorAssignModal({
             </p>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Select New Mentor</label>
-            <select
-              value={newMentorId}
-              onChange={(e) => setNewMentorId(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            >
-              <option value="">Select a mentor</option>
-              {availableMentors.map(mentor => (
-                <option key={mentor.id} value={mentor.id}>{mentor.name}</option>
-              ))}
-            </select>
-          </div>
+          {!hasEnrollment && (
+            <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
+              This student must be enrolled in a course before a mentor can be assigned.
+            </div>
+          )}
+
+          {hasEnrollment && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Select New Mentor</label>
+              <select
+                value={newMentorId}
+                onChange={(e) => setNewMentorId(e.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              >
+                <option value="">Select a mentor</option>
+                {availableMentors.map(mentor => (
+                  <option key={mentor.id} value={mentor.id}>{mentor.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex justify-end space-x-3 pt-4">
             <button
@@ -84,17 +95,19 @@ export function MentorAssignModal({
             >
               Cancel
             </button>
-            <button
-              onClick={async () => {
-                if (newMentorId) {
-                  await onAssign(studentId, newMentorId);
-                }
-              }}
-              disabled={!newMentorId}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
-            >
-              {isAssignMode ? 'Assign' : 'Change'} Mentor
-            </button>
+            {hasEnrollment && (
+              <button
+                onClick={async () => {
+                  if (newMentorId) {
+                    await onAssign(studentId, newMentorId);
+                  }
+                }}
+                disabled={!newMentorId}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
+              >
+                {isAssignMode ? 'Assign' : 'Change'} Mentor
+              </button>
+            )}
           </div>
         </div>
       </div>

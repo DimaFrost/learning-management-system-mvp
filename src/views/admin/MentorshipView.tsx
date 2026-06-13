@@ -27,7 +27,9 @@ export function MentorshipView({
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
   const [editingPair, setEditingPair] = useState<{ studentId: string; mentorId: string | null; courseId?: number } | null>(null);
 
-  const mentorshipPairs = courseStudents.map(enrollment => {
+  const mentorshipPairs = courseStudents
+    .filter(enrollment => enrollment.mentorId)
+    .map(enrollment => {
     const student = getUserById(enrollment.studentId);
     const mentor = getUserById(enrollment.mentorId);
     const course = courses.find(c => c.id === enrollment.courseId);
@@ -47,8 +49,15 @@ export function MentorshipView({
   });
 
   const allStudents = users.filter(u => u.roles.includes('student'));
-  const studentsWithMentors = new Set(courseStudents.map(cs => cs.studentId));
-  const studentsWithoutMentors = allStudents.filter(student => !studentsWithMentors.has(student.id));
+  const studentsWithoutMentors = allStudents.filter(student => {
+    const enrollments = courseStudents.filter(cs => cs.studentId === student.id);
+    if (enrollments.length === 0) return true;
+    return !enrollments.some(cs => cs.mentorId);
+  });
+
+  const getEnrollmentForStudent = (studentId: string) =>
+    courseStudents.find(cs => cs.studentId === studentId && !cs.mentorId)
+    ?? courseStudents.find(cs => cs.studentId === studentId);
 
   const togglePairExpansion = (pairKey: string) => {
     const newExpanded = new Set(expandedPairs);
@@ -87,7 +96,14 @@ export function MentorshipView({
                   </div>
                 </div>
                 <button
-                  onClick={() => setEditingPair({ studentId: student.id, mentorId: null })}
+                  onClick={() => {
+                    const enrollment = getEnrollmentForStudent(student.id);
+                    setEditingPair({
+                      studentId: student.id,
+                      mentorId: null,
+                      courseId: enrollment?.courseId,
+                    });
+                  }}
                   className="w-full bg-yellow-600 text-white px-3 py-2 rounded text-sm hover:bg-yellow-700"
                 >
                   Assign Mentor
@@ -265,8 +281,11 @@ export function MentorshipView({
         onClose={() => setEditingPair(null)}
         onAssign={async (studentId, mentorId) => {
           const courseId = editingPair?.courseId
-            ?? courseStudents.find(cs => cs.studentId === studentId)?.courseId;
-          if (courseId == null) return;
+            ?? getEnrollmentForStudent(studentId)?.courseId;
+          if (courseId == null) {
+            alert('This student must be enrolled in a course before a mentor can be assigned.');
+            return;
+          }
 
           await onAssignMentor(studentId, courseId, mentorId);
           setEditingPair(null);
