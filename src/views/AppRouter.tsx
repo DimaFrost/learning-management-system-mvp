@@ -1,0 +1,249 @@
+import React from 'react';
+import type {
+  User,
+  Class,
+  Subject,
+  Course,
+  CourseStudent,
+  MentorshipLog,
+  EditingItem,
+} from '../types/lms';
+import { initialCadenceSettings } from '../data/seed';
+import { MyCourseView } from './student/MyCourseView';
+import { MyClassesView } from './teacher/MyClassesView';
+import { AdminDashboard } from './admin/AdminDashboard';
+import { CurriculumView } from './admin/CurriculumView';
+import { UsersView } from './admin/UsersView';
+import { MentorshipView } from './admin/MentorshipView';
+import { MentorshipManagement } from './admin/MentorshipManagement';
+import { MentorDashboard } from './mentor/MentorDashboard';
+
+export interface AppRouterProps {
+  activeView: string;
+  hasRole: (role: string) => boolean;
+  activeCurriculumTab: string;
+  onCurriculumTabChange: (tab: string) => void;
+  currentUser: User;
+  courses: Course[];
+  users: User[];
+  courseStudents: CourseStudent[];
+  mentorshipLogs: MentorshipLog[];
+  cadenceSettings: typeof initialCadenceSettings;
+  setCadenceSettings: React.Dispatch<React.SetStateAction<typeof initialCadenceSettings>>;
+  collapsedCourses: Set<number>;
+  collapsedSubjects: Set<string>;
+  toggleCourseCollapse: (id: number) => void;
+  toggleSubjectCollapse: (courseId: number, subjectId: number) => void;
+  getUserById: (id: number) => User | undefined;
+  getCourseDisplayName: (course: Course) => string;
+  checkDoubleBooking: (
+    personId: number,
+    date: string,
+    hour: string,
+    courses: Course[],
+    excludeClassId?: number
+  ) => { hasConflict: boolean; conflictingClasses: Class[] };
+  setEditingItem: React.Dispatch<React.SetStateAction<EditingItem | null>>;
+  setCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
+  deleteCourse: (id: number) => void;
+  deleteSubject: (courseId: number, subjectId: number) => void;
+  deleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  deleteUser: (id: number) => void;
+}
+
+export function AppRouter({
+  activeView,
+  hasRole,
+  activeCurriculumTab,
+  onCurriculumTabChange,
+  currentUser,
+  courses,
+  users,
+  courseStudents,
+  mentorshipLogs,
+  cadenceSettings,
+  setCadenceSettings,
+  collapsedCourses,
+  collapsedSubjects,
+  toggleCourseCollapse,
+  toggleSubjectCollapse,
+  getUserById,
+  getCourseDisplayName,
+  checkDoubleBooking,
+  setEditingItem,
+  setCourseStudents,
+  deleteCourse,
+  deleteSubject,
+  deleteClass,
+  deleteUser,
+}: AppRouterProps) {
+  const openCheckin = (studentId: number, log?: MentorshipLog) =>
+    setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
+
+  if (hasRole('administrator')) {
+    switch (activeView) {
+      case 'curriculum':
+        return (
+          <CurriculumView
+            activeCurriculumTab={activeCurriculumTab}
+            onCurriculumTabChange={onCurriculumTabChange}
+            courses={courses}
+            collapsedCourses={collapsedCourses}
+            collapsedSubjects={collapsedSubjects}
+            toggleCourseCollapse={toggleCourseCollapse}
+            toggleSubjectCollapse={toggleSubjectCollapse}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            checkDoubleBooking={checkDoubleBooking}
+            onEditCourse={(course?) => setEditingItem({ type: 'course', data: course ?? null })}
+            onEditSubject={(courseId, subject?) =>
+              setEditingItem({ type: 'subject', data: subject ?? null, courseId })
+            }
+            onEditClass={(courseId, subjectId, classData, date?) => {
+              if (classData) {
+                setEditingItem({ type: 'class', data: classData, courseId, subjectId });
+              } else if (date) {
+                setEditingItem({ type: 'class', data: null, date });
+              } else {
+                setEditingItem({ type: 'class', data: null, courseId, subjectId });
+              }
+            }}
+            onDeleteCourse={deleteCourse}
+            onDeleteSubject={deleteSubject}
+            onDeleteClass={deleteClass}
+          />
+        );
+      case 'users':
+        return (
+          <UsersView
+            users={users}
+            courses={courses}
+            courseStudents={courseStudents}
+            getCourseDisplayName={getCourseDisplayName}
+            onEditUser={(user?) => setEditingItem({ type: 'user', data: user ?? null })}
+            onDeleteUser={deleteUser}
+          />
+        );
+      case 'mentorship':
+        return (
+          <MentorshipView
+            users={users}
+            courseStudents={courseStudents}
+            courses={courses}
+            mentorshipLogs={mentorshipLogs}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            onChangeCourseStudents={setCourseStudents}
+            onOpenCheckin={openCheckin}
+          />
+        );
+      case 'mentorship-management':
+        return (
+          <MentorshipManagement
+            users={users}
+            courseStudents={courseStudents}
+            cadenceSettings={cadenceSettings}
+            setCadenceSettings={setCadenceSettings}
+            mentorshipLogs={mentorshipLogs}
+            getUserById={getUserById}
+            onOpenCheckin={(studentId) => setEditingItem({ type: 'log', studentId })}
+          />
+        );
+      case 'dashboard':
+        return (
+          <AdminDashboard
+            courses={courses}
+            users={users}
+            courseStudents={courseStudents}
+            mentorshipLogs={mentorshipLogs}
+          />
+        );
+    }
+  }
+
+  if (hasRole('mentor')) {
+    switch (activeView) {
+      case 'mentor-dashboard':
+        return (
+          <MentorDashboard
+            currentUser={currentUser}
+            courseStudents={courseStudents}
+            courses={courses}
+            mentorshipLogs={mentorshipLogs}
+            cadenceSettings={cadenceSettings}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            onOpenCheckin={openCheckin}
+          />
+        );
+    }
+  }
+
+  if (hasRole('teacher') || hasRole('translator')) {
+    switch (activeView) {
+      case 'my-classes':
+        return (
+          <MyClassesView
+            currentUser={currentUser}
+            courses={courses}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+          />
+        );
+    }
+  }
+
+  if (hasRole('student')) {
+    switch (activeView) {
+      case 'my-course':
+      default:
+        return (
+          <MyCourseView
+            currentUser={currentUser}
+            courseStudents={courseStudents}
+            courses={courses}
+            mentorshipLogs={mentorshipLogs}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+          />
+        );
+    }
+  }
+
+  if (hasRole('administrator')) {
+    return (
+      <AdminDashboard
+        courses={courses}
+        users={users}
+        courseStudents={courseStudents}
+        mentorshipLogs={mentorshipLogs}
+      />
+    );
+  }
+  if (hasRole('mentor')) {
+    return (
+      <MentorDashboard
+        currentUser={currentUser}
+        courseStudents={courseStudents}
+        courses={courses}
+        mentorshipLogs={mentorshipLogs}
+        cadenceSettings={cadenceSettings}
+        getUserById={getUserById}
+        getCourseDisplayName={getCourseDisplayName}
+        onOpenCheckin={openCheckin}
+      />
+    );
+  }
+  if (hasRole('teacher') || hasRole('translator')) {
+    return (
+      <MyClassesView
+        currentUser={currentUser}
+        courses={courses}
+        getUserById={getUserById}
+        getCourseDisplayName={getCourseDisplayName}
+      />
+    );
+  }
+
+  return <div>No content available</div>;
+}
