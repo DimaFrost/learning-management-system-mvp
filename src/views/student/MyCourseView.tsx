@@ -33,13 +33,6 @@ export function MyCourseView({
   return (
     <div className="space-y-6">
       {myCourses.map(({ enrollment, course, mentor }) => {
-        const courseLogs = mentorshipLogs.filter(
-          log => log.studentId === currentUser.id && log.mentorId === enrollment.mentorId
-        );
-        const latestLog = courseLogs.sort(
-          (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-        )[0];
-
         return (
           <div key={`${enrollment.courseId}-${enrollment.studentId}`} className="space-y-6">
             <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
@@ -49,18 +42,8 @@ export function MyCourseView({
               {mentor && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
                   <h3 className="font-medium text-blue-900 mb-2">Your Mentor</h3>
-                  <div className="flex items-center space-x-4">
-                    <div className="flex-1">
-                      <p className="text-blue-700 font-medium">{mentor.name}</p>
-                      <p className="text-blue-600 text-sm">{mentor.email}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-blue-600 text-sm">Total Check-ins: {courseLogs.length}</p>
-                      {latestLog && (
-                        <p className="text-blue-600 text-sm">Last: {latestLog.date}</p>
-                      )}
-                    </div>
-                  </div>
+                  <p className="text-blue-700 font-medium">{mentor.name}</p>
+                  <p className="text-blue-600 text-sm">{mentor.email}</p>
                 </div>
               )}
             </div>
