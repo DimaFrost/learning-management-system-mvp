@@ -4,7 +4,7 @@ import type { MentorshipLog } from '../types/lms';
 
 type MentorshipLogRow = {
   id: number;
-  mentor_id: string;
+  mentor_id: string | null;
   student_id: string;
   type: 'digital' | 'in_person';
   date: string;
@@ -18,7 +18,7 @@ type MentorshipLogRow = {
 function mapRowToMentorshipLog(row: MentorshipLogRow): MentorshipLog {
   return {
     id: row.id,
-    mentorId: row.mentor_id,
+    mentorId: row.mentor_id ?? null,
     studentId: row.student_id,
     type: row.type,
     date: row.date,
@@ -82,7 +82,7 @@ export function useMentorshipLogs() {
     setError(null);
     try {
       const { error: insertError } = await supabase.from('mentorship_logs').insert({
-        mentor_id: log.mentorId || defaultMentorId,
+        mentor_id: log.mentorId ?? defaultMentorId,
         student_id: log.studentId,
         type: log.type || 'digital',
         date: log.date || new Date().toISOString().split('T')[0],

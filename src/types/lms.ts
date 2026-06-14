@@ -44,7 +44,7 @@ export interface CourseStudent {
 
 export interface MentorshipLog {
   id: number;
-  mentorId: string;
+  mentorId: string | null;
   studentId: string;
   type: 'digital' | 'in_person';
   date: string;
