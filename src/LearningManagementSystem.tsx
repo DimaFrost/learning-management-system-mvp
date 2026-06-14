@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { EditingItem } from './types/lms';
+import type { EditingItem, UserRole } from './types/lms';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
 import { checkDoubleBooking } from './utils/scheduling';
 import { useConfirmation } from './hooks/useConfirmation';
@@ -19,6 +19,7 @@ import { AuthScreen } from './components/AuthScreen';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
+import { DevRolePanel } from './components/dev/DevRolePanel';
 
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
@@ -51,8 +52,8 @@ const LearningManagementSystem = () => {
     cadenceError;
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
-
-  const hasRole = (role: string) => currentUser?.roles.includes(role) ?? false;
+  const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
+  const [showDevPanel, setShowDevPanel] = useState(false);
 
   const handleDeleteUser = (id: string) => {
     deleteUser(id, showConfirmation, () => {
@@ -88,9 +89,21 @@ const LearningManagementSystem = () => {
     );
   }
 
+  const effectiveUser = previewRoles
+    ? { ...currentUser, roles: previewRoles as UserRole[] }
+    : currentUser;
+
+  const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
+
   return (
     <div className="min-h-screen bg-gray-100">
-      <Header currentUser={currentUser} onSignOut={signOut} />
+      <Header
+        currentUser={effectiveUser}
+        onSignOut={signOut}
+        isDev={currentUser.roles.includes('dev')}
+        previewRoles={previewRoles}
+        onOpenDevPanel={() => setShowDevPanel(true)}
+      />
       <div className="flex">
         <Sidebar activeView={activeView} onNavigate={setActiveView} hasRole={hasRole} />
         <main className="flex-1 p-8">
@@ -99,7 +112,7 @@ const LearningManagementSystem = () => {
             hasRole={hasRole}
             activeCurriculumTab={activeCurriculumTab}
             onCurriculumTabChange={setActiveCurriculumTab}
-            currentUser={currentUser}
+            currentUser={effectiveUser}
             courses={courses}
             users={users}
             courseStudents={courseStudents}
@@ -155,6 +168,13 @@ const LearningManagementSystem = () => {
         getUserById={getUserById}
       />
       <ConfirmationModal dialog={confirmationDialog} onClose={closeConfirmation} />
+      <DevRolePanel
+        isOpen={showDevPanel}
+        currentPreviewRoles={previewRoles}
+        realRoles={currentUser.roles}
+        onApply={(roles) => { setPreviewRoles(roles); setShowDevPanel(false); }}
+        onClose={() => setShowDevPanel(false)}
+      />
     </div>
   );
 };

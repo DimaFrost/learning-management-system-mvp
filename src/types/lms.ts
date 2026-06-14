@@ -1,8 +1,16 @@
+export type UserRole =
+  | 'administrator'
+  | 'teacher'
+  | 'translator'
+  | 'mentor'
+  | 'student'
+  | 'dev';
+
 export interface User {
   id: string;
   name: string;
   email: string;
-  roles: string[];
+  roles: UserRole[];
 }
 
 export interface Class {

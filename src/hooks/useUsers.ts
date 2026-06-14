@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User } from '../types/lms';
+import type { User, UserRole } from '../types/lms';
 
 type ShowConfirmation = (
   title: string,
@@ -19,7 +19,7 @@ function mapProfileToUser(row: {
     id: row.id,
     name: row.name,
     email: row.email,
-    roles: row.roles,
+    roles: row.roles as UserRole[],
   };
 }
 
