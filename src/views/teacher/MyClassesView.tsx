@@ -1,4 +1,5 @@
-import { Calendar, User as UserIcon, MessageSquare } from 'lucide-react';
+import { useState } from 'react';
+import { Calendar, User as UserIcon, MessageSquare, ChevronDown } from 'lucide-react';
 import type { User, Class, Course } from '../../types/lms';
 import { getRoleBadgeColor } from '../../utils/statusStyles';
 
@@ -45,6 +46,9 @@ export function MyClassesView({
   // Sort upcoming classes by date (ascending), past classes by date (descending)
   upcomingClasses.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
   pastClasses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+  const [upcomingExpanded, setUpcomingExpanded] = useState(true);
+  const [pastExpanded, setPastExpanded] = useState(false);
 
   const getMyRoleInClass = (cls: any) => {
     // A person can only have one role per class (teacher OR translator, not both)
@@ -113,30 +117,48 @@ export function MyClassesView({
       {/* Upcoming Classes */}
       {upcomingClasses.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <button
+            type="button"
+            onClick={() => setUpcomingExpanded(prev => !prev)}
+            className="text-lg font-semibold text-gray-900 mb-4 flex items-center w-full text-left"
+          >
+            <ChevronDown
+              className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${upcomingExpanded ? 'rotate-180' : ''}`}
+            />
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
             Upcoming Classes ({upcomingClasses.length})
-          </h3>
-          <div className="space-y-4">
-            {upcomingClasses.map(cls => (
-              <ClassCard key={cls.id} cls={cls} isUpcoming={true} />
-            ))}
-          </div>
+          </button>
+          {upcomingExpanded && (
+            <div className="space-y-4">
+              {upcomingClasses.map(cls => (
+                <ClassCard key={cls.id} cls={cls} isUpcoming={true} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
       {/* Past Classes */}
       {pastClasses.length > 0 && (
         <div>
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+          <button
+            type="button"
+            onClick={() => setPastExpanded(prev => !prev)}
+            className="text-lg font-semibold text-gray-900 mb-4 flex items-center w-full text-left"
+          >
+            <ChevronDown
+              className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${pastExpanded ? 'rotate-180' : ''}`}
+            />
             <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
             Past Classes ({pastClasses.length})
-          </h3>
-          <div className="space-y-4">
-            {pastClasses.map(cls => (
-              <ClassCard key={cls.id} cls={cls} isUpcoming={false} />
-            ))}
-          </div>
+          </button>
+          {pastExpanded && (
+            <div className="space-y-4">
+              {pastClasses.map(cls => (
+                <ClassCard key={cls.id} cls={cls} isUpcoming={false} />
+              ))}
+            </div>
+          )}
         </div>
       )}
 
