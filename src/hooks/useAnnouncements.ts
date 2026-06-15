@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Announcement, AnnouncementComment, User, CourseStudent } from '../types/lms';
 
@@ -81,22 +81,22 @@ function mapUpdatesToRow(updates: Partial<Announcement>) {
 
 function filterAnnouncementsForUser(
   announcements: Announcement[],
-  currentUser: User,
+  filterUser: User,
   courseStudents: CourseStudent[]
 ): Announcement[] {
   let filtered = announcements;
 
-  if (!currentUser.roles.includes('administrator')) {
+  if (!filterUser.roles.includes('administrator')) {
     filtered = filtered.filter(
       announcement =>
         announcement.courseId === null ||
         courseStudents.some(
-          cs => cs.studentId === currentUser.id && cs.courseId === announcement.courseId
+          cs => cs.studentId === filterUser.id && cs.courseId === announcement.courseId
         )
     );
   }
 
-  const isStudentOnly = currentUser.roles
+  const isStudentOnly = filterUser.roles
     .filter(r => r !== 'dev')
     .every(r => r === 'student');
 
@@ -107,8 +107,12 @@ function filterAnnouncementsForUser(
   return filtered;
 }
 
-export function useAnnouncements(currentUser: User, courseStudents: CourseStudent[]) {
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+export function useAnnouncements(
+  fetchUser: User,
+  filterUser: User,
+  courseStudents: CourseStudent[]
+) {
+  const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -135,18 +139,23 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
       const mapped = (data ?? []).map(row =>
         mapAnnouncementRow(row as unknown as SupabaseAnnouncementRow)
       );
-      setAnnouncements(filterAnnouncementsForUser(mapped, currentUser, courseStudents));
+      setAllAnnouncements(mapped);
     } catch (err) {
       setError('Failed to load announcements');
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, [currentUser, courseStudents]);
+  }, [fetchUser.id]);
 
   useEffect(() => {
     refetchAnnouncements();
   }, [refetchAnnouncements]);
+
+  const announcements = useMemo(
+    () => filterAnnouncementsForUser(allAnnouncements, filterUser, courseStudents),
+    [allAnnouncements, filterUser, courseStudents]
+  );
 
   const addAnnouncement = useCallback(
     async (data: {
@@ -164,7 +173,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
           title: data.title,
           content: data.content,
           type: data.type,
-          author_id: currentUser.id,
+          author_id: fetchUser.id,
           course_id: data.courseId,
           target_roles: data.targetRoles,
           is_pinned: data.isPinned,
@@ -179,7 +188,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
         console.error(err);
       }
     },
-    [currentUser.id, refetchAnnouncements]
+    [fetchUser.id, refetchAnnouncements]
   );
 
   const updateAnnouncement = useCallback(
@@ -258,7 +267,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
       try {
         const { error: insertError } = await supabase.from('announcement_comments').insert({
           announcement_id: announcementId,
-          author_id: currentUser.id,
+          author_id: fetchUser.id,
           content,
         });
 
@@ -270,7 +279,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
         console.error(err);
       }
     },
-    [currentUser.id, refetchAnnouncements]
+    [fetchUser.id, refetchAnnouncements]
   );
 
   const deleteComment = useCallback(

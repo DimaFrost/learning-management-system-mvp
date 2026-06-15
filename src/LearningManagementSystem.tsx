@@ -32,6 +32,10 @@ const LearningManagementSystem = () => {
     addClass, updateClass, deleteClass, toggleCourseCollapse, toggleSubjectCollapse }
     = useCourses(showConfirmation);
   const { currentUser, loading: authLoading, error, signInWithGoogle, signOut } = useAuth();
+  const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
+  const effectiveUser = previewRoles && currentUser
+    ? { ...currentUser, roles: previewRoles as UserRole[] }
+    : (currentUser ?? PLACEHOLDER_USER);
   const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
   const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
@@ -50,15 +54,14 @@ const LearningManagementSystem = () => {
     togglePin,
     addComment,
     deleteComment,
-  } = useAnnouncements(currentUser ?? PLACEHOLDER_USER, courseStudents);
+  } = useAnnouncements(currentUser ?? PLACEHOLDER_USER, effectiveUser, courseStudents);
 
   const isLoading =
     coursesLoading ||
     usersLoading ||
     logsLoading ||
     enrollmentsLoading ||
-    cadenceLoading ||
-    announcementsLoading;
+    cadenceLoading;
 
   const globalError =
     coursesError ||
@@ -69,7 +72,6 @@ const LearningManagementSystem = () => {
     announcementsError;
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
-  const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
 
   const handleDeleteUser = (id: string) => {
@@ -121,10 +123,6 @@ const LearningManagementSystem = () => {
       </div>
     );
   }
-
-  const effectiveUser = previewRoles
-    ? { ...currentUser, roles: previewRoles as UserRole[] }
-    : currentUser;
 
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
 

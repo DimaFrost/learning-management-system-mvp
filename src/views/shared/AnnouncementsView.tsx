@@ -4,7 +4,6 @@ import type { Announcement, User, Course } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
-import { LoadingSpinner } from '../../components/ui/LoadingSpinner';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -350,8 +349,13 @@ export function AnnouncementsView({
       </div>
 
       {loading ? (
-        <div className="py-12">
-          <LoadingSpinner message="Loading announcements..." />
+        <div className="flex flex-col items-center justify-center py-16 min-h-[200px] rounded-lg border border-gray-200 bg-white">
+          <div
+            className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
+            role="status"
+            aria-label="Loading announcements"
+          />
+          <p className="text-sm text-gray-400 mt-3">Loading announcements...</p>
         </div>
       ) : filteredList.length === 0 ? (
         <div className="text-center py-12">
