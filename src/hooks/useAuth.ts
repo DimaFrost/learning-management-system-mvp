@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
 
@@ -54,6 +54,13 @@ export function useAuth() {
         name: data.name,
         email: data.email,
         roles: data.roles,
+        firstName: data.first_name ?? '',
+        lastName: data.last_name ?? '',
+        notificationPreferences: data.notification_preferences ?? {
+          announcements: true,
+          roleChange: true,
+          enrollment: true,
+        },
       });
     } catch (err) {
       setError('Failed to load user profile');
@@ -78,5 +85,11 @@ export function useAuth() {
     setCurrentUser(null);
   };
 
-  return { currentUser, loading, error, signInWithGoogle, signOut };
+  const refetchProfile = useCallback(async () => {
+    if (currentUser) {
+      await fetchProfile(currentUser.id);
+    }
+  }, [currentUser]);
+
+  return { currentUser, loading, error, signInWithGoogle, signOut, refetchProfile };
 }

@@ -19,6 +19,7 @@ import { MentorshipView } from './admin/MentorshipView';
 import { MentorshipManagement } from './admin/MentorshipManagement';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { AnnouncementsView } from './shared/AnnouncementsView';
+import { SettingsView } from './shared/SettingsView';
 
 export interface AppRouterProps {
   activeView: string;
@@ -69,6 +70,7 @@ export interface AppRouterProps {
   togglePin: (id: number, current: boolean) => Promise<void>;
   addComment: (announcementId: number, content: string) => Promise<void>;
   deleteComment: (commentId: number) => void;
+  onProfileUpdated: () => void;
 }
 
 export function AppRouter({
@@ -106,9 +108,19 @@ export function AppRouter({
   togglePin,
   addComment,
   deleteComment,
+  onProfileUpdated,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
+
+  if (activeView === 'settings') {
+    return (
+      <SettingsView
+        currentUser={currentUser}
+        onProfileUpdated={onProfileUpdated}
+      />
+    );
+  }
 
   if (activeView === 'announcements') {
     return (

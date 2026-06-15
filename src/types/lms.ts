@@ -11,6 +11,13 @@ export interface User {
   name: string;
   email: string;
   roles: UserRole[];
+  firstName: string;
+  lastName: string;
+  notificationPreferences: {
+    announcements: boolean;
+    roleChange: boolean;
+    enrollment: boolean;
+  };
 }
 
 export interface Class {

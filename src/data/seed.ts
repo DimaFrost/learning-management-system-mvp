@@ -15,15 +15,21 @@ export const initialCadenceSettings = {
   }
 };
 
+const defaultNotificationPreferences = {
+  announcements: true,
+  roleChange: true,
+  enrollment: true,
+};
+
 export const initialUsers: User[] = [
-  { id: 'user-1', name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'] },
-  { id: 'user-2', name: 'John Teacher', email: 'john@example.com', roles: ['teacher'] },
-  { id: 'user-3', name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'] },
-  { id: 'user-4', name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'] },
-  { id: 'user-5', name: 'Alice Student', email: 'alice@example.com', roles: ['student'] },
-  { id: 'user-6', name: 'David Student', email: 'david@example.com', roles: ['student'] },
-  { id: 'user-7', name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'] },
-  { id: 'user-8', name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'] }
+  { id: 'user-1', name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-2', name: 'John Teacher', email: 'john@example.com', roles: ['teacher'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-3', name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-4', name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-5', name: 'Alice Student', email: 'alice@example.com', roles: ['student'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-6', name: 'David Student', email: 'david@example.com', roles: ['student'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-7', name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-8', name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'], firstName: '', lastName: '', notificationPreferences: defaultNotificationPreferences }
 ];
 
 export const initialCourses: Course[] = [

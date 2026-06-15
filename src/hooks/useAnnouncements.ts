@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Announcement, AnnouncementComment, User, CourseStudent } from '../types/lms';
+import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (
   title: string,
@@ -183,12 +184,19 @@ export function useAnnouncements(
         if (insertError) throw insertError;
 
         await refetchAnnouncements();
+
+        sendNotification('announcement', {
+          title: data.title,
+          content: data.content,
+          authorName: fetchUser.name,
+          isStaffOnly: data.isStaffOnly ?? false,
+        }).catch(console.error);
       } catch (err) {
         setError('Failed to add announcement');
         console.error(err);
       }
     },
-    [fetchUser.id, refetchAnnouncements]
+    [fetchUser.id, fetchUser.name, refetchAnnouncements]
   );
 
   const updateAnnouncement = useCallback(

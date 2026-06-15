@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User, UserRole } from '../types/lms';
+import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (
   title: string,
@@ -14,12 +15,26 @@ function mapProfileToUser(row: {
   name: string;
   email: string;
   roles: string[];
+  first_name?: string | null;
+  last_name?: string | null;
+  notification_preferences?: {
+    announcements: boolean;
+    roleChange: boolean;
+    enrollment: boolean;
+  } | null;
 }): User {
   return {
     id: row.id,
     name: row.name,
     email: row.email,
     roles: row.roles as UserRole[],
+    firstName: row.first_name ?? '',
+    lastName: row.last_name ?? '',
+    notificationPreferences: row.notification_preferences ?? {
+      announcements: true,
+      roleChange: true,
+      enrollment: true,
+    },
   };
 }
 
@@ -75,7 +90,12 @@ export function useUsers() {
     try {
       const { error: updateError } = await supabase
         .from('profiles')
-        .update({ name: user.name, roles: user.roles })
+        .update({
+          name: user.name,
+          roles: user.roles,
+          ...(user.firstName !== undefined && { first_name: user.firstName }),
+          ...(user.lastName !== undefined && { last_name: user.lastName }),
+        })
         .eq('id', user.id);
 
       if (updateError) throw updateError;
@@ -89,6 +109,7 @@ export function useUsers() {
 
   const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
     setError(null);
+    const affected = users.find(u => u.id === id);
     try {
       const { error: updateError } = await supabase
         .from('profiles')
@@ -96,18 +117,27 @@ export function useUsers() {
           name: updates.name,
           email: updates.email,
           roles: updates.roles,
+          ...(updates.firstName !== undefined && { first_name: updates.firstName }),
+          ...(updates.lastName !== undefined && { last_name: updates.lastName }),
         })
         .eq('id', id);
 
       if (updateError) throw updateError;
       await refetchUsers();
 
-      await refetchUsers();
+      if (updates.roles && affected) {
+        sendNotification('role_change', {
+          userId: affected.id,
+          email: affected.email,
+          name: affected.name,
+          newRoles: updates.roles,
+        }).catch(console.error);
+      }
     } catch (err) {
       setError('Failed to update user');
       console.error(err);
     }
-  }, [refetchUsers]);
+  }, [users, refetchUsers]);
 
   const deleteUser = useCallback((
     id: string,

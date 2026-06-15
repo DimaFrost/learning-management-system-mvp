@@ -1,4 +1,4 @@
-import { Megaphone, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap } from 'lucide-react';
+import { Megaphone, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
@@ -35,8 +35,8 @@ export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
     }`;
 
   return (
-    <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200">
-      <nav className="mt-8">
+    <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200 flex flex-col">
+      <nav className="mt-8 flex-1">
         {universalMenuItems.map(item => (
           <button
             key={item.id}
@@ -58,6 +58,15 @@ export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
           </button>
         ))}
       </nav>
+      <div className="border-t border-gray-200 mt-4">
+        <button
+          onClick={() => onNavigate('settings')}
+          className={navButtonClass('settings')}
+        >
+          <Settings className="w-4 h-4 mr-3" />
+          Settings
+        </button>
+      </div>
     </div>
   );
 }

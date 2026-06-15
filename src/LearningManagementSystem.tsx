@@ -23,7 +23,21 @@ import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
 import { DevRolePanel } from './components/dev/DevRolePanel';
 
-const PLACEHOLDER_USER: User = { id: '', name: '', email: '', roles: [] };
+const DEFAULT_NOTIFICATION_PREFERENCES = {
+  announcements: true,
+  roleChange: true,
+  enrollment: true,
+};
+
+const PLACEHOLDER_USER: User = {
+  id: '',
+  name: '',
+  email: '',
+  roles: [],
+  firstName: '',
+  lastName: '',
+  notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
+};
 
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
@@ -31,7 +45,7 @@ const LearningManagementSystem = () => {
     addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
     addClass, updateClass, deleteClass, toggleCourseCollapse, toggleSubjectCollapse }
     = useCourses(showConfirmation);
-  const { currentUser, loading: authLoading, error, signInWithGoogle, signOut } = useAuth();
+  const { currentUser, loading: authLoading, error, signInWithGoogle, signOut, refetchProfile } = useAuth();
   const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
   const effectiveUser = previewRoles && currentUser
     ? { ...currentUser, roles: previewRoles as UserRole[] }
@@ -40,7 +54,7 @@ const LearningManagementSystem = () => {
   const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
     assignUserToCourse, removeUserFromCourse, refetchEnrollments }
-    = useEnrollments(showConfirmation);
+    = useEnrollments(showConfirmation, users, courses);
   const { mentorshipLogs, loading: logsLoading, error: logsError, addMentorshipLog, updateMentorshipLog }
     = useMentorshipLogs();
   const { cadenceSettings, setCadenceSettings, loading: cadenceLoading, error: cadenceError } = useCadenceSettings();
@@ -173,6 +187,7 @@ const LearningManagementSystem = () => {
             togglePin={togglePin}
             addComment={addComment}
             deleteComment={deleteComment}
+            onProfileUpdated={refetchProfile}
           />
         </main>
       </div>

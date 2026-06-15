@@ -2,10 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { CourseStudent, User, Course } from '../types/lms';
 import { getCourseDisplayName } from '../utils/courseUtils';
+import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => void;
 
-export function useEnrollments(showConfirmation: ShowConfirmation) {
+export function useEnrollments(
+  showConfirmation: ShowConfirmation,
+  users: User[],
+  courses: Course[]
+) {
   const [courseStudents, setCourseStudents] = useState<CourseStudent[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,6 +64,17 @@ export function useEnrollments(showConfirmation: ShowConfirmation) {
     }
 
     await refetchEnrollments();
+
+    const enrolledStudent = users.find(u => u.id === userId);
+    const enrolledCourse = courses.find(c => c.id === courseId);
+    if (enrolledStudent && enrolledCourse) {
+      sendNotification('enrollment', {
+        studentId: enrolledStudent.id,
+        studentEmail: enrolledStudent.email,
+        studentName: enrolledStudent.name,
+        courseName: getCourseDisplayName(enrolledCourse),
+      }).catch(console.error);
+    }
   }
 
   function removeUserFromCourse(
