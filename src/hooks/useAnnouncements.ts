@@ -28,6 +28,7 @@ type SupabaseAnnouncementRow = {
   course_id: number | null;
   target_roles: string[] | null;
   is_pinned: boolean;
+  is_staff_only: boolean;
   created_at: string;
   updated_at: string;
   author: SupabaseProfileJoin;
@@ -56,6 +57,7 @@ function mapAnnouncementRow(row: SupabaseAnnouncementRow): Announcement {
     courseId: row.course_id,
     targetRoles: row.target_roles,
     isPinned: row.is_pinned,
+    isStaffOnly: row.is_staff_only,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     comments: (row.comments ?? []).map(mapCommentRow),
@@ -71,6 +73,7 @@ function mapUpdatesToRow(updates: Partial<Announcement>) {
   if (updates.courseId !== undefined) row.course_id = updates.courseId;
   if (updates.targetRoles !== undefined) row.target_roles = updates.targetRoles;
   if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
+  if (updates.isStaffOnly !== undefined) row.is_staff_only = updates.isStaffOnly;
   if (updates.createdAt !== undefined) row.created_at = updates.createdAt;
   if (updates.updatedAt !== undefined) row.updated_at = updates.updatedAt;
   return row;
@@ -81,17 +84,27 @@ function filterAnnouncementsForUser(
   currentUser: User,
   courseStudents: CourseStudent[]
 ): Announcement[] {
-  if (currentUser.roles.includes('administrator')) {
-    return announcements;
+  let filtered = announcements;
+
+  if (!currentUser.roles.includes('administrator')) {
+    filtered = filtered.filter(
+      announcement =>
+        announcement.courseId === null ||
+        courseStudents.some(
+          cs => cs.studentId === currentUser.id && cs.courseId === announcement.courseId
+        )
+    );
   }
 
-  return announcements.filter(
-    announcement =>
-      announcement.courseId === null ||
-      courseStudents.some(
-        cs => cs.studentId === currentUser.id && cs.courseId === announcement.courseId
-      )
-  );
+  const isStudentOnly = currentUser.roles
+    .filter(r => r !== 'dev')
+    .every(r => r === 'student');
+
+  if (isStudentOnly) {
+    filtered = filtered.filter(a => !a.isStaffOnly);
+  }
+
+  return filtered;
 }
 
 export function useAnnouncements(currentUser: User, courseStudents: CourseStudent[]) {
@@ -106,7 +119,8 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
       const { data, error: fetchError } = await supabase
         .from('announcements')
         .select(`
-          *,
+          id, title, content, type, author_id, course_id, target_roles,
+          is_pinned, is_staff_only, created_at, updated_at,
           author:profiles!author_id (id, name),
           comments:announcement_comments (
             id, announcement_id, content, created_at,
@@ -119,7 +133,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
       if (fetchError) throw fetchError;
 
       const mapped = (data ?? []).map(row =>
-        mapAnnouncementRow(row as SupabaseAnnouncementRow)
+        mapAnnouncementRow(row as unknown as SupabaseAnnouncementRow)
       );
       setAnnouncements(filterAnnouncementsForUser(mapped, currentUser, courseStudents));
     } catch (err) {
@@ -142,6 +156,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
       courseId: number | null;
       targetRoles: string[] | null;
       isPinned: boolean;
+      isStaffOnly?: boolean;
     }) => {
       setError(null);
       try {
@@ -153,6 +168,7 @@ export function useAnnouncements(currentUser: User, courseStudents: CourseStuden
           course_id: data.courseId,
           target_roles: data.targetRoles,
           is_pinned: data.isPinned,
+          is_staff_only: data.isStaffOnly ?? false,
         });
 
         if (insertError) throw insertError;

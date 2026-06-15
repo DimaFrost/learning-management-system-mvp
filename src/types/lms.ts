@@ -82,6 +82,7 @@ export interface Announcement {
   courseId: number | null; // null = school-wide
   targetRoles: string[] | null;
   isPinned: boolean;
+  isStaffOnly: boolean;
   createdAt: string;
   updatedAt: string;
   comments?: AnnouncementComment[];

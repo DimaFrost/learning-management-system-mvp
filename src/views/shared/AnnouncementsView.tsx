@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Megaphone, Pin, Pencil, Trash, Plus } from 'lucide-react';
+import { Megaphone, Pin, Pencil, Trash, Plus, Lock } from 'lucide-react';
 import type { Announcement, User, Course } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
@@ -18,6 +18,7 @@ interface AnnouncementsViewProps {
     courseId: number | null;
     targetRoles: string[] | null;
     isPinned: boolean;
+    isStaffOnly: boolean;
   }) => Promise<void>;
   onUpdate: (id: number, updates: Partial<Announcement>) => Promise<void>;
   onDelete: (id: number) => void;
@@ -95,6 +96,7 @@ function AnnouncementCard({
       : undefined;
   const comments = announcement.comments ?? [];
   const commentCount = comments.length;
+  const canManage = isAdmin || announcement.authorId === currentUser.id;
 
   const handlePostComment = async () => {
     const content = commentDraft.trim();
@@ -112,6 +114,12 @@ function AnnouncementCard({
           >
             {typeBadge.emoji} {typeBadge.label}
           </span>
+          {announcement.isStaffOnly && (
+            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+              <Lock className="w-3 h-3" />
+              Staff only
+            </span>
+          )}
           {course && (
             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
               {getCourseDisplayName(course)}
@@ -123,15 +131,17 @@ function AnnouncementCard({
             <Pin className="w-4 h-4 text-amber-600" aria-label="Pinned" />
           )}
           {isAdmin && (
+            <button
+              type="button"
+              onClick={() => onTogglePin(announcement.id, announcement.isPinned)}
+              className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100"
+              aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
+            >
+              <Pin className="w-4 h-4" />
+            </button>
+          )}
+          {canManage && (
             <>
-              <button
-                type="button"
-                onClick={() => onTogglePin(announcement.id, announcement.isPinned)}
-                className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100"
-                aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
-              >
-                <Pin className="w-4 h-4" />
-              </button>
               <button
                 type="button"
                 onClick={() => onEdit(announcement)}
@@ -246,6 +256,8 @@ export function AnnouncementsView({
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
 
   const isAdmin = hasRole(currentUser, 'administrator');
+  const canCreateAnnouncement =
+    isAdmin || hasRole(currentUser, 'teacher');
 
   const filteredList =
     filter === 'all' ? announcements : announcements.filter(a => a.type === filter);
@@ -308,7 +320,7 @@ export function AnnouncementsView({
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
-        {isAdmin && (
+        {canCreateAnnouncement && (
           <button
             type="button"
             onClick={openCreateModal}
@@ -370,6 +382,7 @@ export function AnnouncementsView({
         isOpen={modalOpen}
         editingAnnouncement={editingAnnouncement}
         courses={courses}
+        currentUser={currentUser}
         onClose={closeModal}
         onSubmit={async data => {
           if (editingAnnouncement) {

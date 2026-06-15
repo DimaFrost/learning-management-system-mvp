@@ -62,6 +62,7 @@ export interface AppRouterProps {
     courseId: number | null;
     targetRoles: string[] | null;
     isPinned: boolean;
+    isStaffOnly: boolean;
   }) => Promise<void>;
   updateAnnouncement: (id: number, updates: Partial<Announcement>) => Promise<void>;
   deleteAnnouncement: (id: number) => void;
