@@ -7,6 +7,7 @@ import type {
   CourseStudent,
   MentorshipLog,
   EditingItem,
+  Announcement,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import { MyCourseView } from './student/MyCourseView';
@@ -17,6 +18,7 @@ import { UsersView } from './admin/UsersView';
 import { MentorshipView } from './admin/MentorshipView';
 import { MentorshipManagement } from './admin/MentorshipManagement';
 import { MentorDashboard } from './mentor/MentorDashboard';
+import { AnnouncementsView } from './shared/AnnouncementsView';
 
 export interface AppRouterProps {
   activeView: string;
@@ -51,6 +53,21 @@ export interface AppRouterProps {
   deleteClass: (courseId: number, subjectId: number, classId: number) => void;
   deleteUser: (id: string) => void;
   updateCourse: (id: number, data: Partial<Course>) => void;
+  announcements: Announcement[];
+  announcementsLoading: boolean;
+  addAnnouncement: (data: {
+    title: string;
+    content: string;
+    type: Announcement['type'];
+    courseId: number | null;
+    targetRoles: string[] | null;
+    isPinned: boolean;
+  }) => Promise<void>;
+  updateAnnouncement: (id: number, updates: Partial<Announcement>) => Promise<void>;
+  deleteAnnouncement: (id: number) => void;
+  togglePin: (id: number, current: boolean) => Promise<void>;
+  addComment: (announcementId: number, content: string) => Promise<void>;
+  deleteComment: (commentId: number) => void;
 }
 
 export function AppRouter({
@@ -80,9 +97,34 @@ export function AppRouter({
   deleteClass,
   deleteUser,
   updateCourse,
+  announcements,
+  announcementsLoading,
+  addAnnouncement,
+  updateAnnouncement,
+  deleteAnnouncement,
+  togglePin,
+  addComment,
+  deleteComment,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
+
+  if (activeView === 'announcements') {
+    return (
+      <AnnouncementsView
+        announcements={announcements}
+        courses={courses}
+        currentUser={currentUser}
+        loading={announcementsLoading}
+        onAdd={addAnnouncement}
+        onUpdate={updateAnnouncement}
+        onDelete={deleteAnnouncement}
+        onTogglePin={togglePin}
+        onAddComment={addComment}
+        onDeleteComment={deleteComment}
+      />
+    );
+  }
 
   if (hasRole('administrator')) {
     switch (activeView) {

@@ -71,3 +71,27 @@ export interface EditingItem {
   subjectId?: number;
   date?: string;
 }
+
+export interface Announcement {
+  id: number;
+  title: string;
+  content: string;
+  type: 'post' | 'homework' | 'material' | 'system';
+  authorId: string | null;
+  authorName: string | null; // populated from join with profiles
+  courseId: number | null; // null = school-wide
+  targetRoles: string[] | null;
+  isPinned: boolean;
+  createdAt: string;
+  updatedAt: string;
+  comments?: AnnouncementComment[];
+}
+
+export interface AnnouncementComment {
+  id: number;
+  announcementId: number;
+  authorId: string;
+  authorName: string; // populated from join
+  content: string;
+  createdAt: string;
+}

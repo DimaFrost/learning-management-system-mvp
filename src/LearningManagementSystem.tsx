@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { EditingItem, UserRole } from './types/lms';
+import type { EditingItem, User, UserRole } from './types/lms';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
 import { checkDoubleBooking } from './utils/scheduling';
 import { useConfirmation } from './hooks/useConfirmation';
@@ -9,6 +9,7 @@ import { useUsers } from './hooks/useUsers';
 import { useCourses } from './hooks/useCourses';
 import { useEnrollments } from './hooks/useEnrollments';
 import { useMentorshipLogs } from './hooks/useMentorshipLogs';
+import { useAnnouncements } from './hooks/useAnnouncements';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
 import { LogCheckinModal } from './components/modals/LogCheckinModal';
@@ -21,6 +22,8 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
 import { DevRolePanel } from './components/dev/DevRolePanel';
+
+const PLACEHOLDER_USER: User = { id: '', name: '', email: '', roles: [] };
 
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
@@ -37,20 +40,33 @@ const LearningManagementSystem = () => {
   const { mentorshipLogs, loading: logsLoading, error: logsError, addMentorshipLog, updateMentorshipLog }
     = useMentorshipLogs();
   const { cadenceSettings, setCadenceSettings, loading: cadenceLoading, error: cadenceError } = useCadenceSettings();
+  const {
+    announcements,
+    loading: announcementsLoading,
+    error: announcementsError,
+    addAnnouncement,
+    updateAnnouncement,
+    deleteAnnouncement,
+    togglePin,
+    addComment,
+    deleteComment,
+  } = useAnnouncements(currentUser ?? PLACEHOLDER_USER, courseStudents);
 
   const isLoading =
     coursesLoading ||
     usersLoading ||
     logsLoading ||
     enrollmentsLoading ||
-    cadenceLoading;
+    cadenceLoading ||
+    announcementsLoading;
 
   const globalError =
     coursesError ||
     usersError ||
     logsError ||
     enrollmentsError ||
-    cadenceError;
+    cadenceError ||
+    announcementsError;
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
@@ -60,6 +76,10 @@ const LearningManagementSystem = () => {
     deleteUser(id, showConfirmation, () => {
       refetchEnrollments();
     });
+  };
+
+  const handleDeleteAnnouncement = (id: number) => {
+    deleteAnnouncement(id, showConfirmation);
   };
 
   if (authLoading) {
@@ -147,6 +167,14 @@ const LearningManagementSystem = () => {
             updateCourse={updateCourse}
             setCourseStudents={setCourseStudents}
             assignUserToCourse={assignUserToCourse}
+            announcements={announcements}
+            announcementsLoading={announcementsLoading}
+            addAnnouncement={addAnnouncement}
+            updateAnnouncement={updateAnnouncement}
+            deleteAnnouncement={handleDeleteAnnouncement}
+            togglePin={togglePin}
+            addComment={addComment}
+            deleteComment={deleteComment}
           />
         </main>
       </div>

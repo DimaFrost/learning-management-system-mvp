@@ -1,4 +1,4 @@
-import { BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap } from 'lucide-react';
+import { Megaphone, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
@@ -7,6 +7,10 @@ interface SidebarProps {
 }
 
 export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
+  const universalMenuItems = [
+    { id: 'announcements', label: 'Announcements', icon: Megaphone },
+  ];
+
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator'] },
     { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
@@ -23,18 +27,31 @@ export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
     item.roles.some(role => hasRole(role))
   );
 
+  const navButtonClass = (viewId: string) =>
+    `w-full flex items-center px-6 py-3 text-left text-sm font-medium transition-colors ${
+      activeView === viewId
+        ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
+        : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    }`;
+
   return (
     <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200">
       <nav className="mt-8">
+        {universalMenuItems.map(item => (
+          <button
+            key={item.id}
+            onClick={() => onNavigate(item.id)}
+            className={navButtonClass(item.id)}
+          >
+            <item.icon className="w-4 h-4 mr-3" />
+            {item.label}
+          </button>
+        ))}
         {visibleMenuItems.map(item => (
           <button
             key={item.id}
             onClick={() => onNavigate(item.id)}
-            className={`w-full flex items-center px-6 py-3 text-left text-sm font-medium transition-colors ${
-              activeView === item.id
-                ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
-                : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-            }`}
+            className={navButtonClass(item.id)}
           >
             <item.icon className="w-4 h-4 mr-3" />
             {item.label}
