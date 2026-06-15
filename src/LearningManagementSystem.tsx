@@ -16,6 +16,7 @@ import { EditModal } from './components/modals/EditModal/EditModal';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
 import { AuthScreen } from './components/AuthScreen';
+import { OnboardingScreen } from './components/OnboardingScreen';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
@@ -71,6 +72,18 @@ const LearningManagementSystem = () => {
 
   if (!currentUser) {
     return <AuthScreen onSignIn={signInWithGoogle} error={error} />;
+  }
+
+  const hasNoRoles = !currentUser.roles ||
+    currentUser.roles.filter(r => r !== 'dev').length === 0;
+
+  if (hasNoRoles) {
+    return (
+      <OnboardingScreen
+        userName={currentUser.name}
+        onSignOut={signOut}
+      />
+    );
   }
 
   if (isLoading) {

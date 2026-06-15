@@ -1,6 +1,8 @@
 import { User as UserIcon, Plus } from 'lucide-react';
-import type { User, Course, CourseStudent } from '../../types/lms';
+import type { User, Course, CourseStudent, UserRole } from '../../types/lms';
 import { getCourseDisplayName as getCourseDisplayNameUtil } from '../../utils/courseUtils';
+
+const getRealRoles = (roles: UserRole[]) => roles.filter(r => r !== 'dev');
 
 interface UsersViewProps {
   users: User[];
@@ -19,7 +21,10 @@ export function UsersView({
   onEditUser,
   onDeleteUser,
 }: UsersViewProps) {
-  const staffUsers = users.filter(user => !user.roles.includes('student'));
+  const unassignedUsers = users.filter(user => getRealRoles(user.roles).length === 0);
+  const staffUsers = users.filter(
+    user => getRealRoles(user.roles).length > 0 && !user.roles.includes('student')
+  );
   const studentUsers = users.filter(user => user.roles.includes('student'));
 
   const renderUserTable = (userList: User[], showCoursesColumn: boolean = true) => (
@@ -52,11 +57,15 @@ export function UsersView({
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex flex-wrap gap-1">
-                  {user.roles.map(role => (
-                    <span key={role} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {role}
-                    </span>
-                  ))}
+                  {user.roles.length === 0 ? (
+                    <span className="text-xs text-gray-500 italic">No roles</span>
+                  ) : (
+                    user.roles.map(role => (
+                      <span key={role} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {role}
+                      </span>
+                    ))
+                  )}
                 </div>
               </td>
               {showCoursesColumn && (
@@ -115,6 +124,20 @@ export function UsersView({
           <Plus className="w-4 h-4" />
           <span>Add User</span>
         </button>
+      </div>
+
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-xl font-semibold text-gray-800">Unassigned</h3>
+          <span className="text-sm text-gray-500">{unassignedUsers.length} users</span>
+        </div>
+        {unassignedUsers.length > 0 ? (
+          renderUserTable(unassignedUsers, false)
+        ) : (
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
+            <p className="text-gray-500">No unassigned users found</p>
+          </div>
+        )}
       </div>
 
       <div className="space-y-4">
