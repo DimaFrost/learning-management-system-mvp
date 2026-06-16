@@ -150,6 +150,87 @@ function toClassRow(data: Partial<Class>, subjectId?: number, forInsert = false)
   return row;
 }
 
+function driveErrorMessage(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err);
+  return `Google Drive folder setup failed: ${msg}`;
+}
+
+async function ensureCourseDriveFolder(course: Course): Promise<string> {
+  if (course.driveFolderId) return course.driveFolderId;
+
+  const { data: existing } = await supabase
+    .from('courses')
+    .select('drive_folder_id')
+    .eq('id', course.id)
+    .single();
+  if (existing?.drive_folder_id) return existing.drive_folder_id;
+
+  const folderId = await createCourseDriveFolder({
+    startDate: course.startDate,
+    endDate: course.endDate,
+    courseType: course.courseType,
+  });
+  const { error } = await supabase
+    .from('courses')
+    .update({ drive_folder_id: folderId })
+    .eq('id', course.id);
+  if (error) throw error;
+  return folderId;
+}
+
+async function ensureSubjectDriveFolder(
+  course: Course,
+  subject: Pick<Subject, 'id' | 'title' | 'driveFolderId'>
+): Promise<string> {
+  if (subject.driveFolderId) return subject.driveFolderId;
+
+  const { data: existing } = await supabase
+    .from('subjects')
+    .select('drive_folder_id')
+    .eq('id', subject.id)
+    .single();
+  if (existing?.drive_folder_id) return existing.drive_folder_id;
+
+  const courseFolderId = await ensureCourseDriveFolder(course);
+  const folderId = await createSubjectDriveFolder(subject.title, courseFolderId);
+  const { error } = await supabase
+    .from('subjects')
+    .update({ drive_folder_id: folderId })
+    .eq('id', subject.id);
+  if (error) throw error;
+  return folderId;
+}
+
+async function ensureClassDriveFolders(
+  course: Course,
+  subject: Pick<Subject, 'id' | 'title' | 'driveFolderId'>,
+  cls: Pick<Class, 'id' | 'title' | 'date' | 'materialsFolderId'>
+): Promise<void> {
+  if (cls.materialsFolderId) return;
+
+  const { data: existing } = await supabase
+    .from('classes')
+    .select('materials_folder_id')
+    .eq('id', cls.id)
+    .single();
+  if (existing?.materials_folder_id) return;
+
+  const subjectFolderId = await ensureSubjectDriveFolder(course, subject);
+  const className = `${cls.date} · ${cls.title}`;
+  const folders = await createClassDriveFolders(className, subjectFolderId);
+  const { error } = await supabase
+    .from('classes')
+    .update({
+      drive_folder_id: folders.folderId,
+      materials_folder_id: folders.materialsFolderId,
+      homework_folder_id: folders.homeworkFolderId,
+      teacher_notes_folder_id: folders.teacherNotesFolderId,
+      translator_notes_folder_id: folders.translatorNotesFolderId,
+    })
+    .eq('id', cls.id);
+  if (error) throw error;
+}
+
 export function useCourses(showConfirmation: ShowConfirmation) {
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
@@ -213,6 +294,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           .eq('id', newCourse.id);
       } catch (err) {
         console.error('Drive folder creation failed:', err);
+        setError(driveErrorMessage(err));
       }
 
       await refetchCourses();
@@ -280,22 +362,12 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
       if (insertError) throw insertError;
 
-      let subjectDriveFolderId: string | null = null;
-
-      try {
-        const course = courses.find(c => c.id === courseId);
-        if (course?.driveFolderId) {
-          const folderId = await createSubjectDriveFolder(
-            subjectData.title ?? '', course.driveFolderId
-          );
-          subjectDriveFolderId = folderId;
-          await supabase.from('subjects')
-            .update({ drive_folder_id: folderId })
-            .eq('id', newSubject.id);
-        }
-      } catch (err) {
-        console.error('Drive subject folder creation failed:', err);
-      }
+      const course = courses.find(c => c.id === courseId);
+      const subjectForFolders = {
+        id: newSubject.id,
+        title: subjectData.title ?? '',
+        driveFolderId: null as string | null,
+      };
 
       if (duration > 0 && newSubject) {
         const classRows = [];
@@ -317,23 +389,14 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
         if (classesError) throw classesError;
 
-        for (const cls of newClasses ?? []) {
-          try {
-            if (subjectDriveFolderId) {
-              const className = `${cls.date} · ${cls.title}`;
-              const folders = await createClassDriveFolders(className, subjectDriveFolderId);
-              await supabase.from('classes')
-                .update({
-                  drive_folder_id: folders.folderId,
-                  materials_folder_id: folders.materialsFolderId,
-                  homework_folder_id: folders.homeworkFolderId,
-                  teacher_notes_folder_id: folders.teacherNotesFolderId,
-                  translator_notes_folder_id: folders.translatorNotesFolderId,
-                })
-                .eq('id', cls.id);
+        if (course) {
+          for (const cls of newClasses ?? []) {
+            try {
+              await ensureClassDriveFolders(course, subjectForFolders, cls);
+            } catch (err) {
+              console.error('Drive class folder creation failed:', err);
+              setError(driveErrorMessage(err));
             }
-          } catch (err) {
-            console.error('Drive class folder creation failed:', err);
           }
         }
       }
@@ -402,23 +465,17 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       try {
         const course = courses.find(c => c.id === courseId);
         const subject = course?.subjects.find(s => s.id === subjectId);
-        const classDate = classData.date ?? '';
-        const classTitle = classData.title ?? '';
-        const className = `${classDate} · ${classTitle}`;
-        if (subject?.driveFolderId) {
-          const folders = await createClassDriveFolders(className, subject.driveFolderId);
-          await supabase.from('classes')
-            .update({
-              drive_folder_id: folders.folderId,
-              materials_folder_id: folders.materialsFolderId,
-              homework_folder_id: folders.homeworkFolderId,
-              teacher_notes_folder_id: folders.teacherNotesFolderId,
-              translator_notes_folder_id: folders.translatorNotesFolderId,
-            })
-            .eq('id', newClass.id);
+        if (course && subject) {
+          await ensureClassDriveFolders(course, subject, {
+            id: newClass.id,
+            title: classData.title ?? '',
+            date: classData.date ?? '',
+            materialsFolderId: null,
+          });
         }
       } catch (err) {
         console.error('Drive class folder creation failed:', err);
+        setError(driveErrorMessage(err));
       }
 
       await refetchCourses();
@@ -472,6 +529,31 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     );
   }, [courses, showConfirmation, refetchCourses]);
 
+  const provisionClassDriveFolders = useCallback(async (
+    courseId: number,
+    subjectId: number,
+    classId: number
+  ): Promise<{ ok: boolean; error?: string }> => {
+    const course = courses.find(c => c.id === courseId);
+    const subject = course?.subjects.find(s => s.id === subjectId);
+    const cls = subject?.classes.find(c => c.id === classId);
+    if (!course || !subject || !cls) {
+      return { ok: false, error: 'Class not found' };
+    }
+
+    setError(null);
+    try {
+      await ensureClassDriveFolders(course, subject, cls);
+      await refetchCourses();
+      return { ok: true };
+    } catch (err) {
+      console.error('provisionClassDriveFolders error:', err);
+      const message = driveErrorMessage(err);
+      setError(message);
+      return { ok: false, error: message };
+    }
+  }, [courses, refetchCourses]);
+
   const toggleCourseCollapse = (courseId: number) => {
     const newCollapsed = new Set(collapsedCourses);
     if (newCollapsed.has(courseId)) {
@@ -508,6 +590,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     addClass,
     updateClass,
     deleteClass,
+    provisionClassDriveFolders,
     toggleCourseCollapse,
     toggleSubjectCollapse,
   };

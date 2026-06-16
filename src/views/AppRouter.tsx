@@ -36,6 +36,11 @@ export interface AppRouterProps {
   previousView: string;
   openClassDetail: (classId: number, subjectId: number, courseId: number) => void;
   closeClassDetail: () => void;
+  provisionClassDriveFolders: (
+    courseId: number,
+    subjectId: number,
+    classId: number
+  ) => Promise<{ ok: boolean; error?: string }>;
   showConfirmation: ShowConfirmation;
   hasRole: (role: string) => boolean;
   activeCurriculumTab: string;
@@ -92,6 +97,7 @@ export function AppRouter({
   selectedClassId,
   openClassDetail,
   closeClassDetail,
+  provisionClassDriveFolders,
   showConfirmation,
   hasRole,
   activeCurriculumTab,
@@ -159,6 +165,13 @@ export function AppRouter({
           users={users}
           courseStudents={courseStudents}
           onBack={closeClassDetail}
+          onProvisionDriveFolders={() =>
+            provisionClassDriveFolders(
+              foundCourse.id,
+              foundSubject.id,
+              foundClass.id
+            )
+          }
           showConfirmation={showConfirmation}
         />
       );

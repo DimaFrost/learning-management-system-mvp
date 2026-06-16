@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Calendar, Clock, User as UserIcon } from 'lucide-react';
+import { ChevronLeft, Calendar, Clock, User as UserIcon, FolderOpen, Loader2 } from 'lucide-react';
 import type { Class, Subject, Course, User, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
@@ -17,6 +17,7 @@ interface ClassDetailViewProps {
   users: User[];
   courseStudents: CourseStudent[];
   onBack: () => void;
+  onProvisionDriveFolders: () => Promise<{ ok: boolean; error?: string }>;
   showConfirmation: (
     title: string,
     message: string,
@@ -70,10 +71,27 @@ export function ClassDetailView({
   users,
   courseStudents,
   onBack,
+  onProvisionDriveFolders,
   showConfirmation,
 }: ClassDetailViewProps) {
   const classContent = useClassContent(selectedClass.id, currentUser);
   const homework = useHomework(selectedClass.id, currentUser);
+
+  const canManageDriveFolders =
+    hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
+  const driveFoldersMissing = !selectedClass.materialsFolderId;
+  const [provisioningFolders, setProvisioningFolders] = useState(false);
+  const [provisionError, setProvisionError] = useState<string | null>(null);
+
+  const handleProvisionDriveFolders = async () => {
+    setProvisioningFolders(true);
+    setProvisionError(null);
+    const result = await onProvisionDriveFolders();
+    setProvisioningFolders(false);
+    if (!result.ok) {
+      setProvisionError(result.error ?? 'Failed to set up Google Drive folders');
+    }
+  };
 
   const canSeeStaffNotes =
     hasRole(currentUser, 'teacher') ||
@@ -83,6 +101,12 @@ export function ClassDetailView({
   const [activeTab, setActiveTab] = useState<TabId>(() =>
     hasRole(currentUser, 'student') ? 'homework' : 'materials'
   );
+
+  useEffect(() => {
+    if (!driveFoldersMissing) {
+      setProvisionError(null);
+    }
+  }, [driveFoldersMissing]);
 
   useEffect(() => {
     if (activeTab === 'staff' && !canSeeStaffNotes) {
@@ -165,6 +189,41 @@ export function ClassDetailView({
           </div>
         </div>
       </div>
+
+      {canManageDriveFolders && driveFoldersMissing && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div>
+            <p className="text-sm font-medium text-amber-900">
+              Google Drive folders are not set up for this class.
+            </p>
+            <p className="text-sm text-amber-800 mt-1">
+              File uploads (materials, staff notes, homework) require Drive folders.
+            </p>
+            {provisionError && (
+              <p className="text-sm text-red-700 mt-2">{provisionError}</p>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleProvisionDriveFolders}
+            disabled={provisioningFolders}
+            className="flex items-center justify-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
+          >
+            {provisioningFolders ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <FolderOpen className="w-4 h-4" />
+            )}
+            Set up Google Drive folders
+          </button>
+        </div>
+      )}
+
+      {classContent.error && (
+        <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-3">
+          {classContent.error}
+        </p>
+      )}
 
       <div className="border-b border-gray-200">
         <nav className="flex gap-6" aria-label="Class tabs">

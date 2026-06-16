@@ -63,8 +63,12 @@ async function getAccessToken(): Promise<string> {
 }
 
 // ============================================
-// Drive helpers
+// Drive helpers (Shared Drive — service accounts have no My Drive quota)
+// See supabase/functions/drive-operations/SETUP.md
 // ============================================
+const SHARED_DRIVE_QUERY = 'supportsAllDrives=true';
+const LIST_DRIVE_QUERY = 'supportsAllDrives=true&includeItemsFromAllDrives=true';
+
 async function createFolder(
   name: string,
   parentId: string,
@@ -74,7 +78,9 @@ async function createFolder(
     throw new Error('Folder name is required');
   }
 
-  const res = await fetch('https://www.googleapis.com/drive/v3/files', {
+  const res = await fetch(
+    `https://www.googleapis.com/drive/v3/files?${SHARED_DRIVE_QUERY}`,
+    {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -106,7 +112,7 @@ async function findFolder(
     `name = '${name}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
   );
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&${LIST_DRIVE_QUERY}&fields=files(id,name)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
@@ -155,7 +161,7 @@ async function uploadFile(
   );
 
   const res = await fetch(
-    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,webViewLink',
+    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&${SHARED_DRIVE_QUERY}&fields=id,webViewLink`,
     {
       method: 'POST',
       headers: {
@@ -165,11 +171,21 @@ async function uploadFile(
       body: combined,
     }
   );
-  return await res.json();
+  const data = await res.json();
+  if (!res.ok) {
+    console.error('Drive uploadFile error:', data);
+    throw new Error(data.error?.message ?? 'Failed to upload file to Drive');
+  }
+  if (!data.id) {
+    throw new Error('Drive API returned no file id');
+  }
+  return { id: data.id, webViewLink: data.webViewLink ?? '' };
 }
 
 async function deleteFile(fileId: string, token: string): Promise<void> {
-  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`, {
+  await fetch(
+    `https://www.googleapis.com/drive/v3/files/${fileId}?${SHARED_DRIVE_QUERY}`,
+    {
     method: 'DELETE',
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -296,7 +312,7 @@ serve(async (req) => {
     // returns: { googleDocId, googleDocUrl }
     if (action === 'create-google-doc') {
       const createRes = await fetch(
-        'https://www.googleapis.com/drive/v3/files',
+        `https://www.googleapis.com/drive/v3/files?${SHARED_DRIVE_QUERY}`,
         {
           method: 'POST',
           headers: {
@@ -313,7 +329,7 @@ serve(async (req) => {
       const docFile = await createRes.json();
 
       await fetch(
-        `https://www.googleapis.com/drive/v3/files/${docFile.id}/permissions`,
+        `https://www.googleapis.com/drive/v3/files/${docFile.id}/permissions?${SHARED_DRIVE_QUERY}`,
         {
           method: 'POST',
           headers: {
@@ -329,7 +345,7 @@ serve(async (req) => {
       );
 
       const fileRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${docFile.id}?fields=id,webViewLink`,
+        `https://www.googleapis.com/drive/v3/files/${docFile.id}?${SHARED_DRIVE_QUERY}&fields=id,webViewLink`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       const fileData = await fileRes.json();
@@ -344,7 +360,9 @@ serve(async (req) => {
 
   } catch (err) {
     console.error('Drive operation error:', err);
-    return respond({ error: String(err) }, 500);
+    return respond({
+      error: err instanceof Error ? err.message : String(err),
+    }, 500);
   }
 });
 

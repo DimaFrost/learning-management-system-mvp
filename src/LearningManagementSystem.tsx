@@ -43,7 +43,8 @@ const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
   const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
     addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
-    addClass, updateClass, deleteClass, toggleCourseCollapse, toggleSubjectCollapse }
+    addClass, updateClass, deleteClass, provisionClassDriveFolders,
+    toggleCourseCollapse, toggleSubjectCollapse }
     = useCourses(showConfirmation);
   const { currentUser, loading: authLoading, error, signInWithGoogle, signOut, refetchProfile } = useAuth();
   const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
@@ -168,6 +169,7 @@ const LearningManagementSystem = () => {
             previousView={previousView}
             openClassDetail={openClassDetail}
             closeClassDetail={closeClassDetail}
+            provisionClassDriveFolders={provisionClassDriveFolders}
             showConfirmation={showConfirmation}
             hasRole={hasRole}
             activeCurriculumTab={activeCurriculumTab}

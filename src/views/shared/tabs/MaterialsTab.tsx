@@ -492,7 +492,7 @@ export function MaterialsTab({
 
           {canManageNotes && !materialsFolderId && (
             <p className="text-sm text-amber-700 mb-4">
-              Materials folder is not configured for this class.
+              Materials folder is not configured for this class. Use &quot;Set up Google Drive folders&quot; above to enable uploads.
             </p>
           )}
 

@@ -106,8 +106,13 @@ export function useClassContent(classId: number | null, currentUser: User) {
   const uploadFile = async (params: {
     file: File;
     fileType: 'material' | 'teacher_note' | 'translator_note';
-    targetFolderId: string;
+    targetFolderId: string | null | undefined;
   }) => {
+    if (!params.targetFolderId) {
+      setError('This class does not have a Drive folder. Create a new class through the app to generate Drive folders automatically.');
+      setSaving(false);
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
@@ -115,14 +120,24 @@ export function useClassContent(classId: number | null, currentUser: User) {
       const base64 = btoa(
         String.fromCharCode(...new Uint8Array(arrayBuffer))
       );
-      const { driveFileId, driveViewUrl } = await (
-        await import('../utils/driveOperations')
-      ).uploadFileToDrive({
+      const result = await uploadFileToDrive({
         fileName: params.file.name,
         mimeType: params.file.type || 'application/octet-stream',
         fileBase64: base64,
         targetFolderId: params.targetFolderId,
       });
+
+      if (!result?.driveFileId) {
+        const detail =
+          result && typeof result === 'object' && 'error' in result && result.error
+            ? String(result.error)
+            : 'Drive upload failed — no file ID returned.';
+        setError(detail);
+        setSaving(false);
+        return;
+      }
+
+      const { driveFileId, driveViewUrl } = result;
 
       const { error } = await supabase.from('class_files').insert({
         class_id: classId,
@@ -137,7 +152,14 @@ export function useClassContent(classId: number | null, currentUser: User) {
       if (error) throw error;
       await fetchContent();
     } catch (err) {
-      setError('Upload failed');
+      const message = err instanceof Error ? err.message : 'Upload failed';
+      const isSharedDriveIssue =
+        /storage quota|shared drives/i.test(message);
+      setError(
+        isSharedDriveIssue
+          ? `${message} Files must be stored in a Google Shared Drive. See supabase/functions/drive-operations/SETUP.md — update DRIVE_ROOT_FOLDER_ID and re-run folder setup.`
+          : message
+      );
       console.error(err);
     } finally {
       setSaving(false);
