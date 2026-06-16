@@ -2,6 +2,19 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type { HomeworkAssignment } from '../../types/lms';
 
+function toDatetimeLocalValue(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(value: string): string | null {
+  if (!value) return null;
+  const d = new Date(value);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+
 interface CreateAssignmentModalProps {
   isOpen: boolean;
   editingAssignment: HomeworkAssignment | null;
@@ -35,7 +48,11 @@ export function CreateAssignmentModal({
     if (editingAssignment) {
       setTitle(editingAssignment.title);
       setDescription(editingAssignment.description ?? '');
-      setDueDate(editingAssignment.dueDate ?? '');
+      setDueDate(
+        editingAssignment.dueDate
+          ? toDatetimeLocalValue(editingAssignment.dueDate)
+          : ''
+      );
       setMaxPoints(editingAssignment.maxPoints);
     } else {
       setTitle('');
@@ -54,8 +71,8 @@ export function CreateAssignmentModal({
     if (!title.trim()) {
       newErrors.title = 'Title is required';
     }
-    if (maxPoints < 1) {
-      newErrors.maxPoints = 'Max points must be at least 1';
+    if (maxPoints < 0 || maxPoints > 1000) {
+      newErrors.maxPoints = 'Points must be between 0 and 1000';
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -68,7 +85,7 @@ export function CreateAssignmentModal({
       await onSubmit({
         title: title.trim(),
         description: description.trim() || null,
-        dueDate: dueDate || null,
+        dueDate: fromDatetimeLocalValue(dueDate),
         maxPoints,
       });
       onClose();
@@ -118,7 +135,7 @@ export function CreateAssignmentModal({
 
             <div>
               <label htmlFor="assignment-description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
+                Description / instructions
               </label>
               <textarea
                 id="assignment-description"
@@ -136,7 +153,7 @@ export function CreateAssignmentModal({
               </label>
               <input
                 id="assignment-due-date"
-                type="date"
+                type="datetime-local"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
@@ -145,12 +162,13 @@ export function CreateAssignmentModal({
 
             <div>
               <label htmlFor="assignment-max-points" className="block text-sm font-medium text-gray-700 mb-1">
-                Max Points
+                Points
               </label>
               <input
                 id="assignment-max-points"
                 type="number"
-                min={1}
+                min={0}
+                max={1000}
                 value={maxPoints}
                 onChange={e => setMaxPoints(Number(e.target.value))}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
