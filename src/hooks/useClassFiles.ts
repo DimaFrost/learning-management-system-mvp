@@ -1,21 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import { uploadFileToDrive, deleteFileFromDrive } from '../utils/driveOperations';
-import type { User } from '../types/lms';
-
-export interface ClassFile {
-  id: number;
-  classId: number;
-  uploaderId: string;
-  uploaderName: string;
-  fileType: 'material' | 'homework' | 'teacher_note' | 'translator_note';
-  fileName: string;
-  driveFileId: string;
-  driveViewUrl: string;
-  mimeType: string | null;
-  fileSize: number | null;
-  createdAt: string;
-}
+import type { User, ClassFile } from '../types/lms';
 
 export function useClassFiles(classId: number | null) {
   const [files, setFiles] = useState<ClassFile[]>([]);

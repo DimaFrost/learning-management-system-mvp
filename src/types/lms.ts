@@ -123,6 +123,20 @@ export interface ClassNote {
   updatedAt: string;
 }
 
+export interface ClassFile {
+  id: number;
+  classId: number;
+  uploaderId: string;
+  uploaderName: string;
+  fileType: 'material' | 'homework' | 'teacher_note' | 'translator_note';
+  fileName: string;
+  driveFileId: string;
+  driveViewUrl: string;
+  mimeType: string | null;
+  fileSize: number | null;
+  createdAt: string;
+}
+
 export interface SubjectNote {
   id: number;
   subjectId: number;
