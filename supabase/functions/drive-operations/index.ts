@@ -279,6 +279,67 @@ serve(async (req) => {
       return respond({ success: true });
     }
 
+    // ACTION: create-assignment-folder
+    // data: { assignmentTitle, classHomeworkFolderId }
+    // returns: { folderId }
+    if (action === 'create-assignment-folder') {
+      const folderId = await createFolder(
+        data.assignmentTitle,
+        data.classHomeworkFolderId,
+        token
+      );
+      return respond({ folderId });
+    }
+
+    // ACTION: create-google-doc
+    // data: { docTitle, studentFolderId, studentEmail }
+    // returns: { googleDocId, googleDocUrl }
+    if (action === 'create-google-doc') {
+      const createRes = await fetch(
+        'https://www.googleapis.com/drive/v3/files',
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            name: data.docTitle,
+            mimeType: 'application/vnd.google-apps.document',
+            parents: [data.studentFolderId],
+          }),
+        }
+      );
+      const docFile = await createRes.json();
+
+      await fetch(
+        `https://www.googleapis.com/drive/v3/files/${docFile.id}/permissions`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            type: 'user',
+            role: 'writer',
+            emailAddress: data.studentEmail,
+          }),
+        }
+      );
+
+      const fileRes = await fetch(
+        `https://www.googleapis.com/drive/v3/files/${docFile.id}?fields=id,webViewLink`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      const fileData = await fileRes.json();
+
+      return respond({
+        googleDocId: fileData.id,
+        googleDocUrl: fileData.webViewLink,
+      });
+    }
+
     return respond({ error: 'Unknown action' }, 400);
 
   } catch (err) {

@@ -54,3 +54,22 @@ export async function uploadFileToDrive(params: {
 export async function deleteFileFromDrive(driveFileId: string): Promise<void> {
   await callDrive('delete-file', { driveFileId });
 }
+
+export async function createAssignmentFolder(
+  assignmentTitle: string,
+  classHomeworkFolderId: string
+): Promise<string> {
+  const result = await callDrive('create-assignment-folder', {
+    assignmentTitle,
+    classHomeworkFolderId,
+  });
+  return result.folderId;
+}
+
+export async function createGoogleDoc(params: {
+  docTitle: string;
+  studentFolderId: string;
+  studentEmail: string;
+}): Promise<{ googleDocId: string; googleDocUrl: string }> {
+  return await callDrive('create-google-doc', params);
+}
