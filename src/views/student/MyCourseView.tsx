@@ -9,6 +9,7 @@ interface MyCourseViewProps {
   mentorshipLogs: MentorshipLog[];
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 export function MyCourseView({
@@ -18,6 +19,7 @@ export function MyCourseView({
   mentorshipLogs,
   getUserById,
   getCourseDisplayName,
+  onOpenClass,
 }: MyCourseViewProps) {
   const myCourses = getMyCourses(currentUser.id, courseStudents, courses, getUserById);
 
@@ -68,8 +70,17 @@ export function MyCourseView({
                           <span className="font-medium">{cls.title}</span>
                           <span className="text-gray-500">{cls.date}</span>
                         </div>
-                        <div className="text-sm text-gray-500">
-                          {getUserById(cls.teacherId)?.name}
+                        <div className="flex items-center space-x-4">
+                          <span className="text-sm text-gray-500">
+                            {getUserById(cls.teacherId)?.name}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => onOpenClass(cls.id, subject.id, course.id)}
+                            className="text-sm text-amber-700 hover:text-amber-900 font-medium"
+                          >
+                            View
+                          </button>
                         </div>
                       </div>
                     ))}

@@ -1,4 +1,4 @@
-import { ChevronRight, ChevronDown, Edit3, Trash2, Plus, Calendar } from 'lucide-react';
+import { ChevronRight, ChevronDown, Edit3, Trash2, Plus, Calendar, Eye } from 'lucide-react';
 import type { Course, User, Subject, Class } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
 
@@ -17,6 +17,7 @@ interface CurriculumOverviewProps {
   onDeleteCourse: (id: number) => void;
   onDeleteSubject: (courseId: number, subjectId: number) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 export function CurriculumOverview({
@@ -34,6 +35,7 @@ export function CurriculumOverview({
   onDeleteCourse,
   onDeleteSubject,
   onDeleteClass,
+  onOpenClass,
 }: CurriculumOverviewProps) {
   const activeCourses = courses.filter(isCourseActive);
   const sortedCourses = [...activeCourses].sort((a, b) => {
@@ -226,6 +228,13 @@ export function CurriculumOverview({
                                       </span>
                                     </div>
                                     <div className="flex space-x-1 ml-4">
+                                      <button
+                                        onClick={() => onOpenClass(cls.id, subject.id, course.id)}
+                                        className="p-1 text-gray-400 hover:text-amber-600"
+                                        title="Open class"
+                                      >
+                                        <Eye className="w-3 h-3" />
+                                      </button>
                                       <button
                                         onClick={() => onEditClass(course.id, subject.id, cls)}
                                         className="p-1 text-gray-400 hover:text-blue-600"

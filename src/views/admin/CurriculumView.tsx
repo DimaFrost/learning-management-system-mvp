@@ -23,6 +23,7 @@ interface CurriculumViewProps {
   onDeleteSubject: (courseId: number, subjectId: number) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
   onReactivate: (courseId: number) => void;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 export function CurriculumView({
@@ -44,6 +45,7 @@ export function CurriculumView({
   onDeleteSubject,
   onDeleteClass,
   onReactivate,
+  onOpenClass,
 }: CurriculumViewProps) {
   const curriculumTabs = [
     { id: 'overview', label: 'Overview' },
@@ -98,6 +100,7 @@ export function CurriculumView({
           onDeleteCourse={onDeleteCourse}
           onDeleteSubject={onDeleteSubject}
           onDeleteClass={onDeleteClass}
+          onOpenClass={onOpenClass}
         />
       )}
       {activeCurriculumTab === 'date-view' && (
@@ -108,6 +111,7 @@ export function CurriculumView({
           checkDoubleBooking={checkDoubleBooking}
           onEditClass={onEditClass}
           onDeleteClass={onDeleteClass}
+          onOpenClass={onOpenClass}
         />
       )}
       {activeCurriculumTab === 'archived' && (

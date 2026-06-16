@@ -20,9 +20,23 @@ import { MentorshipManagement } from './admin/MentorshipManagement';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { AnnouncementsView } from './shared/AnnouncementsView';
 import { SettingsView } from './shared/SettingsView';
+import { ClassDetailView } from './shared/ClassDetailView';
+
+type ShowConfirmation = (
+  title: string,
+  message: string,
+  confirmText: string,
+  onConfirm: () => void
+) => void;
 
 export interface AppRouterProps {
   activeView: string;
+  setActiveView: (view: string) => void;
+  selectedClassId: number | null;
+  previousView: string;
+  openClassDetail: (classId: number, subjectId: number, courseId: number) => void;
+  closeClassDetail: () => void;
+  showConfirmation: ShowConfirmation;
   hasRole: (role: string) => boolean;
   activeCurriculumTab: string;
   onCurriculumTabChange: (tab: string) => void;
@@ -75,6 +89,10 @@ export interface AppRouterProps {
 
 export function AppRouter({
   activeView,
+  selectedClassId,
+  openClassDetail,
+  closeClassDetail,
+  showConfirmation,
   hasRole,
   activeCurriculumTab,
   onCurriculumTabChange,
@@ -112,6 +130,40 @@ export function AppRouter({
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
+
+  if (activeView === 'class-detail' && selectedClassId !== null) {
+    let foundClass: Class | undefined;
+    let foundSubject: Subject | undefined;
+    let foundCourse: Course | undefined;
+
+    for (const course of courses) {
+      for (const subject of course.subjects) {
+        const cls = subject.classes.find(c => c.id === selectedClassId);
+        if (cls) {
+          foundClass = cls;
+          foundSubject = subject;
+          foundCourse = course;
+          break;
+        }
+      }
+      if (foundClass) break;
+    }
+
+    if (foundClass && foundSubject && foundCourse) {
+      return (
+        <ClassDetailView
+          selectedClass={foundClass}
+          selectedSubject={foundSubject}
+          selectedCourse={foundCourse}
+          currentUser={currentUser}
+          users={users}
+          courseStudents={courseStudents}
+          onBack={closeClassDetail}
+          showConfirmation={showConfirmation}
+        />
+      );
+    }
+  }
 
   if (activeView === 'settings') {
     return (
@@ -172,6 +224,7 @@ export function AppRouter({
             onDeleteSubject={deleteSubject}
             onDeleteClass={deleteClass}
             onReactivate={(courseId) => updateCourse(courseId, { status: 'active' })}
+            onOpenClass={openClassDetail}
           />
         );
       case 'users':
@@ -251,6 +304,7 @@ export function AppRouter({
             courses={courses}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
+            onOpenClass={openClassDetail}
           />
         );
     }
@@ -268,6 +322,7 @@ export function AppRouter({
             mentorshipLogs={mentorshipLogs}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
+            onOpenClass={openClassDetail}
           />
         );
     }
@@ -304,6 +359,7 @@ export function AppRouter({
         courses={courses}
         getUserById={getUserById}
         getCourseDisplayName={getCourseDisplayName}
+        onOpenClass={openClassDetail}
       />
     );
   }

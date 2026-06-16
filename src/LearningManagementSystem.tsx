@@ -50,7 +50,16 @@ const LearningManagementSystem = () => {
   const effectiveUser = previewRoles && currentUser
     ? { ...currentUser, roles: previewRoles as UserRole[] }
     : (currentUser ?? PLACEHOLDER_USER);
-  const { activeView, setActiveView, activeCurriculumTab, setActiveCurriculumTab } = useNavigation();
+  const {
+    activeView,
+    setActiveView,
+    activeCurriculumTab,
+    setActiveCurriculumTab,
+    selectedClassId,
+    previousView,
+    openClassDetail,
+    closeClassDetail,
+  } = useNavigation();
   const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
     assignUserToCourse, removeUserFromCourse, refetchEnrollments }
@@ -154,6 +163,12 @@ const LearningManagementSystem = () => {
         <main className="flex-1 p-8">
           <AppRouter
             activeView={activeView}
+            setActiveView={setActiveView}
+            selectedClassId={selectedClassId}
+            previousView={previousView}
+            openClassDetail={openClassDetail}
+            closeClassDetail={closeClassDetail}
+            showConfirmation={showConfirmation}
             hasRole={hasRole}
             activeCurriculumTab={activeCurriculumTab}
             onCurriculumTabChange={setActiveCurriculumTab}

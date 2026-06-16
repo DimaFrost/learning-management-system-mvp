@@ -8,6 +8,7 @@ interface MyClassesViewProps {
   courses: Course[];
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 export function MyClassesView({
@@ -15,6 +16,7 @@ export function MyClassesView({
   courses,
   getUserById,
   getCourseDisplayName,
+  onOpenClass,
 }: MyClassesViewProps) {
   const isTeacher = currentUser.roles.includes('teacher');
   const isTranslator = currentUser.roles.includes('translator');
@@ -31,6 +33,8 @@ export function MyClassesView({
           ...cls,
           courseName: getCourseDisplayName(course),
           subjectTitle: subject.title,
+          courseId: course.id,
+          subjectId: subject.id,
         }))
       )
     );
@@ -91,12 +95,19 @@ export function MyClassesView({
             </div>
           </div>
 
-          <div className="text-right">
+          <div className="text-right flex flex-col items-end space-y-2">
             <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
               isUpcoming ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
             }`}>
               {isUpcoming ? 'Upcoming' : 'Past'}
             </span>
+            <button
+              type="button"
+              onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+              className="text-sm text-amber-700 hover:text-amber-900 font-medium"
+            >
+              Open Class
+            </button>
           </div>
         </div>
       </div>

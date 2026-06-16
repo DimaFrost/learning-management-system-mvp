@@ -1,4 +1,4 @@
-import { Calendar, Plus, BookOpen, Edit3, Trash2 } from 'lucide-react';
+import { Calendar, Plus, BookOpen, Edit3, Trash2, Eye } from 'lucide-react';
 import type { Course, User, Class } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
 
@@ -9,6 +9,7 @@ interface CurriculumDateViewProps {
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   onEditClass: (courseId: number, subjectId: number, classData: Class | null, date?: string) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 function formatDate(dateStr: string) {
@@ -27,6 +28,7 @@ export function CurriculumDateView({
   checkDoubleBooking,
   onEditClass,
   onDeleteClass,
+  onOpenClass,
 }: CurriculumDateViewProps) {
   const activeCourses = courses.filter(isCourseActive);
   const allClasses = activeCourses.flatMap(course =>
@@ -155,6 +157,13 @@ export function CurriculumDateView({
                                     )}
                                   </div>
                                   <div className="flex space-x-1">
+                                    <button
+                                      onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                      className="p-1 text-gray-400 hover:text-amber-600"
+                                      title="Open class"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                    </button>
                                     <button
                                       onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
                                       className="p-1 text-gray-400 hover:text-blue-600"
