@@ -110,3 +110,75 @@ export interface AnnouncementComment {
   content: string;
   createdAt: string;
 }
+
+export interface ClassNote {
+  id: number;
+  classId: number;
+  authorId: string;
+  authorName: string;
+  noteType: 'teacher_note' | 'translator_note' | 'student_note';
+  title: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubjectNote {
+  id: number;
+  subjectId: number;
+  authorId: string;
+  authorName: string;
+  noteType: 'curriculum_plan' | 'student_note';
+  title: string | null;
+  content: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface HomeworkAssignment {
+  id: number;
+  classId: number;
+  authorId: string;
+  authorName: string;
+  title: string;
+  description: string | null;
+  dueDate: string | null;
+  maxPoints: number;
+  driveFolderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type SubmissionStatus =
+  'not_started' | 'draft' | 'submitted' | 'graded' | 'returned';
+
+export interface HomeworkSubmission {
+  id: number;
+  assignmentId: number;
+  studentId: string;
+  studentName: string;
+  submissionType: 'file' | 'google_doc' | null;
+  driveFileId: string | null;
+  driveViewUrl: string | null;
+  fileName: string | null;
+  googleDocId: string | null;
+  googleDocUrl: string | null;
+  status: SubmissionStatus;
+  submittedAt: string | null;
+  points: number | null;
+  gradeComment: string | null;
+  gradedAt: string | null;
+  gradedBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+  comments?: HomeworkComment[];
+}
+
+export interface HomeworkComment {
+  id: number;
+  submissionId: number;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
