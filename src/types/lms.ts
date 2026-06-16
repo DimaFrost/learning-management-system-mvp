@@ -27,6 +27,11 @@ export interface Class {
   teacherId: string | null;
   translatorId: string | null;
   title: string;
+  driveFolderId?: string | null;
+  materialsFolderId?: string | null;
+  homeworkFolderId?: string | null;
+  teacherNotesFolderId?: string | null;
+  translatorNotesFolderId?: string | null;
 }
 
 export interface Subject {
@@ -37,6 +42,7 @@ export interface Subject {
   duration: number; // number of classes to pre-create
   primaryTeacherId: string | null;
   classes: Class[];
+  driveFolderId?: string | null;
 }
 
 export interface Course {
@@ -47,6 +53,7 @@ export interface Course {
   endDate: string;
   status: string;
   subjects: Subject[];
+  driveFolderId?: string | null;
 }
 
 export interface CourseStudent {

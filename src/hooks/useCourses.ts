@@ -3,6 +3,11 @@ import { supabase } from '../lib/supabase';
 import type { Course, Subject, Class } from '../types/lms';
 import { getNextClassDate } from '../utils/scheduling';
 import { getCourseDisplayName } from '../utils/courseUtils';
+import {
+  createCourseDriveFolder,
+  createSubjectDriveFolder,
+  createClassDriveFolders,
+} from '../utils/driveOperations';
 
 type ShowConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => void;
 
@@ -14,6 +19,11 @@ type SupabaseClassRow = {
   hour: 'first' | 'second' | 'both';
   teacher_id: string | null;
   translator_id: string | null;
+  drive_folder_id: string | null;
+  materials_folder_id: string | null;
+  homework_folder_id: string | null;
+  teacher_notes_folder_id: string | null;
+  translator_notes_folder_id: string | null;
 };
 
 type SupabaseSubjectRow = {
@@ -24,6 +34,7 @@ type SupabaseSubjectRow = {
   start_date: string;
   duration: number;
   primary_teacher_id: string | null;
+  drive_folder_id: string | null;
   classes: SupabaseClassRow[] | null;
 };
 
@@ -34,6 +45,7 @@ type SupabaseCourseRow = {
   start_date: string;
   end_date: string;
   status: string;
+  drive_folder_id: string | null;
   subjects: SupabaseSubjectRow[] | null;
 };
 
@@ -45,6 +57,11 @@ function mapClassRow(row: SupabaseClassRow): Class {
     hour: row.hour,
     teacherId: row.teacher_id,
     translatorId: row.translator_id,
+    driveFolderId: row.drive_folder_id,
+    materialsFolderId: row.materials_folder_id,
+    homeworkFolderId: row.homework_folder_id,
+    teacherNotesFolderId: row.teacher_notes_folder_id,
+    translatorNotesFolderId: row.translator_notes_folder_id,
   };
 }
 
@@ -56,6 +73,7 @@ function mapSubjectRow(row: SupabaseSubjectRow): Subject {
     startDate: row.start_date,
     duration: row.duration,
     primaryTeacherId: row.primary_teacher_id,
+    driveFolderId: row.drive_folder_id,
     classes: (row.classes ?? []).map(mapClassRow),
   };
 }
@@ -68,6 +86,7 @@ function mapCourseRow(row: SupabaseCourseRow): Course {
     startDate: row.start_date,
     endDate: row.end_date,
     status: row.status,
+    driveFolderId: row.drive_folder_id,
     subjects: (row.subjects ?? []).map(mapSubjectRow),
   };
 }
@@ -145,11 +164,13 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       const { data, error: fetchError } = await supabase
         .from('courses')
         .select(`
-          id, course_type, graduation_year, start_date, end_date, status,
+          id, course_type, graduation_year, start_date, end_date, status, drive_folder_id,
           subjects (
-            id, course_id, title, description, start_date, duration, primary_teacher_id,
+            id, course_id, title, description, start_date, duration, primary_teacher_id, drive_folder_id,
             classes (
-              id, subject_id, title, date, hour, teacher_id, translator_id
+              id, subject_id, title, date, hour, teacher_id, translator_id,
+              drive_folder_id, materials_folder_id, homework_folder_id,
+              teacher_notes_folder_id, translator_notes_folder_id
             )
           )
         `)
@@ -173,11 +194,27 @@ export function useCourses(showConfirmation: ShowConfirmation) {
   const addCourse = useCallback(async (courseData: Partial<Course>) => {
     setError(null);
     try {
-      const { error: insertError } = await supabase
+      const { data: newCourse, error: insertError } = await supabase
         .from('courses')
-        .insert(toCourseRow(courseData, true));
+        .insert(toCourseRow(courseData, true))
+        .select('id')
+        .single();
 
       if (insertError) throw insertError;
+
+      try {
+        const folderId = await createCourseDriveFolder({
+          startDate: courseData.startDate ?? '',
+          endDate: courseData.endDate ?? '',
+          courseType: courseData.courseType ?? 'first_year',
+        });
+        await supabase.from('courses')
+          .update({ drive_folder_id: folderId })
+          .eq('id', newCourse.id);
+      } catch (err) {
+        console.error('Drive folder creation failed:', err);
+      }
+
       await refetchCourses();
     } catch (err) {
       console.error('addCourse error:', err);
@@ -243,6 +280,23 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
       if (insertError) throw insertError;
 
+      let subjectDriveFolderId: string | null = null;
+
+      try {
+        const course = courses.find(c => c.id === courseId);
+        if (course?.driveFolderId) {
+          const folderId = await createSubjectDriveFolder(
+            subjectData.title ?? '', course.driveFolderId
+          );
+          subjectDriveFolderId = folderId;
+          await supabase.from('subjects')
+            .update({ drive_folder_id: folderId })
+            .eq('id', newSubject.id);
+        }
+      } catch (err) {
+        console.error('Drive subject folder creation failed:', err);
+      }
+
       if (duration > 0 && newSubject) {
         const classRows = [];
         for (let i = 1; i <= duration; i++) {
@@ -256,11 +310,32 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           });
         }
 
-        const { error: classesError } = await supabase
+        const { data: newClasses, error: classesError } = await supabase
           .from('classes')
-          .insert(classRows);
+          .insert(classRows)
+          .select('id, title, date');
 
         if (classesError) throw classesError;
+
+        for (const cls of newClasses ?? []) {
+          try {
+            if (subjectDriveFolderId) {
+              const className = `${cls.date} · ${cls.title}`;
+              const folders = await createClassDriveFolders(className, subjectDriveFolderId);
+              await supabase.from('classes')
+                .update({
+                  drive_folder_id: folders.folderId,
+                  materials_folder_id: folders.materialsFolderId,
+                  homework_folder_id: folders.homeworkFolderId,
+                  teacher_notes_folder_id: folders.teacherNotesFolderId,
+                  translator_notes_folder_id: folders.translatorNotesFolderId,
+                })
+                .eq('id', cls.id);
+            }
+          } catch (err) {
+            console.error('Drive class folder creation failed:', err);
+          }
+        }
       }
 
       await refetchCourses();
@@ -268,7 +343,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       console.error('addSubject error:', err);
       setError('Failed to add subject');
     }
-  }, [refetchCourses]);
+  }, [courses, refetchCourses]);
 
   const updateSubject = useCallback(async (courseId: number, subjectId: number, updates: Partial<Subject>) => {
     setError(null);
@@ -316,17 +391,42 @@ export function useCourses(showConfirmation: ShowConfirmation) {
   const addClass = useCallback(async (courseId: number, subjectId: number, classData: Partial<Class>) => {
     setError(null);
     try {
-      const { error: insertError } = await supabase
+      const { data: newClass, error: insertError } = await supabase
         .from('classes')
-        .insert(toClassRow(classData, subjectId, true));
+        .insert(toClassRow(classData, subjectId, true))
+        .select('id')
+        .single();
 
       if (insertError) throw insertError;
+
+      try {
+        const course = courses.find(c => c.id === courseId);
+        const subject = course?.subjects.find(s => s.id === subjectId);
+        const classDate = classData.date ?? '';
+        const classTitle = classData.title ?? '';
+        const className = `${classDate} · ${classTitle}`;
+        if (subject?.driveFolderId) {
+          const folders = await createClassDriveFolders(className, subject.driveFolderId);
+          await supabase.from('classes')
+            .update({
+              drive_folder_id: folders.folderId,
+              materials_folder_id: folders.materialsFolderId,
+              homework_folder_id: folders.homeworkFolderId,
+              teacher_notes_folder_id: folders.teacherNotesFolderId,
+              translator_notes_folder_id: folders.translatorNotesFolderId,
+            })
+            .eq('id', newClass.id);
+        }
+      } catch (err) {
+        console.error('Drive class folder creation failed:', err);
+      }
+
       await refetchCourses();
     } catch (err) {
       console.error('addClass error:', err);
       setError('Failed to add class');
     }
-  }, [refetchCourses]);
+  }, [courses, refetchCourses]);
 
   const updateClass = useCallback(async (courseId: number, subjectId: number, classId: number, updates: Partial<Class>) => {
     setError(null);

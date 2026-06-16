@@ -91,6 +91,10 @@ export function EditModal({
     if (!formData.graduationYear && editingItem && editingItem.type === 'course') {
       newErrors.graduationYear = 'Year of Graduation is required';
     }
+    if (editingItem?.type === 'course') {
+      if (!formData.startDate) newErrors.startDate = 'Start date is required';
+      if (!formData.endDate) newErrors.endDate = 'End date is required';
+    }
     
     // Check for duplicate course type + graduation year combination
     if (editingItem && editingItem.type === 'course' && formData.courseType && formData.graduationYear) {
