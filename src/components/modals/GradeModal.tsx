@@ -1,26 +1,36 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { X } from 'lucide-react';
-import type { HomeworkSubmission } from '../../types/lms';
+import { X, ExternalLink } from 'lucide-react';
+import type { HomeworkAssignment, HomeworkSubmission } from '../../types/lms';
 
 interface GradeModalProps {
-  isOpen: boolean;
   submission: HomeworkSubmission | null;
-  maxPoints: number;
+  assignment: HomeworkAssignment | null;
   onClose: () => void;
-  onSubmit: (params: {
+  onGrade: (params: {
     submissionId: number;
     points: number;
     gradeComment: string | null;
   }) => Promise<void>;
-  onReturn?: (submissionId: number) => Promise<void>;
+  onReturn: (submissionId: number) => Promise<void>;
+}
+
+function formatGradedDate(dateString: string): string {
+  return new Date(dateString).toLocaleDateString('en-US', {
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function getSubmissionUrl(submission: HomeworkSubmission): string | null {
+  return submission.driveViewUrl ?? submission.googleDocUrl;
 }
 
 export function GradeModal({
-  isOpen,
   submission,
-  maxPoints,
+  assignment,
   onClose,
-  onSubmit,
+  onGrade,
   onReturn,
 }: GradeModalProps) {
   const [points, setPoints] = useState(0);
@@ -29,16 +39,22 @@ export function GradeModal({
   const [errors, setErrors] = useState<{ points?: string }>({});
 
   useEffect(() => {
-    if (!isOpen || !submission) return;
+    if (!submission) return;
     setPoints(submission.points ?? 0);
     setGradeComment(submission.gradeComment ?? '');
     setErrors({});
     setSubmitting(false);
-  }, [isOpen, submission]);
+  }, [submission]);
+
+  if (!submission || !assignment) return null;
+
+  const maxPoints = assignment.maxPoints;
+  const submissionUrl = getSubmissionUrl(submission);
+  const percentage = maxPoints > 0 ? Math.min((points / maxPoints) * 100, 100) : 0;
+  const isAlreadyGraded = submission.status === 'graded' && !!submission.gradedAt;
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!submission) return;
 
     if (points < 0 || points > maxPoints) {
       setErrors({ points: `Points must be between 0 and ${maxPoints}` });
@@ -47,7 +63,7 @@ export function GradeModal({
 
     setSubmitting(true);
     try {
-      await onSubmit({
+      await onGrade({
         submissionId: submission.id,
         points,
         gradeComment: gradeComment.trim() || null,
@@ -59,7 +75,6 @@ export function GradeModal({
   };
 
   const handleReturn = async () => {
-    if (!submission || !onReturn) return;
     setSubmitting(true);
     try {
       await onReturn(submission.id);
@@ -69,16 +84,16 @@ export function GradeModal({
     }
   };
 
-  if (!isOpen || !submission) return null;
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+      <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4 max-h-[90vh] overflow-y-auto">
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Grade Submission</h3>
-              <p className="text-sm text-gray-500 mt-1">{submission.studentName}</p>
+              <h3 className="text-lg font-semibold text-gray-900">
+                {submission.studentName}
+              </h3>
+              <p className="text-sm text-gray-500 mt-1">{assignment.title}</p>
             </div>
             <button
               type="button"
@@ -90,26 +105,56 @@ export function GradeModal({
             </button>
           </div>
 
+          {submissionUrl && (
+            <button
+              type="button"
+              onClick={() => window.open(submissionUrl, '_blank')}
+              className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium mb-6"
+            >
+              <ExternalLink className="w-4 h-4" />
+              Open submission
+            </button>
+          )}
+
+          {isAlreadyGraded && (
+            <p className="text-sm text-gray-500 mb-4">
+              Last graded: {formatGradedDate(submission.gradedAt!)}
+            </p>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label htmlFor="grade-points" className="block text-sm font-medium text-gray-700 mb-1">
-                Points (out of {maxPoints})
+              <label htmlFor="grade-points" className="block text-sm font-medium text-gray-700 mb-2">
+                Points
               </label>
-              <input
-                id="grade-points"
-                type="number"
-                min={0}
-                max={maxPoints}
-                value={points}
-                onChange={e => setPoints(Number(e.target.value))}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              />
-              {errors.points && <p className="text-red-500 text-sm mt-1">{errors.points}</p>}
+              <div className="flex items-baseline gap-2">
+                <input
+                  id="grade-points"
+                  type="number"
+                  min={0}
+                  max={maxPoints}
+                  value={points}
+                  onChange={e => setPoints(Number(e.target.value))}
+                  className="w-28 text-3xl font-bold border border-gray-300 rounded-lg px-3 py-2 text-center focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+                <span className="text-2xl text-gray-400 font-medium">
+                  / {maxPoints}
+                </span>
+              </div>
+              <div className="mt-3 h-2 bg-gray-200 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-amber-600 rounded-full transition-all duration-150"
+                  style={{ width: `${percentage}%` }}
+                />
+              </div>
+              {errors.points && (
+                <p className="text-red-500 text-sm mt-1">{errors.points}</p>
+              )}
             </div>
 
             <div>
               <label htmlFor="grade-comment" className="block text-sm font-medium text-gray-700 mb-1">
-                Feedback
+                Grade comment
               </label>
               <textarea
                 id="grade-comment"
@@ -117,37 +162,28 @@ export function GradeModal({
                 onChange={e => setGradeComment(e.target.value)}
                 rows={4}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Comments for the student..."
+                placeholder="Optional feedback for the student..."
               />
             </div>
 
-            <div className="flex flex-wrap gap-3 justify-between pt-2">
-              {onReturn && submission.status !== 'returned' && (
+            <div className="flex flex-wrap gap-3 justify-end pt-2">
+              {submission.status !== 'returned' && (
                 <button
                   type="button"
                   onClick={handleReturn}
                   disabled={submitting}
-                  className="px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100 disabled:opacity-50"
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 disabled:opacity-50"
                 >
                   Return for Revision
                 </button>
               )}
-              <div className="flex gap-3 ml-auto">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
-                >
-                  {submitting ? 'Saving...' : 'Save Grade'}
-                </button>
-              </div>
+              <button
+                type="submit"
+                disabled={submitting}
+                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
+              >
+                {submitting ? 'Saving...' : 'Save Grade'}
+              </button>
             </div>
           </form>
         </div>

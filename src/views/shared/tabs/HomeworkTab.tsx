@@ -696,14 +696,13 @@ export function HomeworkTab({
         />
 
         <GradeModal
-          isOpen={gradingSubmission !== null}
           submission={gradingSubmission}
-          maxPoints={gradingAssignment?.maxPoints ?? 100}
+          assignment={gradingAssignment}
           onClose={() => {
             setGradingSubmission(null);
             setGradingAssignment(null);
           }}
-          onSubmit={onGrade}
+          onGrade={onGrade}
           onReturn={onReturn}
         />
 
