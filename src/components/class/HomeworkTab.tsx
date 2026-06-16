@@ -1,11 +1,13 @@
-import type { Class, Course, User } from '../../types/lms';
+import type { Class, Course, CourseStudent, User } from '../../types/lms';
 import type { useHomework } from '../../hooks/useHomework';
+import { HomeworkTab as HomeworkTabView } from '../../views/shared/tabs/HomeworkTab';
 
 interface HomeworkTabProps {
   selectedClass: Class;
   selectedCourse: Course;
   currentUser: User;
   users: User[];
+  courseStudents: CourseStudent[];
   homework: ReturnType<typeof useHomework>;
   showConfirmation: (
     title: string,
@@ -15,6 +17,59 @@ interface HomeworkTabProps {
   ) => void;
 }
 
-export function HomeworkTab(_props: HomeworkTabProps) {
-  return null;
+export function HomeworkTab({
+  selectedClass,
+  selectedCourse,
+  currentUser,
+  users,
+  courseStudents,
+  homework,
+  showConfirmation,
+}: HomeworkTabProps) {
+  const {
+    assignments,
+    submissions,
+    saving,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
+    submitFile,
+    createGoogleDocSubmission,
+    submitGoogleDoc,
+    gradeSubmission,
+    returnSubmission,
+    addComment,
+    deleteComment,
+    getSubmission,
+  } = homework;
+
+  return (
+    <HomeworkTabView
+      assignments={assignments}
+      submissions={submissions}
+      currentUser={currentUser}
+      users={users}
+      courseStudents={courseStudents}
+      courseId={selectedCourse.id}
+      classId={selectedClass.id}
+      saving={saving}
+      onCreateAssignment={data =>
+        createAssignment({
+          ...data,
+          classHomeworkFolderId: selectedClass.homeworkFolderId ?? null,
+        })
+      }
+      onUpdateAssignment={updateAssignment}
+      onDeleteAssignment={id => deleteAssignment(id, showConfirmation)}
+      onSubmitFile={submitFile}
+      onCreateGoogleDoc={createGoogleDocSubmission}
+      onSubmitGoogleDoc={submitGoogleDoc}
+      onGrade={gradeSubmission}
+      onReturn={returnSubmission}
+      onAddComment={addComment}
+      onDeleteComment={deleteComment}
+      getSubmission={getSubmission}
+      showConfirmation={showConfirmation}
+    />
+  );
 }

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { ChevronLeft, Calendar, Clock, User as UserIcon } from 'lucide-react';
-import type { Class, Subject, Course, User } from '../../types/lms';
+import type { Class, Subject, Course, User, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { useClassContent } from '../../hooks/useClassContent';
@@ -15,6 +15,7 @@ interface ClassDetailViewProps {
   selectedCourse: Course;
   currentUser: User;
   users: User[];
+  courseStudents: CourseStudent[];
   onBack: () => void;
   showConfirmation: (
     title: string,
@@ -67,6 +68,7 @@ export function ClassDetailView({
   selectedCourse,
   currentUser,
   users,
+  courseStudents,
   onBack,
   showConfirmation,
 }: ClassDetailViewProps) {
@@ -208,6 +210,7 @@ export function ClassDetailView({
             selectedCourse={selectedCourse}
             currentUser={currentUser}
             users={users}
+            courseStudents={courseStudents}
             homework={homework}
             showConfirmation={showConfirmation}
           />
