@@ -67,7 +67,13 @@ export function MyCourseView({
                       <div key={cls.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
                         <div className="flex items-center space-x-3">
                           <Calendar className="w-4 h-4 text-gray-400" />
-                          <span className="font-medium">{cls.title}</span>
+                          <button
+                            type="button"
+                            onClick={() => onOpenClass(cls.id, subject.id, course.id)}
+                            className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
+                          >
+                            <span className="font-medium">{cls.title}</span>
+                          </button>
                           <span className="text-gray-500">{cls.date}</span>
                         </div>
                         <div className="flex items-center space-x-4">

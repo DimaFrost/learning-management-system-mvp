@@ -182,7 +182,13 @@ export function CurriculumOverview({
                                 }`}>
                                   <div className="flex items-center space-x-3">
                                     <Calendar className="w-4 h-4 text-gray-400" />
-                                    <span className="text-sm font-medium">{cls.title}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenClass(cls.id, subject.id, course.id)}
+                                      className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
+                                    >
+                                      <span className="text-sm font-medium">{cls.title}</span>
+                                    </button>
                                     <span className="text-sm text-gray-500">{cls.date}</span>
                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                       cls.hour === 'first' ? 'bg-green-100 text-green-800' :

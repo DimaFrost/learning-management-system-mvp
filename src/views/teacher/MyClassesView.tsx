@@ -70,7 +70,13 @@ export function MyClassesView({
         <div className="flex justify-between items-start mb-4">
           <div className="flex-1">
             <div className="flex items-center space-x-3 mb-2">
-              <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
+              <button
+                type="button"
+                onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
+              >
+                <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
+              </button>
               {myRoles.map(role => (
                 <span key={role} className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}>
                   {role}

@@ -131,7 +131,13 @@ export function CurriculumDateView({
                                 <div className="flex items-start justify-between mb-3">
                                   <div className="flex-1">
                                     <div className="flex items-center space-x-2 mb-2">
-                                      <h6 className="font-medium text-gray-900">{cls.title}</h6>
+                                      <button
+                                        type="button"
+                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                        className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
+                                      >
+                                        <h6 className="font-medium text-gray-900">{cls.title}</h6>
+                                      </button>
                                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                         cls.hour === 'first' ? 'bg-green-100 text-green-800' :
                                         cls.hour === 'second' ? 'bg-purple-100 text-purple-800' :
