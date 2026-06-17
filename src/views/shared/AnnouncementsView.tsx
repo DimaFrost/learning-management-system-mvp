@@ -1,6 +1,18 @@
 import { useState } from 'react';
-import { Megaphone, Pin, Pencil, Trash, Plus, Lock } from 'lucide-react';
-import type { Announcement, User, Course } from '../../types/lms';
+import {
+  Megaphone,
+  Pin,
+  Pencil,
+  Trash,
+  Plus,
+  Lock,
+  FileText,
+  Table,
+  Presentation,
+  Image,
+  X,
+} from 'lucide-react';
+import type { Announcement, AnnouncementAttachment, User, Course } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
@@ -18,12 +30,22 @@ interface AnnouncementsViewProps {
     targetRoles: string[] | null;
     isPinned: boolean;
     isStaffOnly: boolean;
-  }) => Promise<void>;
+  }) => Promise<number>;
   onUpdate: (id: number, updates: Partial<Announcement>) => Promise<void>;
   onDelete: (id: number) => void;
   onTogglePin: (id: number, current: boolean) => Promise<void>;
   onAddComment: (announcementId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => void;
+  onAddAttachment: (
+    announcementId: number,
+    attachment: {
+      file?: File;
+      attachmentType: AnnouncementAttachment['attachmentType'];
+      linkUrl?: string;
+      linkTitle?: string;
+    }
+  ) => Promise<void>;
+  onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
 }
 
 type FilterValue = 'all' | Announcement['type'];
@@ -57,6 +79,121 @@ function formatRelativeTime(dateString: string): string {
   return new Date(dateString).toLocaleDateString();
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024 * 1024) {
+    return `${(bytes / 1024).toFixed(1)} KB`;
+  }
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function getAttachmentOpenUrl(attachment: AnnouncementAttachment): string | null {
+  if (attachment.attachmentType === 'file') {
+    return attachment.publicUrl;
+  }
+  return attachment.linkUrl;
+}
+
+function getAttachmentLabel(attachment: AnnouncementAttachment): string {
+  if (attachment.attachmentType === 'file') {
+    return attachment.fileName ?? 'File';
+  }
+  if (attachment.attachmentType === 'google_doc') {
+    return attachment.linkTitle ?? 'Google Doc';
+  }
+  if (attachment.attachmentType === 'google_sheet') {
+    return attachment.linkTitle ?? 'Google Sheet';
+  }
+  return attachment.linkTitle ?? 'Google Slides';
+}
+
+function AttachmentTypeIcon({ attachment }: { attachment: AnnouncementAttachment }) {
+  if (attachment.attachmentType === 'file') {
+    if (attachment.mimeType?.startsWith('image/')) {
+      return <Image className="w-4 h-4 text-gray-500 flex-shrink-0" />;
+    }
+    return <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />;
+  }
+  if (attachment.attachmentType === 'google_doc') {
+    return <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />;
+  }
+  if (attachment.attachmentType === 'google_sheet') {
+    return <Table className="w-4 h-4 text-green-600 flex-shrink-0" />;
+  }
+  return <Presentation className="w-4 h-4 text-orange-600 flex-shrink-0" />;
+}
+
+interface AnnouncementAttachmentsRowProps {
+  attachments: AnnouncementAttachment[];
+  currentUser: User;
+  isAdmin: boolean;
+  onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
+}
+
+function AnnouncementAttachmentsRow({
+  attachments,
+  currentUser,
+  isAdmin,
+  onDeleteAttachment,
+}: AnnouncementAttachmentsRowProps) {
+  if (attachments.length === 0) return null;
+
+  return (
+    <div className="mb-4">
+      <p className="text-xs font-medium uppercase tracking-wider text-gray-400 mb-2">
+        Attachments
+      </p>
+      <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
+        {attachments.map(attachment => {
+          const openUrl = getAttachmentOpenUrl(attachment);
+          const canDelete =
+            isAdmin || attachment.uploaderId === currentUser.id;
+
+          return (
+            <div
+              key={attachment.id}
+              className="inline-flex items-center gap-2 flex-shrink-0 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm min-w-0 max-w-full"
+            >
+              <AttachmentTypeIcon attachment={attachment} />
+              <div className="min-w-0">
+                <p className="text-gray-900 font-medium truncate max-w-[160px] md:max-w-[200px]">
+                  {getAttachmentLabel(attachment)}
+                </p>
+                {attachment.attachmentType === 'file' && attachment.fileSize != null && (
+                  <p className="text-xs text-gray-500">
+                    {formatFileSize(attachment.fileSize)}
+                  </p>
+                )}
+              </div>
+              {openUrl && (
+                <a
+                  href={openUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-medium text-amber-700 hover:text-amber-900 flex-shrink-0"
+                >
+                  Open
+                </a>
+              )}
+              {canDelete && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onDeleteAttachment(attachment.id, attachment.storagePath)
+                  }
+                  className="p-0.5 text-gray-400 hover:text-red-600 flex-shrink-0"
+                  aria-label="Remove attachment"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 interface AnnouncementCardProps {
   announcement: Announcement;
   courses: Course[];
@@ -71,6 +208,7 @@ interface AnnouncementCardProps {
   onDelete: (id: number) => void;
   onAddComment: (announcementId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => void;
+  onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
 }
 
 function AnnouncementCard({
@@ -87,6 +225,7 @@ function AnnouncementCard({
   onDelete,
   onAddComment,
   onDeleteComment,
+  onDeleteAttachment,
 }: AnnouncementCardProps) {
   const typeBadge = TYPE_BADGE[announcement.type];
   const course =
@@ -168,6 +307,15 @@ function AnnouncementCard({
         {announcement.authorName ?? 'Unknown'} · {formatRelativeTime(announcement.createdAt)}
       </p>
 
+      {announcement.attachments && announcement.attachments.length > 0 && (
+        <AnnouncementAttachmentsRow
+          attachments={announcement.attachments}
+          currentUser={currentUser}
+          isAdmin={isAdmin}
+          onDeleteAttachment={onDeleteAttachment}
+        />
+      )}
+
       <div className="border-t border-gray-100 pt-3">
         <button
           type="button"
@@ -247,6 +395,8 @@ export function AnnouncementsView({
   onTogglePin,
   onAddComment,
   onDeleteComment,
+  onAddAttachment,
+  onDeleteAttachment,
 }: AnnouncementsViewProps) {
   const [filter, setFilter] = useState<FilterValue>('all');
   const [modalOpen, setModalOpen] = useState(false);
@@ -289,6 +439,10 @@ export function AnnouncementsView({
     setModalOpen(true);
   };
 
+  const liveEditingAnnouncement = editingAnnouncement
+    ? announcements.find(a => a.id === editingAnnouncement.id) ?? editingAnnouncement
+    : null;
+
   const closeModal = () => {
     setModalOpen(false);
     setEditingAnnouncement(null);
@@ -312,6 +466,7 @@ export function AnnouncementsView({
       onDelete={onDelete}
       onAddComment={onAddComment}
       onDeleteComment={onDeleteComment}
+      onDeleteAttachment={onDeleteAttachment}
     />
   );
 
@@ -385,15 +540,19 @@ export function AnnouncementsView({
       <CreateAnnouncementModal
         isOpen={modalOpen}
         editingAnnouncement={editingAnnouncement}
+        announcementId={liveEditingAnnouncement?.id ?? null}
+        existingAttachments={liveEditingAnnouncement?.attachments ?? []}
         courses={courses}
         currentUser={currentUser}
         onClose={closeModal}
+        onAddAttachment={onAddAttachment}
+        onDeleteAttachment={onDeleteAttachment}
         onSubmit={async data => {
           if (editingAnnouncement) {
             await onUpdate(editingAnnouncement.id, { ...data });
-          } else {
-            await onAdd(data);
+            return editingAnnouncement.id;
           }
+          return await onAdd(data);
         }}
       />
     </div>

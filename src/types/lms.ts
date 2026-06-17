@@ -100,6 +100,22 @@ export interface Announcement {
   createdAt: string;
   updatedAt: string;
   comments?: AnnouncementComment[];
+  attachments?: AnnouncementAttachment[];
+}
+
+export interface AnnouncementAttachment {
+  id: number;
+  announcementId: number;
+  uploaderId: string;
+  attachmentType: 'file' | 'google_doc' | 'google_sheet' | 'google_slide';
+  fileName: string | null;
+  storagePath: string | null;
+  publicUrl: string | null;
+  mimeType: string | null;
+  fileSize: number | null;
+  linkUrl: string | null;
+  linkTitle: string | null;
+  createdAt: string;
 }
 
 export interface AnnouncementComment {

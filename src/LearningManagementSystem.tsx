@@ -78,6 +78,8 @@ const LearningManagementSystem = () => {
     togglePin,
     addComment,
     deleteComment,
+    addAttachment,
+    deleteAttachment,
   } = useAnnouncements(currentUser ?? PLACEHOLDER_USER, effectiveUser, courseStudents);
 
   const isLoading =
@@ -204,6 +206,8 @@ const LearningManagementSystem = () => {
             togglePin={togglePin}
             addComment={addComment}
             deleteComment={deleteComment}
+            addAttachment={addAttachment}
+            deleteAttachment={deleteAttachment}
             onProfileUpdated={refetchProfile}
           />
         </main>

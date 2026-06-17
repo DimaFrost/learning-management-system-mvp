@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Announcement, AnnouncementComment, User, CourseStudent } from '../types/lms';
+import type { Announcement, AnnouncementComment, AnnouncementAttachment, User, CourseStudent } from '../types/lms';
 import { sendNotification } from '../utils/notifications';
+import { uploadFileToStorage } from '../utils/storageOperations';
 
 type ShowConfirmation = (
   title: string,
@@ -20,6 +21,21 @@ type SupabaseCommentRow = {
   author: SupabaseProfileJoin;
 };
 
+type SupabaseAttachmentRow = {
+  id: number;
+  announcement_id: number;
+  uploader_id: string;
+  attachment_type: AnnouncementAttachment['attachmentType'];
+  file_name: string | null;
+  storage_path: string | null;
+  public_url: string | null;
+  mime_type: string | null;
+  file_size: number | null;
+  link_url: string | null;
+  link_title: string | null;
+  created_at: string;
+};
+
 type SupabaseAnnouncementRow = {
   id: number;
   title: string;
@@ -34,7 +50,25 @@ type SupabaseAnnouncementRow = {
   updated_at: string;
   author: SupabaseProfileJoin;
   comments: SupabaseCommentRow[] | null;
+  attachments: SupabaseAttachmentRow[] | null;
 };
+
+function mapAttachmentRow(row: SupabaseAttachmentRow): AnnouncementAttachment {
+  return {
+    id: row.id,
+    announcementId: row.announcement_id,
+    uploaderId: row.uploader_id,
+    attachmentType: row.attachment_type,
+    fileName: row.file_name,
+    storagePath: row.storage_path,
+    publicUrl: row.public_url,
+    mimeType: row.mime_type,
+    fileSize: row.file_size,
+    linkUrl: row.link_url,
+    linkTitle: row.link_title,
+    createdAt: row.created_at,
+  };
+}
 
 function mapCommentRow(row: SupabaseCommentRow): AnnouncementComment {
   return {
@@ -62,6 +96,7 @@ function mapAnnouncementRow(row: SupabaseAnnouncementRow): Announcement {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     comments: (row.comments ?? []).map(mapCommentRow),
+    attachments: (row.attachments ?? []).map(mapAttachmentRow),
   };
 }
 
@@ -124,12 +159,16 @@ export function useAnnouncements(
       const { data, error: fetchError } = await supabase
         .from('announcements')
         .select(`
-          id, title, content, type, author_id, course_id, target_roles,
-          is_pinned, is_staff_only, created_at, updated_at,
+          *,
           author:profiles!author_id (id, name),
           comments:announcement_comments (
             id, announcement_id, content, created_at,
             author:profiles!author_id (id, name)
+          ),
+          attachments:announcement_attachments (
+            id, announcement_id, uploader_id, attachment_type,
+            file_name, storage_path, public_url, mime_type,
+            file_size, link_url, link_title, created_at
           )
         `)
         .order('is_pinned', { ascending: false })
@@ -167,19 +206,23 @@ export function useAnnouncements(
       targetRoles: string[] | null;
       isPinned: boolean;
       isStaffOnly?: boolean;
-    }) => {
+    }): Promise<number> => {
       setError(null);
       try {
-        const { error: insertError } = await supabase.from('announcements').insert({
-          title: data.title,
-          content: data.content,
-          type: data.type,
-          author_id: fetchUser.id,
-          course_id: data.courseId,
-          target_roles: data.targetRoles,
-          is_pinned: data.isPinned,
-          is_staff_only: data.isStaffOnly ?? false,
-        });
+        const { data: inserted, error: insertError } = await supabase
+          .from('announcements')
+          .insert({
+            title: data.title,
+            content: data.content,
+            type: data.type,
+            author_id: fetchUser.id,
+            course_id: data.courseId,
+            target_roles: data.targetRoles,
+            is_pinned: data.isPinned,
+            is_staff_only: data.isStaffOnly ?? false,
+          })
+          .select('id')
+          .single();
 
         if (insertError) throw insertError;
 
@@ -191,9 +234,12 @@ export function useAnnouncements(
           authorName: fetchUser.name,
           isStaffOnly: data.isStaffOnly ?? false,
         }).catch(console.error);
+
+        return inserted.id;
       } catch (err) {
         setError('Failed to add announcement');
         console.error(err);
+        throw err;
       }
     },
     [fetchUser.id, fetchUser.name, refetchAnnouncements]
@@ -310,6 +356,93 @@ export function useAnnouncements(
     [refetchAnnouncements]
   );
 
+  const addAttachment = useCallback(
+    async (
+      announcementId: number,
+      attachment: {
+        file?: File;
+        attachmentType: AnnouncementAttachment['attachmentType'];
+        linkUrl?: string;
+        linkTitle?: string;
+      }
+    ) => {
+      setError(null);
+      try {
+        if (attachment.attachmentType === 'file') {
+          if (!attachment.file) {
+            throw new Error('File is required for file attachments');
+          }
+
+          const path = `announcements/${announcementId}/${attachment.file.name}`;
+          const { storagePath, publicUrl } = await uploadFileToStorage({
+            file: attachment.file,
+            path,
+          });
+
+          const { error: insertError } = await supabase
+            .from('announcement_attachments')
+            .insert({
+              announcement_id: announcementId,
+              uploader_id: fetchUser.id,
+              attachment_type: 'file',
+              file_name: attachment.file.name,
+              storage_path: storagePath,
+              public_url: publicUrl,
+              mime_type: attachment.file.type || null,
+              file_size: attachment.file.size,
+            });
+
+          if (insertError) throw insertError;
+        } else {
+          const { error: insertError } = await supabase
+            .from('announcement_attachments')
+            .insert({
+              announcement_id: announcementId,
+              uploader_id: fetchUser.id,
+              attachment_type: attachment.attachmentType,
+              link_url: attachment.linkUrl ?? null,
+              link_title: attachment.linkTitle ?? null,
+            });
+
+          if (insertError) throw insertError;
+        }
+
+        await refetchAnnouncements();
+      } catch (err) {
+        setError('Failed to add attachment');
+        console.error(err);
+      }
+    },
+    [fetchUser.id, refetchAnnouncements]
+  );
+
+  const deleteAttachment = useCallback(
+    async (attachmentId: number, storagePath: string | null) => {
+      setError(null);
+      try {
+        if (storagePath) {
+          const { error: storageError } = await supabase.storage
+            .from('tbo-lms')
+            .remove([storagePath]);
+          if (storageError) throw storageError;
+        }
+
+        const { error: deleteError } = await supabase
+          .from('announcement_attachments')
+          .delete()
+          .eq('id', attachmentId);
+
+        if (deleteError) throw deleteError;
+
+        await refetchAnnouncements();
+      } catch (err) {
+        setError('Failed to delete attachment');
+        console.error(err);
+      }
+    },
+    [refetchAnnouncements]
+  );
+
   return {
     announcements,
     loading,
@@ -320,6 +453,8 @@ export function useAnnouncements(
     togglePin,
     addComment,
     deleteComment,
+    addAttachment,
+    deleteAttachment,
     refetchAnnouncements,
   };
 }

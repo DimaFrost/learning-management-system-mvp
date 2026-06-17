@@ -8,6 +8,7 @@ import type {
   MentorshipLog,
   EditingItem,
   Announcement,
+  AnnouncementAttachment,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import { MyCourseView } from './student/MyCourseView';
@@ -83,12 +84,22 @@ export interface AppRouterProps {
     targetRoles: string[] | null;
     isPinned: boolean;
     isStaffOnly: boolean;
-  }) => Promise<void>;
+  }) => Promise<number>;
   updateAnnouncement: (id: number, updates: Partial<Announcement>) => Promise<void>;
   deleteAnnouncement: (id: number) => void;
   togglePin: (id: number, current: boolean) => Promise<void>;
   addComment: (announcementId: number, content: string) => Promise<void>;
   deleteComment: (commentId: number) => void;
+  addAttachment: (
+    announcementId: number,
+    attachment: {
+      file?: File;
+      attachmentType: AnnouncementAttachment['attachmentType'];
+      linkUrl?: string;
+      linkTitle?: string;
+    }
+  ) => Promise<void>;
+  deleteAttachment: (attachmentId: number, storagePath: string | null) => Promise<void>;
   onProfileUpdated: () => void;
 }
 
@@ -132,6 +143,8 @@ export function AppRouter({
   togglePin,
   addComment,
   deleteComment,
+  addAttachment,
+  deleteAttachment,
   onProfileUpdated,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
@@ -201,6 +214,8 @@ export function AppRouter({
         onTogglePin={togglePin}
         onAddComment={addComment}
         onDeleteComment={deleteComment}
+        onAddAttachment={addAttachment}
+        onDeleteAttachment={deleteAttachment}
       />
     );
   }
