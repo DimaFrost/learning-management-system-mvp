@@ -5,6 +5,7 @@ import type {
   HomeworkSubmission,
   HomeworkComment,
   User,
+  Course,
 } from '../types/lms';
 import {
   createAssignmentFolder,
@@ -13,6 +14,7 @@ import {
   uploadFileToStorage,
   buildStoragePath,
 } from '../utils/storageOperations';
+import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (
   title: string,
@@ -42,7 +44,21 @@ function mapCommentRow(row: SupabaseCommentRow): HomeworkComment {
   };
 }
 
-export function useHomework(classId: number | null, currentUser: User) {
+function findClassCourseContext(classId: number, courses: Course[]) {
+  for (const course of courses) {
+    for (const subject of course.subjects) {
+      const cls = subject.classes.find(c => c.id === classId);
+      if (cls) return { course, subject, class: cls };
+    }
+  }
+  return null;
+}
+
+export function useHomework(
+  classId: number | null,
+  currentUser: User,
+  courses: Course[]
+) {
   const [assignments, setAssignments] = useState<HomeworkAssignment[]>([]);
   const [submissions, setSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loading, setLoading] = useState(false);
@@ -160,6 +176,50 @@ export function useHomework(classId: number | null, currentUser: User) {
         } catch (driveErr) {
           console.error('Drive folder creation failed:', driveErr);
         }
+      }
+
+      try {
+        const ctx = findClassCourseContext(classId, courses);
+        const courseId = ctx?.course.id ?? null;
+        const classInfo = ctx
+          ? `${ctx.subject.title} — ${ctx.class.title}`
+          : 'your class';
+
+        let content = `A new homework assignment has been posted for ${classInfo}.`;
+        if (data.dueDate) {
+          content += ` Due: ${new Date(data.dueDate).toLocaleDateString('en-GB', {
+            day: 'numeric',
+            month: 'long',
+            year: 'numeric',
+          })}.`;
+        }
+        if (data.description) {
+          content += `\n\n${data.description}`;
+        }
+
+        const title = `New Homework: ${data.title}`;
+
+        const { error: announcementError } = await supabase.from('announcements').insert({
+          title,
+          content,
+          type: 'homework',
+          author_id: currentUser.id,
+          course_id: courseId,
+          target_roles: ['student'],
+          is_pinned: false,
+          is_staff_only: false,
+        });
+
+        if (announcementError) throw announcementError;
+
+        sendNotification('announcement', {
+          title,
+          content,
+          authorName: currentUser.name,
+          isStaffOnly: false,
+        }).catch(console.error);
+      } catch (announcementErr) {
+        console.error('Homework announcement failed:', announcementErr);
       }
 
       await fetchHomework();

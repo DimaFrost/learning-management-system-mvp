@@ -161,6 +161,7 @@ export function AppRouter({
           selectedClass={foundClass}
           selectedSubject={foundSubject}
           selectedCourse={foundCourse}
+          courses={courses}
           currentUser={currentUser}
           users={users}
           courseStudents={courseStudents}

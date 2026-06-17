@@ -13,6 +13,7 @@ interface ClassDetailViewProps {
   selectedClass: Class;
   selectedSubject: Subject;
   selectedCourse: Course;
+  courses: Course[];
   currentUser: User;
   users: User[];
   courseStudents: CourseStudent[];
@@ -67,6 +68,7 @@ export function ClassDetailView({
   selectedClass,
   selectedSubject,
   selectedCourse,
+  courses,
   currentUser,
   users,
   courseStudents,
@@ -75,7 +77,7 @@ export function ClassDetailView({
   showConfirmation,
 }: ClassDetailViewProps) {
   const classContent = useClassContent(selectedClass.id, currentUser);
-  const homework = useHomework(selectedClass.id, currentUser);
+  const homework = useHomework(selectedClass.id, currentUser, courses);
 
   const canManageDriveFolders =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
