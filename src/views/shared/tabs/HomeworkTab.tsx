@@ -18,6 +18,7 @@ import type {
 } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { formatDueDate } from '../../../utils/dateUtils';
 import { CreateAssignmentModal } from '../../../components/modals/CreateAssignmentModal';
 import { GradeModal } from '../../../components/modals/GradeModal';
 import { SubmissionDetailModal } from '../../../components/modals/SubmissionDetailModal';
@@ -77,15 +78,6 @@ interface HomeworkTabProps {
   selectedCourse: Course;
   selectedSubject: Subject;
   selectedClass: Class;
-}
-
-function formatDueDate(date: string | null): string {
-  if (!date) return 'No due date';
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
 }
 
 function formatSubmittedDate(date: string): string {
@@ -169,7 +161,7 @@ function SubmissionComments({
               <p className="text-gray-800 whitespace-pre-wrap">{c.content}</p>
               <div className="flex justify-between items-center mt-1">
                 <span className="text-xs text-gray-500">
-                  {c.authorName} · {formatDueDate(c.createdAt)}
+                  {c.authorName} · {formatSubmittedDate(c.createdAt)}
                 </span>
                 {(isAdmin || c.authorId === currentUser.id) && (
                   <button

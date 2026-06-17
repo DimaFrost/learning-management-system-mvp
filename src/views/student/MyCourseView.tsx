@@ -1,6 +1,7 @@
 import { GraduationCap, Calendar, CheckCircle } from 'lucide-react';
 import type { User, Class, Course, CourseStudent, MentorshipLog, SubmissionStatus } from '../../types/lms';
 import { getMyCourses } from '../../utils/roleQueries';
+import { formatDueDate } from '../../utils/dateUtils';
 import { useStudentHomework, type StudentHomeworkItem } from '../../hooks/useStudentHomework';
 
 interface MyCourseViewProps {
@@ -75,7 +76,7 @@ function ActiveHomeworkCard({
         </p>
         {item.dueDate && (
           <p className={`text-sm mt-2 ${getDueDateColor(item.dueDate)}`}>
-            Due: {item.dueDate}
+            Due: {formatDueDate(item.dueDate)}
           </p>
         )}
         <div className="mt-2">
