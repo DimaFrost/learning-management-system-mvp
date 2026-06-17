@@ -1,15 +1,19 @@
-import type { Class, User } from '../../types/lms';
+import type { Class, Course, Subject, User } from '../../types/lms';
 import type { useClassContent } from '../../hooks/useClassContent';
 import { StaffNotesTab as StaffNotesTabView } from '../../views/shared/tabs/StaffNotesTab';
 
 interface StaffNotesTabProps {
   selectedClass: Class;
+  selectedCourse: Course;
+  selectedSubject: Subject;
   currentUser: User;
   classContent: ReturnType<typeof useClassContent>;
 }
 
 export function StaffNotesTab({
   selectedClass,
+  selectedCourse,
+  selectedSubject,
   currentUser,
   classContent,
 }: StaffNotesTabProps) {
@@ -23,6 +27,8 @@ export function StaffNotesTab({
       files={files}
       saving={saving}
       selectedClass={selectedClass}
+      selectedCourse={selectedCourse}
+      selectedSubject={selectedSubject}
       onAddNote={addNote}
       onUpdateNote={updateNote}
       onDeleteNote={deleteNote}

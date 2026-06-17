@@ -12,8 +12,12 @@ import type {
   CourseStudent,
   SubmissionStatus,
   User,
+  Course,
+  Subject,
+  Class,
 } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
+import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { CreateAssignmentModal } from '../../../components/modals/CreateAssignmentModal';
 import { GradeModal } from '../../../components/modals/GradeModal';
 import { SubmissionDetailModal } from '../../../components/modals/SubmissionDetailModal';
@@ -48,12 +52,13 @@ interface HomeworkTabProps {
   onSubmitFile: (params: {
     assignmentId: number;
     file: File;
-    assignmentDriveFolderId: string;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
   }) => Promise<void>;
-  onCreateGoogleDoc: (params: {
+  onLinkGoogleDoc: (params: {
     assignmentId: number;
-    assignmentTitle: string;
-    assignmentDriveFolderId: string;
+    googleDocUrl: string;
   }) => Promise<void>;
   onSubmitGoogleDoc: (submissionId: number) => Promise<void>;
   onGrade: (params: {
@@ -69,6 +74,9 @@ interface HomeworkTabProps {
     studentId: string
   ) => HomeworkSubmission | undefined;
   showConfirmation: ShowConfirmation;
+  selectedCourse: Course;
+  selectedSubject: Subject;
+  selectedClass: Class;
 }
 
 function formatDueDate(date: string | null): string {
@@ -203,8 +211,11 @@ function StudentAssignmentCard({
   assignment,
   submission,
   saving,
+  courseSlug,
+  subjectSlug,
+  classSlug,
   onSubmitFile,
-  onCreateGoogleDoc,
+  onLinkGoogleDoc,
   onSubmitGoogleDoc,
   onAddComment,
   onDeleteComment,
@@ -213,28 +224,67 @@ function StudentAssignmentCard({
   assignment: HomeworkAssignment;
   submission: HomeworkSubmission | undefined;
   saving: boolean;
+  courseSlug: string;
+  subjectSlug: string;
+  classSlug: string;
   onSubmitFile: HomeworkTabProps['onSubmitFile'];
-  onCreateGoogleDoc: HomeworkTabProps['onCreateGoogleDoc'];
+  onLinkGoogleDoc: HomeworkTabProps['onLinkGoogleDoc'];
   onSubmitGoogleDoc: HomeworkTabProps['onSubmitGoogleDoc'];
   onAddComment: HomeworkTabProps['onAddComment'];
   onDeleteComment: HomeworkTabProps['onDeleteComment'];
   currentUser: User;
 }) {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [googleDocUrl, setGoogleDocUrl] = useState('');
   const status: SubmissionStatus = submission?.status ?? 'not_started';
-  const folderId = assignment.driveFolderId;
-  const canSubmit = !!folderId;
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !folderId) return;
+    if (!file) return;
     await onSubmitFile({
       assignmentId: assignment.id,
       file,
-      assignmentDriveFolderId: folderId,
+      courseSlug,
+      subjectSlug,
+      classSlug,
     });
     e.target.value = '';
   };
+
+  const handleLinkDoc = async () => {
+    const url = googleDocUrl.trim();
+    if (!url) return;
+    await onLinkGoogleDoc({
+      assignmentId: assignment.id,
+      googleDocUrl: url,
+    });
+    setGoogleDocUrl('');
+  };
+
+  const linkDocSection = (
+    <div className="space-y-2">
+      <p className="text-sm text-gray-600">
+        Create a Google Doc in your own Google Drive, then paste the link here.
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <input
+          type="url"
+          value={googleDocUrl}
+          onChange={e => setGoogleDocUrl(e.target.value)}
+          placeholder="https://docs.google.com/document/d/..."
+          className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
+        />
+        <button
+          type="button"
+          onClick={handleLinkDoc}
+          disabled={saving || !googleDocUrl.trim()}
+          className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
+        >
+          Link Document
+        </button>
+      </div>
+    </div>
+  );
 
   const openSubmission = () => {
     const url = submission && getSubmissionUrl(submission);
@@ -274,39 +324,20 @@ function StudentAssignmentCard({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={saving || !canSubmit}
+              disabled={saving}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Upload File
             </button>
-            <button
-              type="button"
-              onClick={() =>
-                folderId &&
-                onCreateGoogleDoc({
-                  assignmentId: assignment.id,
-                  assignmentTitle: assignment.title,
-                  assignmentDriveFolderId: folderId,
-                })
-              }
-              disabled={saving || !canSubmit}
-              className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-            >
-              Create Google Doc
-            </button>
           </div>
-          {!canSubmit && (
-            <p className="text-sm text-amber-700">
-              Submission folder is not configured for this assignment.
-            </p>
-          )}
+          {linkDocSection}
         </div>
       )}
 
       {status === 'draft' && submission && (
         <div className="space-y-3">
           <p className="text-sm text-gray-600">
-            Your document has been created. Click Submit when you are ready.
+            Your document has been linked. Click Submit when you are ready.
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -407,27 +438,13 @@ function StudentAssignmentCard({
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
-              disabled={saving || !canSubmit}
+              disabled={saving}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
               Upload File
             </button>
-            <button
-              type="button"
-              onClick={() =>
-                folderId &&
-                onCreateGoogleDoc({
-                  assignmentId: assignment.id,
-                  assignmentTitle: assignment.title,
-                  assignmentDriveFolderId: folderId,
-                })
-              }
-              disabled={saving || !canSubmit}
-              className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
-            >
-              Create New Doc
-            </button>
           </div>
+          {linkDocSection}
         </>
       )}
     </div>
@@ -445,17 +462,26 @@ export function HomeworkTab({
   onUpdateAssignment,
   onDeleteAssignment,
   onSubmitFile,
-  onCreateGoogleDoc,
+  onLinkGoogleDoc,
   onSubmitGoogleDoc,
   onGrade,
   onReturn,
   onAddComment,
   onDeleteComment,
   getSubmission,
+  selectedCourse,
+  selectedSubject,
+  selectedClass,
 }: HomeworkTabProps) {
   const isTeacherOrAdmin =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const isAdmin = hasRole(currentUser, 'administrator');
+
+  const courseSlug = getCourseDisplayName(selectedCourse)
+    .toLowerCase().replace(/\s+/g, '-');
+  const subjectSlug = selectedSubject.title
+    .toLowerCase().replace(/\s+/g, '-');
+  const classSlug = `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`;
 
   const [createModalOpen, setCreateModalOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] =
@@ -742,8 +768,11 @@ export function HomeworkTab({
             assignment={assignment}
             submission={getSubmission(assignment.id, currentUser.id)}
             saving={saving}
+            courseSlug={courseSlug}
+            subjectSlug={subjectSlug}
+            classSlug={classSlug}
             onSubmitFile={onSubmitFile}
-            onCreateGoogleDoc={onCreateGoogleDoc}
+            onLinkGoogleDoc={onLinkGoogleDoc}
             onSubmitGoogleDoc={onSubmitGoogleDoc}
             onAddComment={onAddComment}
             onDeleteComment={onDeleteComment}

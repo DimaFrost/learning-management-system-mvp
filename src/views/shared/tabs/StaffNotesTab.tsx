@@ -11,8 +11,9 @@ import {
   Upload,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { Class, ClassNote, ClassFile, User } from '../../../types/lms';
+import type { Class, ClassNote, ClassFile, User, Course, Subject } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
+import { getCourseDisplayName } from '../../../utils/courseUtils';
 
 interface StaffNotesTabProps {
   currentUser: User;
@@ -20,6 +21,8 @@ interface StaffNotesTabProps {
   files: ClassFile[];
   saving: boolean;
   selectedClass: Class;
+  selectedCourse: Course;
+  selectedSubject: Subject;
   onAddNote: (data: {
     noteType: ClassNote['noteType'];
     title: string | null;
@@ -33,7 +36,9 @@ interface StaffNotesTabProps {
   onUploadFile: (params: {
     file: File;
     fileType: 'teacher_note' | 'translator_note';
-    targetFolderId: string;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
   }) => Promise<void>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
 }
@@ -43,8 +48,9 @@ interface StaffNotesColumnProps {
   emptyLabel: string;
   noteType: 'teacher_note' | 'translator_note';
   fileType: 'teacher_note' | 'translator_note';
-  folderId: string | null;
-  folderMissingMessage: string;
+  courseSlug: string;
+  subjectSlug: string;
+  classSlug: string;
   canManage: boolean;
   notes: ClassNote[];
   files: ClassFile[];
@@ -77,8 +83,9 @@ function StaffNotesColumn({
   emptyLabel,
   noteType,
   fileType,
-  folderId,
-  folderMissingMessage,
+  courseSlug,
+  subjectSlug,
+  classSlug,
   canManage,
   notes,
   files,
@@ -148,8 +155,14 @@ function StaffNotesColumn({
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !folderId) return;
-    await onUploadFile({ file, fileType, targetFolderId: folderId });
+    if (!file) return;
+    await onUploadFile({
+      file,
+      fileType,
+      courseSlug,
+      subjectSlug,
+      classSlug,
+    });
     e.target.value = '';
   };
 
@@ -318,7 +331,7 @@ function StaffNotesColumn({
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
-                disabled={saving || !folderId}
+                disabled={saving}
                 className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
@@ -327,10 +340,6 @@ function StaffNotesColumn({
             </div>
           )}
         </div>
-
-        {canManage && !folderId && (
-          <p className="text-sm text-amber-700 mb-4">{folderMissingMessage}</p>
-        )}
 
         {columnFiles.length > 0 && (
           <div className="space-y-3">
@@ -391,6 +400,8 @@ export function StaffNotesTab({
   files,
   saving,
   selectedClass,
+  selectedCourse,
+  selectedSubject,
   onAddNote,
   onUpdateNote,
   onDeleteNote,
@@ -402,9 +413,18 @@ export function StaffNotesTab({
   const canManageTranslatorNotes =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'translator');
 
+  const courseSlug = getCourseDisplayName(selectedCourse)
+    .toLowerCase().replace(/\s+/g, '-');
+  const subjectSlug = selectedSubject.title
+    .toLowerCase().replace(/\s+/g, '-');
+  const classSlug = `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`;
+
   const sharedColumnProps = {
     currentUser,
     saving,
+    courseSlug,
+    subjectSlug,
+    classSlug,
     onAddNote,
     onUpdateNote,
     onDeleteNote,
@@ -419,8 +439,6 @@ export function StaffNotesTab({
         emptyLabel="No teacher notes yet."
         noteType="teacher_note"
         fileType="teacher_note"
-        folderId={selectedClass.teacherNotesFolderId ?? null}
-        folderMissingMessage="Teacher notes folder is not configured for this class."
         canManage={canManageTeacherNotes}
         notes={notes}
         files={files}
@@ -431,8 +449,6 @@ export function StaffNotesTab({
         emptyLabel="No translator notes yet."
         noteType="translator_note"
         fileType="translator_note"
-        folderId={selectedClass.translatorNotesFolderId ?? null}
-        folderMissingMessage="Translator notes folder is not configured for this class."
         canManage={canManageTranslatorNotes}
         notes={notes}
         files={files}

@@ -1,7 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ClassNote, ClassFile, User } from '../types/lms';
-import { uploadFileToDrive, deleteFileFromDrive } from '../utils/driveOperations';
+import {
+  uploadFileToStorage,
+  deleteFileFromStorage,
+  buildStoragePath,
+} from '../utils/storageOperations';
 
 export function useClassContent(classId: number | null, currentUser: User) {
   const [notes, setNotes] = useState<ClassNote[]>([]);
@@ -47,7 +51,7 @@ export function useClassContent(classId: number | null, currentUser: User) {
         uploaderName: row.uploader?.name ?? 'Unknown',
         fileType: row.file_type,
         fileName: row.file_name,
-        driveFileId: row.drive_file_id,
+        storagePath: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
         mimeType: row.mime_type,
         fileSize: row.file_size,
@@ -106,60 +110,40 @@ export function useClassContent(classId: number | null, currentUser: User) {
   const uploadFile = async (params: {
     file: File;
     fileType: 'material' | 'teacher_note' | 'translator_note';
-    targetFolderId: string | null | undefined;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
   }) => {
-    if (!params.targetFolderId) {
-      setError('This class does not have a Drive folder. Create a new class through the app to generate Drive folders automatically.');
-      setSaving(false);
-      return;
-    }
     setSaving(true);
     setError(null);
     try {
-      const arrayBuffer = await params.file.arrayBuffer();
-      const base64 = btoa(
-        String.fromCharCode(...new Uint8Array(arrayBuffer))
-      );
-      const result = await uploadFileToDrive({
+      const storagePath = buildStoragePath({
+        courseSlug: params.courseSlug,
+        subjectSlug: params.subjectSlug,
+        classSlug: params.classSlug,
+        fileType: params.fileType === 'teacher_note' ? 'teacher-notes' :
+          params.fileType === 'translator_note' ? 'translator-notes' :
+          'materials',
         fileName: params.file.name,
-        mimeType: params.file.type || 'application/octet-stream',
-        fileBase64: base64,
-        targetFolderId: params.targetFolderId,
       });
 
-      if (!result?.driveFileId) {
-        const detail =
-          result && typeof result === 'object' && 'error' in result && result.error
-            ? String(result.error)
-            : 'Drive upload failed — no file ID returned.';
-        setError(detail);
-        setSaving(false);
-        return;
-      }
-
-      const { driveFileId, driveViewUrl } = result;
+      const { storagePath: savedPath, publicUrl } =
+        await uploadFileToStorage({ file: params.file, path: storagePath });
 
       const { error } = await supabase.from('class_files').insert({
         class_id: classId,
         uploader_id: currentUser.id,
         file_type: params.fileType,
         file_name: params.file.name,
-        drive_file_id: driveFileId,
-        drive_view_url: driveViewUrl,
+        drive_file_id: savedPath,
+        drive_view_url: publicUrl,
         mime_type: params.file.type || null,
         file_size: params.file.size,
       });
       if (error) throw error;
       await fetchContent();
     } catch (err) {
-      const message = err instanceof Error ? err.message : 'Upload failed';
-      const isSharedDriveIssue =
-        /storage quota|shared drives/i.test(message);
-      setError(
-        isSharedDriveIssue
-          ? `${message} Files must be stored in a Google Shared Drive. See supabase/functions/drive-operations/SETUP.md — update DRIVE_ROOT_FOLDER_ID and re-run folder setup.`
-          : message
-      );
+      setError(err instanceof Error ? err.message : 'Upload failed');
       console.error(err);
     } finally {
       setSaving(false);
@@ -168,7 +152,7 @@ export function useClassContent(classId: number | null, currentUser: User) {
 
   const deleteFile = async (file: ClassFile) => {
     try {
-      await deleteFileFromDrive(file.driveFileId);
+      await deleteFileFromStorage(file.storagePath);
       await supabase.from('class_files').delete().eq('id', file.id);
       await fetchContent();
     } catch (err) {

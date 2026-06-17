@@ -8,9 +8,11 @@ import type {
 } from '../types/lms';
 import {
   createAssignmentFolder,
-  createGoogleDoc,
-  uploadFileToDrive,
 } from '../utils/driveOperations';
+import {
+  uploadFileToStorage,
+  buildStoragePath,
+} from '../utils/storageOperations';
 
 type ShowConfirmation = (
   title: string,
@@ -204,29 +206,31 @@ export function useHomework(classId: number | null, currentUser: User) {
   const submitFile = async (params: {
     assignmentId: number;
     file: File;
-    assignmentDriveFolderId: string;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
   }) => {
     setSaving(true);
     setError(null);
     try {
-      const arrayBuffer = await params.file.arrayBuffer();
-      const base64 = btoa(
-        String.fromCharCode(...new Uint8Array(arrayBuffer))
-      );
-      const { driveFileId, driveViewUrl } = await uploadFileToDrive({
+      const storagePath = buildStoragePath({
+        courseSlug: params.courseSlug,
+        subjectSlug: params.subjectSlug,
+        classSlug: params.classSlug,
+        fileType: 'homework',
         fileName: params.file.name,
-        mimeType: params.file.type || 'application/octet-stream',
-        fileBase64: base64,
-        targetFolderId: params.assignmentDriveFolderId,
         studentName: currentUser.name,
       });
+
+      const { storagePath: savedPath, publicUrl } =
+        await uploadFileToStorage({ file: params.file, path: storagePath });
 
       await supabase.from('homework_submissions').upsert({
         assignment_id: params.assignmentId,
         student_id: currentUser.id,
         submission_type: 'file',
-        drive_file_id: driveFileId,
-        drive_view_url: driveViewUrl,
+        drive_file_id: savedPath,
+        drive_view_url: publicUrl,
         file_name: params.file.name,
         google_doc_id: null,
         google_doc_url: null,
@@ -237,45 +241,36 @@ export function useHomework(classId: number | null, currentUser: User) {
 
       await fetchHomework();
     } catch (err) {
-      setError('Upload failed. Please try again.');
+      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
       console.error(err);
     } finally {
       setSaving(false);
     }
   };
 
-  const createGoogleDocSubmission = async (params: {
+  const linkGoogleDoc = async (params: {
     assignmentId: number;
-    assignmentTitle: string;
-    assignmentDriveFolderId: string;
+    googleDocUrl: string;
   }) => {
+    if (!params.googleDocUrl.includes('docs.google.com')) {
+      setError('Please paste a valid Google Docs URL');
+      return;
+    }
     setSaving(true);
     setError(null);
     try {
-      const docTitle = `${params.assignmentTitle} - ${currentUser.name}`;
-      const { googleDocId, googleDocUrl } = await createGoogleDoc({
-        docTitle,
-        studentFolderId: params.assignmentDriveFolderId,
-        studentEmail: currentUser.email,
-      });
-
       await supabase.from('homework_submissions').upsert({
         assignment_id: params.assignmentId,
         student_id: currentUser.id,
         submission_type: 'google_doc',
-        google_doc_id: googleDocId,
-        google_doc_url: googleDocUrl,
-        drive_file_id: null,
-        drive_view_url: null,
+        google_doc_url: params.googleDocUrl,
+        google_doc_id: null,
         status: 'draft',
         updated_at: new Date().toISOString(),
       }, { onConflict: 'assignment_id,student_id' });
-
       await fetchHomework();
-
-      window.open(googleDocUrl, '_blank');
     } catch (err) {
-      setError('Failed to create Google Doc. Please try again.');
+      setError('Failed to link Google Doc. Please try again.');
       console.error(err);
     } finally {
       setSaving(false);
@@ -355,7 +350,7 @@ export function useHomework(classId: number | null, currentUser: User) {
   return {
     assignments, submissions, loading, saving, error,
     createAssignment, updateAssignment, deleteAssignment,
-    submitFile, createGoogleDocSubmission, submitGoogleDoc,
+    submitFile, linkGoogleDoc, submitGoogleDoc,
     gradeSubmission, returnSubmission,
     addComment, deleteComment,
     getSubmission,

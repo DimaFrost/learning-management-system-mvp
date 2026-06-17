@@ -259,6 +259,8 @@ export function ClassDetailView({
         {activeTab === 'staff' && canSeeStaffNotes && (
           <StaffNotesTab
             selectedClass={selectedClass}
+            selectedCourse={selectedCourse}
+            selectedSubject={selectedSubject}
             currentUser={currentUser}
             classContent={classContent}
           />
@@ -267,6 +269,7 @@ export function ClassDetailView({
           <HomeworkTab
             selectedClass={selectedClass}
             selectedCourse={selectedCourse}
+            selectedSubject={selectedSubject}
             currentUser={currentUser}
             users={users}
             courseStudents={courseStudents}

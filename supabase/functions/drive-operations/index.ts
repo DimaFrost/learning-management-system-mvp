@@ -63,12 +63,8 @@ async function getAccessToken(): Promise<string> {
 }
 
 // ============================================
-// Drive helpers (Shared Drive — service accounts have no My Drive quota)
-// See supabase/functions/drive-operations/SETUP.md
+// Drive helpers
 // ============================================
-const SHARED_DRIVE_QUERY = 'supportsAllDrives=true';
-const LIST_DRIVE_QUERY = 'supportsAllDrives=true&includeItemsFromAllDrives=true';
-
 async function createFolder(
   name: string,
   parentId: string,
@@ -78,9 +74,7 @@ async function createFolder(
     throw new Error('Folder name is required');
   }
 
-  const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?${SHARED_DRIVE_QUERY}`,
-    {
+  const res = await fetch('https://www.googleapis.com/drive/v3/files', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${token}`,
@@ -112,7 +106,7 @@ async function findFolder(
     `name = '${name}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
   );
   const res = await fetch(
-    `https://www.googleapis.com/drive/v3/files?q=${query}&${LIST_DRIVE_QUERY}&fields=files(id,name)`,
+    `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
     { headers: { Authorization: `Bearer ${token}` } }
   );
   const data = await res.json();
@@ -127,68 +121,6 @@ async function findOrCreateFolder(
   const existing = await findFolder(name, parentId, token);
   if (existing) return existing;
   return await createFolder(name, parentId, token);
-}
-
-async function uploadFile(
-  name: string,
-  parentId: string,
-  content: Uint8Array,
-  mimeType: string,
-  token: string
-): Promise<{ id: string; webViewLink: string }> {
-  const metadata = JSON.stringify({ name, parents: [parentId] });
-  const boundary = 'tbo_boundary';
-
-  const body = [
-    `--${boundary}`,
-    'Content-Type: application/json; charset=UTF-8',
-    '',
-    metadata,
-    `--${boundary}`,
-    `Content-Type: ${mimeType}`,
-    '',
-    '',
-  ].join('\r\n');
-
-  const bodyBytes = new TextEncoder().encode(body);
-  const combined = new Uint8Array(bodyBytes.length + content.length + 
-    new TextEncoder().encode(`\r\n--${boundary}--`).length);
-  combined.set(bodyBytes);
-  combined.set(content, bodyBytes.length);
-  combined.set(
-    new TextEncoder().encode(`\r\n--${boundary}--`),
-    bodyBytes.length + content.length
-  );
-
-  const res = await fetch(
-    `https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&${SHARED_DRIVE_QUERY}&fields=id,webViewLink`,
-    {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': `multipart/related; boundary=${boundary}`,
-      },
-      body: combined,
-    }
-  );
-  const data = await res.json();
-  if (!res.ok) {
-    console.error('Drive uploadFile error:', data);
-    throw new Error(data.error?.message ?? 'Failed to upload file to Drive');
-  }
-  if (!data.id) {
-    throw new Error('Drive API returned no file id');
-  }
-  return { id: data.id, webViewLink: data.webViewLink ?? '' };
-}
-
-async function deleteFile(fileId: string, token: string): Promise<void> {
-  await fetch(
-    `https://www.googleapis.com/drive/v3/files/${fileId}?${SHARED_DRIVE_QUERY}`,
-    {
-    method: 'DELETE',
-    headers: { Authorization: `Bearer ${token}` },
-  });
 }
 
 // ============================================
@@ -265,36 +197,6 @@ serve(async (req) => {
       });
     }
 
-    // ACTION: upload-file
-    // data: { fileName, mimeType, fileBase64, targetFolderId, 
-    //         studentName? (for homework subfolder) }
-    // returns: { driveFileId, driveViewUrl }
-    if (action === 'upload-file') {
-      let targetFolder = data.targetFolderId;
-
-      // For homework, create a subfolder per student
-      if (data.studentName) {
-        targetFolder = await createFolder(
-          data.studentName, data.targetFolderId, token
-        );
-      }
-
-      const content = Uint8Array.from(
-        atob(data.fileBase64), c => c.charCodeAt(0)
-      );
-      const file = await uploadFile(
-        data.fileName, targetFolder, content, data.mimeType, token
-      );
-      return respond({ driveFileId: file.id, driveViewUrl: file.webViewLink });
-    }
-
-    // ACTION: delete-file
-    // data: { driveFileId }
-    if (action === 'delete-file') {
-      await deleteFile(data.driveFileId, token);
-      return respond({ success: true });
-    }
-
     // ACTION: create-assignment-folder
     // data: { assignmentTitle, classHomeworkFolderId }
     // returns: { folderId }
@@ -305,55 +207,6 @@ serve(async (req) => {
         token
       );
       return respond({ folderId });
-    }
-
-    // ACTION: create-google-doc
-    // data: { docTitle, studentFolderId, studentEmail }
-    // returns: { googleDocId, googleDocUrl }
-    if (action === 'create-google-doc') {
-      const createRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files?${SHARED_DRIVE_QUERY}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            name: data.docTitle,
-            mimeType: 'application/vnd.google-apps.document',
-            parents: [data.studentFolderId],
-          }),
-        }
-      );
-      const docFile = await createRes.json();
-
-      await fetch(
-        `https://www.googleapis.com/drive/v3/files/${docFile.id}/permissions?${SHARED_DRIVE_QUERY}`,
-        {
-          method: 'POST',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            type: 'user',
-            role: 'writer',
-            emailAddress: data.studentEmail,
-          }),
-        }
-      );
-
-      const fileRes = await fetch(
-        `https://www.googleapis.com/drive/v3/files/${docFile.id}?${SHARED_DRIVE_QUERY}&fields=id,webViewLink`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      const fileData = await fileRes.json();
-
-      return respond({
-        googleDocId: fileData.id,
-        googleDocUrl: fileData.webViewLink,
-      });
     }
 
     return respond({ error: 'Unknown action' }, 400);

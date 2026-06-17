@@ -130,7 +130,7 @@ export interface ClassFile {
   uploaderName: string;
   fileType: 'material' | 'homework' | 'teacher_note' | 'translator_note';
   fileName: string;
-  driveFileId: string;
+  storagePath: string;
   driveViewUrl: string;
   mimeType: string | null;
   fileSize: number | null;

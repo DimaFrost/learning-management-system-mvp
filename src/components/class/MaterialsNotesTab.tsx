@@ -13,6 +13,7 @@ interface MaterialsNotesTabProps {
 export function MaterialsNotesTab({
   selectedClass,
   selectedSubject,
+  selectedCourse,
   currentUser,
   classContent,
 }: MaterialsNotesTabProps) {
@@ -33,7 +34,9 @@ export function MaterialsNotesTab({
       onDeleteNote={deleteNote}
       onUploadFile={uploadFile}
       onDeleteFile={deleteFile}
-      materialsFolderId={selectedClass.materialsFolderId ?? null}
+      selectedCourse={selectedCourse}
+      selectedSubject={selectedSubject}
+      selectedClass={selectedClass}
     />
   );
 }

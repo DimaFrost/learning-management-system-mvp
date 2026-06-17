@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import { uploadFileToDrive, deleteFileFromDrive } from '../utils/driveOperations';
+import {
+  uploadFileToStorage,
+  deleteFileFromStorage,
+  buildStoragePath,
+} from '../utils/storageOperations';
 import type { User, ClassFile } from '../types/lms';
 
 export function useClassFiles(classId: number | null) {
@@ -31,7 +35,7 @@ export function useClassFiles(classId: number | null) {
         uploaderName: row.uploader?.name ?? 'Unknown',
         fileType: row.file_type,
         fileName: row.file_name,
-        driveFileId: row.drive_file_id,
+        storagePath: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
         mimeType: row.mime_type,
         fileSize: row.file_size,
@@ -52,7 +56,9 @@ export function useClassFiles(classId: number | null) {
   const uploadFile = async (params: {
     file: File;
     fileType: ClassFile['fileType'];
-    targetFolderId: string;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
     currentUser: User;
     classId: number;
     studentName?: string;
@@ -60,29 +66,31 @@ export function useClassFiles(classId: number | null) {
     setUploading(true);
     setError(null);
     try {
-      // Convert File to base64
-      const arrayBuffer = await params.file.arrayBuffer();
-      const base64 = btoa(
-        String.fromCharCode(...new Uint8Array(arrayBuffer))
-      );
+      const fileTypeFolder =
+        params.fileType === 'teacher_note' ? 'teacher-notes' :
+        params.fileType === 'translator_note' ? 'translator-notes' :
+        params.fileType === 'homework' ? 'homework' :
+        'materials';
 
-      // Upload to Drive
-      const { driveFileId, driveViewUrl } = await uploadFileToDrive({
+      const storagePath = buildStoragePath({
+        courseSlug: params.courseSlug,
+        subjectSlug: params.subjectSlug,
+        classSlug: params.classSlug,
+        fileType: fileTypeFolder,
         fileName: params.file.name,
-        mimeType: params.file.type || 'application/octet-stream',
-        fileBase64: base64,
-        targetFolderId: params.targetFolderId,
         studentName: params.studentName,
       });
 
-      // Save metadata to Supabase
+      const { storagePath: savedPath, publicUrl } =
+        await uploadFileToStorage({ file: params.file, path: storagePath });
+
       const { error } = await supabase.from('class_files').insert({
         class_id: params.classId,
         uploader_id: params.currentUser.id,
         file_type: params.fileType,
         file_name: params.file.name,
-        drive_file_id: driveFileId,
-        drive_view_url: driveViewUrl,
+        drive_file_id: savedPath,
+        drive_view_url: publicUrl,
         mime_type: params.file.type || null,
         file_size: params.file.size,
       });
@@ -99,7 +107,7 @@ export function useClassFiles(classId: number | null) {
 
   const deleteFile = async (file: ClassFile): Promise<void> => {
     try {
-      await deleteFileFromDrive(file.driveFileId);
+      await deleteFileFromStorage(file.storagePath);
       await supabase.from('class_files').delete().eq('id', file.id);
       await fetchFiles();
     } catch (err) {

@@ -32,9 +32,6 @@ async function callDrive(action: string, data: object) {
   if (typeof result === 'object' && 'error' in result && result.error) {
     throw new Error(String(result.error));
   }
-  if (action === 'upload-file' && !('driveFileId' in result && result.driveFileId)) {
-    throw new Error('Drive upload returned no file ID');
-  }
   return result;
 }
 
@@ -51,7 +48,7 @@ export async function createSubjectDriveFolder(
   subjectName: string,
   courseFolderId: string
 ): Promise<string> {
-  const result = await callDrive('create-subject-folder', 
+  const result = await callDrive('create-subject-folder',
     { subjectName, courseFolderId });
   return result.folderId;
 }
@@ -66,22 +63,8 @@ export async function createClassDriveFolders(
   teacherNotesFolderId: string;
   translatorNotesFolderId: string;
 }> {
-  return await callDrive('create-class-folders', 
+  return await callDrive('create-class-folders',
     { className, subjectFolderId });
-}
-
-export async function uploadFileToDrive(params: {
-  fileName: string;
-  mimeType: string;
-  fileBase64: string;
-  targetFolderId: string;
-  studentName?: string;
-}): Promise<{ driveFileId: string; driveViewUrl: string }> {
-  return await callDrive('upload-file', params);
-}
-
-export async function deleteFileFromDrive(driveFileId: string): Promise<void> {
-  await callDrive('delete-file', { driveFileId });
 }
 
 export async function createAssignmentFolder(
@@ -93,12 +76,4 @@ export async function createAssignmentFolder(
     classHomeworkFolderId,
   });
   return result.folderId;
-}
-
-export async function createGoogleDoc(params: {
-  docTitle: string;
-  studentFolderId: string;
-  studentEmail: string;
-}): Promise<{ googleDocId: string; googleDocUrl: string }> {
-  return await callDrive('create-google-doc', params);
 }

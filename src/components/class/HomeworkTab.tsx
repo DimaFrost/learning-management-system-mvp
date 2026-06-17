@@ -1,10 +1,11 @@
-import type { Class, Course, CourseStudent, User } from '../../types/lms';
+import type { Class, Course, CourseStudent, User, Subject } from '../../types/lms';
 import type { useHomework } from '../../hooks/useHomework';
 import { HomeworkTab as HomeworkTabView } from '../../views/shared/tabs/HomeworkTab';
 
 interface HomeworkTabProps {
   selectedClass: Class;
   selectedCourse: Course;
+  selectedSubject: Subject;
   currentUser: User;
   users: User[];
   courseStudents: CourseStudent[];
@@ -20,6 +21,7 @@ interface HomeworkTabProps {
 export function HomeworkTab({
   selectedClass,
   selectedCourse,
+  selectedSubject,
   currentUser,
   users,
   courseStudents,
@@ -34,7 +36,7 @@ export function HomeworkTab({
     updateAssignment,
     deleteAssignment,
     submitFile,
-    createGoogleDocSubmission,
+    linkGoogleDoc,
     submitGoogleDoc,
     gradeSubmission,
     returnSubmission,
@@ -62,7 +64,7 @@ export function HomeworkTab({
       onUpdateAssignment={updateAssignment}
       onDeleteAssignment={id => deleteAssignment(id, showConfirmation)}
       onSubmitFile={submitFile}
-      onCreateGoogleDoc={createGoogleDocSubmission}
+      onLinkGoogleDoc={linkGoogleDoc}
       onSubmitGoogleDoc={submitGoogleDoc}
       onGrade={gradeSubmission}
       onReturn={returnSubmission}
@@ -70,6 +72,9 @@ export function HomeworkTab({
       onDeleteComment={deleteComment}
       getSubmission={getSubmission}
       showConfirmation={showConfirmation}
+      selectedCourse={selectedCourse}
+      selectedSubject={selectedSubject}
+      selectedClass={selectedClass}
     />
   );
 }

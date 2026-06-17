@@ -12,8 +12,9 @@ import {
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import type { ClassNote, ClassFile, SubjectNote, User } from '../../../types/lms';
+import type { ClassNote, ClassFile, SubjectNote, User, Course, Subject, Class } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
+import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 
 interface MaterialsTabProps {
@@ -36,10 +37,14 @@ interface MaterialsTabProps {
   onUploadFile: (params: {
     file: File;
     fileType: 'material';
-    targetFolderId: string;
+    courseSlug: string;
+    subjectSlug: string;
+    classSlug: string;
   }) => Promise<void>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
-  materialsFolderId: string | null;
+  selectedCourse: Course;
+  selectedSubject: Subject;
+  selectedClass: Class;
 }
 
 function formatDate(dateString: string): string {
@@ -144,7 +149,9 @@ export function MaterialsTab({
   onDeleteNote,
   onUploadFile,
   onDeleteFile,
-  materialsFolderId,
+  selectedCourse,
+  selectedSubject,
+  selectedClass,
 }: MaterialsTabProps) {
   const canEditCurriculum =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
@@ -226,11 +233,15 @@ export function MaterialsTab({
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !materialsFolderId) return;
+    if (!file) return;
     await onUploadFile({
       file,
       fileType: 'material',
-      targetFolderId: materialsFolderId,
+      courseSlug: getCourseDisplayName(selectedCourse)
+        .toLowerCase().replace(/\s+/g, '-'),
+      subjectSlug: selectedSubject.title
+        .toLowerCase().replace(/\s+/g, '-'),
+      classSlug: `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`,
     });
     e.target.value = '';
   };
@@ -480,7 +491,7 @@ export function MaterialsTab({
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  disabled={isBusy || !materialsFolderId}
+                  disabled={isBusy}
                   className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
@@ -489,12 +500,6 @@ export function MaterialsTab({
               </div>
             )}
           </div>
-
-          {canManageNotes && !materialsFolderId && (
-            <p className="text-sm text-amber-700 mb-4">
-              Materials folder is not configured for this class. Use &quot;Set up Google Drive folders&quot; above to enable uploads.
-            </p>
-          )}
 
           {files.length === 0 ? (
             <p className="text-sm text-gray-500">No materials uploaded yet.</p>
