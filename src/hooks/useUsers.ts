@@ -17,6 +17,7 @@ function mapProfileToUser(row: {
   roles: string[];
   first_name?: string | null;
   last_name?: string | null;
+  avatar_url?: string | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
 }): User {
   return {
@@ -26,6 +27,7 @@ function mapProfileToUser(row: {
     roles: row.roles as UserRole[],
     firstName: row.first_name ?? '',
     lastName: row.last_name ?? '',
+    avatarUrl: row.avatar_url ?? null,
     notificationPreferences: {
       announcements: true,
       roleChange: true,

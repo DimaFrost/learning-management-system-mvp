@@ -56,6 +56,7 @@ export function useAuth() {
         roles: data.roles,
         firstName: data.first_name ?? '',
         lastName: data.last_name ?? '',
+        avatarUrl: data.avatar_url ?? null,
         notificationPreferences: data.notification_preferences ?? {
           announcements: true,
           roleChange: true,

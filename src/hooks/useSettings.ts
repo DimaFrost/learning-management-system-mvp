@@ -64,6 +64,56 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
     }
   };
 
+  const uploadAvatar = async (file: File): Promise<void> => {
+    setSaving(true);
+    setError(null);
+    try {
+      if (!file.type.startsWith('image/')) {
+        setError('Please select an image file.');
+        setSaving(false);
+        return;
+      }
+
+      if (file.size > 2 * 1024 * 1024) {
+        setError('Image must be under 2MB.');
+        setSaving(false);
+        return;
+      }
+
+      const ext = file.name.split('.').pop();
+      const path = `avatars/${currentUser.id}/avatar.${ext}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('tbo-lms')
+        .upload(path, file, {
+          upsert: true,
+          cacheControl: '3600',
+        });
+      if (uploadError) throw uploadError;
+
+      const { data: urlData } = supabase.storage
+        .from('tbo-lms')
+        .getPublicUrl(path);
+
+      const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ avatar_url: avatarUrl })
+        .eq('id', currentUser.id);
+      if (profileError) throw profileError;
+
+      setSuccessMessage('Profile photo updated.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      onProfileUpdated();
+    } catch (err) {
+      setError('Failed to upload photo. Please try again.');
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return { saving, error, successMessage, updateProfile,
-           updateNotificationPreferences };
+           updateNotificationPreferences, uploadAvatar };
 }

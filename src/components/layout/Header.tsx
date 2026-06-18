@@ -32,9 +32,22 @@ export function Header({ currentUser, onSignOut, isDev, previewRoles, onOpenDevP
           <h1 className="text-xl font-semibold text-gray-900">The Burning Ones</h1>
         </div>
         <div className="flex items-center space-x-4">
-          <span className="text-sm text-gray-600">
-            {currentUser.name} ({currentUser.roles.join(', ')})
-          </span>
+          <div className="flex items-center gap-2">
+            {currentUser.avatarUrl ? (
+              <img
+                src={currentUser.avatarUrl}
+                alt={currentUser.name}
+                className="w-8 h-8 rounded-full object-cover"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold text-sm">
+                {currentUser.name.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <span className="text-sm text-gray-600">
+              {currentUser.name} ({currentUser.roles.join(', ')})
+            </span>
+          </div>
           {isDev && (
             <button
               type="button"

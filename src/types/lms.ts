@@ -13,6 +13,7 @@ export interface User {
   roles: UserRole[];
   firstName: string;
   lastName: string;
+  avatarUrl: string | null;
   notificationPreferences: {
     announcements: boolean;
     roleChange: boolean;

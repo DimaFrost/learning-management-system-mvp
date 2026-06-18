@@ -38,6 +38,7 @@ const PLACEHOLDER_USER: User = {
   roles: [],
   firstName: '',
   lastName: '',
+  avatarUrl: null,
   notificationPreferences: DEFAULT_NOTIFICATION_PREFERENCES,
 };
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { User } from '../../types/lms';
 import { useSettings } from '../../hooks/useSettings';
 import { Save, Bell, User as UserIcon, Camera } from 'lucide-react';
@@ -77,18 +77,21 @@ function NotificationToggle({
 }
 
 export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProps) {
-  const { saving, error, successMessage, updateProfile, updateNotificationPreferences } =
+  const { saving, error, successMessage, updateProfile, updateNotificationPreferences, uploadAvatar } =
     useSettings(currentUser, onProfileUpdated);
 
   const [firstName, setFirstName] = useState(currentUser.firstName);
   const [lastName, setLastName] = useState(currentUser.lastName);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setFirstName(currentUser.firstName);
     setLastName(currentUser.lastName);
   }, [currentUser.firstName, currentUser.lastName]);
 
-  const isProfileSuccess = successMessage === 'Profile updated.';
+  const isProfileSuccess =
+    successMessage === 'Profile updated.' ||
+    successMessage === 'Profile photo updated.';
   const isPrefsSuccess = successMessage === 'Preferences saved.';
 
   const handleTogglePreference = (key: NotificationPreferenceKey) => {
@@ -154,9 +157,40 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
           </p>
         </div>
 
-        <div className="flex flex-col items-center justify-center w-24 h-24 bg-gray-100 rounded-lg text-gray-400 gap-1">
-          <Camera className="w-6 h-6" />
-          <span className="text-xs text-center px-1">Profile photo — coming soon</span>
+        <div className="flex flex-col items-center">
+          {currentUser.avatarUrl ? (
+            <img
+              src={currentUser.avatarUrl}
+              alt="Profile photo"
+              className="w-24 h-24 rounded-full object-cover"
+            />
+          ) : (
+            <div className="w-24 h-24 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-3xl font-bold">
+              {currentUser.name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <input
+            type="file"
+            accept="image/*"
+            className="hidden"
+            ref={fileInputRef}
+            onChange={e => {
+              const file = e.target.files?.[0];
+              if (file) uploadAvatar(file);
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={saving}
+            className="mt-3 inline-flex items-center justify-center border border-amber-600 text-amber-600 px-4 py-2 rounded-lg hover:bg-amber-50 disabled:opacity-50 text-sm font-medium"
+          >
+            <Camera className="w-4 h-4 mr-2" />
+            {saving ? 'Uploading...' : 'Change Photo'}
+          </button>
+          <p className="text-xs text-gray-500 mt-1">
+            JPG, PNG or GIF · Max 2MB
+          </p>
         </div>
 
         {isProfileSuccess && (

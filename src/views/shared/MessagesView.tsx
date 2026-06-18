@@ -100,22 +100,45 @@ function groupMessagesByDate(messages: Message[]): { dateKey: string; label: str
   return groups;
 }
 
-function InitialsAvatar({ name }: { name: string }) {
-  const initial = (name.trim().charAt(0) || '?').toUpperCase();
+function UserAvatar({
+  user,
+  size = 'md',
+}: {
+  user: { name: string; avatarUrl?: string | null };
+  size?: 'sm' | 'md' | 'lg';
+}) {
+  const sizeClass =
+    size === 'sm' ? 'w-6 h-6 text-xs' :
+    size === 'lg' ? 'w-12 h-12 text-xl' :
+    'w-8 h-8 text-sm';
+
+  if (user.avatarUrl) {
+    return (
+      <img
+        src={user.avatarUrl}
+        alt={user.name}
+        className={`${sizeClass} rounded-full object-cover shrink-0`}
+      />
+    );
+  }
+
   return (
-    <div className="w-10 h-10 rounded-full bg-amber-600 text-white flex items-center justify-center text-sm font-semibold shrink-0">
-      {initial}
+    <div
+      className={`${sizeClass} rounded-full bg-amber-100 flex items-center justify-center text-amber-700 font-bold shrink-0`}
+    >
+      {user.name.charAt(0).toUpperCase()}
     </div>
   );
 }
 
 interface ConversationListItemProps {
   conversation: Conversation;
+  otherUser: User | undefined;
   isSelected: boolean;
   onSelect: () => void;
 }
 
-function ConversationListItem({ conversation, isSelected, onSelect }: ConversationListItemProps) {
+function ConversationListItem({ conversation, otherUser, isSelected, onSelect }: ConversationListItemProps) {
   const hasUnread = conversation.unreadCount > 0;
 
   return (
@@ -126,7 +149,10 @@ function ConversationListItem({ conversation, isSelected, onSelect }: Conversati
         isSelected ? 'bg-amber-50' : ''
       }`}
     >
-      <InitialsAvatar name={conversation.otherUserName} />
+      <UserAvatar
+        user={otherUser ?? { name: conversation.otherUserName }}
+        size="lg"
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}`}>
@@ -393,6 +419,7 @@ export function MessagesView({
                 <ConversationListItem
                   key={conv.otherUserId}
                   conversation={conv}
+                  otherUser={users.find(u => u.id === conv.otherUserId)}
                   isSelected={selectedUserId === conv.otherUserId}
                   onSelect={() => handleSelectConversation(conv)}
                 />
@@ -453,7 +480,7 @@ export function MessagesView({
                       onClick={() => handleSelectComposeUser(user)}
                       className="w-full text-left px-4 py-3 flex gap-3 hover:bg-gray-50 border-b border-gray-100"
                     >
-                      <InitialsAvatar name={user.name} />
+                      <UserAvatar user={user} size="lg" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-gray-900">{user.name}</p>
                       </div>
@@ -475,7 +502,10 @@ export function MessagesView({
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <InitialsAvatar name={otherUserName} />
+                <UserAvatar
+                  user={{ name: otherUserName, avatarUrl: selectedUser?.avatarUrl }}
+                  size="lg"
+                />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{otherUserName}</p>
                 </div>
