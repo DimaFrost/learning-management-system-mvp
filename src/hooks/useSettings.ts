@@ -11,6 +11,7 @@ interface UpdateNotificationPreferences {
   announcements: boolean;
   roleChange: boolean;
   enrollment: boolean;
+  messages: boolean;
 }
 
 export function useSettings(currentUser: User, onProfileUpdated: () => void) {

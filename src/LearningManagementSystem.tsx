@@ -10,6 +10,7 @@ import { useCourses } from './hooks/useCourses';
 import { useEnrollments } from './hooks/useEnrollments';
 import { useMentorshipLogs } from './hooks/useMentorshipLogs';
 import { useAnnouncements } from './hooks/useAnnouncements';
+import { useMessages } from './hooks/useMessages';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
 import { LogCheckinModal } from './components/modals/LogCheckinModal';
@@ -27,6 +28,7 @@ const DEFAULT_NOTIFICATION_PREFERENCES = {
   announcements: true,
   roleChange: true,
   enrollment: true,
+  messages: true,
 };
 
 const PLACEHOLDER_USER: User = {
@@ -81,6 +83,16 @@ const LearningManagementSystem = () => {
     addAttachment,
     deleteAttachment,
   } = useAnnouncements(currentUser ?? PLACEHOLDER_USER, effectiveUser, courseStudents);
+  const {
+    conversations,
+    totalUnread,
+    loading: messagesLoading,
+    sending,
+    error: messagesError,
+    sendMessage,
+    markConversationAsRead,
+    deleteMessage,
+  } = useMessages(currentUser ?? PLACEHOLDER_USER, users);
 
   const isLoading =
     coursesLoading ||
@@ -162,7 +174,12 @@ const LearningManagementSystem = () => {
         onOpenDevPanel={() => setShowDevPanel(true)}
       />
       <div className="flex">
-        <Sidebar activeView={activeView} onNavigate={setActiveView} hasRole={hasRole} />
+        <Sidebar
+          activeView={activeView}
+          onNavigate={setActiveView}
+          hasRole={hasRole}
+          totalUnread={totalUnread}
+        />
         <main className="flex-1 p-8">
           <AppRouter
             activeView={activeView}
@@ -209,6 +226,14 @@ const LearningManagementSystem = () => {
             addAttachment={addAttachment}
             deleteAttachment={deleteAttachment}
             onProfileUpdated={refetchProfile}
+            conversations={conversations}
+            messagesLoading={messagesLoading}
+            messagesSending={sending}
+            messagesError={messagesError}
+            sendMessage={sendMessage}
+            markConversationAsRead={markConversationAsRead}
+            deleteMessage={deleteMessage}
+            messagesCurrentUser={currentUser}
           />
         </main>
       </div>

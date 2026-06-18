@@ -9,6 +9,7 @@ import type {
   EditingItem,
   Announcement,
   AnnouncementAttachment,
+  Conversation,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import { MyCourseView } from './student/MyCourseView';
@@ -20,6 +21,7 @@ import { MentorshipView } from './admin/MentorshipView';
 import { MentorshipManagement } from './admin/MentorshipManagement';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { AnnouncementsView } from './shared/AnnouncementsView';
+import { MessagesView } from './shared/MessagesView';
 import { SettingsView } from './shared/SettingsView';
 import { ClassDetailView } from './shared/ClassDetailView';
 
@@ -101,6 +103,14 @@ export interface AppRouterProps {
   ) => Promise<void>;
   deleteAttachment: (attachmentId: number, storagePath: string | null) => Promise<void>;
   onProfileUpdated: () => void;
+  conversations: Conversation[];
+  messagesLoading: boolean;
+  messagesSending: boolean;
+  messagesError: string | null;
+  sendMessage: (recipientId: string, content: string) => Promise<void>;
+  markConversationAsRead: (otherUserId: string) => Promise<void>;
+  deleteMessage: (messageId: number) => Promise<void>;
+  messagesCurrentUser: User;
 }
 
 export function AppRouter({
@@ -146,6 +156,14 @@ export function AppRouter({
   addAttachment,
   deleteAttachment,
   onProfileUpdated,
+  conversations,
+  messagesLoading,
+  messagesSending,
+  messagesError,
+  sendMessage,
+  markConversationAsRead,
+  deleteMessage,
+  messagesCurrentUser,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
@@ -216,6 +234,22 @@ export function AppRouter({
         onDeleteComment={deleteComment}
         onAddAttachment={addAttachment}
         onDeleteAttachment={deleteAttachment}
+      />
+    );
+  }
+
+  if (activeView === 'messages') {
+    return (
+      <MessagesView
+        conversations={conversations}
+        currentUser={messagesCurrentUser}
+        users={users}
+        loading={messagesLoading}
+        sending={messagesSending}
+        error={messagesError}
+        onSend={sendMessage}
+        onMarkAsRead={markConversationAsRead}
+        onDeleteMessage={deleteMessage}
       />
     );
   }

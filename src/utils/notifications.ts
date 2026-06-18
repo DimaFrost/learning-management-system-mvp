@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 
 export async function sendNotification(
-  type: 'announcement' | 'role_change' | 'enrollment',
+  type: 'announcement' | 'role_change' | 'enrollment' | 'direct_message',
   data: Record<string, unknown>
 ): Promise<void> {
   try {

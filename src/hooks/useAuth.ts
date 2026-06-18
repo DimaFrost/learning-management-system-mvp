@@ -60,6 +60,7 @@ export function useAuth() {
           announcements: true,
           roleChange: true,
           enrollment: true,
+          messages: true,
         },
       });
     } catch (err) {

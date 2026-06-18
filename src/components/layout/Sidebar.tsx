@@ -1,14 +1,16 @@
-import { Megaphone, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings } from 'lucide-react';
+import { Megaphone, MessageSquare, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
   onNavigate: (view: string) => void;
   hasRole: (role: string) => boolean;
+  totalUnread: number;
 }
 
-export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
+export function Sidebar({ activeView, onNavigate, hasRole, totalUnread }: SidebarProps) {
   const universalMenuItems = [
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
+    { id: 'messages', label: 'Messages', icon: MessageSquare },
   ];
 
   const menuItems = [
@@ -44,7 +46,12 @@ export function Sidebar({ activeView, onNavigate, hasRole }: SidebarProps) {
             className={navButtonClass(item.id)}
           >
             <item.icon className="w-4 h-4 mr-3" />
-            {item.label}
+            <span className="flex-1">{item.label}</span>
+            {item.id === 'messages' && totalUnread > 0 && (
+              <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-xs font-medium">
+                {totalUnread > 9 ? '9+' : totalUnread}
+              </span>
+            )}
           </button>
         ))}
         {visibleMenuItems.map(item => (

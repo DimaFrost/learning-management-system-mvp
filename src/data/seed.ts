@@ -19,6 +19,7 @@ const defaultNotificationPreferences = {
   announcements: true,
   roleChange: true,
   enrollment: true,
+  messages: true,
 };
 
 export const initialUsers: User[] = [

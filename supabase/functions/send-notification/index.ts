@@ -193,6 +193,74 @@ serve(async (req) => {
       );
     }
 
+    else if (type === 'direct_message') {
+      // data: { recipientId, recipientEmail,
+      //         recipientName, senderName, preview }
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('notification_preferences')
+        .eq('id', data.recipientId)
+        .single();
+
+      if (profile?.notification_preferences?.messages === false) {
+        return new Response(
+          JSON.stringify({ skipped: true }),
+          { status: 200, headers: { ...corsHeaders,
+            'Content-Type': 'application/json' } }
+        );
+      }
+
+      const emailHtml = `
+    <div style="font-family: sans-serif; max-width: 600px;
+                margin: 0 auto;">
+      <div style="background: #f59e0b; padding: 24px;
+                  border-radius: 8px 8px 0 0;">
+        <h1 style="color: white; margin: 0; font-size: 20px;">
+          💬 New Message
+        </h1>
+      </div>
+      <div style="background: white; padding: 24px;
+                  border: 1px solid #e5e7eb;
+                  border-top: none;
+                  border-radius: 0 0 8px 8px;">
+        <p style="color: #374151;">
+          Hi ${data.recipientName},
+        </p>
+        <p style="color: #374151; line-height: 1.6;">
+          You have a new message from
+          <strong>${data.senderName}</strong>:
+        </p>
+        <div style="background: #f9fafb; border-left: 4px solid
+                    #f59e0b; padding: 16px; margin: 16px 0;
+                    border-radius: 0 6px 6px 0;">
+          <p style="margin: 0; color: #374151;
+                    font-style: italic;">
+            "${data.preview}"
+          </p>
+        </div>
+        <a href="${APP_URL}"
+           style="display: inline-block; background: #f59e0b;
+                  color: white; padding: 12px 24px;
+                  border-radius: 6px; text-decoration: none;
+                  font-weight: bold;">
+          Read Message
+        </a>
+      </div>
+      <p style="color: #9ca3af; font-size: 12px;
+                text-align: center; margin-top: 16px;">
+        You can manage notification preferences in Settings.
+      </p>
+    </div>
+  `;
+
+      await sendEmail(
+        data.recipientEmail,
+        `New message from ${data.senderName}`,
+        emailHtml
+      );
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

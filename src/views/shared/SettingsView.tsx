@@ -30,6 +30,11 @@ const NOTIFICATION_TOGGLES: {
     label: 'Course Enrollment',
     sublabel: 'Receive an email when you are added to a course',
   },
+  {
+    key: 'messages',
+    label: 'Direct Messages',
+    sublabel: 'Receive an email when someone sends you a message',
+  },
 ];
 
 function NotificationToggle({

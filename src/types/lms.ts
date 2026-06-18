@@ -17,6 +17,7 @@ export interface User {
     announcements: boolean;
     roleChange: boolean;
     enrollment: boolean;
+    messages: boolean;
   };
 }
 
@@ -211,4 +212,26 @@ export interface HomeworkComment {
   authorName: string;
   content: string;
   createdAt: string;
+}
+
+export interface Message {
+  id: number;
+  senderId: string;
+  senderName: string;
+  recipientId: string;
+  recipientName: string;
+  content: string;
+  readAt: string | null;
+  createdAt: string;
+}
+
+export interface Conversation {
+  otherUserId: string;
+  otherUserName: string;
+  otherUserRoles: string[];
+  lastMessage: string;
+  lastMessageAt: string;
+  lastMessageSenderId: string;
+  unreadCount: number;
+  messages: Message[];
 }
