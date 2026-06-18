@@ -101,7 +101,11 @@ export function ClassDetailView({
     hasRole(currentUser, 'administrator');
 
   const [activeTab, setActiveTab] = useState<TabId>(() =>
-    hasRole(currentUser, 'student') ? 'homework' : 'materials'
+    hasRole(currentUser, 'student')
+      ? 'homework'
+      : canSeeStaffNotes
+        ? 'staff'
+        : 'materials'
   );
 
   useEffect(() => {
@@ -124,8 +128,8 @@ export function ClassDetailView({
   const statusBadge = STATUS_BADGE[status];
 
   const tabs: { id: TabId; label: string; visible: boolean }[] = [
-    { id: 'materials', label: 'Materials & Notes', visible: true },
     { id: 'staff', label: 'Staff Notes', visible: canSeeStaffNotes },
+    { id: 'materials', label: 'Materials & Notes', visible: true },
     { id: 'homework', label: 'Homework', visible: true },
   ];
 
