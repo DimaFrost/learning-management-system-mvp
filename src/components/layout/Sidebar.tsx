@@ -37,8 +37,8 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread }: Sideba
     }`;
 
   return (
-    <div className="bg-gray-50 w-64 min-h-screen border-r border-gray-200 flex flex-col">
-      <nav className="mt-8 flex-1">
+    <div className="h-full w-64 flex-shrink-0 overflow-hidden bg-gray-50 border-r border-gray-200 flex flex-col">
+      <nav className="flex-1 overflow-y-auto py-4">
         {universalMenuItems.map(item => (
           <button
             key={item.id}
@@ -65,7 +65,7 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread }: Sideba
           </button>
         ))}
       </nav>
-      <div className="border-t border-gray-200 mt-4">
+      <div className="border-t border-gray-200">
         <button
           onClick={() => onNavigate('settings')}
           className={navButtonClass('settings')}

@@ -173,14 +173,14 @@ const LearningManagementSystem = () => {
         previewRoles={previewRoles}
         onOpenDevPanel={() => setShowDevPanel(true)}
       />
-      <div className="flex">
+      <div className="flex h-[calc(100vh-64px)] overflow-hidden">
         <Sidebar
           activeView={activeView}
           onNavigate={setActiveView}
           hasRole={hasRole}
           totalUnread={totalUnread}
         />
-        <main className="flex-1 p-8">
+        <main className="flex-1 overflow-y-auto p-8">
           <AppRouter
             activeView={activeView}
             setActiveView={setActiveView}
