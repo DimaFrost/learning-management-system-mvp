@@ -86,6 +86,10 @@ export interface EditingItem {
   courseId?: number;
   subjectId?: number;
   date?: string;
+  planningCourseOptions?: {
+    firstYearId?: number;
+    secondYearId?: number;
+  };
 }
 
 export interface Announcement {

@@ -13,6 +13,7 @@ interface CurriculumPlanningViewProps {
   users: User[];
   onAddCourse: (course: Partial<Course>) => Promise<void>;
   onRefetchCourses: () => Promise<Course[]>;
+  onAddPlanningSubject: (firstYearId?: number, secondYearId?: number) => void;
 }
 
 interface AcademicYearEntry {
@@ -42,12 +43,15 @@ export function CurriculumPlanningView({
   users,
   onAddCourse,
   onRefetchCourses,
+  onAddPlanningSubject,
 }: CurriculumPlanningViewProps) {
   const {
     rows,
     academicYears,
     draftSubjects,
     activeYearLabel,
+    firstYearCourseId,
+    secondYearCourseId,
     isDirty,
     loading,
     committing,
@@ -121,6 +125,13 @@ export function CurriculumPlanningView({
     const entry = findAcademicYear(fresh, label);
     loadSchoolYear(label, entry?.firstYearId, entry?.secondYearId, true);
   }, [onAddCourse, onRefetchCourses, loadSchoolYear]);
+
+  const handleAddSubject = useCallback(() => {
+    onAddPlanningSubject(
+      firstYearCourseId ?? undefined,
+      secondYearCourseId ?? undefined
+    );
+  }, [firstYearCourseId, secondYearCourseId, onAddPlanningSubject]);
 
   return (
     <div className="space-y-4">
@@ -197,6 +208,8 @@ export function CurriculumPlanningView({
               onAddRow={addRow}
               onRemoveRow={removeRow}
               onMoveSlot={moveSlot}
+              onAddSubject={handleAddSubject}
+              addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
             />
           </div>
         </div>

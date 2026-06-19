@@ -287,6 +287,13 @@ export function AppRouter({
             onEditSubject={(courseId, subject?) =>
               setEditingItem({ type: 'subject', data: subject ?? null, courseId })
             }
+            onAddPlanningSubject={(firstYearId, secondYearId) =>
+              setEditingItem({
+                type: 'subject',
+                data: null,
+                planningCourseOptions: { firstYearId, secondYearId },
+              })
+            }
             onEditClass={(courseId, subjectId, classData, date?) => {
               if (classData) {
                 setEditingItem({ type: 'class', data: classData, courseId, subjectId });

@@ -24,6 +24,7 @@ interface CurriculumViewProps {
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   onEditCourse: (course?: Course) => void;
   onEditSubject: (courseId: number, subject?: Subject) => void;
+  onAddPlanningSubject: (firstYearId?: number, secondYearId?: number) => void;
   onEditClass: (courseId: number, subjectId: number, classData?: Class | null, date?: string) => void;
   onDeleteCourse: (id: number) => void;
   onDeleteSubject: (courseId: number, subjectId: number) => void;
@@ -51,6 +52,7 @@ export function CurriculumView({
   checkDoubleBooking,
   onEditCourse,
   onEditSubject,
+  onAddPlanningSubject,
   onEditClass,
   onDeleteCourse,
   onDeleteSubject,
@@ -141,6 +143,7 @@ export function CurriculumView({
           users={users}
           onAddCourse={onAddCourse}
           onRefetchCourses={onRefetchCourses}
+          onAddPlanningSubject={onAddPlanningSubject}
         />
       )}
     </div>

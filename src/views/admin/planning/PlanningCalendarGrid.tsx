@@ -4,6 +4,8 @@ import type { PlanningRow, PlanningSlot, PlanningSlotKey } from '../../../hooks/
 import type { User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 
+type CourseSide = 'firstYear' | 'secondYear';
+
 interface PlanningCalendarGridProps {
   rows: PlanningRow[];
   users: User[];
@@ -17,9 +19,9 @@ interface PlanningCalendarGridProps {
     toRowId: string,
     toSlotKey: PlanningSlotKey
   ) => void;
+  onAddSubject: () => void;
+  addSubjectDisabled?: boolean;
 }
-
-type CourseSide = 'firstYear' | 'secondYear';
 
 const STICKY_DATE = 'sticky left-0 z-10 bg-white';
 const STICKY_DAY = 'sticky left-[108px] z-10 bg-white';
@@ -666,6 +668,8 @@ export function PlanningCalendarGrid({
   onAddRow,
   onRemoveRow,
   onMoveSlot,
+  onAddSubject,
+  addSubjectDisabled = false,
 }: PlanningCalendarGridProps) {
   const { scheduled, unscheduled } = useMemo(() => partitionRows(rows), [rows]);
   const subjectTitlesFirstYear = useMemo(
@@ -785,14 +789,26 @@ export function PlanningCalendarGrid({
         ))}
       </datalist>
 
-      <button
-        type="button"
-        onClick={onAddRow}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Add Date
-      </button>
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          onClick={onAddRow}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+        >
+          <Plus className="w-4 h-4" />
+          Add Date
+        </button>
+
+        <button
+          type="button"
+          onClick={onAddSubject}
+          disabled={addSubjectDisabled}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <Plus className="w-4 h-4" />
+          Add Subject
+        </button>
+      </div>
     </div>
   );
 }

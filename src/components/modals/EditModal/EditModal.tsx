@@ -75,6 +75,14 @@ export function EditModal({
       if (editingItem?.type === 'class') {
         initialData.subjectId = editingItem.subjectId ?? '';
       }
+      if (
+        editingItem?.type === 'subject' &&
+        editingItem.planningCourseOptions &&
+        !editingItem.data
+      ) {
+        const opts = editingItem.planningCourseOptions;
+        initialData.courseId = opts.firstYearId ?? opts.secondYearId ?? '';
+      }
       setFormData(initialData);
     }
     setErrors({});
@@ -115,6 +123,14 @@ export function EditModal({
     }
     if (!formData.title && editingItem && (editingItem.type === 'subject' || editingItem.type === 'class')) {
       newErrors.title = 'Title is required';
+    }
+    if (
+      editingItem?.type === 'subject' &&
+      editingItem.planningCourseOptions &&
+      !editingItem.data &&
+      !formData.courseId
+    ) {
+      newErrors.courseId = 'Course is required';
     }
     if (!formData.date && editingItem && editingItem.type === 'class') {
       newErrors.date = 'Date is required';
@@ -173,8 +189,11 @@ export function EditModal({
     } else if (editingItem && editingItem.type === 'subject') {
       if (editingItem.data && editingItem.courseId) {
         onUpdateSubject(editingItem.courseId, (editingItem.data as Subject).id, formData);
-      } else if (editingItem.courseId) {
-        onAddSubject(editingItem.courseId, formData);
+      } else {
+        const courseId = editingItem.planningCourseOptions
+          ? formData.courseId
+          : editingItem.courseId;
+        if (courseId) onAddSubject(courseId, formData);
       }
     } else if (editingItem && editingItem.type === 'class') {
       if (editingItem.data && editingItem.courseId && editingItem.subjectId) {
@@ -261,7 +280,17 @@ export function EditModal({
       case 'course':
         return <EditCourseForm formData={formData} errors={errors} onChange={handleChange} />;
       case 'subject':
-        return <EditSubjectForm formData={formData} errors={errors} onChange={handleChange} users={users} />;
+        return (
+          <EditSubjectForm
+            formData={formData}
+            errors={errors}
+            onChange={handleChange}
+            users={users}
+            planningCourseOptions={
+              !editingItem.data ? editingItem.planningCourseOptions : undefined
+            }
+          />
+        );
       case 'class':
         return (
           <EditClassForm

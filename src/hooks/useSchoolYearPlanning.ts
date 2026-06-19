@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Course } from '../types/lms';
 import { createSubjectDriveFolder, createClassDriveFolders } from '../utils/driveOperations';
@@ -116,6 +116,65 @@ function buildRowsFromCourses(
   return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+function shouldTakeDbSlot(localSlot: PlanningSlot, dbSlot: PlanningSlot): boolean {
+  if (!dbSlot.classId) return false;
+  const localEmpty = !localSlot.subjectTitle.trim();
+  return localEmpty || localSlot.classId === dbSlot.classId;
+}
+
+function mergeSlot(localSlot: PlanningSlot, dbSlot: PlanningSlot): PlanningSlot {
+  return shouldTakeDbSlot(localSlot, dbSlot) ? dbSlot : localSlot;
+}
+
+function mergePlanningRows(local: PlanningRow, db: PlanningRow): PlanningRow {
+  return {
+    ...local,
+    dayOfWeek: db.dayOfWeek || local.dayOfWeek,
+    isSaturday: db.isSaturday,
+    isValidScheduleDay: db.isValidScheduleDay,
+    firstHourFirstYear: mergeSlot(local.firstHourFirstYear, db.firstHourFirstYear),
+    firstHourSecondYear: mergeSlot(local.firstHourSecondYear, db.firstHourSecondYear),
+    secondHourFirstYear: mergeSlot(local.secondHourFirstYear, db.secondHourFirstYear),
+    secondHourSecondYear: mergeSlot(local.secondHourSecondYear, db.secondHourSecondYear),
+    jointSlot: mergeSlot(local.jointSlot, db.jointSlot),
+  };
+}
+
+function mergeDbRowsIntoDraft(draft: PlanningRow[], dbRows: PlanningRow[]): PlanningRow[] {
+  const unscheduled = draft.filter(r => !r.date);
+  const byDate = new Map(draft.filter(r => r.date).map(r => [r.date, r]));
+
+  for (const dbRow of dbRows) {
+    if (!dbRow.date) continue;
+    const existing = byDate.get(dbRow.date);
+    if (!existing) {
+      byDate.set(dbRow.date, { ...dbRow, rowId: crypto.randomUUID() });
+    } else {
+      byDate.set(dbRow.date, mergePlanningRows(existing, dbRow));
+    }
+  }
+
+  const scheduled = Array.from(byDate.values()).sort((a, b) => a.date.localeCompare(b.date));
+  return [...scheduled, ...unscheduled];
+}
+
+function countClassesForYear(
+  coursesList: Course[],
+  fyId: number | null,
+  syId: number | null
+): number {
+  let count = 0;
+  for (const id of [fyId, syId]) {
+    if (id == null) continue;
+    const course = coursesList.find(c => c.id === id);
+    if (!course) continue;
+    for (const subject of course.subjects) {
+      count += subject.classes.length;
+    }
+  }
+  return count;
+}
+
 const initialSelectedYear = readSelectedYear();
 const initialDraft = initialSelectedYear ? readDraft(initialSelectedYear) : null;
 
@@ -135,6 +194,29 @@ export function useSchoolYearPlanning(courses: Course[]) {
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const classCountRef = useRef(
+    countClassesForYear(
+      courses,
+      initialDraft?.firstYearCourseId ?? null,
+      initialDraft?.secondYearCourseId ?? null
+    )
+  );
+
+  const syncClassCountRef = useCallback((
+    coursesList: Course[],
+    fyId: number | null,
+    syId: number | null
+  ) => {
+    classCountRef.current = countClassesForYear(coursesList, fyId, syId);
+  }, []);
+
+  const mergeFromCourses = useCallback((coursesList: Course[]) => {
+    if (firstYearCourseId == null && secondYearCourseId == null) return;
+    const fyCourse = coursesList.find(c => c.id === firstYearCourseId);
+    const syCourse = coursesList.find(c => c.id === secondYearCourseId);
+    const dbRows = buildRowsFromCourses(fyCourse, syCourse);
+    setRows(prev => mergeDbRowsIntoDraft(prev, dbRows));
+  }, [firstYearCourseId, secondYearCourseId]);
 
   // Derive list of available academic years from existing courses
   const academicYears = useMemo(() => {
@@ -171,11 +253,14 @@ export function useSchoolYearPlanning(courses: Course[]) {
       setSecondYearCourseId(cached.secondYearCourseId);
       setIsDirty(true);
       setLoading(false);
+      syncClassCountRef(courses, cached.firstYearCourseId, cached.secondYearCourseId);
       return;
     }
 
-    setFirstYearCourseId(fyId ?? null);
-    setSecondYearCourseId(syId ?? null);
+    const fy = fyId ?? null;
+    const sy = syId ?? null;
+    setFirstYearCourseId(fy);
+    setSecondYearCourseId(sy);
 
     const fyCourse = courses.find(c => c.id === fyId);
     const syCourse = courses.find(c => c.id === syId);
@@ -184,7 +269,17 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setRows(sortedRows);
     setIsDirty(false);
     setLoading(false);
-  }, [courses]);
+    syncClassCountRef(courses, fy, sy);
+  }, [courses, syncClassCountRef]);
+
+  useEffect(() => {
+    if (!activeYearLabel) return;
+    const newCount = countClassesForYear(courses, firstYearCourseId, secondYearCourseId);
+    if (newCount > classCountRef.current) {
+      mergeFromCourses(courses);
+    }
+    classCountRef.current = newCount;
+  }, [courses, activeYearLabel, firstYearCourseId, secondYearCourseId, mergeFromCourses]);
 
   useEffect(() => {
     if (!activeYearLabel) return;
