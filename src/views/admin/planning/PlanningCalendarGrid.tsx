@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import { GripVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
 import type { PlanningRow, PlanningSlot, PlanningSlotKey } from '../../../hooks/useSchoolYearPlanning';
 import type { User } from '../../../types/lms';
@@ -88,6 +88,18 @@ interface DateCellProps {
 }
 
 function DateCell({ row, rowSpan, onUpdateRowDate }: DateCellProps) {
+  const [draftDate, setDraftDate] = useState(row.date);
+
+  useEffect(() => {
+    setDraftDate(row.date);
+  }, [row.date]);
+
+  const commitDate = () => {
+    if (draftDate !== row.date) {
+      onUpdateRowDate(row.rowId, draftDate);
+    }
+  };
+
   return (
     <td
       rowSpan={rowSpan}
@@ -95,8 +107,19 @@ function DateCell({ row, rowSpan, onUpdateRowDate }: DateCellProps) {
     >
       <input
         type="date"
-        value={row.date}
-        onChange={e => onUpdateRowDate(row.rowId, e.target.value)}
+        value={draftDate}
+        onChange={e => setDraftDate(e.target.value)}
+        onBlur={commitDate}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            commitDate();
+            (e.target as HTMLInputElement).blur();
+          }
+          if (e.key === 'Escape') {
+            setDraftDate(row.date);
+            (e.target as HTMLInputElement).blur();
+          }
+        }}
         className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
       />
     </td>
