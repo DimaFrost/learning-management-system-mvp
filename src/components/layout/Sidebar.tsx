@@ -48,18 +48,8 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
       ? 'Switch to auto-hide — sidebar will collapse and expand on hover'
       : 'Pin sidebar — keep it always expanded';
 
-  return (
-    <div
-      className={`h-full flex-shrink-0 overflow-hidden bg-gray-50 border-r border-gray-200 flex flex-col transition-all duration-200 ${
-        mode === 'locked'
-          ? 'relative w-64'
-          : isExpanded
-            ? 'absolute left-0 top-0 w-64 shadow-xl z-30'
-            : 'relative w-16'
-      }`}
-      onMouseEnter={() => mode === 'auto-hide' && setIsHovering(true)}
-      onMouseLeave={() => mode === 'auto-hide' && setIsHovering(false)}
-    >
+  const sidebarContent = (
+    <>
       <div className={`flex-shrink-0 border-b border-gray-200 py-3 ${isExpanded ? 'pr-6' : 'pr-2'}`}>
         <button
           onClick={onToggleMode}
@@ -82,7 +72,7 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
             title={!isExpanded ? item.label : undefined}
           >
             <span className={isExpanded ? 'contents' : 'relative'}>
-              <item.icon className={`w-4 h-4 ${isExpanded ? 'mr-3' : ''}`} />
+              <item.icon className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'mr-3' : ''}`} />
               {!isExpanded && item.id === 'messages' && totalUnread > 0 && (
                 <span className="absolute -top-1 -right-1 min-w-[0.875rem] h-3.5 px-0.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-[10px] font-medium leading-none">
                   {totalUnread > 9 ? '9+' : totalUnread}
@@ -91,7 +81,7 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
             </span>
             {isExpanded && (
               <>
-                <span className="flex-1">{item.label}</span>
+                <span className="flex-1 whitespace-nowrap">{item.label}</span>
                 {item.id === 'messages' && totalUnread > 0 && (
                   <span className="min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center rounded-full bg-amber-600 text-white text-xs font-medium">
                     {totalUnread > 9 ? '9+' : totalUnread}
@@ -108,8 +98,8 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
             className={navButtonClass(item.id)}
             title={!isExpanded ? item.label : undefined}
           >
-            <item.icon className={`w-4 h-4 ${isExpanded ? 'mr-3' : ''}`} />
-            {isExpanded && item.label}
+            <item.icon className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'mr-3' : ''}`} />
+            {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
           </button>
         ))}
       </nav>
@@ -119,9 +109,31 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
           className={navButtonClass('settings')}
           title={!isExpanded ? 'Settings' : undefined}
         >
-          <Settings className={`w-4 h-4 ${isExpanded ? 'mr-3' : ''}`} />
-          {isExpanded && 'Settings'}
+          <Settings className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'mr-3' : ''}`} />
+          {isExpanded && <span className="whitespace-nowrap">Settings</span>}
         </button>
+      </div>
+    </>
+  );
+
+  if (mode === 'locked') {
+    return (
+      <div className="relative w-64 h-full flex-shrink-0 overflow-hidden bg-gray-50 border-r border-gray-200 flex flex-col">
+        {sidebarContent}
+      </div>
+    );
+  }
+
+  return (
+    <div className="relative w-16 flex-shrink-0 h-full">
+      <div
+        className={`absolute left-0 top-0 h-full flex flex-col overflow-hidden bg-gray-50 border-r border-gray-200 transition-[width,box-shadow] duration-200 ${
+          isHovering ? 'w-64 shadow-xl z-30' : 'w-16'
+        }`}
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        {sidebarContent}
       </div>
     </div>
   );
