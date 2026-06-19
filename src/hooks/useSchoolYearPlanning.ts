@@ -1,7 +1,13 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Course } from '../types/lms';
 import { createSubjectDriveFolder, createClassDriveFolders } from '../utils/driveOperations';
+import {
+  readSelectedYear,
+  writeSelectedYear,
+  readDraft,
+  writeDraft,
+} from '../utils/planningDraftCache';
 
 // ============================================
 // TYPES
@@ -67,14 +73,65 @@ export type PlanningSlotKey = keyof Pick<
   | 'jointSlot'
 >;
 
+function buildRowsFromCourses(
+  fyCourse: Course | undefined,
+  syCourse: Course | undefined
+): PlanningRow[] {
+  const dateMap = new Map<string, PlanningRow>();
+
+  function ingestCourse(course: Course | undefined, isFirstYear: boolean) {
+    if (!course) return;
+    for (const subject of course.subjects) {
+      for (const cls of subject.classes) {
+        if (!cls.date) continue;
+        if (!dateMap.has(cls.date)) {
+          dateMap.set(cls.date, makeRow(cls.date));
+        }
+        const row = dateMap.get(cls.date)!;
+        const slot: PlanningSlot = {
+          subjectTitle: subject.title,
+          subjectId: subject.id,
+          teacherId: cls.teacherId,
+          translatorId: cls.translatorId,
+          classId: cls.id,
+          isDeleted: false,
+        };
+
+        if (row.isSaturday) {
+          row.jointSlot = slot;
+        } else if (cls.hour === 'first') {
+          if (isFirstYear) row.firstHourFirstYear = slot;
+          else row.firstHourSecondYear = slot;
+        } else if (cls.hour === 'second') {
+          if (isFirstYear) row.secondHourFirstYear = slot;
+          else row.secondHourSecondYear = slot;
+        }
+      }
+    }
+  }
+
+  ingestCourse(fyCourse, true);
+  ingestCourse(syCourse, false);
+
+  return Array.from(dateMap.values()).sort((a, b) => a.date.localeCompare(b.date));
+}
+
+const initialSelectedYear = readSelectedYear();
+const initialDraft = initialSelectedYear ? readDraft(initialSelectedYear) : null;
+
 // ============================================
 // HOOK
 // ============================================
 export function useSchoolYearPlanning(courses: Course[]) {
-  const [rows, setRows] = useState<PlanningRow[]>([]);
-  const [firstYearCourseId, setFirstYearCourseId] = useState<number | null>(null);
-  const [secondYearCourseId, setSecondYearCourseId] = useState<number | null>(null);
-  const [isDirty, setIsDirty] = useState(false);
+  const [activeYearLabel, setActiveYearLabel] = useState<string | null>(initialSelectedYear);
+  const [rows, setRows] = useState<PlanningRow[]>(initialDraft?.rows ?? []);
+  const [firstYearCourseId, setFirstYearCourseId] = useState<number | null>(
+    initialDraft?.firstYearCourseId ?? null
+  );
+  const [secondYearCourseId, setSecondYearCourseId] = useState<number | null>(
+    initialDraft?.secondYearCourseId ?? null
+  );
+  const [isDirty, setIsDirty] = useState(initialDraft?.isDirty ?? false);
   const [loading, setLoading] = useState(false);
   const [committing, setCommitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,60 +157,45 @@ export function useSchoolYearPlanning(courses: Course[]) {
   const loadSchoolYear = useCallback((
     label: string,
     fyId: number | undefined,
-    syId: number | undefined
+    syId: number | undefined,
+    skipCache = false
   ) => {
+    setActiveYearLabel(label);
+    writeSelectedYear(label);
     setLoading(true);
+
+    const cached = skipCache ? null : readDraft(label);
+    if (cached?.isDirty) {
+      setRows(cached.rows);
+      setFirstYearCourseId(cached.firstYearCourseId);
+      setSecondYearCourseId(cached.secondYearCourseId);
+      setIsDirty(true);
+      setLoading(false);
+      return;
+    }
+
     setFirstYearCourseId(fyId ?? null);
     setSecondYearCourseId(syId ?? null);
 
     const fyCourse = courses.find(c => c.id === fyId);
     const syCourse = courses.find(c => c.id === syId);
-
-    // Collect every unique date+hour combination from both courses
-    const dateMap = new Map<string, PlanningRow>();
-
-    function ingestCourse(course: Course | undefined, isFirstYear: boolean) {
-      if (!course) return;
-      for (const subject of course.subjects) {
-        for (const cls of subject.classes) {
-          if (!cls.date) continue;
-          if (!dateMap.has(cls.date)) {
-            dateMap.set(cls.date, makeRow(cls.date));
-          }
-          const row = dateMap.get(cls.date)!;
-          const slot: PlanningSlot = {
-            subjectTitle: subject.title,
-            subjectId: subject.id,
-            teacherId: cls.teacherId,
-            translatorId: cls.translatorId,
-            classId: cls.id,
-            isDeleted: false,
-          };
-
-          if (row.isSaturday) {
-            row.jointSlot = slot;
-          } else if (cls.hour === 'first') {
-            if (isFirstYear) row.firstHourFirstYear = slot;
-            else row.firstHourSecondYear = slot;
-          } else if (cls.hour === 'second') {
-            if (isFirstYear) row.secondHourFirstYear = slot;
-            else row.secondHourSecondYear = slot;
-          }
-        }
-      }
-    }
-
-    ingestCourse(fyCourse, true);
-    ingestCourse(syCourse, false);
-
-    const sortedRows = Array.from(dateMap.values()).sort(
-      (a, b) => a.date.localeCompare(b.date)
-    );
+    const sortedRows = buildRowsFromCourses(fyCourse, syCourse);
 
     setRows(sortedRows);
     setIsDirty(false);
     setLoading(false);
   }, [courses]);
+
+  useEffect(() => {
+    if (!activeYearLabel) return;
+    writeDraft(activeYearLabel, {
+      rows,
+      firstYearCourseId,
+      secondYearCourseId,
+      isDirty,
+    });
+    writeSelectedYear(activeYearLabel);
+  }, [activeYearLabel, rows, isDirty, firstYearCourseId, secondYearCourseId]);
 
   // ============================================
   // ROW / SLOT EDITING (all local, no DB writes)
@@ -477,6 +519,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
 
   return {
     rows, academicYears, draftSubjects,
+    activeYearLabel,
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,
     loadSchoolYear, updateRowDate, updateSlot,

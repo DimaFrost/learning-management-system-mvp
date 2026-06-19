@@ -47,6 +47,7 @@ export function CurriculumPlanningView({
     rows,
     academicYears,
     draftSubjects,
+    activeYearLabel,
     isDirty,
     loading,
     committing,
@@ -59,7 +60,6 @@ export function CurriculumPlanningView({
     moveSlot,
     commitPlan,
   } = useSchoolYearPlanning(courses);
-  const [selectedYearLabel, setSelectedYearLabel] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -73,20 +73,19 @@ export function CurriculumPlanningView({
     fyId?: number,
     syId?: number
   ) => {
-    setSelectedYearLabel(label);
     loadSchoolYear(label, fyId, syId);
   }, [loadSchoolYear]);
 
   const handleDiscard = useCallback(() => {
-    if (!selectedYearLabel || !isDirty) return;
-    const entry = academicYears.find(y => y.label === selectedYearLabel);
+    if (!activeYearLabel || !isDirty) return;
+    const entry = academicYears.find(y => y.label === activeYearLabel);
     if (entry) {
-      loadSchoolYear(selectedYearLabel, entry.firstYearId, entry.secondYearId);
+      loadSchoolYear(activeYearLabel, entry.firstYearId, entry.secondYearId, true);
     }
-  }, [selectedYearLabel, isDirty, academicYears, loadSchoolYear]);
+  }, [activeYearLabel, isDirty, academicYears, loadSchoolYear]);
 
   const handleUpdate = useCallback(async () => {
-    if (!selectedYearLabel) return;
+    if (!activeYearLabel) return;
     const result = await commitPlan();
     if (!result.success) return;
 
@@ -94,9 +93,9 @@ export function CurriculumPlanningView({
       `Created ${result.createdCount} classes, updated ${result.updatedCount} classes`
     );
     const fresh = await onRefetchCourses();
-    const entry = findAcademicYear(fresh, selectedYearLabel);
-    loadSchoolYear(selectedYearLabel, entry?.firstYearId, entry?.secondYearId);
-  }, [selectedYearLabel, commitPlan, onRefetchCourses, loadSchoolYear]);
+    const entry = findAcademicYear(fresh, activeYearLabel);
+    loadSchoolYear(activeYearLabel, entry?.firstYearId, entry?.secondYearId, true);
+  }, [activeYearLabel, commitPlan, onRefetchCourses, loadSchoolYear]);
 
   const handleCreateYear = useCallback(async (startYear: number) => {
     const startDate = `${startYear}-09-01`;
@@ -119,9 +118,8 @@ export function CurriculumPlanningView({
     });
 
     const fresh = await onRefetchCourses();
-    setSelectedYearLabel(label);
     const entry = findAcademicYear(fresh, label);
-    loadSchoolYear(label, entry?.firstYearId, entry?.secondYearId);
+    loadSchoolYear(label, entry?.firstYearId, entry?.secondYearId, true);
   }, [onAddCourse, onRefetchCourses, loadSchoolYear]);
 
   return (
@@ -131,7 +129,7 @@ export function CurriculumPlanningView({
           <h3 className="text-xl font-bold text-gray-900">School Year Planning</h3>
           <SchoolYearSelector
             academicYears={academicYears}
-            selectedLabel={selectedYearLabel}
+            selectedLabel={activeYearLabel}
             onSelectYear={handleSelectYear}
             onCreateYear={handleCreateYear}
           />
@@ -152,7 +150,7 @@ export function CurriculumPlanningView({
           <button
             type="button"
             onClick={handleUpdate}
-            disabled={!selectedYearLabel || committing}
+            disabled={!activeYearLabel || committing}
             className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {committing && <Loader2 className="w-4 h-4 animate-spin" />}
@@ -173,7 +171,7 @@ export function CurriculumPlanningView({
         </div>
       )}
 
-      {!selectedYearLabel ? (
+      {!activeYearLabel ? (
         <div className="flex items-center justify-center py-16 text-gray-500 text-sm">
           Select a school year above to start planning, or create a new one.
         </div>
