@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Megaphone, MessageSquare, BookOpen, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Megaphone, MessageSquare, BookOpen, LayoutDashboard, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
@@ -20,7 +20,7 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
   ];
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: BookOpen, roles: ['administrator'] },
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['administrator'] },
     { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
     { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
     { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
