@@ -13,6 +13,8 @@ interface CurriculumViewProps {
   currentUser: User;
   onAddClass: (courseId: number, subjectId: number, cls: Partial<Class>) => Promise<void>;
   onUpdateClass: (courseId: number, subjectId: number, classId: number, cls: Partial<Class>) => Promise<void>;
+  onAddCourse: (course: Partial<Course>) => Promise<void>;
+  onRefetchCourses: () => Promise<Course[]>;
   collapsedCourses: Set<number>;
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
@@ -38,6 +40,8 @@ export function CurriculumView({
   currentUser,
   onAddClass,
   onUpdateClass,
+  onAddCourse,
+  onRefetchCourses,
   collapsedCourses,
   collapsedSubjects,
   toggleCourseCollapse,
@@ -135,10 +139,8 @@ export function CurriculumView({
         <CurriculumPlanningView
           courses={courses}
           users={users}
-          currentUser={currentUser}
-          onAddClass={onAddClass}
-          onUpdateClass={onUpdateClass}
-          onDeleteClass={onDeleteClass}
+          onAddCourse={onAddCourse}
+          onRefetchCourses={onRefetchCourses}
         />
       )}
     </div>

@@ -45,7 +45,7 @@ const PLACEHOLDER_USER: User = {
 const LearningManagementSystem = () => {
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
   const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
-    addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
+    refetchCourses, addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
     addClass, updateClass, deleteClass, provisionClassDriveFolders,
     toggleCourseCollapse, toggleSubjectCollapse }
     = useCourses(showConfirmation);
@@ -246,6 +246,8 @@ const LearningManagementSystem = () => {
             markConversationAsRead={markConversationAsRead}
             deleteMessage={deleteMessage}
             messagesCurrentUser={currentUser}
+            onAddCourse={addCourse}
+            onRefetchCourses={refetchCourses}
           />
         </main>
       </div>

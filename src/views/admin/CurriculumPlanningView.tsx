@@ -1,62 +1,204 @@
-import React from 'react';
-import type { Course, Class, User } from '../../types/lms';
+import React, { useState, useEffect, useCallback } from 'react';
+import { Loader2 } from 'lucide-react';
+import type { Course, User } from '../../types/lms';
 import { useSchoolYearPlanning } from '../../hooks/useSchoolYearPlanning';
+import { SchoolYearSelector } from './planning/SchoolYearSelector';
 import { SubjectLibraryPanel } from './planning/SubjectLibraryPanel';
 import { PlanningCalendarGrid } from './planning/PlanningCalendarGrid';
 
 interface CurriculumPlanningViewProps {
   courses: Course[];
   users: User[];
-  currentUser: User;
-  onAddClass: (courseId: number, subjectId: number, cls: Partial<Class>) => Promise<void>;
-  onUpdateClass: (courseId: number, subjectId: number, classId: number, cls: Partial<Class>) => Promise<void>;
-  onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  onAddCourse: (course: Partial<Course>) => Promise<void>;
+  onRefetchCourses: () => Promise<Course[]>;
+}
+
+interface AcademicYearEntry {
+  label: string;
+  firstYearId?: number;
+  secondYearId?: number;
+}
+
+function findAcademicYear(courses: Course[], label: string): AcademicYearEntry | undefined {
+  const yearMap = new Map<string, { firstYearId?: number; secondYearId?: number }>();
+  for (const course of courses) {
+    const start = new Date(course.startDate).getFullYear();
+    const end = new Date(course.endDate).getFullYear();
+    const key = `${start}-${end}`;
+    if (!yearMap.has(key)) yearMap.set(key, {});
+    const entry = yearMap.get(key)!;
+    if (course.courseType === 'first_year') entry.firstYearId = course.id;
+    else entry.secondYearId = course.id;
+  }
+  const match = yearMap.get(label);
+  if (!match) return undefined;
+  return { label, ...match };
 }
 
 export function CurriculumPlanningView({
   courses,
   users,
-  currentUser: _currentUser,
-  onAddClass: _onAddClass,
-  onUpdateClass: _onUpdateClass,
-  onDeleteClass: _onDeleteClass,
+  onAddCourse,
+  onRefetchCourses,
 }: CurriculumPlanningViewProps) {
   const {
     rows,
+    academicYears,
     draftSubjects,
+    isDirty,
+    loading,
+    committing,
+    error,
+    loadSchoolYear,
     updateRowDate,
     updateSlot,
     addRow,
     removeRow,
     moveSlot,
+    commitPlan,
   } = useSchoolYearPlanning(courses);
+  const [selectedYearLabel, setSelectedYearLabel] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!successMessage) return;
+    const timer = setTimeout(() => setSuccessMessage(null), 5000);
+    return () => clearTimeout(timer);
+  }, [successMessage]);
+
+  const handleSelectYear = useCallback((
+    label: string,
+    fyId?: number,
+    syId?: number
+  ) => {
+    setSelectedYearLabel(label);
+    loadSchoolYear(label, fyId, syId);
+  }, [loadSchoolYear]);
+
+  const handleDiscard = useCallback(() => {
+    if (!selectedYearLabel || !isDirty) return;
+    const entry = academicYears.find(y => y.label === selectedYearLabel);
+    if (entry) {
+      loadSchoolYear(selectedYearLabel, entry.firstYearId, entry.secondYearId);
+    }
+  }, [selectedYearLabel, isDirty, academicYears, loadSchoolYear]);
+
+  const handleUpdate = useCallback(async () => {
+    if (!selectedYearLabel) return;
+    const result = await commitPlan();
+    if (!result.success) return;
+
+    setSuccessMessage(
+      `Created ${result.createdCount} classes, updated ${result.updatedCount} classes`
+    );
+    const fresh = await onRefetchCourses();
+    const entry = findAcademicYear(fresh, selectedYearLabel);
+    loadSchoolYear(selectedYearLabel, entry?.firstYearId, entry?.secondYearId);
+  }, [selectedYearLabel, commitPlan, onRefetchCourses, loadSchoolYear]);
+
+  const handleCreateYear = useCallback(async (startYear: number) => {
+    const startDate = `${startYear}-09-01`;
+    const endDate = `${startYear + 1}-06-30`;
+    const label = `${startYear}-${startYear + 1}`;
+
+    await onAddCourse({
+      courseType: 'first_year',
+      startDate,
+      endDate,
+      graduationYear: startYear + 1,
+      status: 'active',
+    });
+    await onAddCourse({
+      courseType: 'second_year',
+      startDate,
+      endDate,
+      graduationYear: startYear + 1,
+      status: 'active',
+    });
+
+    const fresh = await onRefetchCourses();
+    setSelectedYearLabel(label);
+    const entry = findAcademicYear(fresh, label);
+    loadSchoolYear(label, entry?.firstYearId, entry?.secondYearId);
+  }, [onAddCourse, onRefetchCourses, loadSchoolYear]);
 
   return (
     <div className="space-y-4">
-      <div>
-        <h3 className="text-xl font-bold text-gray-900">School Year Planning</h3>
-        <p className="text-sm text-gray-600 mt-1">
-          Edit the schedule in the grid below. Conflicts are highlighted automatically.
-        </p>
-      </div>
-
-      <div className="flex gap-4 h-full">
-        <div className="w-72 flex-shrink-0 overflow-y-auto">
-          <SubjectLibraryPanel draftSubjects={draftSubjects} />
-        </div>
-
-        <div className="flex-1 overflow-auto">
-          <PlanningCalendarGrid
-            rows={rows}
-            users={users}
-            onUpdateRowDate={updateRowDate}
-            onUpdateSlot={updateSlot}
-            onAddRow={addRow}
-            onRemoveRow={removeRow}
-            onMoveSlot={moveSlot}
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="space-y-3 min-w-0">
+          <h3 className="text-xl font-bold text-gray-900">School Year Planning</h3>
+          <SchoolYearSelector
+            academicYears={academicYears}
+            selectedLabel={selectedYearLabel}
+            onSelectYear={handleSelectYear}
+            onCreateYear={handleCreateYear}
           />
+          {isDirty && (
+            <p className="text-sm text-amber-700 font-medium">● Unsaved changes</p>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleDiscard}
+            disabled={!isDirty}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            Discard Changes
+          </button>
+          <button
+            type="button"
+            onClick={handleUpdate}
+            disabled={!selectedYearLabel || committing}
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {committing && <Loader2 className="w-4 h-4 animate-spin" />}
+            Update
+          </button>
         </div>
       </div>
+
+      {successMessage && (
+        <div className="bg-green-50 border border-green-200 text-green-800 text-sm px-4 py-3 rounded-lg">
+          {successMessage}
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-800 text-sm px-4 py-3 rounded-lg">
+          {error}
+        </div>
+      )}
+
+      {!selectedYearLabel ? (
+        <div className="flex items-center justify-center py-16 text-gray-500 text-sm">
+          Select a school year above to start planning, or create a new one.
+        </div>
+      ) : (
+        <div className="flex gap-4 h-full">
+          <div className="w-72 flex-shrink-0 overflow-y-auto">
+            <SubjectLibraryPanel draftSubjects={draftSubjects} />
+          </div>
+
+          <div className="flex-1 overflow-auto relative">
+            {loading && (
+              <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10">
+                <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
+              </div>
+            )}
+            <PlanningCalendarGrid
+              rows={rows}
+              users={users}
+              onUpdateRowDate={updateRowDate}
+              onUpdateSlot={updateSlot}
+              onAddRow={addRow}
+              onRemoveRow={removeRow}
+              onMoveSlot={moveSlot}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

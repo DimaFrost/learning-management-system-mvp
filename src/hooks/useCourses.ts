@@ -238,7 +238,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
   const [collapsedCourses, setCollapsedCourses] = useState<Set<number>>(new Set());
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
 
-  const refetchCourses = useCallback(async () => {
+  const refetchCourses = useCallback(async (): Promise<Course[]> => {
     setLoading(true);
     setError(null);
     try {
@@ -259,10 +259,13 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
       if (fetchError) throw fetchError;
 
-      setCourses((data ?? []).map(row => mapCourseRow(row as SupabaseCourseRow)));
+      const mapped = (data ?? []).map(row => mapCourseRow(row as SupabaseCourseRow));
+      setCourses(mapped);
+      return mapped;
     } catch (err) {
       console.error('refetchCourses error:', err);
       setError('Failed to load courses');
+      return [];
     } finally {
       setLoading(false);
     }
@@ -581,6 +584,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     error,
     collapsedCourses,
     collapsedSubjects,
+    refetchCourses,
     addCourse,
     updateCourse,
     deleteCourse,

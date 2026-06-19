@@ -113,6 +113,8 @@ export interface AppRouterProps {
   markConversationAsRead: (otherUserId: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   messagesCurrentUser: User;
+  onAddCourse: (course: Partial<Course>) => Promise<void>;
+  onRefetchCourses: () => Promise<Course[]>;
 }
 
 export function AppRouter({
@@ -168,6 +170,8 @@ export function AppRouter({
   markConversationAsRead,
   deleteMessage,
   messagesCurrentUser,
+  onAddCourse,
+  onRefetchCourses,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
@@ -270,6 +274,8 @@ export function AppRouter({
             currentUser={currentUser}
             onAddClass={addClass}
             onUpdateClass={updateClass}
+            onAddCourse={onAddCourse}
+            onRefetchCourses={onRefetchCourses}
             collapsedCourses={collapsedCourses}
             collapsedSubjects={collapsedSubjects}
             toggleCourseCollapse={toggleCourseCollapse}
