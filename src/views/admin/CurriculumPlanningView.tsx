@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import type { Course, Class, User } from '../../types/lms';
+import { useSchoolYearPlanning } from '../../hooks/useSchoolYearPlanning';
 import { SubjectLibraryPanel } from './planning/SubjectLibraryPanel';
 import { PlanningCalendarGrid } from './planning/PlanningCalendarGrid';
 
@@ -16,47 +17,43 @@ export function CurriculumPlanningView({
   courses,
   users,
   currentUser: _currentUser,
-  onAddClass,
-  onUpdateClass,
-  onDeleteClass,
+  onAddClass: _onAddClass,
+  onUpdateClass: _onUpdateClass,
+  onDeleteClass: _onDeleteClass,
 }: CurriculumPlanningViewProps) {
-  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>(() =>
-    courses.filter(c => c.status === 'active').map(c => c.id)
-  );
-
-  const handleToggleCourse = (courseId: number) => {
-    setSelectedCourseIds(prev =>
-      prev.includes(courseId) ? prev.filter(id => id !== courseId) : [...prev, courseId]
-    );
-  };
+  const {
+    rows,
+    draftSubjects,
+    updateRowDate,
+    updateSlot,
+    addRow,
+    removeRow,
+    moveSlot,
+  } = useSchoolYearPlanning(courses);
 
   return (
     <div className="space-y-4">
       <div>
         <h3 className="text-xl font-bold text-gray-900">School Year Planning</h3>
         <p className="text-sm text-gray-600 mt-1">
-          Drag subjects from the library onto the calendar to schedule sessions. Conflicts are
-          highlighted automatically.
+          Edit the schedule in the grid below. Conflicts are highlighted automatically.
         </p>
       </div>
 
       <div className="flex gap-4 h-full">
         <div className="w-72 flex-shrink-0 overflow-y-auto">
-          <SubjectLibraryPanel
-            courses={courses}
-            selectedCourseIds={selectedCourseIds}
-            onToggleCourse={handleToggleCourse}
-          />
+          <SubjectLibraryPanel draftSubjects={draftSubjects} />
         </div>
 
         <div className="flex-1 overflow-auto">
           <PlanningCalendarGrid
-            courses={courses}
-            selectedCourseIds={selectedCourseIds}
+            rows={rows}
             users={users}
-            onAddClass={onAddClass}
-            onUpdateClass={onUpdateClass}
-            onDeleteClass={onDeleteClass}
+            onUpdateRowDate={updateRowDate}
+            onUpdateSlot={updateSlot}
+            onAddRow={addRow}
+            onRemoveRow={removeRow}
+            onMoveSlot={moveSlot}
           />
         </div>
       </div>

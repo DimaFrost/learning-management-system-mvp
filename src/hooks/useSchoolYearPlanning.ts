@@ -58,7 +58,7 @@ function makeRow(date: string = ''): PlanningRow {
   };
 }
 
-type PlanningSlotKey = keyof Pick<
+export type PlanningSlotKey = keyof Pick<
   PlanningRow,
   | 'firstHourFirstYear'
   | 'firstHourSecondYear'

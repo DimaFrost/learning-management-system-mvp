@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { GripVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
-import type { PlanningRow, PlanningSlot } from '../../../hooks/useSchoolYearPlanning';
+import type { PlanningRow, PlanningSlot, PlanningSlotKey } from '../../../hooks/useSchoolYearPlanning';
 import type { User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 
@@ -8,20 +8,18 @@ interface PlanningCalendarGridProps {
   rows: PlanningRow[];
   users: User[];
   onUpdateRowDate: (rowId: string, date: string) => void;
-  onUpdateSlot: (rowId: string, slotKey: string, updates: Partial<PlanningSlot>) => void;
+  onUpdateSlot: (rowId: string, slotKey: PlanningSlotKey, updates: Partial<PlanningSlot>) => void;
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
-  onMoveSlot: (fromRowId: string, fromSlotKey: string, toRowId: string, toSlotKey: string) => void;
+  onMoveSlot: (
+    fromRowId: string,
+    fromSlotKey: PlanningSlotKey,
+    toRowId: string,
+    toSlotKey: PlanningSlotKey
+  ) => void;
 }
 
 type CourseSide = 'firstYear' | 'secondYear';
-
-type SlotKey =
-  | 'firstHourFirstYear'
-  | 'secondHourFirstYear'
-  | 'firstHourSecondYear'
-  | 'secondHourSecondYear'
-  | 'jointSlot';
 
 function partitionRows(rows: PlanningRow[]): {
   scheduled: PlanningRow[];
@@ -77,7 +75,7 @@ function getHourTeacherConflicts(row: PlanningRow): {
 interface SlotCellProps {
   row: PlanningRow;
   slot: PlanningSlot;
-  slotKey: SlotKey;
+  slotKey: PlanningSlotKey;
   courseSide: CourseSide;
   users: User[];
   teacherConflict: boolean;
@@ -105,7 +103,7 @@ function SlotCell({
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json')) as {
         rowId: string;
-        slotKey: string;
+        slotKey: PlanningSlotKey;
       };
       onMoveSlot(data.rowId, data.slotKey, row.rowId, slotKey);
     } catch {
@@ -218,7 +216,7 @@ function JointSlotCell({
   onMoveSlot,
 }: JointSlotCellProps) {
   const slot = row.jointSlot;
-  const slotKey: SlotKey = 'jointSlot';
+  const slotKey: PlanningSlotKey = 'jointSlot';
   const filled = !!slot.subjectTitle.trim();
   const teachers = users.filter(u => hasRole(u, 'teacher'));
   const translators = users.filter(u => hasRole(u, 'translator'));
@@ -228,7 +226,7 @@ function JointSlotCell({
     try {
       const data = JSON.parse(e.dataTransfer.getData('application/json')) as {
         rowId: string;
-        slotKey: string;
+        slotKey: PlanningSlotKey;
       };
       onMoveSlot(data.rowId, data.slotKey, row.rowId, slotKey);
     } catch {
