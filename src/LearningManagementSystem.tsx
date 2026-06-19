@@ -112,13 +112,17 @@ const LearningManagementSystem = () => {
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
-    localStorage.getItem('tbo-sidebar-collapsed') === 'true'
+  const [sidebarMode, setSidebarMode] = useState<'locked' | 'auto-hide'>(
+    () => (localStorage.getItem('tbo-sidebar-mode') as 'locked' | 'auto-hide') ?? 'locked'
   );
 
   useEffect(() => {
-    localStorage.setItem('tbo-sidebar-collapsed', String(sidebarCollapsed));
-  }, [sidebarCollapsed]);
+    localStorage.setItem('tbo-sidebar-mode', sidebarMode);
+  }, [sidebarMode]);
+
+  const toggleSidebarMode = () => {
+    setSidebarMode(prev => (prev === 'locked' ? 'auto-hide' : 'locked'));
+  };
 
   const handleDeleteUser = (id: string) => {
     deleteUser(id, showConfirmation, () => {
@@ -181,14 +185,14 @@ const LearningManagementSystem = () => {
         previewRoles={previewRoles}
         onOpenDevPanel={() => setShowDevPanel(true)}
       />
-      <div className="flex h-[calc(100vh-64px)] overflow-hidden">
+      <div className="relative flex h-[calc(100vh-64px)] overflow-hidden">
         <Sidebar
           activeView={activeView}
           onNavigate={setActiveView}
           hasRole={hasRole}
           totalUnread={totalUnread}
-          collapsed={sidebarCollapsed}
-          onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
+          mode={sidebarMode}
+          onToggleMode={toggleSidebarMode}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <AppRouter
