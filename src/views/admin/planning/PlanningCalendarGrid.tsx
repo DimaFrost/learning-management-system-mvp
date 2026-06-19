@@ -67,17 +67,33 @@ function rowHasExistingClass(row: PlanningRow): boolean {
   return slots.some(s => s.classId !== null);
 }
 
-function getHourTeacherConflicts(row: PlanningRow): {
-  hour1: boolean;
-  hour2: boolean;
+function getDuplicateStaffIds(ids: (string | null)[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const id of ids) {
+    if (id) counts.set(id, (counts.get(id) ?? 0) + 1);
+  }
+  return new Set(
+    [...counts.entries()].filter(([, count]) => count > 1).map(([id]) => id)
+  );
+}
+
+function getHourStaffConflicts(row: PlanningRow): {
+  hour1: Set<string>;
+  hour2: Set<string>;
 } {
-  const h1fy = row.firstHourFirstYear.teacherId;
-  const h1sy = row.firstHourSecondYear.teacherId;
-  const h2fy = row.secondHourFirstYear.teacherId;
-  const h2sy = row.secondHourSecondYear.teacherId;
   return {
-    hour1: h1fy !== null && h1fy === h1sy,
-    hour2: h2fy !== null && h2fy === h2sy,
+    hour1: getDuplicateStaffIds([
+      row.firstHourFirstYear.teacherId,
+      row.firstHourFirstYear.translatorId,
+      row.firstHourSecondYear.teacherId,
+      row.firstHourSecondYear.translatorId,
+    ]),
+    hour2: getDuplicateStaffIds([
+      row.secondHourFirstYear.teacherId,
+      row.secondHourFirstYear.translatorId,
+      row.secondHourSecondYear.teacherId,
+      row.secondHourSecondYear.translatorId,
+    ]),
   };
 }
 
@@ -148,14 +164,14 @@ function DayCell({ row, rowSpan }: DayCellProps) {
             {row.dayOfWeek.slice(0, 3)}
           </span>
           {row.date && !row.isValidScheduleDay && (
-            <p className="text-[9px] text-red-600 mt-0.5 flex items-center gap-0.5 leading-tight">
+            <p className="text-[10px] text-red-600 mt-0.5 flex items-center gap-0.5 leading-tight">
               <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
               Unusual
             </p>
           )}
         </div>
       ) : (
-        <span className="text-gray-400 italic text-[11px]">—</span>
+        <span className="text-gray-400 italic text-xs">—</span>
       )}
     </td>
   );
@@ -202,6 +218,7 @@ interface SlotHourFieldsProps {
   side: CourseSide;
   users: User[];
   teacherConflict: boolean;
+  translatorConflict: boolean;
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
   onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
 }
@@ -213,6 +230,7 @@ function SlotHourFields({
   side,
   users,
   teacherConflict,
+  translatorConflict,
   onUpdateSlot,
   onMoveSlot,
 }: SlotHourFieldsProps) {
@@ -272,7 +290,7 @@ function SlotHourFields({
               })
             }
             placeholder="Type or select subject..."
-            className="w-full text-[11px] border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
           />
           {slot.subjectId === null && slot.subjectTitle.trim() && (
             <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
@@ -291,7 +309,7 @@ function SlotHourFields({
                 teacherId: e.target.value || null,
               })
             }
-            className={`flex-1 min-w-0 text-[10px] border border-gray-200 border-l-2 border-l-amber-400 rounded px-1 py-0.5 bg-white ${
+            className={`flex-1 min-w-0 text-xs border border-gray-200 border-l-2 border-l-amber-400 rounded px-1 py-0.5 bg-white ${
               teacherConflict ? 'ring-2 ring-red-400' : ''
             }`}
           >
@@ -303,7 +321,7 @@ function SlotHourFields({
             ))}
           </select>
           {teacherConflict && (
-            <span className="text-red-600 text-[10px]" title="Teacher double-booked">
+            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
               ⚠️
             </span>
           )}
@@ -311,22 +329,31 @@ function SlotHourFields({
       </td>
 
       <td className={`${cellBase} min-w-[88px]`} {...dragProps}>
-        <select
-          value={slot.translatorId ?? ''}
-          onChange={e =>
-            onUpdateSlot(row.rowId, slotKey, {
-              translatorId: e.target.value || null,
-            })
-          }
-          className="w-full text-[10px] border border-gray-200 border-l-2 border-l-purple-400 rounded px-1 py-0.5 bg-white"
-        >
-          <option value="">— Vacant —</option>
-          {translators.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1">
+          <select
+            value={slot.translatorId ?? ''}
+            onChange={e =>
+              onUpdateSlot(row.rowId, slotKey, {
+                translatorId: e.target.value || null,
+              })
+            }
+            className={`flex-1 min-w-0 text-xs border border-gray-200 border-l-2 border-l-purple-400 rounded px-1 py-0.5 bg-white ${
+              translatorConflict ? 'ring-2 ring-red-400' : ''
+            }`}
+          >
+            <option value="">— Vacant —</option>
+            {translators.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          {translatorConflict && (
+            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+              ⚠️
+            </span>
+          )}
+        </div>
       </td>
     </>
   );
@@ -349,7 +376,7 @@ function WeekdayDateRows({
   onMoveSlot,
   onRemoveRow,
 }: WeekdayDateRowsProps) {
-  const conflicts = getHourTeacherConflicts(row);
+  const conflicts = getHourStaffConflicts(row);
 
   return (
     <>
@@ -362,7 +389,14 @@ function WeekdayDateRows({
           slotKey="firstHourFirstYear"
           side="firstYear"
           users={users}
-          teacherConflict={conflicts.hour1}
+          teacherConflict={
+            row.firstHourFirstYear.teacherId !== null &&
+            conflicts.hour1.has(row.firstHourFirstYear.teacherId)
+          }
+          translatorConflict={
+            row.firstHourFirstYear.translatorId !== null &&
+            conflicts.hour1.has(row.firstHourFirstYear.translatorId)
+          }
           onUpdateSlot={onUpdateSlot}
           onMoveSlot={onMoveSlot}
         />
@@ -372,7 +406,14 @@ function WeekdayDateRows({
           slotKey="firstHourSecondYear"
           side="secondYear"
           users={users}
-          teacherConflict={conflicts.hour1}
+          teacherConflict={
+            row.firstHourSecondYear.teacherId !== null &&
+            conflicts.hour1.has(row.firstHourSecondYear.teacherId)
+          }
+          translatorConflict={
+            row.firstHourSecondYear.translatorId !== null &&
+            conflicts.hour1.has(row.firstHourSecondYear.translatorId)
+          }
           onUpdateSlot={onUpdateSlot}
           onMoveSlot={onMoveSlot}
         />
@@ -385,7 +426,14 @@ function WeekdayDateRows({
           slotKey="secondHourFirstYear"
           side="firstYear"
           users={users}
-          teacherConflict={conflicts.hour2}
+          teacherConflict={
+            row.secondHourFirstYear.teacherId !== null &&
+            conflicts.hour2.has(row.secondHourFirstYear.teacherId)
+          }
+          translatorConflict={
+            row.secondHourFirstYear.translatorId !== null &&
+            conflicts.hour2.has(row.secondHourFirstYear.translatorId)
+          }
           onUpdateSlot={onUpdateSlot}
           onMoveSlot={onMoveSlot}
         />
@@ -395,7 +443,14 @@ function WeekdayDateRows({
           slotKey="secondHourSecondYear"
           side="secondYear"
           users={users}
-          teacherConflict={conflicts.hour2}
+          teacherConflict={
+            row.secondHourSecondYear.teacherId !== null &&
+            conflicts.hour2.has(row.secondHourSecondYear.teacherId)
+          }
+          translatorConflict={
+            row.secondHourSecondYear.translatorId !== null &&
+            conflicts.hour2.has(row.secondHourSecondYear.translatorId)
+          }
           onUpdateSlot={onUpdateSlot}
           onMoveSlot={onMoveSlot}
         />
@@ -424,6 +479,8 @@ function JointSlotFields({
   const translators = users.filter(u => hasRole(u, 'translator'));
   const emptyCell = filled ? '' : 'border-dashed border-gray-300';
   const cellBase = `border border-gray-200 px-2 py-2 align-top bg-amber-50/60 ${emptyCell}`;
+  const staffConflict =
+    slot.teacherId !== null && slot.teacherId === slot.translatorId;
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
@@ -460,7 +517,6 @@ function JointSlotFields({
             aria-hidden
           />
         )}
-        <p className="text-[10px] font-medium text-amber-800 mb-1">Activation Saturday</p>
         <div className="flex items-center gap-1 min-w-0 pr-4">
           <input
             type="text"
@@ -473,7 +529,7 @@ function JointSlotFields({
               })
             }
             placeholder="Type or select subject..."
-            className="w-full text-[11px] border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
           />
           {slot.subjectId === null && slot.subjectTitle.trim() && (
             <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
@@ -484,41 +540,61 @@ function JointSlotFields({
       </td>
 
       <td colSpan={2} className={`${cellBase} min-w-[88px]`} {...dragProps}>
-        <select
-          value={slot.teacherId ?? ''}
-          onChange={e =>
-            onUpdateSlot(row.rowId, slotKey, {
-              teacherId: e.target.value || null,
-            })
-          }
-          className="w-full text-[10px] border border-gray-200 border-l-2 border-l-amber-400 rounded px-1 py-0.5 bg-white"
-        >
-          <option value="">— Vacant —</option>
-          {teachers.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="flex-shrink-0 text-xs text-gray-600">Teacher</span>
+          <select
+            value={slot.teacherId ?? ''}
+            onChange={e =>
+              onUpdateSlot(row.rowId, slotKey, {
+                teacherId: e.target.value || null,
+              })
+            }
+            className={`flex-1 min-w-0 text-xs border border-gray-200 border-l-2 border-l-amber-400 rounded px-1 py-0.5 bg-white ${
+              staffConflict ? 'ring-2 ring-red-400' : ''
+            }`}
+          >
+            <option value="">— Vacant —</option>
+            {teachers.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          {staffConflict && (
+            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+              ⚠️
+            </span>
+          )}
+        </div>
       </td>
 
       <td colSpan={2} className={`${cellBase} min-w-[88px]`} {...dragProps}>
-        <select
-          value={slot.translatorId ?? ''}
-          onChange={e =>
-            onUpdateSlot(row.rowId, slotKey, {
-              translatorId: e.target.value || null,
-            })
-          }
-          className="w-full text-[10px] border border-gray-200 border-l-2 border-l-purple-400 rounded px-1 py-0.5 bg-white"
-        >
-          <option value="">— Vacant —</option>
-          {translators.map(u => (
-            <option key={u.id} value={u.id}>
-              {u.name}
-            </option>
-          ))}
-        </select>
+        <div className="flex items-center gap-1 min-w-0">
+          <span className="flex-shrink-0 text-xs text-gray-600">Translator</span>
+          <select
+            value={slot.translatorId ?? ''}
+            onChange={e =>
+              onUpdateSlot(row.rowId, slotKey, {
+                translatorId: e.target.value || null,
+              })
+            }
+            className={`flex-1 min-w-0 text-xs border border-gray-200 border-l-2 border-l-purple-400 rounded px-1 py-0.5 bg-white ${
+              staffConflict ? 'ring-2 ring-red-400' : ''
+            }`}
+          >
+            <option value="">— Vacant —</option>
+            {translators.map(u => (
+              <option key={u.id} value={u.id}>
+                {u.name}
+              </option>
+            ))}
+          </select>
+          {staffConflict && (
+            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+              ⚠️
+            </span>
+          )}
+        </div>
       </td>
     </>
   );
@@ -542,17 +618,27 @@ function SaturdayDateRow({
   onRemoveRow,
 }: SaturdayDateRowProps) {
   return (
-    <tr className="hover:bg-gray-50/30">
-      <DateCell row={row} onUpdateRowDate={onUpdateRowDate} />
-      <DayCell row={row} />
-      <JointSlotFields
-        row={row}
-        users={users}
-        onUpdateSlot={onUpdateSlot}
-        onMoveSlot={onMoveSlot}
-      />
-      <RemoveCell row={row} onRemoveRow={onRemoveRow} />
-    </tr>
+    <>
+      <tr className="hover:bg-gray-50/30">
+        <DateCell row={row} rowSpan={2} onUpdateRowDate={onUpdateRowDate} />
+        <DayCell row={row} rowSpan={2} />
+        <td
+          colSpan={6}
+          className="border border-gray-200 px-2 py-1.5 align-middle bg-amber-50/60 text-center"
+        >
+          <span className="text-xs font-semibold text-amber-800">Activation Saturday</span>
+        </td>
+        <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
+      </tr>
+      <tr className="hover:bg-gray-50/30">
+        <JointSlotFields
+          row={row}
+          users={users}
+          onUpdateSlot={onUpdateSlot}
+          onMoveSlot={onMoveSlot}
+        />
+      </tr>
+    </>
   );
 }
 
@@ -602,7 +688,7 @@ export function PlanningCalendarGrid({
   return (
     <div className="space-y-3">
       <div className="overflow-x-auto">
-        <table className="min-w-[980px] w-full text-xs border-collapse">
+        <table className="min-w-[980px] w-full text-sm border-collapse">
           <thead>
             <tr>
               <th

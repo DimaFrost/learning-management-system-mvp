@@ -6,6 +6,8 @@ import { SchoolYearSelector } from './planning/SchoolYearSelector';
 import { SubjectLibraryPanel } from './planning/SubjectLibraryPanel';
 import { PlanningCalendarGrid } from './planning/PlanningCalendarGrid';
 
+const SHOW_SUBJECT_LIBRARY = false;
+
 interface CurriculumPlanningViewProps {
   courses: Course[];
   users: User[];
@@ -177,9 +179,11 @@ export function CurriculumPlanningView({
         </div>
       ) : (
         <div className="flex gap-4 h-full">
-          <div className="w-72 flex-shrink-0 overflow-y-auto">
-            <SubjectLibraryPanel draftSubjects={draftSubjects} />
-          </div>
+          {SHOW_SUBJECT_LIBRARY && (
+            <div className="w-72 flex-shrink-0 overflow-y-auto">
+              <SubjectLibraryPanel draftSubjects={draftSubjects} />
+            </div>
+          )}
 
           <div className="flex-1 overflow-auto relative">
             {loading && (
