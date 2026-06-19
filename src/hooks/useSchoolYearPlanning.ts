@@ -226,18 +226,24 @@ export function useSchoolYearPlanning(courses: Course[]) {
   // List of distinct subject titles currently in the draft,
   // per course side (for the Subject Library panel)
   const draftSubjects = useMemo(() => {
-    const fySet = new Map<string, { title: string; isNew: boolean; sessionCount: number }>();
-    const sySet = new Map<string, { title: string; isNew: boolean; sessionCount: number }>();
+    type DraftSubjectEntry = {
+      title: string;
+      isNew: boolean;
+      sessionCount: number;
+      activationSaturdayCount: number;
+    };
+    const fySet = new Map<string, DraftSubjectEntry>();
+    const sySet = new Map<string, DraftSubjectEntry>();
 
     for (const row of rows) {
-      const slotsForYear: Array<[PlanningSlot, Map<string, { title: string; isNew: boolean; sessionCount: number }>]> = row.isSaturday
-        ? [[row.jointSlot, fySet], [row.jointSlot, sySet]]
+      const slotsForYear: Array<[PlanningSlot, Map<string, DraftSubjectEntry>, boolean]> = row.isSaturday
+        ? [[row.jointSlot, fySet, true], [row.jointSlot, sySet, true]]
         : [
-            [row.firstHourFirstYear, fySet], [row.secondHourFirstYear, fySet],
-            [row.firstHourSecondYear, sySet], [row.secondHourSecondYear, sySet],
+            [row.firstHourFirstYear, fySet, false], [row.secondHourFirstYear, fySet, false],
+            [row.firstHourSecondYear, sySet, false], [row.secondHourSecondYear, sySet, false],
           ];
 
-      for (const [slot, map] of slotsForYear) {
+      for (const [slot, map, isActivationSaturday] of slotsForYear) {
         if (!slot.subjectTitle.trim()) continue;
         const key = slot.subjectTitle.trim().toLowerCase();
         if (!map.has(key)) {
@@ -245,9 +251,14 @@ export function useSchoolYearPlanning(courses: Course[]) {
             title: slot.subjectTitle.trim(),
             isNew: slot.subjectId === null,
             sessionCount: 0,
+            activationSaturdayCount: 0,
           });
         }
-        map.get(key)!.sessionCount++;
+        const entry = map.get(key)!;
+        entry.sessionCount++;
+        if (isActivationSaturday) {
+          entry.activationSaturdayCount++;
+        }
       }
     }
 

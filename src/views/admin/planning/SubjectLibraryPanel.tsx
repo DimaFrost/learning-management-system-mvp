@@ -5,6 +5,7 @@ interface DraftSubject {
   title: string;
   isNew: boolean;
   sessionCount: number;
+  activationSaturdayCount: number;
 }
 
 export interface SubjectLibraryPanelProps {
@@ -35,6 +36,13 @@ function SubjectCard({ subject }: SubjectCardProps) {
         )}
       </div>
       <p className="text-xs text-gray-600 mt-1">{sessionLabel}</p>
+      {subject.activationSaturdayCount > 0 && (
+        <p className="text-xs text-amber-700 mt-0.5">
+          {subject.activationSaturdayCount === 1
+            ? '1 Activation Saturday'
+            : `${subject.activationSaturdayCount} Activation Saturdays`}
+        </p>
+      )}
     </div>
   );
 }
