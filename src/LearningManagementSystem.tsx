@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import type { EditingItem, User, UserRole } from './types/lms';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
 import { checkDoubleBooking } from './utils/scheduling';
@@ -112,6 +112,13 @@ const LearningManagementSystem = () => {
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() =>
+    localStorage.getItem('tbo-sidebar-collapsed') === 'true'
+  );
+
+  useEffect(() => {
+    localStorage.setItem('tbo-sidebar-collapsed', String(sidebarCollapsed));
+  }, [sidebarCollapsed]);
 
   const handleDeleteUser = (id: string) => {
     deleteUser(id, showConfirmation, () => {
@@ -180,6 +187,8 @@ const LearningManagementSystem = () => {
           onNavigate={setActiveView}
           hasRole={hasRole}
           totalUnread={totalUnread}
+          collapsed={sidebarCollapsed}
+          onToggleCollapse={() => setSidebarCollapsed(prev => !prev)}
         />
         <main className="flex-1 overflow-y-auto p-8">
           <AppRouter
