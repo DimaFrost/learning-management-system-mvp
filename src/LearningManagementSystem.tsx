@@ -212,6 +212,8 @@ const LearningManagementSystem = () => {
             deleteCourse={deleteCourse}
             deleteSubject={deleteSubject}
             deleteClass={deleteClass}
+            addClass={addClass}
+            updateClass={updateClass}
             deleteUser={handleDeleteUser}
             updateCourse={updateCourse}
             setCourseStudents={setCourseStudents}

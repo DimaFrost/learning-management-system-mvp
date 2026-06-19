@@ -74,6 +74,8 @@ export interface AppRouterProps {
   deleteCourse: (id: number) => void;
   deleteSubject: (courseId: number, subjectId: number) => void;
   deleteClass: (courseId: number, subjectId: number, classId: number) => void;
+  addClass: (courseId: number, subjectId: number, classData: Partial<Class>) => Promise<void>;
+  updateClass: (courseId: number, subjectId: number, classId: number, updates: Partial<Class>) => Promise<void>;
   deleteUser: (id: string) => void;
   updateCourse: (id: number, data: Partial<Course>) => void;
   announcements: Announcement[];
@@ -143,6 +145,8 @@ export function AppRouter({
   deleteCourse,
   deleteSubject,
   deleteClass,
+  addClass,
+  updateClass,
   deleteUser,
   updateCourse,
   announcements,
@@ -263,6 +267,9 @@ export function AppRouter({
             onCurriculumTabChange={onCurriculumTabChange}
             courses={courses}
             users={users}
+            currentUser={currentUser}
+            onAddClass={addClass}
+            onUpdateClass={updateClass}
             collapsedCourses={collapsedCourses}
             collapsedSubjects={collapsedSubjects}
             toggleCourseCollapse={toggleCourseCollapse}

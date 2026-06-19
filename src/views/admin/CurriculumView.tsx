@@ -3,12 +3,16 @@ import type { Course, User, Subject, Class } from '../../types/lms';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
 import { CurriculumArchiveView } from './CurriculumArchiveView';
+import { CurriculumPlanningView } from './CurriculumPlanningView';
 
 interface CurriculumViewProps {
   activeCurriculumTab: string;
   onCurriculumTabChange: (tab: string) => void;
   courses: Course[];
   users: User[];
+  currentUser: User;
+  onAddClass: (courseId: number, subjectId: number, cls: Partial<Class>) => Promise<void>;
+  onUpdateClass: (courseId: number, subjectId: number, classId: number, cls: Partial<Class>) => Promise<void>;
   collapsedCourses: Set<number>;
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
@@ -31,6 +35,9 @@ export function CurriculumView({
   onCurriculumTabChange,
   courses,
   users,
+  currentUser,
+  onAddClass,
+  onUpdateClass,
   collapsedCourses,
   collapsedSubjects,
   toggleCourseCollapse,
@@ -50,7 +57,8 @@ export function CurriculumView({
   const curriculumTabs = [
     { id: 'overview', label: 'Overview' },
     { id: 'date-view', label: 'Date View' },
-    { id: 'archived', label: 'Archived' }
+    { id: 'archived', label: 'Archived' },
+    { id: 'planning', label: 'Planning' },
   ];
 
   return (
@@ -121,6 +129,16 @@ export function CurriculumView({
           getUserById={getUserById}
           getCourseDisplayName={getCourseDisplayName}
           onReactivate={onReactivate}
+        />
+      )}
+      {activeCurriculumTab === 'planning' && (
+        <CurriculumPlanningView
+          courses={courses}
+          users={users}
+          currentUser={currentUser}
+          onAddClass={onAddClass}
+          onUpdateClass={onUpdateClass}
+          onDeleteClass={onDeleteClass}
         />
       )}
     </div>
