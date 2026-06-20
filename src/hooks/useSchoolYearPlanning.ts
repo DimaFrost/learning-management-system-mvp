@@ -73,6 +73,39 @@ export type PlanningSlotKey = keyof Pick<
   | 'jointSlot'
 >;
 
+export interface SlotLocation {
+  rowId: string;
+  hourSlotKey:
+    | 'firstHourFirstYear'
+    | 'secondHourFirstYear'
+    | 'firstHourSecondYear'
+    | 'secondHourSecondYear';
+}
+
+function orderedWeekdayRows(rows: PlanningRow[]): PlanningRow[] {
+  const scheduled = rows.filter(r => r.date).sort((a, b) => a.date.localeCompare(b.date));
+  const unscheduled = rows.filter(r => !r.date);
+  return [...scheduled, ...unscheduled];
+}
+
+function buildFlatSequence(
+  rows: PlanningRow[],
+  courseSide: 'firstYear' | 'secondYear'
+): SlotLocation[] {
+  const firstKey =
+    courseSide === 'firstYear' ? 'firstHourFirstYear' : 'firstHourSecondYear';
+  const secondKey =
+    courseSide === 'firstYear' ? 'secondHourFirstYear' : 'secondHourSecondYear';
+
+  const sequence: SlotLocation[] = [];
+  for (const row of orderedWeekdayRows(rows)) {
+    if (row.isSaturday) continue;
+    sequence.push({ rowId: row.rowId, hourSlotKey: firstKey });
+    sequence.push({ rowId: row.rowId, hourSlotKey: secondKey });
+  }
+  return sequence;
+}
+
 function buildRowsFromCourses(
   fyCourse: Course | undefined,
   syCourse: Course | undefined
@@ -333,9 +366,8 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setIsDirty(true);
   }, []);
 
-  // Move a slot's content from one row/slotKey to another
-  // (used by drag-and-drop reordering)
-  const moveSlot = useCallback((
+  // Swap slot content (Saturday joint sessions only)
+  const swapSlot = useCallback((
     fromRowId: string, fromSlotKey: PlanningSlotKey,
     toRowId: string, toSlotKey: PlanningSlotKey
   ) => {
@@ -356,6 +388,84 @@ export function useSchoolYearPlanning(courses: Course[]) {
         }
         return row;
       });
+    });
+    setIsDirty(true);
+  }, []);
+
+  const moveSessionBlock = useCallback((params: {
+    courseSide: 'firstYear' | 'secondYear';
+    sourceRowId: string;
+    sourceHourSlotKey: SlotLocation['hourSlotKey'];
+    blockSize: 1 | 2;
+    targetRowId: string;
+    targetHourSlotKey: SlotLocation['hourSlotKey'];
+  }) => {
+    setRows(prevRows => {
+      const sequence = buildFlatSequence(prevRows, params.courseSide);
+
+      let sourceStart = sequence.findIndex(
+        loc =>
+          loc.rowId === params.sourceRowId &&
+          loc.hourSlotKey === params.sourceHourSlotKey
+      );
+      if (sourceStart === -1) return prevRows;
+
+      if (params.blockSize === 2) {
+        const firstKey =
+          params.courseSide === 'firstYear'
+            ? 'firstHourFirstYear'
+            : 'firstHourSecondYear';
+        sourceStart = sequence.findIndex(
+          loc =>
+            loc.rowId === params.sourceRowId && loc.hourSlotKey === firstKey
+        );
+        if (sourceStart === -1) return prevRows;
+      }
+
+      let targetStart: number;
+      if (params.blockSize === 2) {
+        const firstKey =
+          params.courseSide === 'firstYear'
+            ? 'firstHourFirstYear'
+            : 'firstHourSecondYear';
+        targetStart = sequence.findIndex(
+          loc =>
+            loc.rowId === params.targetRowId && loc.hourSlotKey === firstKey
+        );
+      } else {
+        targetStart = sequence.findIndex(
+          loc =>
+            loc.rowId === params.targetRowId &&
+            loc.hourSlotKey === params.targetHourSlotKey
+        );
+      }
+      if (targetStart === -1) return prevRows;
+      if (sourceStart === targetStart) return prevRows;
+
+      const rowMap = new Map(prevRows.map(r => [r.rowId, r]));
+      const content = sequence.map(loc => {
+        const row = rowMap.get(loc.rowId)!;
+        return row[loc.hourSlotKey] as PlanningSlot;
+      });
+
+      const block = content.splice(sourceStart, params.blockSize);
+
+      const insertAt =
+        sourceStart < targetStart
+          ? targetStart - params.blockSize
+          : targetStart;
+
+      content.splice(insertAt, 0, ...block);
+
+      const updatedRows = prevRows.map(row => ({ ...row }));
+      const updatedRowMap = new Map(updatedRows.map(r => [r.rowId, r]));
+
+      sequence.forEach((loc, idx) => {
+        const row = updatedRowMap.get(loc.rowId)!;
+        row[loc.hourSlotKey] = content[idx];
+      });
+
+      return updatedRows;
     });
     setIsDirty(true);
   }, []);
@@ -618,6 +728,6 @@ export function useSchoolYearPlanning(courses: Course[]) {
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,
     loadSchoolYear, updateRowDate, updateSlot,
-    addRow, removeRow, moveSlot, commitPlan,
+    addRow, removeRow, moveSessionBlock, swapSlot, commitPlan,
   };
 }

@@ -61,7 +61,8 @@ export function CurriculumPlanningView({
     updateSlot,
     addRow,
     removeRow,
-    moveSlot,
+    moveSessionBlock,
+    swapSlot,
     commitPlan,
   } = useSchoolYearPlanning(courses);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
@@ -207,7 +208,8 @@ export function CurriculumPlanningView({
               onUpdateSlot={updateSlot}
               onAddRow={addRow}
               onRemoveRow={removeRow}
-              onMoveSlot={moveSlot}
+              onMoveSessionBlock={moveSessionBlock}
+              onSwapSlot={swapSlot}
               onAddSubject={handleAddSubject}
               addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
             />

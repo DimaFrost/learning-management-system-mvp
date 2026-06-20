@@ -1,10 +1,32 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GripVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
-import type { PlanningRow, PlanningSlot, PlanningSlotKey } from '../../../hooks/useSchoolYearPlanning';
+import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import type {
+  PlanningRow,
+  PlanningSlot,
+  PlanningSlotKey,
+  SlotLocation,
+} from '../../../hooks/useSchoolYearPlanning';
 import type { User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 
 type CourseSide = 'firstYear' | 'secondYear';
+
+type DragPayload = {
+  courseSide: CourseSide;
+  sourceRowId: string;
+  sourceHourSlotKey: SlotLocation['hourSlotKey'];
+  blockSize: 1 | 2;
+};
+
+let currentDragPayload: DragPayload | null = null;
+
+function firstHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
+  return side === 'firstYear' ? 'firstHourFirstYear' : 'firstHourSecondYear';
+}
+
+function secondHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
+  return side === 'firstYear' ? 'secondHourFirstYear' : 'secondHourSecondYear';
+}
 
 interface PlanningCalendarGridProps {
   rows: PlanningRow[];
@@ -13,7 +35,15 @@ interface PlanningCalendarGridProps {
   onUpdateSlot: (rowId: string, slotKey: PlanningSlotKey, updates: Partial<PlanningSlot>) => void;
   onAddRow: () => void;
   onRemoveRow: (rowId: string) => void;
-  onMoveSlot: (
+  onMoveSessionBlock: (params: {
+    courseSide: CourseSide;
+    sourceRowId: string;
+    sourceHourSlotKey: SlotLocation['hourSlotKey'];
+    blockSize: 1 | 2;
+    targetRowId: string;
+    targetHourSlotKey: SlotLocation['hourSlotKey'];
+  }) => void;
+  onSwapSlot: (
     fromRowId: string,
     fromSlotKey: PlanningSlotKey,
     toRowId: string,
@@ -222,7 +252,7 @@ interface SlotHourFieldsProps {
   teacherConflict: boolean;
   translatorConflict: boolean;
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
+  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
 }
 
 function SlotHourFields({
@@ -234,7 +264,7 @@ function SlotHourFields({
   teacherConflict,
   translatorConflict,
   onUpdateSlot,
-  onMoveSlot,
+  onMoveSessionBlock,
 }: SlotHourFieldsProps) {
   const filled = !!slot.subjectTitle.trim();
   const teachers = users.filter(u => hasRole(u, 'teacher'));
@@ -242,30 +272,61 @@ function SlotHourFields({
   const datalistId = `subjects-${side}`;
   const tint = sideTint(side);
   const emptyCell = filled ? '' : 'border-dashed border-gray-300';
+  const isFirstHour = slotKey === 'firstHourFirstYear' || slotKey === 'firstHourSecondYear';
+  const firstHourKey = firstHourKeyForSide(side);
+  const secondHourKey = secondHourKeyForSide(side);
+  const dayBlockDraggable = !!(
+    row[firstHourKey].subjectTitle.trim() || row[secondHourKey].subjectTitle.trim()
+  );
+
+  const handleDragStart = (e: React.DragEvent, blockSize: 1 | 2) => {
+    const payload: DragPayload = {
+      courseSide: side,
+      sourceRowId: row.rowId,
+      sourceHourSlotKey:
+        blockSize === 2 ? firstHourKey : (slotKey as SlotLocation['hourSlotKey']),
+      blockSize,
+    };
+    currentDragPayload = payload;
+    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+  };
+
+  const handleDragEnd = () => {
+    currentDragPayload = null;
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    if (currentDragPayload && currentDragPayload.courseSide !== side) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
     try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json')) as {
-        rowId: string;
-        slotKey: PlanningSlotKey;
-      };
-      onMoveSlot(data.rowId, data.slotKey, row.rowId, slotKey);
+      const data = JSON.parse(e.dataTransfer.getData('application/json')) as DragPayload;
+      if (data.courseSide !== side) return;
+      onMoveSessionBlock({
+        courseSide: data.courseSide,
+        sourceRowId: data.sourceRowId,
+        sourceHourSlotKey: data.sourceHourSlotKey,
+        blockSize: data.blockSize,
+        targetRowId: row.rowId,
+        targetHourSlotKey:
+          data.blockSize === 2 ? firstHourKey : (slotKey as SlotLocation['hourSlotKey']),
+      });
     } catch {
       // ignore invalid drag payload
+    } finally {
+      currentDragPayload = null;
     }
   };
 
-  const dragProps = {
-    draggable: filled,
-    onDragStart: (e: React.DragEvent) => {
-      if (!filled) return;
-      e.dataTransfer.setData(
-        'application/json',
-        JSON.stringify({ rowId: row.rowId, slotKey })
-      );
-    },
-    onDragOver: (e: React.DragEvent) => e.preventDefault(),
+  const dropProps = {
+    onDragOver: handleDragOver,
     onDrop: handleDrop,
   };
 
@@ -273,14 +334,40 @@ function SlotHourFields({
 
   return (
     <>
-      <td className={`${cellBase} min-w-[100px] relative`} {...dragProps}>
-        {filled && (
-          <GripVertical
-            className="absolute top-1.5 right-1.5 w-3.5 h-3.5 text-gray-400 pointer-events-none"
-            aria-hidden
-          />
+      <td className={`${cellBase} min-w-[100px] relative`} {...dropProps}>
+        {isFirstHour && dayBlockDraggable && (
+          <span
+            draggable
+            onDragStart={e => {
+              e.stopPropagation();
+              handleDragStart(e, 2);
+            }}
+            onDragEnd={handleDragEnd}
+            onMouseDown={e => e.stopPropagation()}
+            title="Drag to move both sessions of this day"
+            className="absolute left-0 top-1 bottom-1 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-gray-500 hover:text-amber-700"
+            aria-label="Drag to move both sessions of this day"
+          >
+            <span className="absolute left-1 top-1 bottom-1 w-0.5 rounded-full bg-gray-300" aria-hidden />
+            <MoveVertical className="w-4 h-4 relative z-10" />
+          </span>
         )}
-        <div className="flex items-center gap-1 min-w-0 pr-4">
+        {filled && (
+          <span
+            draggable
+            onDragStart={e => {
+              e.stopPropagation();
+              handleDragStart(e, 1);
+            }}
+            onDragEnd={handleDragEnd}
+            onMouseDown={e => e.stopPropagation()}
+            className="absolute top-1.5 right-1.5 cursor-grab active:cursor-grabbing"
+            aria-label="Drag to reorder this session"
+          >
+            <GripVertical className="w-3.5 h-3.5 text-gray-400" />
+          </span>
+        )}
+        <div className={`flex items-center gap-1 min-w-0 pr-4 ${isFirstHour && dayBlockDraggable ? 'pl-5' : ''}`}>
           <input
             type="text"
             list={datalistId}
@@ -302,7 +389,7 @@ function SlotHourFields({
         </div>
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dragProps}>
+      <td className={`${cellBase} min-w-[88px]`} {...dropProps}>
         <div className="flex items-center gap-1">
           <select
             value={slot.teacherId ?? ''}
@@ -330,7 +417,7 @@ function SlotHourFields({
         </div>
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dragProps}>
+      <td className={`${cellBase} min-w-[88px]`} {...dropProps}>
         <div className="flex items-center gap-1">
           <select
             value={slot.translatorId ?? ''}
@@ -366,7 +453,7 @@ interface WeekdayDateRowsProps {
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
+  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
 
@@ -375,7 +462,7 @@ function WeekdayDateRows({
   users,
   onUpdateRowDate,
   onUpdateSlot,
-  onMoveSlot,
+  onMoveSessionBlock,
   onRemoveRow,
 }: WeekdayDateRowsProps) {
   const conflicts = getHourStaffConflicts(row);
@@ -400,7 +487,7 @@ function WeekdayDateRows({
             conflicts.hour1.has(row.firstHourFirstYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSlot={onMoveSlot}
+          onMoveSessionBlock={onMoveSessionBlock}
         />
         <SlotHourFields
           row={row}
@@ -417,7 +504,7 @@ function WeekdayDateRows({
             conflicts.hour1.has(row.firstHourSecondYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSlot={onMoveSlot}
+          onMoveSessionBlock={onMoveSessionBlock}
         />
         <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
       </tr>
@@ -437,7 +524,7 @@ function WeekdayDateRows({
             conflicts.hour2.has(row.secondHourFirstYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSlot={onMoveSlot}
+          onMoveSessionBlock={onMoveSessionBlock}
         />
         <SlotHourFields
           row={row}
@@ -454,7 +541,7 @@ function WeekdayDateRows({
             conflicts.hour2.has(row.secondHourSecondYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSlot={onMoveSlot}
+          onMoveSessionBlock={onMoveSessionBlock}
         />
       </tr>
     </>
@@ -465,14 +552,14 @@ interface JointSlotFieldsProps {
   row: PlanningRow;
   users: User[];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
+  onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
 }
 
 function JointSlotFields({
   row,
   users,
   onUpdateSlot,
-  onMoveSlot,
+  onSwapSlot,
 }: JointSlotFieldsProps) {
   const slot = row.jointSlot;
   const slotKey: PlanningSlotKey = 'jointSlot';
@@ -491,7 +578,7 @@ function JointSlotFields({
         rowId: string;
         slotKey: PlanningSlotKey;
       };
-      onMoveSlot(data.rowId, data.slotKey, row.rowId, slotKey);
+      onSwapSlot(data.rowId, data.slotKey, row.rowId, slotKey);
     } catch {
       // ignore invalid drag payload
     }
@@ -607,7 +694,7 @@ interface SaturdayDateRowProps {
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
+  onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
 
@@ -616,7 +703,7 @@ function SaturdayDateRow({
   users,
   onUpdateRowDate,
   onUpdateSlot,
-  onMoveSlot,
+  onSwapSlot,
   onRemoveRow,
 }: SaturdayDateRowProps) {
   return (
@@ -637,7 +724,7 @@ function SaturdayDateRow({
           row={row}
           users={users}
           onUpdateSlot={onUpdateSlot}
-          onMoveSlot={onMoveSlot}
+          onSwapSlot={onSwapSlot}
         />
       </tr>
     </>
@@ -649,7 +736,8 @@ interface PlanningRowCellsProps {
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSlot: PlanningCalendarGridProps['onMoveSlot'];
+  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
+  onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
 
@@ -667,7 +755,8 @@ export function PlanningCalendarGrid({
   onUpdateSlot,
   onAddRow,
   onRemoveRow,
-  onMoveSlot,
+  onMoveSessionBlock,
+  onSwapSlot,
   onAddSubject,
   addSubjectDisabled = false,
 }: PlanningCalendarGridProps) {
@@ -685,7 +774,8 @@ export function PlanningCalendarGrid({
     users,
     onUpdateRowDate,
     onUpdateSlot,
-    onMoveSlot,
+    onMoveSessionBlock,
+    onSwapSlot,
     onRemoveRow,
   };
 
