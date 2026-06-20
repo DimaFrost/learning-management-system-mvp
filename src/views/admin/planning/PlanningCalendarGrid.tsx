@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle } from 'lucide-react';
+import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle, CalendarPlus } from 'lucide-react';
 import type {
   PlanningRow,
   PlanningSlot,
@@ -51,6 +51,9 @@ interface PlanningCalendarGridProps {
   ) => void;
   onAddSubject: () => void;
   addSubjectDisabled?: boolean;
+  onAddActivationSaturday: (
+    date: string
+  ) => { ok: true } | { ok: false; error: string };
 }
 
 const STICKY_DATE = 'sticky left-0 z-10 bg-white';
@@ -759,7 +762,27 @@ export function PlanningCalendarGrid({
   onSwapSlot,
   onAddSubject,
   addSubjectDisabled = false,
+  onAddActivationSaturday,
 }: PlanningCalendarGridProps) {
+  const [saturdayModalOpen, setSaturdayModalOpen] = useState(false);
+  const [saturdayDraftDate, setSaturdayDraftDate] = useState('');
+  const [saturdayModalError, setSaturdayModalError] = useState<string | null>(null);
+
+  const closeSaturdayModal = () => {
+    setSaturdayModalOpen(false);
+    setSaturdayDraftDate('');
+    setSaturdayModalError(null);
+  };
+
+  const handleAddActivationSaturday = () => {
+    const result = onAddActivationSaturday(saturdayDraftDate);
+    if (result.ok) {
+      closeSaturdayModal();
+    } else {
+      setSaturdayModalError(result.error);
+    }
+  };
+
   const { scheduled, unscheduled } = useMemo(() => partitionRows(rows), [rows]);
   const subjectTitlesFirstYear = useMemo(
     () => collectSubjectTitles(rows, 'firstYear'),
@@ -898,7 +921,59 @@ export function PlanningCalendarGrid({
           <Plus className="w-4 h-4" />
           Add Subject
         </button>
+
+        <button
+          type="button"
+          onClick={() => setSaturdayModalOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+        >
+          <CalendarPlus className="w-4 h-4" />
+          Add Activation Saturday
+        </button>
       </div>
+
+      {saturdayModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Add Activation Saturday
+              </h3>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Date
+              </label>
+              <input
+                type="date"
+                value={saturdayDraftDate}
+                onChange={e => {
+                  setSaturdayDraftDate(e.target.value);
+                  setSaturdayModalError(null);
+                }}
+                className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              />
+              {saturdayModalError && (
+                <p className="text-red-600 text-sm mt-2">{saturdayModalError}</p>
+              )}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={closeSaturdayModal}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleAddActivationSaturday}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

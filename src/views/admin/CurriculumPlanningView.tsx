@@ -60,6 +60,7 @@ export function CurriculumPlanningView({
     updateRowDate,
     updateSlot,
     addRow,
+    addActivationSaturday,
     removeRow,
     moveSessionBlock,
     swapSlot,
@@ -212,6 +213,7 @@ export function CurriculumPlanningView({
               onSwapSlot={swapSlot}
               onAddSubject={handleAddSubject}
               addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
+              onAddActivationSaturday={addActivationSaturday}
             />
           </div>
         </div>

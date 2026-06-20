@@ -361,6 +361,29 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setIsDirty(true);
   }, []);
 
+  const addActivationSaturday = useCallback((
+    date: string
+  ): { ok: true } | { ok: false; error: string } => {
+    if (!date) return { ok: false, error: 'Please select a date.' };
+    const dayOfWeek = dayNameFromDate(date);
+    if (dayOfWeek !== 'Saturday') {
+      return { ok: false, error: 'Activation Saturdays must fall on a Saturday.' };
+    }
+    let added = false;
+    setRows(prev => {
+      if (prev.some(r => r.date === date)) {
+        return prev;
+      }
+      added = true;
+      return [...prev, makeRow(date)];
+    });
+    if (!added) {
+      return { ok: false, error: 'A row already exists for this date.' };
+    }
+    setIsDirty(true);
+    return { ok: true };
+  }, []);
+
   const removeRow = useCallback((rowId: string) => {
     setRows(prev => prev.filter(r => r.rowId !== rowId));
     setIsDirty(true);
@@ -728,6 +751,6 @@ export function useSchoolYearPlanning(courses: Course[]) {
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,
     loadSchoolYear, updateRowDate, updateSlot,
-    addRow, removeRow, moveSessionBlock, swapSlot, commitPlan,
+    addRow, addActivationSaturday, removeRow, moveSessionBlock, swapSlot, commitPlan,
   };
 }
