@@ -47,6 +47,7 @@ export function CurriculumPlanningView({
 }: CurriculumPlanningViewProps) {
   const {
     rows,
+    breaks,
     academicYears,
     draftSubjects,
     activeYearLabel,
@@ -61,6 +62,9 @@ export function CurriculumPlanningView({
     updateSlot,
     addRow,
     addActivationSaturday,
+    addBreak,
+    updateBreak,
+    removeBreak,
     removeRow,
     moveSessionBlock,
     swapSlot,
@@ -214,6 +218,10 @@ export function CurriculumPlanningView({
               onAddSubject={handleAddSubject}
               addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
               onAddActivationSaturday={addActivationSaturday}
+              breaks={breaks}
+              onAddBreak={addBreak}
+              onUpdateBreak={updateBreak}
+              onRemoveBreak={removeBreak}
             />
           </div>
         </div>

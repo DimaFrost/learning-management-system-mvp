@@ -1,4 +1,4 @@
-import type { PlanningRow } from '../hooks/useSchoolYearPlanning';
+import type { PlanningRow, PlanningBreak } from '../hooks/useSchoolYearPlanning';
 
 const SELECTED_YEAR_KEY = 'tbo-planning-selected-year';
 
@@ -8,6 +8,7 @@ function draftKey(label: string): string {
 
 export interface PlanningDraftCacheEntry {
   rows: PlanningRow[];
+  breaks?: PlanningBreak[];
   firstYearCourseId: number | null;
   secondYearCourseId: number | null;
   isDirty: boolean;

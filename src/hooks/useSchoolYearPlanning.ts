@@ -8,6 +8,7 @@ import {
   readDraft,
   writeDraft,
 } from '../utils/planningDraftCache';
+import { getNextClassDate, isDateInBreak } from '../utils/scheduling';
 
 // ============================================
 // TYPES
@@ -40,6 +41,15 @@ export interface PlanningRow {
   secondHourSecondYear: PlanningSlot;
   jointSlot: PlanningSlot; // used only when isSaturday
 }
+
+export interface PlanningBreak {
+  breakId: string;
+  startDate: string;
+  endDate: string;
+  label?: string;
+}
+
+type BreakResult = { ok: true } | { ok: false; error: string };
 
 function dayNameFromDate(dateStr: string): string {
   if (!dateStr) return '';
@@ -104,6 +114,110 @@ function buildFlatSequence(
     sequence.push({ rowId: row.rowId, hourSlotKey: secondKey });
   }
   return sequence;
+}
+
+function breaksOverlap(
+  a: { startDate: string; endDate: string },
+  b: { startDate: string; endDate: string }
+): boolean {
+  return a.startDate <= b.endDate && b.startDate <= a.endDate;
+}
+
+function validateBreakRange(
+  startDate: string,
+  endDate: string,
+  existing: PlanningBreak[],
+  excludeBreakId?: string
+): BreakResult {
+  if (!startDate || !endDate) {
+    return { ok: false, error: 'Please select start and end dates.' };
+  }
+  if (startDate > endDate) {
+    return { ok: false, error: 'Start date must be on or before end date.' };
+  }
+  const candidate = { startDate, endDate };
+  for (const b of existing) {
+    if (excludeBreakId && b.breakId === excludeBreakId) continue;
+    if (breaksOverlap(candidate, b)) {
+      return { ok: false, error: 'This break overlaps an existing break.' };
+    }
+  }
+  return { ok: true };
+}
+
+function reflowSessionsForBreaks(
+  rows: PlanningRow[],
+  breaks: PlanningBreak[]
+): PlanningRow[] {
+  let updatedRows = rows.map(row => ({ ...row }));
+
+  updatedRows = updatedRows.map(row => {
+    if (row.isSaturday && row.date && isDateInBreak(row.date, breaks)) {
+      return { ...row, jointSlot: emptySlot() };
+    }
+    return row;
+  });
+
+  for (const courseSide of ['firstYear', 'secondYear'] as const) {
+    const firstKey =
+      courseSide === 'firstYear' ? 'firstHourFirstYear' : 'firstHourSecondYear';
+    const secondKey =
+      courseSide === 'firstYear' ? 'secondHourFirstYear' : 'secondHourSecondYear';
+
+    const sequence = buildFlatSequence(updatedRows, courseSide);
+    const rowMap = new Map(updatedRows.map(r => [r.rowId, r]));
+    const contents = sequence.map(loc => ({
+      ...rowMap.get(loc.rowId)![loc.hourSlotKey],
+    }));
+
+    let anchor = '';
+    for (const row of orderedWeekdayRows(updatedRows)) {
+      if (row.isSaturday) continue;
+      const hasContent =
+        row[firstKey].subjectTitle.trim() || row[secondKey].subjectTitle.trim();
+      if (hasContent && row.date && (!anchor || row.date < anchor)) {
+        anchor = row.date;
+      }
+    }
+    if (!anchor) {
+      for (const row of orderedWeekdayRows(updatedRows)) {
+        if (row.isSaturday || !row.date) continue;
+        if (!anchor || row.date < anchor) anchor = row.date;
+      }
+    }
+    if (!anchor) continue;
+
+    updatedRows = updatedRows.map(row => {
+      if (row.isSaturday) return row;
+      return {
+        ...row,
+        [firstKey]: emptySlot(),
+        [secondKey]: emptySlot(),
+      };
+    });
+
+    for (let i = 0; i < contents.length; i++) {
+      const targetDate = getNextClassDate(anchor, i, breaks);
+      if (!targetDate) continue;
+
+      const slotKey = i % 2 === 0 ? firstKey : secondKey;
+      const existingIdx = updatedRows.findIndex(
+        r => r.date === targetDate && !r.isSaturday
+      );
+
+      if (existingIdx >= 0) {
+        const row = updatedRows[existingIdx];
+        updatedRows[existingIdx] = { ...row, [slotKey]: contents[i] };
+      } else {
+        updatedRows.push({
+          ...makeRow(targetDate),
+          [slotKey]: contents[i],
+        });
+      }
+    }
+  }
+
+  return updatedRows;
 }
 
 function buildRowsFromCourses(
@@ -217,6 +331,7 @@ const initialDraft = initialSelectedYear ? readDraft(initialSelectedYear) : null
 export function useSchoolYearPlanning(courses: Course[]) {
   const [activeYearLabel, setActiveYearLabel] = useState<string | null>(initialSelectedYear);
   const [rows, setRows] = useState<PlanningRow[]>(initialDraft?.rows ?? []);
+  const [breaks, setBreaks] = useState<PlanningBreak[]>(initialDraft?.breaks ?? []);
   const [firstYearCourseId, setFirstYearCourseId] = useState<number | null>(
     initialDraft?.firstYearCourseId ?? null
   );
@@ -248,8 +363,11 @@ export function useSchoolYearPlanning(courses: Course[]) {
     const fyCourse = coursesList.find(c => c.id === firstYearCourseId);
     const syCourse = coursesList.find(c => c.id === secondYearCourseId);
     const dbRows = buildRowsFromCourses(fyCourse, syCourse);
-    setRows(prev => mergeDbRowsIntoDraft(prev, dbRows));
-  }, [firstYearCourseId, secondYearCourseId]);
+    setRows(prev => {
+      const merged = mergeDbRowsIntoDraft(prev, dbRows);
+      return breaks.length > 0 ? reflowSessionsForBreaks(merged, breaks) : merged;
+    });
+  }, [firstYearCourseId, secondYearCourseId, breaks]);
 
   // Derive list of available academic years from existing courses
   const academicYears = useMemo(() => {
@@ -282,6 +400,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     const cached = skipCache ? null : readDraft(label);
     if (cached?.isDirty) {
       setRows(cached.rows);
+      setBreaks(cached.breaks ?? []);
       setFirstYearCourseId(cached.firstYearCourseId);
       setSecondYearCourseId(cached.secondYearCourseId);
       setIsDirty(true);
@@ -300,6 +419,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     const sortedRows = buildRowsFromCourses(fyCourse, syCourse);
 
     setRows(sortedRows);
+    setBreaks([]);
     setIsDirty(false);
     setLoading(false);
     syncClassCountRef(courses, fy, sy);
@@ -318,12 +438,13 @@ export function useSchoolYearPlanning(courses: Course[]) {
     if (!activeYearLabel) return;
     writeDraft(activeYearLabel, {
       rows,
+      breaks,
       firstYearCourseId,
       secondYearCourseId,
       isDirty,
     });
     writeSelectedYear(activeYearLabel);
-  }, [activeYearLabel, rows, isDirty, firstYearCourseId, secondYearCourseId]);
+  }, [activeYearLabel, rows, breaks, isDirty, firstYearCourseId, secondYearCourseId]);
 
   // ============================================
   // ROW / SLOT EDITING (all local, no DB writes)
@@ -388,6 +509,70 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setRows(prev => prev.filter(r => r.rowId !== rowId));
     setIsDirty(true);
   }, []);
+
+  const addBreak = useCallback((
+    startDate: string,
+    endDate: string,
+    label?: string
+  ): BreakResult => {
+    const validation = validateBreakRange(startDate, endDate, breaks);
+    if (!validation.ok) return validation;
+
+    const newBreak: PlanningBreak = {
+      breakId: crypto.randomUUID(),
+      startDate,
+      endDate,
+      label: label?.trim() || undefined,
+    };
+    const newBreaks = [...breaks, newBreak].sort((a, b) =>
+      a.startDate.localeCompare(b.startDate)
+    );
+    setBreaks(newBreaks);
+    setRows(prev => reflowSessionsForBreaks(prev, newBreaks));
+    setIsDirty(true);
+    return { ok: true };
+  }, [breaks]);
+
+  const updateBreak = useCallback((
+    breakId: string,
+    updates: { startDate?: string; endDate?: string; label?: string }
+  ): BreakResult => {
+    const existing = breaks.find(b => b.breakId === breakId);
+    if (!existing) return { ok: false, error: 'Break not found.' };
+
+    const startDate = updates.startDate ?? existing.startDate;
+    const endDate = updates.endDate ?? existing.endDate;
+    const validation = validateBreakRange(startDate, endDate, breaks, breakId);
+    if (!validation.ok) return validation;
+
+    const newBreaks = breaks
+      .map(b =>
+        b.breakId === breakId
+          ? {
+              ...b,
+              startDate,
+              endDate,
+              label:
+                updates.label !== undefined
+                  ? updates.label.trim() || undefined
+                  : b.label,
+            }
+          : b
+      )
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+
+    setBreaks(newBreaks);
+    setRows(prev => reflowSessionsForBreaks(prev, newBreaks));
+    setIsDirty(true);
+    return { ok: true };
+  }, [breaks]);
+
+  const removeBreak = useCallback((breakId: string) => {
+    const newBreaks = breaks.filter(b => b.breakId !== breakId);
+    setBreaks(newBreaks);
+    setRows(prev => reflowSessionsForBreaks(prev, newBreaks));
+    setIsDirty(true);
+  }, [breaks]);
 
   // Swap slot content (Saturday joint sessions only)
   const swapSlot = useCallback((
@@ -746,11 +931,12 @@ export function useSchoolYearPlanning(courses: Course[]) {
   }, [rows, firstYearCourseId, secondYearCourseId, courses]);
 
   return {
-    rows, academicYears, draftSubjects,
+    rows, breaks, academicYears, draftSubjects,
     activeYearLabel,
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,
     loadSchoolYear, updateRowDate, updateSlot,
-    addRow, addActivationSaturday, removeRow, moveSessionBlock, swapSlot, commitPlan,
+    addRow, addActivationSaturday, addBreak, updateBreak, removeBreak,
+    removeRow, moveSessionBlock, swapSlot, commitPlan,
   };
 }

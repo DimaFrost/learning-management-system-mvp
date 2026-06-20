@@ -1,15 +1,22 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle, CalendarPlus } from 'lucide-react';
+import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle, CalendarPlus, CalendarRange } from 'lucide-react';
 import type {
   PlanningRow,
   PlanningSlot,
   PlanningSlotKey,
   SlotLocation,
+  PlanningBreak,
 } from '../../../hooks/useSchoolYearPlanning';
 import type { User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
+import { isDateInBreak } from '../../../utils/scheduling';
 
 type CourseSide = 'firstYear' | 'secondYear';
+type BreakResult = { ok: true } | { ok: false; error: string };
+
+type CalendarEntry =
+  | { kind: 'row'; row: PlanningRow }
+  | { kind: 'break'; break: PlanningBreak };
 
 type DragPayload = {
   courseSide: CourseSide;
@@ -53,7 +60,14 @@ interface PlanningCalendarGridProps {
   addSubjectDisabled?: boolean;
   onAddActivationSaturday: (
     date: string
-  ) => { ok: true } | { ok: false; error: string };
+  ) => BreakResult;
+  breaks: PlanningBreak[];
+  onAddBreak: (startDate: string, endDate: string, label?: string) => BreakResult;
+  onUpdateBreak: (
+    breakId: string,
+    updates: { startDate?: string; endDate?: string; label?: string }
+  ) => BreakResult;
+  onRemoveBreak: (breakId: string) => void;
 }
 
 const STICKY_DATE = 'sticky left-0 z-10 bg-white';
@@ -72,6 +86,38 @@ function partitionRows(rows: PlanningRow[]): {
   const scheduled = rows.filter(r => r.date !== '').sort((a, b) => a.date.localeCompare(b.date));
   const unscheduled = rows.filter(r => r.date === '');
   return { scheduled, unscheduled };
+}
+
+function mergeScheduledWithBreaks(
+  scheduled: PlanningRow[],
+  breaks: PlanningBreak[]
+): CalendarEntry[] {
+  const entries: CalendarEntry[] = [];
+  const sortedBreaks = [...breaks].sort((a, b) => a.startDate.localeCompare(b.startDate));
+  let breakIdx = 0;
+
+  for (const row of scheduled) {
+    while (
+      breakIdx < sortedBreaks.length &&
+      sortedBreaks[breakIdx].startDate <= row.date
+    ) {
+      entries.push({ kind: 'break', break: sortedBreaks[breakIdx] });
+      breakIdx++;
+    }
+    entries.push({ kind: 'row', row });
+  }
+
+  while (breakIdx < sortedBreaks.length) {
+    entries.push({ kind: 'break', break: sortedBreaks[breakIdx] });
+    breakIdx++;
+  }
+
+  return entries;
+}
+
+function formatDisplayDate(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function collectSubjectTitles(rows: PlanningRow[], side: CourseSide): string[] {
@@ -135,10 +181,11 @@ function getHourStaffConflicts(row: PlanningRow): {
 interface DateCellProps {
   row: PlanningRow;
   rowSpan?: number;
+  inBreak?: boolean;
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
 }
 
-function DateCell({ row, rowSpan, onUpdateRowDate }: DateCellProps) {
+function DateCell({ row, rowSpan, inBreak = false, onUpdateRowDate }: DateCellProps) {
   const [draftDate, setDraftDate] = useState(row.date);
 
   useEffect(() => {
@@ -171,7 +218,9 @@ function DateCell({ row, rowSpan, onUpdateRowDate }: DateCellProps) {
             (e.target as HTMLInputElement).blur();
           }
         }}
-        className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+        className={`w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent ${
+          inBreak ? 'bg-slate-50 text-slate-500' : ''
+        }`}
       />
     </td>
   );
@@ -451,8 +500,55 @@ function SlotHourFields({
   );
 }
 
+interface BreakBannerRowProps {
+  breakItem: PlanningBreak;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function BreakBannerRow({ breakItem, onEdit, onDelete }: BreakBannerRowProps) {
+  const labelSuffix = breakItem.label ? ` — ${breakItem.label}` : '';
+  const range =
+    breakItem.startDate === breakItem.endDate
+      ? formatDisplayDate(breakItem.startDate)
+      : `${formatDisplayDate(breakItem.startDate)} – ${formatDisplayDate(breakItem.endDate)}`;
+
+  return (
+    <tr>
+      <td
+        colSpan={9}
+        className="bg-slate-100 border border-slate-300 px-3 py-2"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <span className="text-sm font-semibold text-slate-700">
+            Break: {range}
+            {labelSuffix}
+          </span>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onEdit}
+              className="px-2 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="px-2 py-1 text-xs font-medium text-red-700 bg-white border border-red-200 rounded hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
 interface WeekdayDateRowsProps {
   row: PlanningRow;
+  inBreak?: boolean;
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
@@ -462,6 +558,7 @@ interface WeekdayDateRowsProps {
 
 function WeekdayDateRows({
   row,
+  inBreak = false,
   users,
   onUpdateRowDate,
   onUpdateSlot,
@@ -473,7 +570,7 @@ function WeekdayDateRows({
   return (
     <>
       <tr className="hover:bg-gray-50/30">
-        <DateCell row={row} rowSpan={2} onUpdateRowDate={onUpdateRowDate} />
+        <DateCell row={row} rowSpan={2} inBreak={inBreak} onUpdateRowDate={onUpdateRowDate} />
         <DayCell row={row} rowSpan={2} />
         <SlotHourFields
           row={row}
@@ -694,6 +791,7 @@ function JointSlotFields({
 
 interface SaturdayDateRowProps {
   row: PlanningRow;
+  inBreak?: boolean;
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
@@ -703,6 +801,7 @@ interface SaturdayDateRowProps {
 
 function SaturdayDateRow({
   row,
+  inBreak = false,
   users,
   onUpdateRowDate,
   onUpdateSlot,
@@ -712,7 +811,7 @@ function SaturdayDateRow({
   return (
     <>
       <tr className="hover:bg-gray-50/30">
-        <DateCell row={row} rowSpan={2} onUpdateRowDate={onUpdateRowDate} />
+        <DateCell row={row} rowSpan={2} inBreak={inBreak} onUpdateRowDate={onUpdateRowDate} />
         <DayCell row={row} rowSpan={2} />
         <td
           colSpan={6}
@@ -736,6 +835,7 @@ function SaturdayDateRow({
 
 interface PlanningRowCellsProps {
   row: PlanningRow;
+  inBreak?: boolean;
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
@@ -763,15 +863,72 @@ export function PlanningCalendarGrid({
   onAddSubject,
   addSubjectDisabled = false,
   onAddActivationSaturday,
+  breaks,
+  onAddBreak,
+  onUpdateBreak,
+  onRemoveBreak,
 }: PlanningCalendarGridProps) {
   const [saturdayModalOpen, setSaturdayModalOpen] = useState(false);
   const [saturdayDraftDate, setSaturdayDraftDate] = useState('');
   const [saturdayModalError, setSaturdayModalError] = useState<string | null>(null);
 
+  const [breakFormOpen, setBreakFormOpen] = useState(false);
+  const [editingBreakId, setEditingBreakId] = useState<string | null>(null);
+  const [breakStartDate, setBreakStartDate] = useState('');
+  const [breakEndDate, setBreakEndDate] = useState('');
+  const [breakLabel, setBreakLabel] = useState('');
+  const [breakFormError, setBreakFormError] = useState<string | null>(null);
+
+  const [manageBreaksOpen, setManageBreaksOpen] = useState(false);
+
   const closeSaturdayModal = () => {
     setSaturdayModalOpen(false);
     setSaturdayDraftDate('');
     setSaturdayModalError(null);
+  };
+
+  const closeBreakForm = () => {
+    setBreakFormOpen(false);
+    setEditingBreakId(null);
+    setBreakStartDate('');
+    setBreakEndDate('');
+    setBreakLabel('');
+    setBreakFormError(null);
+  };
+
+  const openAddBreakForm = () => {
+    setEditingBreakId(null);
+    setBreakStartDate('');
+    setBreakEndDate('');
+    setBreakLabel('');
+    setBreakFormError(null);
+    setBreakFormOpen(true);
+  };
+
+  const openEditBreakForm = (breakItem: PlanningBreak) => {
+    setEditingBreakId(breakItem.breakId);
+    setBreakStartDate(breakItem.startDate);
+    setBreakEndDate(breakItem.endDate);
+    setBreakLabel(breakItem.label ?? '');
+    setBreakFormError(null);
+    setBreakFormOpen(true);
+    setManageBreaksOpen(false);
+  };
+
+  const handleSubmitBreakForm = () => {
+    const result = editingBreakId
+      ? onUpdateBreak(editingBreakId, {
+          startDate: breakStartDate,
+          endDate: breakEndDate,
+          label: breakLabel,
+        })
+      : onAddBreak(breakStartDate, breakEndDate, breakLabel);
+
+    if (result.ok) {
+      closeBreakForm();
+    } else {
+      setBreakFormError(result.error);
+    }
   };
 
   const handleAddActivationSaturday = () => {
@@ -784,6 +941,10 @@ export function PlanningCalendarGrid({
   };
 
   const { scheduled, unscheduled } = useMemo(() => partitionRows(rows), [rows]);
+  const calendarEntries = useMemo(
+    () => mergeScheduledWithBreaks(scheduled, breaks),
+    [scheduled, breaks]
+  );
   const subjectTitlesFirstYear = useMemo(
     () => collectSubjectTitles(rows, 'firstYear'),
     [rows]
@@ -859,7 +1020,7 @@ export function PlanningCalendarGrid({
             </tr>
           </thead>
           <tbody>
-            {scheduled.length === 0 && unscheduled.length === 0 && (
+            {scheduled.length === 0 && unscheduled.length === 0 && breaks.length === 0 && (
               <tr>
                 <td
                   colSpan={9}
@@ -869,9 +1030,23 @@ export function PlanningCalendarGrid({
                 </td>
               </tr>
             )}
-            {scheduled.map(row => (
-              <PlanningRowCells key={row.rowId} row={row} {...rowProps} />
-            ))}
+            {calendarEntries.map(entry =>
+              entry.kind === 'break' ? (
+                <BreakBannerRow
+                  key={entry.break.breakId}
+                  breakItem={entry.break}
+                  onEdit={() => openEditBreakForm(entry.break)}
+                  onDelete={() => onRemoveBreak(entry.break.breakId)}
+                />
+              ) : (
+                <PlanningRowCells
+                  key={entry.row.rowId}
+                  row={entry.row}
+                  inBreak={isDateInBreak(entry.row.date, breaks)}
+                  {...rowProps}
+                />
+              )
+            )}
             {unscheduled.length > 0 && (
               <>
                 <tr>
@@ -883,7 +1058,12 @@ export function PlanningCalendarGrid({
                   </td>
                 </tr>
                 {unscheduled.map(row => (
-                  <PlanningRowCells key={row.rowId} row={row} {...rowProps} />
+                  <PlanningRowCells
+                    key={row.rowId}
+                    row={row}
+                    inBreak={row.date ? isDateInBreak(row.date, breaks) : false}
+                    {...rowProps}
+                  />
                 ))}
               </>
             )}
@@ -930,7 +1110,165 @@ export function PlanningCalendarGrid({
           <CalendarPlus className="w-4 h-4" />
           Add Activation Saturday
         </button>
+
+        <button
+          type="button"
+          onClick={openAddBreakForm}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+        >
+          <CalendarRange className="w-4 h-4" />
+          Add A Break
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setManageBreaksOpen(true)}
+          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+        >
+          Manage Breaks
+        </button>
       </div>
+
+      {breakFormOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                {editingBreakId ? 'Edit Break' : 'Add A Break'}
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Start date
+                  </label>
+                  <input
+                    type="date"
+                    value={breakStartDate}
+                    onChange={e => {
+                      setBreakStartDate(e.target.value);
+                      setBreakFormError(null);
+                    }}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    End date
+                  </label>
+                  <input
+                    type="date"
+                    value={breakEndDate}
+                    onChange={e => {
+                      setBreakEndDate(e.target.value);
+                      setBreakFormError(null);
+                    }}
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Label (optional)
+                  </label>
+                  <input
+                    type="text"
+                    value={breakLabel}
+                    onChange={e => setBreakLabel(e.target.value)}
+                    placeholder="e.g. Summer break"
+                    className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                  />
+                </div>
+              </div>
+              {breakFormError && (
+                <p className="text-red-600 text-sm mt-3">{breakFormError}</p>
+              )}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={closeBreakForm}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSubmitBreakForm}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
+                >
+                  {editingBreakId ? 'Save' : 'Add'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {manageBreaksOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
+            <div className="p-6">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">Manage Breaks</h3>
+              {breaks.length === 0 ? (
+                <p className="text-sm text-gray-500 italic">No breaks defined yet.</p>
+              ) : (
+                <ul className="space-y-2 max-h-64 overflow-y-auto">
+                  {breaks.map(b => {
+                    const range =
+                      b.startDate === b.endDate
+                        ? formatDisplayDate(b.startDate)
+                        : `${formatDisplayDate(b.startDate)} – ${formatDisplayDate(b.endDate)}`;
+                    return (
+                      <li
+                        key={b.breakId}
+                        className="flex items-center justify-between gap-2 p-2 border border-gray-200 rounded-lg"
+                      >
+                        <span className="text-sm text-gray-800">
+                          {range}
+                          {b.label ? ` — ${b.label}` : ''}
+                        </span>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => openEditBreakForm(b)}
+                            className="px-2 py-1 text-xs font-medium text-slate-700 border border-slate-300 rounded hover:bg-slate-50"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onRemoveBreak(b.breakId)}
+                            className="px-2 py-1 text-xs font-medium text-red-700 border border-red-200 rounded hover:bg-red-50"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+              <div className="flex gap-3 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={() => setManageBreaksOpen(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setManageBreaksOpen(false);
+                    openAddBreakForm();
+                  }}
+                  className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
+                >
+                  Add Break
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {saturdayModalOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
