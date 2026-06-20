@@ -658,10 +658,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
 
       const block = content.splice(sourceStart, params.blockSize);
 
-      const insertAt =
-        sourceStart < targetStart
-          ? targetStart - params.blockSize
-          : targetStart;
+      const insertAt = targetStart;
 
       content.splice(insertAt, 0, ...block);
 

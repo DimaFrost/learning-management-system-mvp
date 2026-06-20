@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
 import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle, CalendarPlus, CalendarRange } from 'lucide-react';
 import type {
   PlanningRow,
@@ -18,14 +18,29 @@ type CalendarEntry =
   | { kind: 'row'; row: PlanningRow }
   | { kind: 'break'; break: PlanningBreak };
 
-type DragPayload = {
+interface DragState {
   courseSide: CourseSide;
   sourceRowId: string;
   sourceHourSlotKey: SlotLocation['hourSlotKey'];
   blockSize: 1 | 2;
-};
+  preview: {
+    subjectTitle: string;
+    teacherName: string | null;
+    translatorName: string | null;
+    secondSubjectTitle?: string;
+    secondTeacherName?: string | null;
+    secondTranslatorName?: string | null;
+  };
+  cursorX: number;
+  cursorY: number;
+  hoverTargetKey: string | null;
+  isValidTarget: boolean;
+}
 
-let currentDragPayload: DragPayload | null = null;
+type BeginDragParams = Omit<
+  DragState,
+  'cursorX' | 'cursorY' | 'hoverTargetKey' | 'isValidTarget'
+>;
 
 function firstHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
   return side === 'firstYear' ? 'firstHourFirstYear' : 'firstHourSecondYear';
@@ -33,6 +48,27 @@ function firstHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
 
 function secondHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
   return side === 'firstYear' ? 'secondHourFirstYear' : 'secondHourSecondYear';
+}
+
+function slotPreview(slot: PlanningSlot, users: User[]) {
+  return {
+    subjectTitle: slot.subjectTitle.trim() || '(empty)',
+    teacherName: users.find(u => u.id === slot.teacherId)?.name ?? null,
+    translatorName: users.find(u => u.id === slot.translatorId)?.name ?? null,
+  };
+}
+
+function cellHighlightClass(
+  dragState: DragState | null,
+  rowId: string,
+  slotKey: PlanningSlotKey
+): string {
+  if (!dragState || !dragState.isValidTarget) return '';
+  const cellKey =
+    dragState.blockSize === 2 ? rowId : `${rowId}:${slotKey}`;
+  return dragState.hoverTargetKey === cellKey
+    ? ' ring-2 ring-amber-400 bg-amber-50'
+    : '';
 }
 
 interface PlanningCalendarGridProps {
@@ -304,7 +340,8 @@ interface SlotHourFieldsProps {
   teacherConflict: boolean;
   translatorConflict: boolean;
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
+  dragState: DragState | null;
+  onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
 }
 
 function SlotHourFields({
@@ -316,7 +353,8 @@ function SlotHourFields({
   teacherConflict,
   translatorConflict,
   onUpdateSlot,
-  onMoveSessionBlock,
+  dragState,
+  onBeginDrag,
 }: SlotHourFieldsProps) {
   const filled = !!slot.subjectTitle.trim();
   const teachers = users.filter(u => hasRole(u, 'teacher'));
@@ -327,77 +365,53 @@ function SlotHourFields({
   const isFirstHour = slotKey === 'firstHourFirstYear' || slotKey === 'firstHourSecondYear';
   const firstHourKey = firstHourKeyForSide(side);
   const secondHourKey = secondHourKeyForSide(side);
+  const firstHourSlot = row[firstHourKey];
+  const secondHourSlot = row[secondHourKey];
   const dayBlockDraggable = !!(
-    row[firstHourKey].subjectTitle.trim() || row[secondHourKey].subjectTitle.trim()
+    firstHourSlot.subjectTitle.trim() || secondHourSlot.subjectTitle.trim()
   );
+  const isDragging = dragState !== null;
+  const highlight = cellHighlightClass(dragState, row.rowId, slotKey);
 
-  const handleDragStart = (e: React.DragEvent, blockSize: 1 | 2) => {
-    const payload: DragPayload = {
-      courseSide: side,
-      sourceRowId: row.rowId,
-      sourceHourSlotKey:
-        blockSize === 2 ? firstHourKey : (slotKey as SlotLocation['hourSlotKey']),
-      blockSize,
-    };
-    currentDragPayload = payload;
-    e.dataTransfer.setData('application/json', JSON.stringify(payload));
+  const dropAttrs = {
+    'data-drop-row-id': row.rowId,
+    'data-drop-course-side': side,
+    'data-drop-hour-slot-key': slotKey,
   };
 
-  const handleDragEnd = () => {
-    currentDragPayload = null;
-  };
-
-  const handleDragOver = (e: React.DragEvent) => {
-    if (currentDragPayload && currentDragPayload.courseSide !== side) {
-      e.dataTransfer.dropEffect = 'none';
-      return;
-    }
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    try {
-      const data = JSON.parse(e.dataTransfer.getData('application/json')) as DragPayload;
-      if (data.courseSide !== side) return;
-      onMoveSessionBlock({
-        courseSide: data.courseSide,
-        sourceRowId: data.sourceRowId,
-        sourceHourSlotKey: data.sourceHourSlotKey,
-        blockSize: data.blockSize,
-        targetRowId: row.rowId,
-        targetHourSlotKey:
-          data.blockSize === 2 ? firstHourKey : (slotKey as SlotLocation['hourSlotKey']),
-      });
-    } catch {
-      // ignore invalid drag payload
-    } finally {
-      currentDragPayload = null;
-    }
-  };
-
-  const dropProps = {
-    onDragOver: handleDragOver,
-    onDrop: handleDrop,
-  };
-
-  const cellBase = `border border-gray-200 px-2 py-2 align-top ${tint} ${emptyCell}`;
+  const cellBase = `border border-gray-200 px-2 py-2 align-top ${tint} ${emptyCell}${highlight}`;
 
   return (
     <>
-      <td className={`${cellBase} min-w-[100px] relative`} {...dropProps}>
+      <td className={`${cellBase} min-w-[100px] relative`} {...dropAttrs}>
         {isFirstHour && dayBlockDraggable && (
           <span
-            draggable
-            onDragStart={e => {
+            onMouseDown={e => {
+              e.preventDefault();
               e.stopPropagation();
-              handleDragStart(e, 2);
+              const firstPreview = slotPreview(firstHourSlot, users);
+              const secondPreview = slotPreview(secondHourSlot, users);
+              onBeginDrag(
+                {
+                  courseSide: side,
+                  sourceRowId: row.rowId,
+                  sourceHourSlotKey: firstHourKey,
+                  blockSize: 2,
+                  preview: {
+                    ...firstPreview,
+                    secondSubjectTitle: secondPreview.subjectTitle,
+                    secondTeacherName: secondPreview.teacherName,
+                    secondTranslatorName: secondPreview.translatorName,
+                  },
+                },
+                e.clientX,
+                e.clientY
+              );
             }}
-            onDragEnd={handleDragEnd}
-            onMouseDown={e => e.stopPropagation()}
             title="Drag to move both sessions of this day"
-            className="absolute left-0 top-1 bottom-1 w-5 flex items-center justify-center cursor-grab active:cursor-grabbing text-gray-500 hover:text-amber-700"
+            className={`absolute left-0 top-1 bottom-1 w-5 flex items-center justify-center text-gray-500 hover:text-amber-700 ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
             aria-label="Drag to move both sessions of this day"
           >
             <span className="absolute left-1 top-1 bottom-1 w-0.5 rounded-full bg-gray-300" aria-hidden />
@@ -406,14 +420,24 @@ function SlotHourFields({
         )}
         {filled && (
           <span
-            draggable
-            onDragStart={e => {
+            onMouseDown={e => {
+              e.preventDefault();
               e.stopPropagation();
-              handleDragStart(e, 1);
+              onBeginDrag(
+                {
+                  courseSide: side,
+                  sourceRowId: row.rowId,
+                  sourceHourSlotKey: slotKey as SlotLocation['hourSlotKey'],
+                  blockSize: 1,
+                  preview: slotPreview(slot, users),
+                },
+                e.clientX,
+                e.clientY
+              );
             }}
-            onDragEnd={handleDragEnd}
-            onMouseDown={e => e.stopPropagation()}
-            className="absolute top-1.5 right-1.5 cursor-grab active:cursor-grabbing"
+            className={`absolute top-1.5 right-1.5 ${
+              isDragging ? 'cursor-grabbing' : 'cursor-grab'
+            }`}
             aria-label="Drag to reorder this session"
           >
             <GripVertical className="w-3.5 h-3.5 text-gray-400" />
@@ -441,7 +465,7 @@ function SlotHourFields({
         </div>
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dropProps}>
+      <td className={`${cellBase} min-w-[88px]`} {...dropAttrs}>
         <div className="flex items-center gap-1">
           <select
             value={slot.teacherId ?? ''}
@@ -469,7 +493,7 @@ function SlotHourFields({
         </div>
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dropProps}>
+      <td className={`${cellBase} min-w-[88px]`} {...dropAttrs}>
         <div className="flex items-center gap-1">
           <select
             value={slot.translatorId ?? ''}
@@ -552,7 +576,8 @@ interface WeekdayDateRowsProps {
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
+  dragState: DragState | null;
+  onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
 
@@ -562,7 +587,8 @@ function WeekdayDateRows({
   users,
   onUpdateRowDate,
   onUpdateSlot,
-  onMoveSessionBlock,
+  dragState,
+  onBeginDrag,
   onRemoveRow,
 }: WeekdayDateRowsProps) {
   const conflicts = getHourStaffConflicts(row);
@@ -587,7 +613,8 @@ function WeekdayDateRows({
             conflicts.hour1.has(row.firstHourFirstYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSessionBlock={onMoveSessionBlock}
+          dragState={dragState}
+          onBeginDrag={onBeginDrag}
         />
         <SlotHourFields
           row={row}
@@ -604,7 +631,8 @@ function WeekdayDateRows({
             conflicts.hour1.has(row.firstHourSecondYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSessionBlock={onMoveSessionBlock}
+          dragState={dragState}
+          onBeginDrag={onBeginDrag}
         />
         <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
       </tr>
@@ -624,7 +652,8 @@ function WeekdayDateRows({
             conflicts.hour2.has(row.secondHourFirstYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSessionBlock={onMoveSessionBlock}
+          dragState={dragState}
+          onBeginDrag={onBeginDrag}
         />
         <SlotHourFields
           row={row}
@@ -641,7 +670,8 @@ function WeekdayDateRows({
             conflicts.hour2.has(row.secondHourSecondYear.translatorId)
           }
           onUpdateSlot={onUpdateSlot}
-          onMoveSessionBlock={onMoveSessionBlock}
+          dragState={dragState}
+          onBeginDrag={onBeginDrag}
         />
       </tr>
     </>
@@ -839,7 +869,8 @@ interface PlanningRowCellsProps {
   users: User[];
   onUpdateRowDate: PlanningCalendarGridProps['onUpdateRowDate'];
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
-  onMoveSessionBlock: PlanningCalendarGridProps['onMoveSessionBlock'];
+  dragState: DragState | null;
+  onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
   onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
@@ -880,6 +911,151 @@ export function PlanningCalendarGrid({
   const [breakFormError, setBreakFormError] = useState<string | null>(null);
 
   const [manageBreaksOpen, setManageBreaksOpen] = useState(false);
+
+  const [dragState, setDragState] = useState<DragState | null>(null);
+  const dragStateRef = useRef<DragState | null>(null);
+  dragStateRef.current = dragState;
+  const dragHoverRef = useRef<Pick<DragState, 'hoverTargetKey' | 'isValidTarget'>>({
+    hoverTargetKey: null,
+    isValidTarget: false,
+  });
+
+  const beginDrag = useCallback(
+    (params: BeginDragParams, clientX: number, clientY: number) => {
+      dragHoverRef.current = { hoverTargetKey: null, isValidTarget: false };
+      setDragState({
+        ...params,
+        cursorX: clientX,
+        cursorY: clientY,
+        hoverTargetKey: null,
+        isValidTarget: false,
+      });
+    },
+    []
+  );
+
+  const isDragging = dragState !== null;
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const current = dragStateRef.current;
+      if (!current) return;
+
+      const elementUnder = document.elementFromPoint(e.clientX, e.clientY);
+      const cellEl = elementUnder?.closest('[data-drop-row-id]');
+
+      let hoverTargetKey: string | null = null;
+      let isValidTarget = false;
+
+      if (cellEl) {
+        const targetRowId = cellEl.getAttribute('data-drop-row-id');
+        const targetCourseSide = cellEl.getAttribute('data-drop-course-side');
+        const targetHourSlotKey = cellEl.getAttribute('data-drop-hour-slot-key');
+
+        if (targetCourseSide === current.courseSide && targetRowId) {
+          isValidTarget = true;
+          hoverTargetKey =
+            current.blockSize === 2
+              ? targetRowId
+              : `${targetRowId}:${targetHourSlotKey}`;
+        }
+      }
+
+      dragHoverRef.current = { hoverTargetKey, isValidTarget };
+
+      setDragState(prev =>
+        prev
+          ? {
+              ...prev,
+              cursorX: e.clientX,
+              cursorY: e.clientY,
+              hoverTargetKey,
+              isValidTarget,
+            }
+          : null
+      );
+    };
+
+    const handleMouseUp = (e: MouseEvent) => {
+      const current = dragStateRef.current;
+      if (current) {
+        const hover = dragHoverRef.current;
+        let targetRowId: string | null = null;
+        let targetHourSlotKey: SlotLocation['hourSlotKey'] | null = null;
+
+        if (hover.isValidTarget && hover.hoverTargetKey) {
+          if (current.blockSize === 2) {
+            targetRowId = hover.hoverTargetKey;
+            targetHourSlotKey = firstHourKeyForSide(current.courseSide);
+          } else {
+            const colonIdx = hover.hoverTargetKey.indexOf(':');
+            if (colonIdx !== -1) {
+              targetRowId = hover.hoverTargetKey.slice(0, colonIdx);
+              targetHourSlotKey = hover.hoverTargetKey.slice(
+                colonIdx + 1
+              ) as SlotLocation['hourSlotKey'];
+            }
+          }
+        }
+
+        if (!targetRowId || !targetHourSlotKey) {
+          const elementUnder = document.elementFromPoint(e.clientX, e.clientY);
+          const cellEl = elementUnder?.closest('[data-drop-row-id]');
+
+          if (cellEl) {
+            const domRowId = cellEl.getAttribute('data-drop-row-id');
+            const targetCourseSide = cellEl.getAttribute('data-drop-course-side');
+            const domHourSlotKey = cellEl.getAttribute('data-drop-hour-slot-key');
+
+            if (
+              targetCourseSide === current.courseSide &&
+              domRowId &&
+              domHourSlotKey
+            ) {
+              targetRowId = domRowId;
+              targetHourSlotKey =
+                current.blockSize === 2
+                  ? firstHourKeyForSide(current.courseSide)
+                  : (domHourSlotKey as SlotLocation['hourSlotKey']);
+            }
+          }
+        }
+
+        if (targetRowId && targetHourSlotKey) {
+          onMoveSessionBlock({
+            courseSide: current.courseSide,
+            sourceRowId: current.sourceRowId,
+            sourceHourSlotKey: current.sourceHourSlotKey,
+            blockSize: current.blockSize,
+            targetRowId,
+            targetHourSlotKey,
+          });
+        }
+      }
+
+      setDragState(null);
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging, onMoveSessionBlock]);
+
+  useEffect(() => {
+    if (dragState) {
+      document.body.style.cursor = 'grabbing';
+    } else {
+      document.body.style.cursor = '';
+    }
+    return () => {
+      document.body.style.cursor = '';
+    };
+  }, [dragState]);
 
   const closeSaturdayModal = () => {
     setSaturdayModalOpen(false);
@@ -958,7 +1134,8 @@ export function PlanningCalendarGrid({
     users,
     onUpdateRowDate,
     onUpdateSlot,
-    onMoveSessionBlock,
+    dragState,
+    onBeginDrag: beginDrag,
     onSwapSlot,
     onRemoveRow,
   };
@@ -1266,6 +1443,54 @@ export function PlanningCalendarGrid({
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {dragState && (
+        <div
+          className="fixed z-50 pointer-events-none"
+          style={{
+            left: dragState.cursorX + 12,
+            top: dragState.cursorY + 12,
+          }}
+        >
+          <div className="bg-white border-2 border-amber-400 rounded-lg shadow-2xl p-3 min-w-[200px] opacity-95">
+            <div className="text-xs font-semibold text-amber-600 mb-1">
+              {dragState.blockSize === 2 ? 'Moving full day' : 'Moving session'}
+            </div>
+            <div className="text-sm font-medium text-gray-900">
+              {dragState.preview.subjectTitle}
+            </div>
+            <div className="text-xs text-gray-500 mt-0.5">
+              {dragState.preview.teacherName && (
+                <>Teacher: {dragState.preview.teacherName}</>
+              )}
+              {dragState.preview.translatorName && (
+                <>
+                  {dragState.preview.teacherName ? ' · ' : ''}
+                  Translator: {dragState.preview.translatorName}
+                </>
+              )}
+            </div>
+            {dragState.blockSize === 2 && dragState.preview.secondSubjectTitle && (
+              <div className="mt-2 pt-2 border-t border-gray-100">
+                <div className="text-sm font-medium text-gray-900">
+                  {dragState.preview.secondSubjectTitle}
+                </div>
+                <div className="text-xs text-gray-500 mt-0.5">
+                  {dragState.preview.secondTeacherName && (
+                    <>Teacher: {dragState.preview.secondTeacherName}</>
+                  )}
+                  {dragState.preview.secondTranslatorName && (
+                    <>
+                      {dragState.preview.secondTeacherName ? ' · ' : ''}
+                      Translator: {dragState.preview.secondTranslatorName}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
