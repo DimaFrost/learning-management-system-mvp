@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { User } from '../../types/lms';
 import { useSettings } from '../../hooks/useSettings';
+import { AvatarCropModal } from '../../components/modals/AvatarCropModal';
 import { Save, Bell, User as UserIcon, Camera } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -82,6 +83,8 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
 
   const [firstName, setFirstName] = useState(currentUser.firstName);
   const [lastName, setLastName] = useState(currentUser.lastName);
+  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [filePickError, setFilePickError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -111,9 +114,9 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
         </p>
       </div>
 
-      {error && (
+      {(error || filePickError) && (
         <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-red-700">
-          {error}
+          {error || filePickError}
         </div>
       )}
 
@@ -177,7 +180,15 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
             ref={fileInputRef}
             onChange={e => {
               const file = e.target.files?.[0];
-              if (file) uploadAvatar(file);
+              if (file) {
+                if (!file.type.startsWith('image/')) {
+                  setFilePickError('Please select an image file.');
+                  return;
+                }
+                setFilePickError(null);
+                setPendingFile(file);
+              }
+              e.target.value = '';
             }}
           />
           <div className="flex items-center gap-3 mt-3">
@@ -255,6 +266,18 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
           </div>
         )}
       </div>
+
+      {pendingFile && (
+        <AvatarCropModal
+          file={pendingFile}
+          saving={saving}
+          onClose={() => setPendingFile(null)}
+          onCropComplete={async blob => {
+            await uploadAvatar(blob);
+            setPendingFile(null);
+          }}
+        />
+      )}
     </div>
   );
 }

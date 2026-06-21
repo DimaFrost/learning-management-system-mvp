@@ -64,36 +64,30 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
     }
   };
 
-  const uploadAvatar = async (file: File): Promise<void> => {
+  const uploadAvatar = async (croppedBlob: Blob): Promise<void> => {
     setSaving(true);
     setError(null);
     try {
-      if (!file.type.startsWith('image/')) {
-        setError('Please select an image file.');
-        setSaving(false);
-        return;
-      }
-
-      if (file.size > 2 * 1024 * 1024) {
+      if (croppedBlob.size > 2 * 1024 * 1024) {
         setError('Image must be under 2MB.');
         setSaving(false);
         return;
       }
 
-      const ext = file.name.split('.').pop();
-      const path = `${currentUser.id}/avatar.${ext}`;
+      const path = `${currentUser.id}/avatar.jpg`;
 
-      const { error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('tbo-lms')
-        .upload(path, file, {
+        .upload(path, croppedBlob, {
           upsert: true,
           cacheControl: '3600',
+          contentType: 'image/jpeg',
         });
       if (uploadError) throw uploadError;
 
       const { data: urlData } = supabase.storage
         .from('tbo-lms')
-        .getPublicUrl(path);
+        .getPublicUrl(uploadData.path);
 
       const avatarUrl = `${urlData.publicUrl}?t=${Date.now()}`;
 
