@@ -81,7 +81,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
       }
 
       const ext = file.name.split('.').pop();
-      const path = `avatars/${currentUser.id}/avatar.${ext}`;
+      const path = `${currentUser.id}/avatar.${ext}`;
 
       const { error: uploadError } = await supabase.storage
         .from('tbo-lms')
@@ -114,6 +114,33 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
     }
   };
 
+  const removeAvatar = async (): Promise<void> => {
+    if (!currentUser.avatarUrl) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const possiblePaths = ['jpg', 'jpeg', 'png', 'gif', 'webp'].map(
+        ext => `${currentUser.id}/avatar.${ext}`
+      );
+      await supabase.storage.from('tbo-lms').remove(possiblePaths);
+
+      const { error } = await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', currentUser.id);
+      if (error) throw error;
+
+      setSuccessMessage('Profile photo removed.');
+      setTimeout(() => setSuccessMessage(null), 3000);
+      onProfileUpdated();
+    } catch (err) {
+      setError('Failed to remove photo.');
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return { saving, error, successMessage, updateProfile,
-           updateNotificationPreferences, uploadAvatar };
+           updateNotificationPreferences, uploadAvatar, removeAvatar };
 }

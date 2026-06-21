@@ -77,7 +77,7 @@ function NotificationToggle({
 }
 
 export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProps) {
-  const { saving, error, successMessage, updateProfile, updateNotificationPreferences, uploadAvatar } =
+  const { saving, error, successMessage, updateProfile, updateNotificationPreferences, uploadAvatar, removeAvatar } =
     useSettings(currentUser, onProfileUpdated);
 
   const [firstName, setFirstName] = useState(currentUser.firstName);
@@ -91,7 +91,8 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
 
   const isProfileSuccess =
     successMessage === 'Profile updated.' ||
-    successMessage === 'Profile photo updated.';
+    successMessage === 'Profile photo updated.' ||
+    successMessage === 'Profile photo removed.';
   const isPrefsSuccess = successMessage === 'Preferences saved.';
 
   const handleTogglePreference = (key: NotificationPreferenceKey) => {
@@ -179,15 +180,31 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
               if (file) uploadAvatar(file);
             }}
           />
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            disabled={saving}
-            className="mt-3 inline-flex items-center justify-center border border-amber-600 text-amber-600 px-4 py-2 rounded-lg hover:bg-amber-50 disabled:opacity-50 text-sm font-medium"
-          >
-            <Camera className="w-4 h-4 mr-2" />
-            {saving ? 'Uploading...' : 'Change Photo'}
-          </button>
+          <div className="flex items-center gap-3 mt-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={saving}
+              className="inline-flex items-center justify-center border border-amber-600 text-amber-600 px-4 py-2 rounded-lg hover:bg-amber-50 disabled:opacity-50 text-sm font-medium"
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              {saving ? 'Uploading...' : 'Change Photo'}
+            </button>
+            {currentUser.avatarUrl && (
+              <button
+                type="button"
+                onClick={() => {
+                  if (window.confirm('Remove your profile photo?')) {
+                    removeAvatar();
+                  }
+                }}
+                disabled={saving}
+                className="text-sm text-red-600 hover:text-red-700 font-medium ml-3 disabled:opacity-50"
+              >
+                Remove Photo
+              </button>
+            )}
+          </div>
           <p className="text-xs text-gray-500 mt-1">
             JPG, PNG or GIF · Max 2MB
           </p>
