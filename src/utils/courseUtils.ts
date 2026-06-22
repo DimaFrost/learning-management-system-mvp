@@ -1,4 +1,4 @@
-import type { Course } from '../types/lms';
+import type { Course, Subject } from '../types/lms';
 
 export function getTodayDateString(): string {
   return new Date().toISOString().split('T')[0];
@@ -11,6 +11,16 @@ export function isCourseArchived(course: Course): boolean {
 
 export function isCourseActive(course: Course): boolean {
   return !isCourseArchived(course);
+}
+
+export function sortSubjectsByStartDate(subjects: Subject[]): Subject[] {
+  return [...subjects].sort((a, b) => {
+    if (!a.startDate && !b.startDate) return a.title.localeCompare(b.title);
+    if (!a.startDate) return 1;
+    if (!b.startDate) return -1;
+    const byDate = a.startDate.localeCompare(b.startDate);
+    return byDate !== 0 ? byDate : a.title.localeCompare(b.title);
+  });
 }
 
 export interface AcademicYearEntry {
