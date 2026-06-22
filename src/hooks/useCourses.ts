@@ -275,7 +275,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     refetchCourses();
   }, [refetchCourses]);
 
-  const addCourse = useCallback(async (courseData: Partial<Course>) => {
+  const addCourse = useCallback(async (courseData: Partial<Course>): Promise<boolean> => {
     setError(null);
     try {
       const { data: newCourse, error: insertError } = await supabase
@@ -301,9 +301,11 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       }
 
       await refetchCourses();
+      return true;
     } catch (err) {
       console.error('addCourse error:', err);
       setError('Failed to add course');
+      return false;
     }
   }, [refetchCourses]);
 

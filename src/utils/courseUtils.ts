@@ -13,6 +13,39 @@ export function isCourseActive(course: Course): boolean {
   return !isCourseArchived(course);
 }
 
+export interface AcademicYearEntry {
+  label: string;
+  firstYearId?: number;
+  secondYearId?: number;
+}
+
+export function getAcademicYearLabel(startDate: string, endDate: string): string {
+  const start = startDate.slice(0, 4);
+  const end = endDate.slice(0, 4);
+  return `${start}-${end}`;
+}
+
+export function buildAcademicYearsFromCourses(courses: Course[]): AcademicYearEntry[] {
+  const yearMap = new Map<string, { firstYearId?: number; secondYearId?: number }>();
+  for (const course of courses) {
+    const key = getAcademicYearLabel(course.startDate, course.endDate);
+    if (!yearMap.has(key)) yearMap.set(key, {});
+    const entry = yearMap.get(key)!;
+    if (course.courseType === 'first_year') entry.firstYearId = course.id;
+    else entry.secondYearId = course.id;
+  }
+  return Array.from(yearMap.entries())
+    .map(([label, ids]) => ({ label, ...ids }))
+    .sort((a, b) => b.label.localeCompare(a.label));
+}
+
+export function findAcademicYearEntry(
+  courses: Course[],
+  label: string
+): AcademicYearEntry | undefined {
+  return buildAcademicYearsFromCourses(courses).find(y => y.label === label);
+}
+
 export const getCourseDisplayName = (course: Course): string => {
   const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
   return `${courseTypeLabel} ${course.graduationYear}`;

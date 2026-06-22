@@ -113,7 +113,7 @@ export interface AppRouterProps {
   markConversationAsRead: (otherUserId: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   messagesCurrentUser: User;
-  onAddCourse: (course: Partial<Course>) => Promise<void>;
+  onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
 }
 
@@ -286,13 +286,6 @@ export function AppRouter({
             onEditCourse={(course?) => setEditingItem({ type: 'course', data: course ?? null })}
             onEditSubject={(courseId, subject?) =>
               setEditingItem({ type: 'subject', data: subject ?? null, courseId })
-            }
-            onAddPlanningSubject={(firstYearId, secondYearId) =>
-              setEditingItem({
-                type: 'subject',
-                data: null,
-                planningCourseOptions: { firstYearId, secondYearId },
-              })
             }
             onEditClass={(courseId, subjectId, classData, date?) => {
               if (classData) {

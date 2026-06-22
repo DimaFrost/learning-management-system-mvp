@@ -9,6 +9,7 @@ import {
   writeDraft,
 } from '../utils/planningDraftCache';
 import { getNextClassDate, isDateInBreak } from '../utils/scheduling';
+import { buildAcademicYearsFromCourses } from '../utils/courseUtils';
 
 // ============================================
 // TYPES
@@ -370,21 +371,22 @@ export function useSchoolYearPlanning(courses: Course[]) {
   }, [firstYearCourseId, secondYearCourseId, breaks]);
 
   // Derive list of available academic years from existing courses
-  const academicYears = useMemo(() => {
-    const yearMap = new Map<string, { firstYearId?: number; secondYearId?: number }>();
-    for (const course of courses) {
-      const start = new Date(course.startDate).getFullYear();
-      const end = new Date(course.endDate).getFullYear();
-      const key = `${start}-${end}`;
-      if (!yearMap.has(key)) yearMap.set(key, {});
-      const entry = yearMap.get(key)!;
-      if (course.courseType === 'first_year') entry.firstYearId = course.id;
-      else entry.secondYearId = course.id;
-    }
-    return Array.from(yearMap.entries())
-      .map(([label, ids]) => ({ label, ...ids }))
-      .sort((a, b) => b.label.localeCompare(a.label));
-  }, [courses]);
+  const academicYears = useMemo(
+    () => buildAcademicYearsFromCourses(courses),
+    [courses]
+  );
+
+  useEffect(() => {
+    if (!activeYearLabel) return;
+    if (academicYears.some(y => y.label === activeYearLabel)) return;
+    setActiveYearLabel(null);
+    writeSelectedYear(null);
+    setRows([]);
+    setBreaks([]);
+    setFirstYearCourseId(null);
+    setSecondYearCourseId(null);
+    setIsDirty(false);
+  }, [activeYearLabel, academicYears]);
 
   // Load an academic year's existing data into the draft
   const loadSchoolYear = useCallback((
@@ -509,6 +511,92 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setRows(prev => prev.filter(r => r.rowId !== rowId));
     setIsDirty(true);
   }, []);
+
+  const addPlanningSubject = useCallback((
+    params: {
+      courseSide: 'firstYear' | 'secondYear';
+      title: string;
+      startDate: string;
+      duration: number;
+      primaryTeacherId: string | null;
+    }
+  ): { ok: true } | { ok: false; error: string } => {
+    const title = params.title.trim();
+    if (!title) return { ok: false, error: 'Title is required.' };
+    if (!params.startDate) return { ok: false, error: 'Start date is required.' };
+    if (!params.duration || params.duration < 1) {
+      return { ok: false, error: 'Number of classes must be at least 1.' };
+    }
+
+    const firstKey: PlanningSlotKey =
+      params.courseSide === 'firstYear' ? 'firstHourFirstYear' : 'firstHourSecondYear';
+    const secondKey: PlanningSlotKey =
+      params.courseSide === 'firstYear' ? 'secondHourFirstYear' : 'secondHourSecondYear';
+
+    const placements: { date: string; slotKey: PlanningSlotKey }[] = [];
+    for (let i = 0; i < params.duration; i++) {
+      const date = getNextClassDate(params.startDate, i, breaks);
+      if (!date) {
+        return { ok: false, error: 'Could not schedule all classes from the start date.' };
+      }
+      placements.push({
+        date,
+        slotKey: i % 2 === 0 ? firstKey : secondKey,
+      });
+    }
+
+    let result: { ok: true } | { ok: false; error: string } = { ok: true };
+
+    setRows(prev => {
+      const working = prev.map(row => ({
+        ...row,
+        firstHourFirstYear: { ...row.firstHourFirstYear },
+        firstHourSecondYear: { ...row.firstHourSecondYear },
+        secondHourFirstYear: { ...row.secondHourFirstYear },
+        secondHourSecondYear: { ...row.secondHourSecondYear },
+        jointSlot: { ...row.jointSlot },
+      }));
+
+      const newSlot: PlanningSlot = {
+        subjectTitle: title,
+        subjectId: null,
+        teacherId: params.primaryTeacherId,
+        translatorId: null,
+        classId: null,
+        isDeleted: false,
+      };
+
+      for (const { date, slotKey } of placements) {
+        const existingIdx = working.findIndex(r => r.date === date && !r.isSaturday);
+        if (existingIdx >= 0) {
+          const row = working[existingIdx];
+          const existingTitle = row[slotKey].subjectTitle.trim();
+          if (
+            existingTitle &&
+            existingTitle.toLowerCase() !== title.toLowerCase()
+          ) {
+            result = {
+              ok: false,
+              error: `The slot on ${date} is already occupied by "${existingTitle}".`,
+            };
+            return prev;
+          }
+          working[existingIdx] = { ...row, [slotKey]: newSlot };
+        } else {
+          working.push({ ...makeRow(date), [slotKey]: newSlot });
+        }
+      }
+
+      const scheduled = working
+        .filter(r => r.date)
+        .sort((a, b) => a.date.localeCompare(b.date));
+      const unscheduled = working.filter(r => !r.date);
+      return [...scheduled, ...unscheduled];
+    });
+
+    if (result.ok) setIsDirty(true);
+    return result;
+  }, [breaks]);
 
   const addBreak = useCallback((
     startDate: string,
@@ -933,7 +1021,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,
     loadSchoolYear, updateRowDate, updateSlot,
-    addRow, addActivationSaturday, addBreak, updateBreak, removeBreak,
+    addRow, addActivationSaturday, addPlanningSubject, addBreak, updateBreak, removeBreak,
     removeRow, moveSessionBlock, swapSlot, commitPlan,
   };
 }

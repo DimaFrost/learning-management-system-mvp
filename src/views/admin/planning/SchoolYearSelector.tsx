@@ -47,6 +47,11 @@ export function SchoolYearSelector({
     [academicYears, selectedLabel]
   );
 
+  const isStaleSelection =
+    selectedLabel != null && !academicYears.some(y => y.label === selectedLabel);
+
+  const effectiveSelectedYear = isStaleSelection ? null : selectedYear;
+
   useEffect(() => {
     function handleClickOutside(e: MouseEvent) {
       if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
@@ -80,16 +85,18 @@ export function SchoolYearSelector({
     }
   };
 
-  const selectedDisplay = selectedLabel
-    ? getMissingCourseLabel(
-        selectedLabel,
-        selectedYear?.firstYearId,
-        selectedYear?.secondYearId
-      ) ?? selectedLabel
-    : 'Select school year';
+  const selectedDisplay = isStaleSelection
+    ? 'Select school year'
+    : selectedLabel
+      ? getMissingCourseLabel(
+          selectedLabel,
+          effectiveSelectedYear?.firstYearId,
+          effectiveSelectedYear?.secondYearId
+        ) ?? selectedLabel
+      : 'Select school year';
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xs">
+    <div ref={containerRef} className="relative z-30 w-full max-w-xs">
       <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
         <Calendar className="w-4 h-4 text-amber-600" />
         School Year
@@ -101,10 +108,14 @@ export function SchoolYearSelector({
         className="w-full flex items-center justify-between gap-2 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:border-amber-400 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent transition-colors"
       >
         <span className="flex items-center gap-2 min-w-0">
-          {selectedYear && isYearIncomplete(selectedYear.firstYearId, selectedYear.secondYearId) && (
+          {effectiveSelectedYear &&
+            isYearIncomplete(
+              effectiveSelectedYear.firstYearId,
+              effectiveSelectedYear.secondYearId
+            ) && (
             <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" aria-hidden />
           )}
-          <span className={`truncate ${selectedLabel ? 'text-gray-900' : 'text-gray-500'}`}>
+          <span className={`truncate ${selectedLabel && !isStaleSelection ? 'text-gray-900' : 'text-gray-500'}`}>
             {selectedDisplay}
           </span>
         </span>
@@ -114,7 +125,7 @@ export function SchoolYearSelector({
       </button>
 
       {isOpen && (
-        <div className="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
+        <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
           {academicYears.length === 0 ? (
             <p className="px-3 py-2 text-sm text-gray-500 italic">No school years yet</p>
           ) : (

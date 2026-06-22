@@ -2,40 +2,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Loader2 } from 'lucide-react';
 import type { Course, User } from '../../types/lms';
 import { useSchoolYearPlanning } from '../../hooks/useSchoolYearPlanning';
+import { findAcademicYearEntry } from '../../utils/courseUtils';
 import { SchoolYearSelector } from './planning/SchoolYearSelector';
 import { SubjectLibraryPanel } from './planning/SubjectLibraryPanel';
 import { PlanningCalendarGrid } from './planning/PlanningCalendarGrid';
+import { AddPlanningSubjectModal } from './planning/AddPlanningSubjectModal';
 
 const SHOW_SUBJECT_LIBRARY = false;
 
 interface CurriculumPlanningViewProps {
   courses: Course[];
   users: User[];
-  onAddCourse: (course: Partial<Course>) => Promise<void>;
+  onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
-  onAddPlanningSubject: (firstYearId?: number, secondYearId?: number) => void;
-}
-
-interface AcademicYearEntry {
-  label: string;
-  firstYearId?: number;
-  secondYearId?: number;
-}
-
-function findAcademicYear(courses: Course[], label: string): AcademicYearEntry | undefined {
-  const yearMap = new Map<string, { firstYearId?: number; secondYearId?: number }>();
-  for (const course of courses) {
-    const start = new Date(course.startDate).getFullYear();
-    const end = new Date(course.endDate).getFullYear();
-    const key = `${start}-${end}`;
-    if (!yearMap.has(key)) yearMap.set(key, {});
-    const entry = yearMap.get(key)!;
-    if (course.courseType === 'first_year') entry.firstYearId = course.id;
-    else entry.secondYearId = course.id;
-  }
-  const match = yearMap.get(label);
-  if (!match) return undefined;
-  return { label, ...match };
 }
 
 export function CurriculumPlanningView({
@@ -43,7 +22,6 @@ export function CurriculumPlanningView({
   users,
   onAddCourse,
   onRefetchCourses,
-  onAddPlanningSubject,
 }: CurriculumPlanningViewProps) {
   const {
     rows,
@@ -62,6 +40,7 @@ export function CurriculumPlanningView({
     updateSlot,
     addRow,
     addActivationSaturday,
+    addPlanningSubject,
     addBreak,
     updateBreak,
     removeBreak,
@@ -71,6 +50,7 @@ export function CurriculumPlanningView({
     commitPlan,
   } = useSchoolYearPlanning(courses);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [subjectModalOpen, setSubjectModalOpen] = useState(false);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -103,7 +83,7 @@ export function CurriculumPlanningView({
       `Created ${result.createdCount} classes, updated ${result.updatedCount} classes`
     );
     const fresh = await onRefetchCourses();
-    const entry = findAcademicYear(fresh, activeYearLabel);
+    const entry = findAcademicYearEntry(fresh, activeYearLabel);
     loadSchoolYear(activeYearLabel, entry?.firstYearId, entry?.secondYearId, true);
   }, [activeYearLabel, commitPlan, onRefetchCourses, loadSchoolYear]);
 
@@ -112,32 +92,32 @@ export function CurriculumPlanningView({
     const endDate = `${startYear + 1}-06-30`;
     const label = `${startYear}-${startYear + 1}`;
 
-    await onAddCourse({
+    const fyOk = await onAddCourse({
       courseType: 'first_year',
       startDate,
       endDate,
       graduationYear: startYear + 1,
       status: 'active',
     });
-    await onAddCourse({
+    const syOk = await onAddCourse({
       courseType: 'second_year',
       startDate,
       endDate,
       graduationYear: startYear + 1,
       status: 'active',
     });
+    if (!fyOk || !syOk) return;
 
     const fresh = await onRefetchCourses();
-    const entry = findAcademicYear(fresh, label);
-    loadSchoolYear(label, entry?.firstYearId, entry?.secondYearId, true);
+    const entry = findAcademicYearEntry(fresh, label);
+    if (!entry?.firstYearId || !entry?.secondYearId) return;
+
+    loadSchoolYear(label, entry.firstYearId, entry.secondYearId, true);
   }, [onAddCourse, onRefetchCourses, loadSchoolYear]);
 
   const handleAddSubject = useCallback(() => {
-    onAddPlanningSubject(
-      firstYearCourseId ?? undefined,
-      secondYearCourseId ?? undefined
-    );
-  }, [firstYearCourseId, secondYearCourseId, onAddPlanningSubject]);
+    setSubjectModalOpen(true);
+  }, []);
 
   return (
     <div className="space-y-4">
@@ -226,6 +206,14 @@ export function CurriculumPlanningView({
           </div>
         </div>
       )}
+      <AddPlanningSubjectModal
+        open={subjectModalOpen}
+        onClose={() => setSubjectModalOpen(false)}
+        users={users}
+        firstYearCourseId={firstYearCourseId}
+        secondYearCourseId={secondYearCourseId}
+        onSubmit={addPlanningSubject}
+      />
     </div>
   );
 }
