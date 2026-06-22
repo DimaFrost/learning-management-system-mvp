@@ -570,6 +570,73 @@ function BreakBannerRow({ breakItem, onEdit, onDelete }: BreakBannerRowProps) {
   );
 }
 
+interface PlanningActionToolbarProps {
+  onAddRow: () => void;
+  onAddSubject: () => void;
+  addSubjectDisabled: boolean;
+  onAddActivationSaturday: () => void;
+  onAddBreak: () => void;
+  onManageBreaks: () => void;
+}
+
+function PlanningActionToolbar({
+  onAddRow,
+  onAddSubject,
+  addSubjectDisabled,
+  onAddActivationSaturday,
+  onAddBreak,
+  onManageBreaks,
+}: PlanningActionToolbarProps) {
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        onClick={onAddRow}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+      >
+        <Plus className="w-4 h-4" />
+        Add Date
+      </button>
+
+      <button
+        type="button"
+        onClick={onAddSubject}
+        disabled={addSubjectDisabled}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <Plus className="w-4 h-4" />
+        Add Subject
+      </button>
+
+      <button
+        type="button"
+        onClick={onAddActivationSaturday}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+      >
+        <CalendarPlus className="w-4 h-4" />
+        Add Activation Saturday
+      </button>
+
+      <button
+        type="button"
+        onClick={onAddBreak}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+      >
+        <CalendarRange className="w-4 h-4" />
+        Add A Break
+      </button>
+
+      <button
+        type="button"
+        onClick={onManageBreaks}
+        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+      >
+        Manage Breaks
+      </button>
+    </div>
+  );
+}
+
 interface WeekdayDateRowsProps {
   row: PlanningRow;
   inBreak?: boolean;
@@ -1140,8 +1207,18 @@ export function PlanningCalendarGrid({
     onRemoveRow,
   };
 
+  const toolbarProps = {
+    onAddRow,
+    onAddSubject,
+    addSubjectDisabled,
+    onAddActivationSaturday: () => setSaturdayModalOpen(true),
+    onAddBreak: openAddBreakForm,
+    onManageBreaks: () => setManageBreaksOpen(true),
+  };
+
   return (
     <div className="space-y-3">
+      <PlanningActionToolbar {...toolbarProps} />
       <div className="overflow-x-auto">
         <table className="min-w-[980px] w-full text-sm border-collapse">
           <thead>
@@ -1203,7 +1280,7 @@ export function PlanningCalendarGrid({
                   colSpan={9}
                   className="border border-gray-200 px-4 py-8 text-center text-gray-500 italic"
                 >
-                  No dates yet. Add a date below to start planning.
+                  No dates yet. Add a date to start planning.
                 </td>
               </tr>
             )}
@@ -1259,52 +1336,7 @@ export function PlanningCalendarGrid({
         ))}
       </datalist>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          onClick={onAddRow}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-        >
-          <Plus className="w-4 h-4" />
-          Add Date
-        </button>
-
-        <button
-          type="button"
-          onClick={onAddSubject}
-          disabled={addSubjectDisabled}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          <Plus className="w-4 h-4" />
-          Add Subject
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setSaturdayModalOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-        >
-          <CalendarPlus className="w-4 h-4" />
-          Add Activation Saturday
-        </button>
-
-        <button
-          type="button"
-          onClick={openAddBreakForm}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-        >
-          <CalendarRange className="w-4 h-4" />
-          Add A Break
-        </button>
-
-        <button
-          type="button"
-          onClick={() => setManageBreaksOpen(true)}
-          className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-        >
-          Manage Breaks
-        </button>
-      </div>
+      <PlanningActionToolbar {...toolbarProps} />
 
       {breakFormOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
