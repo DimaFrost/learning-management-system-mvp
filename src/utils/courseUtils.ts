@@ -1,4 +1,4 @@
-import type { Course, Subject } from '../types/lms';
+import type { Class, Course, Subject } from '../types/lms';
 
 export function getTodayDateString(): string {
   return new Date().toISOString().split('T')[0];
@@ -20,6 +20,20 @@ export function sortSubjectsByStartDate(subjects: Subject[]): Subject[] {
     if (!b.startDate) return -1;
     const byDate = a.startDate.localeCompare(b.startDate);
     return byDate !== 0 ? byDate : a.title.localeCompare(b.title);
+  });
+}
+
+const HOUR_ORDER: Record<Class['hour'], number> = { first: 0, second: 1, both: 2 };
+
+export function sortClassesByDate(classes: Class[]): Class[] {
+  return [...classes].sort((a, b) => {
+    if (!a.date && !b.date) return a.title.localeCompare(b.title);
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    const byDate = a.date.localeCompare(b.date);
+    if (byDate !== 0) return byDate;
+    const byHour = HOUR_ORDER[a.hour] - HOUR_ORDER[b.hour];
+    return byHour !== 0 ? byHour : a.title.localeCompare(b.title);
   });
 }
 

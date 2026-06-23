@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Course, Subject, Class } from '../types/lms';
 import { getNextClassDate } from '../utils/scheduling';
-import { getCourseDisplayName, sortSubjectsByStartDate } from '../utils/courseUtils';
+import { getCourseDisplayName, sortSubjectsByStartDate, sortClassesByDate } from '../utils/courseUtils';
 import {
   createCourseDriveFolder,
   createSubjectDriveFolder,
@@ -74,7 +74,7 @@ function mapSubjectRow(row: SupabaseSubjectRow): Subject {
     duration: row.duration,
     primaryTeacherId: row.primary_teacher_id,
     driveFolderId: row.drive_folder_id,
-    classes: (row.classes ?? []).map(mapClassRow),
+    classes: sortClassesByDate((row.classes ?? []).map(mapClassRow)),
   };
 }
 
