@@ -178,7 +178,7 @@ export function MyCourseView({
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">{subject.title}</h4>
                   <p className="text-gray-600 mb-3">{subject.description}</p>
                   <p className="text-sm text-gray-500 mb-4">
-                    Duration: {subject.duration} • Instructor: {getUserById(subject.primaryTeacherId)?.name}
+                    Duration: {subject.duration}
                   </p>
 
                   <div className="space-y-2">

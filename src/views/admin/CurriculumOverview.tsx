@@ -131,7 +131,7 @@ export function CurriculumOverview({
                             <h5 className="font-medium text-gray-900">{subject.title}</h5>
                             <p className="text-sm text-gray-600">{subject.description}</p>
                             <p className="text-xs text-gray-500 mt-1">
-                              Start: {subject.startDate} • {subject.duration} classes • Teacher: {getUserById(subject.primaryTeacherId)?.name}
+                              Start: {subject.startDate} • {subject.duration} classes • Lead Teacher: {getUserById(subject.primaryTeacherId)?.name}
                             </p>
                             {isSubjectCollapsed && (
                               <p className="text-xs text-gray-500 mt-1">
