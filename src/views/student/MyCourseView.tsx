@@ -3,6 +3,7 @@ import type { User, Class, Course, CourseStudent, MentorshipLog, SubmissionStatu
 import { getMyCourses } from '../../utils/roleQueries';
 import { formatDueDate } from '../../utils/dateUtils';
 import { useStudentHomework, type StudentHomeworkItem } from '../../hooks/useStudentHomework';
+import { SubjectCurriculumPlan } from '../../components/subject/SubjectCurriculumPlan';
 
 interface MyCourseViewProps {
   currentUser: User;
@@ -177,6 +178,10 @@ export function MyCourseView({
                 <div key={subject.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">{subject.title}</h4>
                   <p className="text-gray-600 mb-3">{subject.description}</p>
+                  <SubjectCurriculumPlan
+                    subjectId={subject.id}
+                    currentUser={currentUser}
+                  />
                   <p className="text-sm text-gray-500 mb-4">
                     Duration: {subject.duration}
                   </p>

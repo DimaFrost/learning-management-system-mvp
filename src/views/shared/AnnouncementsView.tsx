@@ -79,12 +79,7 @@ function formatRelativeTime(dateString: string): string {
   return new Date(dateString).toLocaleDateString();
 }
 
-function formatFileSize(bytes: number): string {
-  if (bytes < 1024 * 1024) {
-    return `${(bytes / 1024).toFixed(1)} KB`;
-  }
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-}
+import { formatFileSize } from '../../utils/formatFileSize';
 
 function getAttachmentOpenUrl(attachment: AnnouncementAttachment): string | null {
   if (attachment.attachmentType === 'file') {

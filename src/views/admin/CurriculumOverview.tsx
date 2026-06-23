@@ -136,7 +136,6 @@ export function CurriculumOverview({
                             <SubjectCurriculumPlan
                               subjectId={subject.id}
                               currentUser={currentUser}
-                              variant="inline"
                             />
                             <p className="text-xs text-gray-500 mt-1">
                               Start: {subject.startDate} • {subject.duration} classes • Lead Teacher: {getUserById(subject.primaryTeacherId)?.name}

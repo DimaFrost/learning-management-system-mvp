@@ -166,7 +166,12 @@ export interface SubjectNote {
   authorName: string;
   noteType: 'curriculum_plan' | 'student_note';
   title: string | null;
-  content: string;
+  content: string | null;
+  storagePath: string | null;
+  publicUrl: string | null;
+  fileName: string | null;
+  fileSize: number | null;
+  mimeType: string | null;
   createdAt: string;
   updatedAt: string;
 }
