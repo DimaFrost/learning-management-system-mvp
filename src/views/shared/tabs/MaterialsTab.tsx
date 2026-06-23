@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useRef } from 'react';
 import {
   Pencil,
   Trash,
@@ -11,15 +11,12 @@ import {
   Upload,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { supabase } from '../../../lib/supabase';
-import type { ClassNote, ClassFile, SubjectNote, User, Course, Subject, Class } from '../../../types/lms';
+import type { ClassNote, ClassFile, User, Course, Subject, Class } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
-import { LoadingSpinner } from '../../../components/ui/LoadingSpinner';
 
 interface MaterialsTabProps {
   classId: number;
-  subjectId: number;
   currentUser: User;
   notes: ClassNote[];
   files: ClassFile[];
@@ -62,84 +59,7 @@ function getFileIcon(mimeType: string | null): LucideIcon {
   return FileIcon;
 }
 
-function useSubjectCurriculumPlan(subjectId: number, currentUser: User) {
-  const [plan, setPlan] = useState<SubjectNote | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const fetchPlan = useCallback(async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from('subject_notes')
-        .select('*, author:profiles!author_id(id, name)')
-        .eq('subject_id', subjectId)
-        .eq('note_type', 'curriculum_plan')
-        .maybeSingle();
-
-      if (error) throw error;
-
-      setPlan(
-        data
-          ? {
-              id: data.id,
-              subjectId: data.subject_id,
-              authorId: data.author_id,
-              authorName: data.author?.name ?? 'Unknown',
-              noteType: data.note_type,
-              title: data.title,
-              content: data.content,
-              createdAt: data.created_at,
-              updatedAt: data.updated_at,
-            }
-          : null
-      );
-    } catch (err) {
-      console.error('Failed to load curriculum plan:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [subjectId]);
-
-  useEffect(() => {
-    fetchPlan();
-  }, [fetchPlan]);
-
-  const saveCurriculumPlan = async (content: string) => {
-    setSaving(true);
-    try {
-      if (plan) {
-        const { error } = await supabase
-          .from('subject_notes')
-          .update({
-            content,
-            updated_at: new Date().toISOString(),
-          })
-          .eq('id', plan.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase.from('subject_notes').insert({
-          subject_id: subjectId,
-          author_id: currentUser.id,
-          note_type: 'curriculum_plan',
-          title: null,
-          content,
-        });
-        if (error) throw error;
-      }
-      await fetchPlan();
-    } catch (err) {
-      console.error('Failed to save curriculum plan:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return { plan, loading, saving, saveCurriculumPlan };
-}
-
 export function MaterialsTab({
-  subjectId,
   currentUser,
   notes,
   files,
@@ -153,17 +73,9 @@ export function MaterialsTab({
   selectedSubject,
   selectedClass,
 }: MaterialsTabProps) {
-  const canEditCurriculum =
-    hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const canManageNotes =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const isAdmin = hasRole(currentUser, 'administrator');
-
-  const { plan, loading: planLoading, saving: planSaving, saveCurriculumPlan } =
-    useSubjectCurriculumPlan(subjectId, currentUser);
-
-  const [isEditingPlan, setIsEditingPlan] = useState(false);
-  const [planDraft, setPlanDraft] = useState('');
 
   const [isAddingNote, setIsAddingNote] = useState(false);
   const [newNoteTitle, setNewNoteTitle] = useState('');
@@ -175,26 +87,6 @@ export function MaterialsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const studentNotes = notes.filter(n => n.noteType === 'student_note');
-
-  const showCurriculumSection = canEditCurriculum || !!plan;
-
-  const startEditPlan = () => {
-    setPlanDraft(plan?.content ?? '');
-    setIsEditingPlan(true);
-  };
-
-  const cancelEditPlan = () => {
-    setIsEditingPlan(false);
-    setPlanDraft('');
-  };
-
-  const handleSavePlan = async () => {
-    const content = planDraft.trim();
-    if (!content) return;
-    await saveCurriculumPlan(content);
-    setIsEditingPlan(false);
-    setPlanDraft('');
-  };
 
   const handleAddNote = async () => {
     const content = newNoteContent.trim();
@@ -249,80 +141,10 @@ export function MaterialsTab({
   const canDeleteFile = (file: ClassFile) =>
     isAdmin || file.uploaderId === currentUser.id;
 
-  const isBusy = saving || planSaving;
+  const isBusy = saving;
 
   return (
     <div className="space-y-8">
-      {showCurriculumSection && (
-        <section className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">
-              Subject Curriculum Plan
-            </h3>
-            {canEditCurriculum && !isEditingPlan && plan && (
-              <button
-                type="button"
-                onClick={startEditPlan}
-                disabled={isBusy}
-                className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
-              >
-                <Pencil className="w-4 h-4" />
-                Edit
-              </button>
-            )}
-          </div>
-
-          {planLoading ? (
-            <LoadingSpinner message="Loading curriculum plan..." />
-          ) : isEditingPlan ? (
-            <div className="space-y-3">
-              <textarea
-                value={planDraft}
-                onChange={e => setPlanDraft(e.target.value)}
-                rows={8}
-                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
-                placeholder="Enter the subject curriculum plan..."
-              />
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={handleSavePlan}
-                  disabled={isBusy || !planDraft.trim()}
-                  className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-                >
-                  Save
-                </button>
-                <button
-                  type="button"
-                  onClick={cancelEditPlan}
-                  disabled={isBusy}
-                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          ) : plan ? (
-            <div>
-              <p className="text-gray-700 whitespace-pre-wrap">{plan.content}</p>
-              <p className="text-sm text-gray-500 mt-3">
-                {plan.authorName} · Updated {formatDate(plan.updatedAt)}
-              </p>
-            </div>
-          ) : canEditCurriculum ? (
-            <button
-              type="button"
-              onClick={startEditPlan}
-              disabled={isBusy}
-              className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-            >
-              <Plus className="w-4 h-4" />
-              Add curriculum plan
-            </button>
-          ) : null}
-        </section>
-      )}
-
       <section className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-6">
         <h3 className="text-lg font-semibold text-gray-900">
           Class Notes &amp; Materials

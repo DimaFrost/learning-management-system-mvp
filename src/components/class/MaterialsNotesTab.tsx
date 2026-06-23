@@ -24,7 +24,6 @@ export function MaterialsNotesTab({
   return (
     <MaterialsTab
       classId={selectedClass.id}
-      subjectId={selectedSubject.id}
       currentUser={currentUser}
       notes={notes}
       files={materialFiles}

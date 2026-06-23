@@ -99,6 +99,7 @@ export function CurriculumView({
       {activeCurriculumTab === 'overview' && (
         <CurriculumOverview
           courses={courses}
+          currentUser={currentUser}
           collapsedCourses={collapsedCourses}
           collapsedSubjects={collapsedSubjects}
           toggleCourseCollapse={toggleCourseCollapse}

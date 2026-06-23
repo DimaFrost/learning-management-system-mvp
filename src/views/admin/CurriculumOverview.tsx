@@ -1,9 +1,11 @@
 import { ChevronRight, ChevronDown, Edit3, Trash2, Plus, Calendar, Eye } from 'lucide-react';
 import type { Course, User, Subject, Class } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
+import { SubjectCurriculumPlan } from '../../components/subject/SubjectCurriculumPlan';
 
 interface CurriculumOverviewProps {
   courses: Course[];
+  currentUser: User;
   collapsedCourses: Set<number>;
   collapsedSubjects: Set<string>;
   toggleCourseCollapse: (id: number) => void;
@@ -22,6 +24,7 @@ interface CurriculumOverviewProps {
 
 export function CurriculumOverview({
   courses,
+  currentUser,
   collapsedCourses,
   collapsedSubjects,
   toggleCourseCollapse,
@@ -130,6 +133,11 @@ export function CurriculumOverview({
                           <div>
                             <h5 className="font-medium text-gray-900">{subject.title}</h5>
                             <p className="text-sm text-gray-600">{subject.description}</p>
+                            <SubjectCurriculumPlan
+                              subjectId={subject.id}
+                              currentUser={currentUser}
+                              variant="inline"
+                            />
                             <p className="text-xs text-gray-500 mt-1">
                               Start: {subject.startDate} • {subject.duration} classes • Lead Teacher: {getUserById(subject.primaryTeacherId)?.name}
                             </p>
