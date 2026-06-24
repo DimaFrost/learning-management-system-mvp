@@ -245,3 +245,104 @@ export interface Conversation {
   unreadCount: number;
   messages: Message[];
 }
+
+export interface AttendanceSettings {
+  lateClassWeight: number;       // default 0.5
+  lateSaturdayWeight: number;    // default 0.25
+  graduationThreshold: number;   // default 0.80
+  theWellRequiredPerMonth: number;  // default 2
+  sundayRequiredPerMonth: number;   // default 2
+}
+
+export type AttendanceStatus = 'present' | 'late' | 'absent';
+export type DutyTransferStatus = 'pending' | 'approved' | 'rejected';
+
+export interface DutyScheduleEntry {
+  id: number;
+  courseId: number;
+  studentId: string;
+  studentName: string;
+  weekStart: string;   // 'YYYY-MM-DD' always a Monday
+  weekEnd: string;     // always a Sunday
+  status: 'active' | 'transferred';
+}
+
+export interface DutyTransferRequest {
+  id: number;
+  dutyScheduleId: number;
+  fromStudentId: string;
+  fromStudentName: string;
+  toStudentId: string;
+  toStudentName: string;
+  courseId: number;
+  weekStart: string;
+  reason: string | null;
+  status: DutyTransferStatus;
+  requestedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+}
+
+export interface ClassAttendanceRecord {
+  id: number;
+  classId: number;
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatus;
+  markedBy: string;
+  markedAt: string;
+}
+
+export interface TheWellAttendanceRecord {
+  id: number;
+  studentId: string;
+  courseId: number;
+  year: number;
+  month: number;
+  timesAttended: number;
+  markedBy: string;
+  updatedAt: string;
+}
+
+export interface SundayAttendanceRecord {
+  id: number;
+  studentId: string;
+  courseId: number;
+  year: number;
+  month: number;
+  timesServed: number;
+  markedBy: string;
+  updatedAt: string;
+}
+
+// Computed attendance summary per student
+export interface StudentAttendanceSummary {
+  studentId: string;
+  studentName: string;
+
+  // Classes
+  totalClasses: number;
+  classesPresent: number;
+  classesLate: number;
+  classesAbsent: number;
+  classAttendanceScore: number;  // 0.0 - 1.0
+
+  // Activation Saturdays
+  totalSaturdays: number;
+  saturdaysPresent: number;
+  saturdaysLate: number;
+  saturdaysAbsent: number;
+  saturdayAttendanceScore: number;
+
+  // The Well (monthly aggregate)
+  theWellMonthsTracked: number;
+  theWellScore: number;  // 0.0 - 1.0
+
+  // Sunday (monthly aggregate)
+  sundayMonthsTracked: number;
+  sundayScore: number;
+
+  // Overall
+  overallScore: number;
+  meetsGraduationThreshold: boolean;
+}
