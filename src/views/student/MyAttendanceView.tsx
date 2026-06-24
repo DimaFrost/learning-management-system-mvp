@@ -29,6 +29,7 @@ interface MyAttendanceViewProps {
   sundayAttendance: SundayAttendanceRecord[];
   settings: AttendanceSettings;
   getCourseDisplayName?: (course: Course) => string;
+  loading?: boolean;
 }
 
 type MonthKey = string;
@@ -211,6 +212,7 @@ export function MyAttendanceView({
   sundayAttendance,
   settings,
   getCourseDisplayName = defaultGetCourseDisplayName,
+  loading,
 }: MyAttendanceViewProps) {
   const myCourses = useMemo(() => {
     const enrolledIds = courseStudents
@@ -360,6 +362,15 @@ export function MyAttendanceView({
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">No course enrollment found.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">My Attendance</h2>
+        <p className="text-sm text-gray-500">Loading attendance…</p>
       </div>
     );
   }

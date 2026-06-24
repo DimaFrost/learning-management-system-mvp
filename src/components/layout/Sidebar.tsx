@@ -1,16 +1,41 @@
 import { useState } from 'react';
-import { Megaphone, MessageSquare, BookOpen, LayoutDashboard, Users, UserCheck, TrendingUp, Calendar, GraduationCap, Settings, PanelLeftClose, PanelLeft } from 'lucide-react';
+import {
+  Megaphone,
+  MessageSquare,
+  BookOpen,
+  LayoutDashboard,
+  Users,
+  UserCheck,
+  TrendingUp,
+  Calendar,
+  GraduationCap,
+  Settings,
+  PanelLeftClose,
+  PanelLeft,
+  ClipboardList,
+  BarChart2,
+  Shield,
+} from 'lucide-react';
 
 interface SidebarProps {
   activeView: string;
   onNavigate: (view: string) => void;
   hasRole: (role: string) => boolean;
   totalUnread: number;
+  isOnDuty: boolean;
   mode: 'locked' | 'auto-hide';
   onToggleMode: () => void;
 }
 
-export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, onToggleMode }: SidebarProps) {
+export function Sidebar({
+  activeView,
+  onNavigate,
+  hasRole,
+  totalUnread,
+  isOnDuty,
+  mode,
+  onToggleMode,
+}: SidebarProps) {
   const [isHovering, setIsHovering] = useState(false);
   const isExpanded = mode === 'locked' || isHovering;
 
@@ -26,8 +51,9 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
     { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
     { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
     { id: 'mentorship-management', label: 'Mentorship Management', icon: TrendingUp, roles: ['administrator'] },
+    { id: 'attendance', label: 'Attendance', icon: ClipboardList, roles: ['administrator'] },
     { id: 'mentor-dashboard', label: 'Mentor Dashboard', icon: UserCheck, roles: ['mentor'] },
-    { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] }
+    { id: 'my-course', label: 'My Course', icon: GraduationCap, roles: ['student'] },
   ];
 
   const visibleMenuItems = menuItems.filter(item =>
@@ -41,6 +67,15 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
       activeView === viewId
         ? 'bg-blue-50 text-blue-700 border-r-2 border-blue-600'
         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    }`;
+
+  const onDutyButtonClass =
+    `w-full flex items-center text-left text-sm font-medium transition-colors ${
+      isExpanded ? 'px-6 py-3' : 'justify-center px-0 py-3'
+    } ${
+      activeView === 'on-duty'
+        ? 'bg-amber-50 text-amber-800 border-r-2 border-amber-500'
+        : 'text-amber-800 hover:bg-amber-50'
     }`;
 
   const toggleTitle =
@@ -102,8 +137,36 @@ export function Sidebar({ activeView, onNavigate, hasRole, totalUnread, mode, on
             {isExpanded && <span className="whitespace-nowrap">{item.label}</span>}
           </button>
         ))}
+        {isOnDuty && (
+          <button
+            onClick={() => onNavigate('on-duty')}
+            className={onDutyButtonClass}
+            title={!isExpanded ? 'On Duty' : undefined}
+          >
+            <span className={isExpanded ? 'contents' : 'relative'}>
+              <Shield className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'mr-3' : ''}`} />
+              {!isExpanded && (
+                <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+              )}
+            </span>
+            {isExpanded && (
+              <>
+                <span className="flex-1 whitespace-nowrap">On Duty 🎓</span>
+                <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse flex-shrink-0" />
+              </>
+            )}
+          </button>
+        )}
       </nav>
       <div className="border-t border-gray-200">
+        <button
+          onClick={() => onNavigate('my-attendance')}
+          className={navButtonClass('my-attendance')}
+          title={!isExpanded ? 'My Attendance' : undefined}
+        >
+          <BarChart2 className={`w-4 h-4 flex-shrink-0 ${isExpanded ? 'mr-3' : ''}`} />
+          {isExpanded && <span className="whitespace-nowrap">My Attendance</span>}
+        </button>
         <button
           onClick={() => onNavigate('settings')}
           className={navButtonClass('settings')}

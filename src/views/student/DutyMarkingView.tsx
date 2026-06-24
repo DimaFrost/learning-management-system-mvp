@@ -49,6 +49,7 @@ interface DutyMarkingViewProps {
     toStudentId: string;
     reason?: string;
   }) => Promise<void>;
+  loading?: boolean;
 }
 
 type TabId = 'class' | 'well';
@@ -157,6 +158,7 @@ export function DutyMarkingView({
   onMarkClassAttendance,
   onUpsertTheWellAttendance,
   onRequestTransfer,
+  loading,
 }: DutyMarkingViewProps) {
   const today = new Date();
   const [activeTab, setActiveTab] = useState<TabId>('class');
@@ -317,6 +319,15 @@ export function DutyMarkingView({
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Course not found for this duty assignment.</p>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-900">On Duty This Week 🎓</h2>
+        <p className="text-sm text-gray-500">Loading attendance data…</p>
       </div>
     );
   }

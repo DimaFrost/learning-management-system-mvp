@@ -10,15 +10,20 @@ import type {
   Announcement,
   AnnouncementAttachment,
   Conversation,
+  DutyScheduleEntry,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
+import { useAttendance } from '../hooks/useAttendance';
 import { MyCourseView } from './student/MyCourseView';
+import { MyAttendanceView } from './student/MyAttendanceView';
+import { DutyMarkingView } from './student/DutyMarkingView';
 import { MyClassesView } from './teacher/MyClassesView';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { CurriculumView } from './admin/CurriculumView';
 import { UsersView } from './admin/UsersView';
 import { MentorshipView } from './admin/MentorshipView';
 import { MentorshipManagement } from './admin/MentorshipManagement';
+import { AttendanceView } from './admin/AttendanceView';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { AnnouncementsView } from './shared/AnnouncementsView';
 import { MessagesView } from './shared/MessagesView';
@@ -115,6 +120,9 @@ export interface AppRouterProps {
   messagesCurrentUser: User;
   onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
+  attendance: ReturnType<typeof useAttendance>;
+  effectiveMyCurrentDuty?: DutyScheduleEntry;
+  nextScheduledDuty?: DutyScheduleEntry;
 }
 
 export function AppRouter({
@@ -172,6 +180,9 @@ export function AppRouter({
   messagesCurrentUser,
   onAddCourse,
   onRefetchCourses,
+  attendance,
+  effectiveMyCurrentDuty,
+  nextScheduledDuty,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
@@ -262,6 +273,65 @@ export function AppRouter({
     );
   }
 
+  if (activeView === 'my-attendance') {
+    return (
+      <MyAttendanceView
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        classAttendance={attendance.classAttendance}
+        theWellAttendance={attendance.theWellAttendance}
+        sundayAttendance={attendance.sundayAttendance}
+        settings={attendance.settings}
+        getCourseDisplayName={getCourseDisplayName}
+        loading={attendance.loading}
+      />
+    );
+  }
+
+  if (activeView === 'on-duty') {
+    if (effectiveMyCurrentDuty) {
+      return (
+        <DutyMarkingView
+          currentUser={currentUser}
+          myCurrentDuty={effectiveMyCurrentDuty}
+          courses={courses}
+          courseStudents={courseStudents}
+          users={users}
+          classAttendance={attendance.classAttendance}
+          theWellAttendance={attendance.theWellAttendance}
+          settings={attendance.settings}
+          onMarkClassAttendance={attendance.markClassAttendance}
+          onUpsertTheWellAttendance={attendance.upsertTheWellAttendance}
+          onRequestTransfer={attendance.requestDutyTransfer}
+          loading={attendance.loading}
+        />
+      );
+    }
+
+    return (
+      <div className="text-center py-12 space-y-3">
+        <p className="text-gray-600 text-lg">You are not on duty this week.</p>
+        {nextScheduledDuty && (
+          <p className="text-sm text-gray-500">
+            Your next scheduled duty:{' '}
+            {new Date(nextScheduledDuty.weekStart).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+            {' – '}
+            {new Date(nextScheduledDuty.weekEnd).toLocaleDateString('en-GB', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}
+          </p>
+        )}
+      </div>
+    );
+  }
+
   if (hasRole('administrator')) {
     switch (activeView) {
       case 'curriculum':
@@ -339,6 +409,28 @@ export function AppRouter({
             mentorshipLogs={mentorshipLogs}
             getUserById={getUserById}
             onOpenCheckin={(studentId) => setEditingItem({ type: 'log', studentId })}
+          />
+        );
+      case 'attendance':
+        return (
+          <AttendanceView
+            courses={courses}
+            courseStudents={courseStudents}
+            users={users}
+            settings={attendance.settings}
+            dutySchedule={attendance.dutySchedule}
+            pendingTransferRequests={attendance.pendingTransferRequests}
+            classAttendance={attendance.classAttendance}
+            theWellAttendance={attendance.theWellAttendance}
+            sundayAttendance={attendance.sundayAttendance}
+            loading={attendance.loading}
+            error={attendance.error}
+            getCourseSummaries={attendance.getCourseSummaries}
+            generateDutyScheduleForCourse={attendance.generateDutyScheduleForCourse}
+            updateDutyAssignment={attendance.updateDutyAssignment}
+            resolveTransferRequest={attendance.resolveTransferRequest}
+            upsertSundayAttendance={attendance.upsertSundayAttendance}
+            updateSettings={attendance.updateSettings}
           />
         );
       case 'dashboard':

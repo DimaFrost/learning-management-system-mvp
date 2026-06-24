@@ -12,6 +12,8 @@ import { useMentorshipLogs } from './hooks/useMentorshipLogs';
 import { useAnnouncements } from './hooks/useAnnouncements';
 import { useMessages } from './hooks/useMessages';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
+import { useAttendance } from './hooks/useAttendance';
+import { getCurrentWeekStart } from './utils/attendanceUtils';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
 import { LogCheckinModal } from './components/modals/LogCheckinModal';
 import { EditModal } from './components/modals/EditModal/EditModal';
@@ -94,6 +96,27 @@ const LearningManagementSystem = () => {
     markConversationAsRead,
     deleteMessage,
   } = useMessages(currentUser ?? PLACEHOLDER_USER, users);
+  const attendance = useAttendance(
+    currentUser ?? PLACEHOLDER_USER,
+    courses,
+    courseStudents,
+    users
+  );
+
+  const currentWeekStart = getCurrentWeekStart();
+  const effectiveMyCurrentDuty = attendance.dutySchedule.find(
+    d => d.weekStart === currentWeekStart
+      && d.status === 'active'
+      && d.studentId === effectiveUser.id
+  );
+  const effectiveIsOnDuty = !!effectiveMyCurrentDuty;
+  const nextScheduledDuty = attendance.dutySchedule
+    .filter(
+      d => d.studentId === effectiveUser.id
+        && d.weekStart > currentWeekStart
+        && d.status === 'active'
+    )
+    .sort((a, b) => a.weekStart.localeCompare(b.weekStart))[0];
 
   const isLoading =
     coursesLoading ||
@@ -191,6 +214,7 @@ const LearningManagementSystem = () => {
           onNavigate={setActiveView}
           hasRole={hasRole}
           totalUnread={totalUnread}
+          isOnDuty={effectiveIsOnDuty}
           mode={sidebarMode}
           onToggleMode={toggleSidebarMode}
         />
@@ -252,6 +276,9 @@ const LearningManagementSystem = () => {
             messagesCurrentUser={currentUser}
             onAddCourse={addCourse}
             onRefetchCourses={refetchCourses}
+            attendance={attendance}
+            effectiveMyCurrentDuty={effectiveMyCurrentDuty}
+            nextScheduledDuty={nextScheduledDuty}
           />
         </main>
       </div>
