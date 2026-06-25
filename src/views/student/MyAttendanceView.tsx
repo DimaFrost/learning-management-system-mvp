@@ -131,6 +131,22 @@ function attendanceCellClass(count: number, required: number): string {
   return 'bg-red-50 text-red-700 font-medium';
 }
 
+function wellScoreCellClass(score: number): string {
+  if (score >= 1) return 'bg-green-50 text-green-700 font-medium';
+  if (score >= 0.5) return 'bg-amber-50 text-amber-700 font-medium';
+  return 'bg-red-50 text-red-700 font-medium';
+}
+
+function computeWellMonthScore(
+  timesAttended: number,
+  timesLate: number,
+  settings: AttendanceSettings
+): number {
+  const effective = timesAttended + timesLate * settings.lateWellWeight;
+  if (effective >= settings.theWellRequiredPerMonth) return 1;
+  return Math.min(1, effective / settings.theWellRequiredPerMonth);
+}
+
 function overallStatusLabel(
   overallScore: number,
   graduationThreshold: number
@@ -175,12 +191,14 @@ function DataRow({
   values,
   total,
   cellClass,
+  valueFormat,
 }: {
   label: string;
   months: MonthColumn[];
   values: Record<MonthKey, number>;
   total: number | string;
   cellClass?: (month: MonthColumn, value: number) => string;
+  valueFormat?: (value: number) => string;
 }) {
   return (
     <tr className="border-b border-gray-100">
@@ -192,12 +210,12 @@ function DataRow({
         const cls = cellClass ? cellClass(m, value) : '';
         return (
           <td key={m.key} className={`px-4 py-2.5 text-sm text-center whitespace-nowrap ${cls}`}>
-            {value}
+            {valueFormat ? valueFormat(value) : value}
           </td>
         );
       })}
       <td className="px-4 py-2.5 text-sm text-center font-semibold text-gray-900 whitespace-nowrap">
-        {total}
+        {typeof total === 'number' && valueFormat ? valueFormat(total) : total}
       </td>
     </tr>
   );
@@ -262,6 +280,8 @@ export function MyAttendanceView({
     const satAbsencesLate: Record<MonthKey, number> = {};
     const satAllowed: Record<MonthKey, number> = {};
     const wellAttendance: Record<MonthKey, number> = {};
+    const wellLate: Record<MonthKey, number> = {};
+    const wellScoreByMonth: Record<MonthKey, number> = {};
     const wellRequired: Record<MonthKey, number> = {};
     const sundayAtt: Record<MonthKey, number> = {};
     const sundayReq: Record<MonthKey, number> = {};
@@ -287,6 +307,12 @@ export function MyAttendanceView({
           && r.month === m.month
       );
       wellAttendance[m.key] = wellRecord?.timesAttended ?? 0;
+      wellLate[m.key] = wellRecord?.timesLate ?? 0;
+      wellScoreByMonth[m.key] = computeWellMonthScore(
+        wellRecord?.timesAttended ?? 0,
+        wellRecord?.timesLate ?? 0,
+        settings
+      );
       wellRequired[m.key] = settings.theWellRequiredPerMonth;
 
       const sunRecord = sundayAttendance.find(
@@ -316,15 +342,16 @@ export function MyAttendanceView({
 
     const classScore = calculateClassScore(myClassAtt, regular.length, settings);
     const satScore = calculateSaturdayScore(mySatAtt, saturdays.length, settings);
-    const wellScore = calculateTheWellScore(myWell, settings);
+    const totalWellScore = calculateTheWellScore(myWell, settings);
     const sunScore = calculateSundayScore(mySunday, settings);
-    const overallScore = calculateOverallScore(classScore, satScore, wellScore, sunScore);
+    const overallScore = calculateOverallScore(classScore, satScore, totalWellScore, sunScore);
 
     const totalClassAbsencesLate = Object.values(classAbsencesLate).reduce((a, b) => a + b, 0);
     const totalClassAllowed = calculateAllowedAbsences(regular.length, settings);
     const totalSatAbsencesLate = Object.values(satAbsencesLate).reduce((a, b) => a + b, 0);
     const totalSatAllowed = calculateAllowedAbsences(saturdays.length, settings);
     const totalWellAtt = Object.values(wellAttendance).reduce((a, b) => a + b, 0);
+    const totalWellLate = Object.values(wellLate).reduce((a, b) => a + b, 0);
     const totalWellReq = settings.theWellRequiredPerMonth * months.length;
     const totalSundayAtt = Object.values(sundayAtt).reduce((a, b) => a + b, 0);
     const totalSundayReq = settings.sundayRequiredPerMonth * months.length;
@@ -336,6 +363,8 @@ export function MyAttendanceView({
       satAbsencesLate,
       satAllowed,
       wellAttendance,
+      wellLate,
+      wellScoreByMonth,
       wellRequired,
       sundayAtt,
       sundayReq,
@@ -344,7 +373,9 @@ export function MyAttendanceView({
       totalSatAbsencesLate,
       totalSatAllowed,
       totalWellAtt,
+      totalWellLate,
       totalWellReq,
+      totalWellScore,
       totalSundayAtt,
       totalSundayReq,
       overallScore,
@@ -446,19 +477,30 @@ export function MyAttendanceView({
 
             <SectionHeaderRow label="The Well" colSpan={colSpan} />
             <DataRow
-              label="Attendance"
+              label="On Time"
               months={tableData.months}
               values={tableData.wellAttendance}
               total={tableData.totalWellAtt}
-              cellClass={(m, value) =>
-                attendanceCellClass(value, tableData.wellRequired[m.key])
-              }
+            />
+            <DataRow
+              label="Late"
+              months={tableData.months}
+              values={tableData.wellLate}
+              total={tableData.totalWellLate}
             />
             <DataRow
               label="Required"
               months={tableData.months}
               values={tableData.wellRequired}
               total={tableData.totalWellReq}
+            />
+            <DataRow
+              label="Score"
+              months={tableData.months}
+              values={tableData.wellScoreByMonth}
+              total={tableData.totalWellScore}
+              valueFormat={formatPercent}
+              cellClass={(_, value) => wellScoreCellClass(value)}
             />
 
             <SectionHeaderRow label="Activation Saturday" colSpan={colSpan} />

@@ -249,6 +249,7 @@ export interface Conversation {
 export interface AttendanceSettings {
   lateClassWeight: number;       // default 0.5
   lateSaturdayWeight: number;    // default 0.25
+  lateWellWeight: number;      // default 0.5
   graduationThreshold: number;   // default 0.80
   theWellRequiredPerMonth: number;  // default 2
   sundayRequiredPerMonth: number;   // default 2
@@ -300,6 +301,7 @@ export interface TheWellAttendanceRecord {
   year: number;
   month: number;
   timesAttended: number;
+  timesLate: number;  // default 0
   markedBy: string;
   updatedAt: string;
 }

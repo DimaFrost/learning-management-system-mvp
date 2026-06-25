@@ -128,11 +128,12 @@ export function calculateTheWellScore(
   records: TheWellAttendanceRecord[],
   settings: AttendanceSettings
 ): number {
-  if (records.length === 0) return 1; // no months tracked = not penalised
+  if (records.length === 0) return 1;
   const scores = records.map((r) => {
-    if (r.timesAttended >= settings.theWellRequiredPerMonth) return 1;
-    if (r.timesAttended === 1) return 0.5;
-    return 0;
+    const effective = r.timesAttended +
+      (r.timesLate * settings.lateWellWeight);
+    if (effective >= settings.theWellRequiredPerMonth) return 1;
+    return Math.min(1, effective / settings.theWellRequiredPerMonth);
   });
   return scores.reduce<number>((a, b) => a + b, 0) / scores.length;
 }

@@ -42,7 +42,8 @@ interface DutyMarkingViewProps {
     courseId: number,
     year: number,
     month: number,
-    timesAttended: number
+    timesAttended: number,
+    timesLate: number
   ) => Promise<void>;
   onRequestTransfer: (params: {
     dutyScheduleId: number;
@@ -84,17 +85,21 @@ function formatHourLabel(hour: Class['hour']): string {
   }
 }
 
-function getWellScoreDisplay(
-  timesAttended: number,
-  required: number
+function getWellEffectiveScoreDisplay(
+  attended: number,
+  late: number,
+  settings: AttendanceSettings
 ): { label: string; className: string; Icon: typeof CheckCircle } {
-  if (timesAttended >= required) {
-    return { label: '100%', className: 'text-green-700', Icon: CheckCircle };
+  const effective = attended + late * settings.lateWellWeight;
+  const score = Math.min(1, effective / settings.theWellRequiredPerMonth);
+  const pct = Math.round(score * 100);
+  if (score >= 1) {
+    return { label: '100% ✅', className: 'text-green-700', Icon: CheckCircle };
   }
-  if (timesAttended === 1) {
-    return { label: '50%', className: 'text-amber-600', Icon: Clock };
+  if (score >= 0.5) {
+    return { label: `${pct}% ⚠️`, className: 'text-amber-600', Icon: Clock };
   }
-  return { label: '0%', className: 'text-red-600', Icon: XCircle };
+  return { label: `${pct}% ❌`, className: 'text-red-600', Icon: XCircle };
 }
 
 function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
@@ -125,13 +130,16 @@ function buildWellDrafts(
   courseId: number,
   year: number,
   month: number
-): Record<string, number> {
-  const drafts: Record<string, number> = {};
+): Record<string, { attended: number; late: number }> {
+  const drafts: Record<string, { attended: number; late: number }> = {};
   for (const student of students) {
     const existing = records.find(
       r => r.studentId === student.id && r.courseId === courseId && r.year === year && r.month === month
     );
-    drafts[student.id] = existing?.timesAttended ?? 0;
+    drafts[student.id] = {
+      attended: existing?.timesAttended ?? 0,
+      late: existing?.timesLate ?? 0,
+    };
   }
   return drafts;
 }
@@ -173,7 +181,7 @@ export function DutyMarkingView({
     year: today.getFullYear(),
     month: today.getMonth() + 1,
   });
-  const [wellDrafts, setWellDrafts] = useState<Record<string, number>>({});
+  const [wellDrafts, setWellDrafts] = useState<Record<string, { attended: number; late: number }>>({});
   const [savingWell, setSavingWell] = useState(false);
   const [wellSaved, setWellSaved] = useState(false);
 
@@ -254,9 +262,16 @@ export function DutyMarkingView({
     }
   };
 
-  const handleWellChange = (studentId: string, value: number) => {
+  const handleWellChange = (
+    studentId: string,
+    field: 'attended' | 'late',
+    value: number
+  ) => {
     const clamped = Math.min(10, Math.max(0, value));
-    setWellDrafts(prev => ({ ...prev, [studentId]: clamped }));
+    setWellDrafts(prev => ({
+      ...prev,
+      [studentId]: { ...(prev[studentId] ?? { attended: 0, late: 0 }), [field]: clamped },
+    }));
     setWellSaved(false);
   };
 
@@ -265,26 +280,29 @@ export function DutyMarkingView({
     setSavingWell(true);
     try {
       const updates = enrolledStudents.filter(student => {
-        const draft = wellDrafts[student.id] ?? 0;
+        const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
         const existing = theWellAttendance.find(
           r => r.studentId === student.id
             && r.courseId === dutyCourse.id
             && r.year === wellMonth.year
             && r.month === wellMonth.month
         );
-        return (existing?.timesAttended ?? 0) !== draft;
+        return (existing?.timesAttended ?? 0) !== draft.attended
+          || (existing?.timesLate ?? 0) !== draft.late;
       });
 
       await Promise.all(
-        updates.map(student =>
-          onUpsertTheWellAttendance(
+        updates.map(student => {
+          const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
+          return onUpsertTheWellAttendance(
             student.id,
             dutyCourse.id,
             wellMonth.year,
             wellMonth.month,
-            wellDrafts[student.id] ?? 0
-          )
-        )
+            draft.attended,
+            draft.late
+          );
+        })
       );
       setWellSaved(true);
     } finally {
@@ -505,8 +523,10 @@ export function DutyMarkingView({
 
           <div className="space-y-3">
             {enrolledStudents.map(student => {
-              const times = wellDrafts[student.id] ?? 0;
-              const score = getWellScoreDisplay(times, settings.theWellRequiredPerMonth);
+              const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
+              const score = getWellEffectiveScoreDisplay(
+                draft.attended, draft.late, settings
+              );
               const ScoreIcon = score.Icon;
 
               return (
@@ -515,18 +535,33 @@ export function DutyMarkingView({
                   className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0"
                 >
                   <span className="font-medium text-gray-900 min-w-[140px]">{student.name}</span>
-                  <div className="flex items-center gap-3">
-                    <label className="text-sm text-gray-600 whitespace-nowrap">
-                      Times attended this month:
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
+                      On time:
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={draft.attended}
+                        onChange={e => handleWellChange(
+                          student.id, 'attended', parseInt(e.target.value, 10) || 0
+                        )}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
+                      />
                     </label>
-                    <input
-                      type="number"
-                      min={0}
-                      max={10}
-                      value={times}
-                      onChange={e => handleWellChange(student.id, parseInt(e.target.value, 10) || 0)}
-                      className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
-                    />
+                    <label className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
+                      Late:
+                      <input
+                        type="number"
+                        min={0}
+                        max={10}
+                        value={draft.late}
+                        onChange={e => handleWellChange(
+                          student.id, 'late', parseInt(e.target.value, 10) || 0
+                        )}
+                        className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
+                      />
+                    </label>
                     <span className={`flex items-center gap-1 text-sm font-medium ${score.className}`}>
                       <ScoreIcon className="w-4 h-4" />
                       {score.label}

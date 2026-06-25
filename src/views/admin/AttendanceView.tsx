@@ -742,6 +742,7 @@ export function AttendanceView({
   const [settingsDraft, setSettingsDraft] = useState({
     lateClassWeight: settings.lateClassWeight,
     lateSaturdayWeight: settings.lateSaturdayWeight,
+    lateWellWeight: settings.lateWellWeight,
     graduationPercent: Math.round(settings.graduationThreshold * 100),
     theWellRequiredPerMonth: settings.theWellRequiredPerMonth,
     sundayRequiredPerMonth: settings.sundayRequiredPerMonth,
@@ -752,6 +753,7 @@ export function AttendanceView({
     setSettingsDraft({
       lateClassWeight: settings.lateClassWeight,
       lateSaturdayWeight: settings.lateSaturdayWeight,
+      lateWellWeight: settings.lateWellWeight,
       graduationPercent: Math.round(settings.graduationThreshold * 100),
       theWellRequiredPerMonth: settings.theWellRequiredPerMonth,
       sundayRequiredPerMonth: settings.sundayRequiredPerMonth,
@@ -764,6 +766,7 @@ export function AttendanceView({
       await updateSettings({
         lateClassWeight: settingsDraft.lateClassWeight,
         lateSaturdayWeight: settingsDraft.lateSaturdayWeight,
+        lateWellWeight: settingsDraft.lateWellWeight,
         graduationThreshold: settingsDraft.graduationPercent / 100,
         theWellRequiredPerMonth: settingsDraft.theWellRequiredPerMonth,
         sundayRequiredPerMonth: settingsDraft.sundayRequiredPerMonth,
@@ -1188,6 +1191,24 @@ export function AttendanceView({
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
                 />
               </div>
+              <div>
+                <label htmlFor="late-well" className="block text-sm text-gray-700 mb-1">
+                  Being late for The Well counts as (× attendance)
+                </label>
+                <input
+                  id="late-well"
+                  type="number"
+                  min={0}
+                  max={1}
+                  step={0.05}
+                  value={settingsDraft.lateWellWeight}
+                  onChange={e => setSettingsDraft(prev => ({
+                    ...prev,
+                    lateWellWeight: parseFloat(e.target.value) || 0,
+                  }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -1253,7 +1274,8 @@ export function AttendanceView({
 
           <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
             Students need {settingsDraft.graduationPercent}% overall. Being late for a class counts as{' '}
-            {Math.round(settingsDraft.lateClassWeight * 100)}% of a session.
+            {Math.round(settingsDraft.lateClassWeight * 100)}% of a session. Being late for The Well counts as{' '}
+            {Math.round(settingsDraft.lateWellWeight * 100)}% of a visit.
           </p>
 
           <button

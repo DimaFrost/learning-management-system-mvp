@@ -38,6 +38,7 @@ function profileName(profile: SupabaseProfileJoin | undefined): string {
 type AttendanceSettingsRow = {
   late_class_weight: number;
   late_saturday_weight: number;
+  late_well_weight: number;
   graduation_threshold: number;
   the_well_required_per_month: number;
   sunday_required_per_month: number;
@@ -52,6 +53,7 @@ export function useAttendance(
   const [settings, setSettings] = useState<AttendanceSettings>({
     lateClassWeight: 0.5,
     lateSaturdayWeight: 0.25,
+    lateWellWeight: 0.5,
     graduationThreshold: 0.80,
     theWellRequiredPerMonth: 2,
     sundayRequiredPerMonth: 2,
@@ -111,6 +113,7 @@ export function useAttendance(
         setSettings({
           lateClassWeight: row.late_class_weight,
           lateSaturdayWeight: row.late_saturday_weight,
+          lateWellWeight: row.late_well_weight ?? 0.5,
           graduationThreshold: row.graduation_threshold,
           theWellRequiredPerMonth: row.the_well_required_per_month,
           sundayRequiredPerMonth: row.sunday_required_per_month,
@@ -160,6 +163,7 @@ export function useAttendance(
         year: row.year,
         month: row.month,
         timesAttended: row.times_attended,
+        timesLate: row.times_late ?? 0,
         markedBy: row.marked_by,
         updatedAt: row.updated_at,
       })));
@@ -333,13 +337,15 @@ export function useAttendance(
 
   const upsertTheWellAttendance = async (
     studentId: string, courseId: number,
-    year: number, month: number, timesAttended: number
+    year: number, month: number, timesAttended: number,
+    timesLate: number
   ): Promise<void> => {
     const { error: upsertError } = await supabase
       .from('the_well_attendance')
       .upsert({
         student_id: studentId, course_id: courseId,
         year, month, times_attended: timesAttended,
+        times_late: timesLate,
         marked_by: currentUser.id,
         updated_at: new Date().toISOString(),
       }, { onConflict: 'student_id,course_id,year,month' });
@@ -374,6 +380,7 @@ export function useAttendance(
       .update({
         late_class_weight: newSettings.lateClassWeight ?? settings.lateClassWeight,
         late_saturday_weight: newSettings.lateSaturdayWeight ?? settings.lateSaturdayWeight,
+        late_well_weight: newSettings.lateWellWeight ?? settings.lateWellWeight,
         graduation_threshold: newSettings.graduationThreshold ?? settings.graduationThreshold,
         the_well_required_per_month: newSettings.theWellRequiredPerMonth ?? settings.theWellRequiredPerMonth,
         sunday_required_per_month: newSettings.sundayRequiredPerMonth ?? settings.sundayRequiredPerMonth,
