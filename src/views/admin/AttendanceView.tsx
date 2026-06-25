@@ -21,7 +21,12 @@ import type {
   DutyTransferRequest,
   StudentAttendanceSummary,
 } from '../../types/lms';
-import { getCourseDisplayName, getCourseOptions } from '../../utils/courseUtils';
+import {
+  getCourseDisplayName,
+  getCourseOptions,
+  isCourseActive,
+  isCourseArchived,
+} from '../../utils/courseUtils';
 import {
   sortByFirstName,
   formatMonthYear,
@@ -35,6 +40,7 @@ import {
 // ============================================
 
 type TabId = 'overview' | 'sunday' | 'duty' | 'settings';
+type OverviewSubTab = 'active' | 'archived';
 
 export interface AttendanceViewProps {
   courses: Course[];
@@ -382,6 +388,16 @@ function GenerateScheduleModal({
   );
 
   useEffect(() => {
+    if (courseOptions.length === 0) {
+      setCourseId(0);
+      return;
+    }
+    if (!courseOptions.some(o => o.id === courseId)) {
+      setCourseId(courseOptions[0].id);
+    }
+  }, [courseOptions, courseId]);
+
+  useEffect(() => {
     if (enrolledStudents.length > 0 && !startingStudentId) {
       setStartingStudentId(enrolledStudents[0].id);
     }
@@ -414,19 +430,23 @@ function GenerateScheduleModal({
             <label htmlFor="gen-course" className="block text-sm font-medium text-gray-700 mb-2">
               Course
             </label>
-            <select
-              id="gen-course"
-              value={courseId}
-              onChange={e => {
-                setCourseId(Number(e.target.value));
-                setStartingStudentId('');
-              }}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              {courseOptions.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-              ))}
-            </select>
+            {courseOptions.length === 0 ? (
+              <p className="text-sm text-gray-500">No active courses.</p>
+            ) : (
+              <select
+                id="gen-course"
+                value={courseId}
+                onChange={e => {
+                  setCourseId(Number(e.target.value));
+                  setStartingStudentId('');
+                }}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+              >
+                {courseOptions.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.displayName}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div>
@@ -568,13 +588,32 @@ export function AttendanceView({
   upsertSundayAttendance,
   updateSettings,
 }: AttendanceViewProps) {
-  const courseOptions = useMemo(() => getCourseOptions(courses), [courses]);
+  const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
+  const archivedCourses = useMemo(() => courses.filter(isCourseArchived), [courses]);
+  const activeCourseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
+  const archivedCourseOptions = useMemo(() => getCourseOptions(archivedCourses), [archivedCourses]);
   const today = new Date();
 
   const [activeTab, setActiveTab] = useState<TabId>('overview');
-  const [overviewCourseId, setOverviewCourseId] = useState(courseOptions[0]?.id ?? 0);
-  const [sundayCourseId, setSundayCourseId] = useState(courseOptions[0]?.id ?? 0);
-  const [dutyCourseId, setDutyCourseId] = useState(courseOptions[0]?.id ?? 0);
+  const [overviewSubTab, setOverviewSubTab] = useState<OverviewSubTab>('active');
+  const [overviewActiveCourseId, setOverviewActiveCourseId] = useState(0);
+  const [overviewArchivedCourseId, setOverviewArchivedCourseId] = useState(0);
+  const [sundayCourseId, setSundayCourseId] = useState(0);
+  const [dutyCourseId, setDutyCourseId] = useState(0);
+
+  const overviewCourseOptions = overviewSubTab === 'active'
+    ? activeCourseOptions
+    : archivedCourseOptions;
+  const overviewCourseId = overviewSubTab === 'active'
+    ? overviewActiveCourseId
+    : overviewArchivedCourseId;
+  const setOverviewCourseId = (id: number) => {
+    if (overviewSubTab === 'active') {
+      setOverviewActiveCourseId(id);
+    } else {
+      setOverviewArchivedCourseId(id);
+    }
+  };
   const [sundayMonth, setSundayMonth] = useState({
     year: today.getFullYear(),
     month: today.getMonth() + 1,
@@ -593,6 +632,40 @@ export function AttendanceView({
   const dutyHoverRef = useRef<string | null>(null);
 
   const currentWeekStart = getCurrentWeekStart();
+
+  useEffect(() => {
+    if (activeCourseOptions.length === 0) {
+      setOverviewActiveCourseId(0);
+      return;
+    }
+    if (!activeCourseOptions.some(o => o.id === overviewActiveCourseId)) {
+      setOverviewActiveCourseId(activeCourseOptions[0].id);
+    }
+  }, [activeCourseOptions, overviewActiveCourseId]);
+
+  useEffect(() => {
+    if (archivedCourseOptions.length === 0) {
+      setOverviewArchivedCourseId(0);
+      return;
+    }
+    if (!archivedCourseOptions.some(o => o.id === overviewArchivedCourseId)) {
+      setOverviewArchivedCourseId(archivedCourseOptions[0].id);
+    }
+  }, [archivedCourseOptions, overviewArchivedCourseId]);
+
+  useEffect(() => {
+    if (activeCourseOptions.length === 0) {
+      setSundayCourseId(0);
+      setDutyCourseId(0);
+      return;
+    }
+    if (!activeCourseOptions.some(o => o.id === sundayCourseId)) {
+      setSundayCourseId(activeCourseOptions[0].id);
+    }
+    if (!activeCourseOptions.some(o => o.id === dutyCourseId)) {
+      setDutyCourseId(activeCourseOptions[0].id);
+    }
+  }, [activeCourseOptions, sundayCourseId, dutyCourseId]);
 
   const summaries = useMemo(
     () => getCourseSummaries(overviewCourseId).sort((a, b) =>
@@ -824,20 +897,48 @@ export function AttendanceView({
       {/* TAB 1 — Overview */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
+          <div className="border-b border-gray-200">
+            <nav className="flex gap-6" aria-label="Overview course filter">
+              {([
+                { id: 'active' as OverviewSubTab, label: 'Active' },
+                { id: 'archived' as OverviewSubTab, label: 'Archived' },
+              ]).map(({ id, label }) => (
+                <button
+                  key={id}
+                  type="button"
+                  onClick={() => setOverviewSubTab(id)}
+                  className={`pb-2 text-sm transition-colors ${
+                    overviewSubTab === id
+                      ? 'border-b-2 border-amber-600 text-amber-700 font-medium'
+                      : 'text-gray-500 hover:text-amber-600'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
           <div>
             <label htmlFor="overview-course" className="block text-sm font-medium text-gray-700 mb-2">
               Course
             </label>
-            <select
-              id="overview-course"
-              value={overviewCourseId}
-              onChange={e => setOverviewCourseId(Number(e.target.value))}
-              className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              {courseOptions.map(opt => (
-                <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-              ))}
-            </select>
+            {overviewCourseOptions.length === 0 ? (
+              <p className="text-sm text-gray-500">
+                {overviewSubTab === 'active' ? 'No active courses.' : 'No archived courses.'}
+              </p>
+            ) : (
+              <select
+                id="overview-course"
+                value={overviewCourseId}
+                onChange={e => setOverviewCourseId(Number(e.target.value))}
+                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+              >
+                {overviewCourseOptions.map(opt => (
+                  <option key={opt.id} value={opt.id}>{opt.displayName}</option>
+                ))}
+              </select>
+            )}
           </div>
 
           <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
@@ -905,16 +1006,20 @@ export function AttendanceView({
               <label htmlFor="sunday-course" className="block text-sm font-medium text-gray-700 mb-2">
                 Course
               </label>
-              <select
-                id="sunday-course"
-                value={sundayCourseId}
-                onChange={e => setSundayCourseId(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-              >
-                {courseOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-                ))}
-              </select>
+              {activeCourseOptions.length === 0 ? (
+                <p className="text-sm text-gray-500">No active courses.</p>
+              ) : (
+                <select
+                  id="sunday-course"
+                  value={sundayCourseId}
+                  onChange={e => setSundayCourseId(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                >
+                  {activeCourseOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.displayName}</option>
+                  ))}
+                </select>
+              )}
             </div>
           </div>
 
@@ -1052,16 +1157,20 @@ export function AttendanceView({
               <label htmlFor="duty-course" className="block text-sm font-medium text-gray-700 mb-2">
                 Course
               </label>
-              <select
-                id="duty-course"
-                value={dutyCourseId}
-                onChange={e => setDutyCourseId(Number(e.target.value))}
-                className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-              >
-                {courseOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-                ))}
-              </select>
+              {activeCourseOptions.length === 0 ? (
+                <p className="text-sm text-gray-500">No active courses.</p>
+              ) : (
+                <select
+                  id="duty-course"
+                  value={dutyCourseId}
+                  onChange={e => setDutyCourseId(Number(e.target.value))}
+                  className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+                >
+                  {activeCourseOptions.map(opt => (
+                    <option key={opt.id} value={opt.id}>{opt.displayName}</option>
+                  ))}
+                </select>
+              )}
             </div>
             <button
               type="button"
@@ -1303,7 +1412,7 @@ export function AttendanceView({
 
       {generateModalOpen && (
         <GenerateScheduleModal
-          courses={courses}
+          courses={activeCourses}
           courseStudents={courseStudents}
           users={users}
           onClose={() => setGenerateModalOpen(false)}
