@@ -37,6 +37,34 @@ export function sortClassesByDate(classes: Class[]): Class[] {
   });
 }
 
+// Returns the class title appropriate for the viewer's role:
+// - Staff (admin, teacher, translator, mentor): the real class title
+// - Students: "[Subject Name] - Class X" where X is the 1-based
+//   position of this class within its subject, sorted by date
+export function getClassDisplayTitle(
+  cls: Class,
+  subject: Subject,
+  viewerRoles: string[]
+): string {
+  const isStaff = ['administrator', 'teacher', 'translator', 'mentor']
+    .some(role => viewerRoles.includes(role));
+
+  if (isStaff) return cls.title;
+
+  const sorted = [...subject.classes].sort((a, b) => {
+    if (!a.date && !b.date) return a.id - b.id;
+    if (!a.date) return 1;
+    if (!b.date) return -1;
+    const dateDiff = a.date.localeCompare(b.date);
+    return dateDiff !== 0 ? dateDiff : a.id - b.id;
+  });
+
+  const index = sorted.findIndex(c => c.id === cls.id);
+  const classNumber = index === -1 ? '?' : index + 1;
+
+  return `${subject.title} - Class ${classNumber}`;
+}
+
 export interface AcademicYearEntry {
   label: string;
   firstYearId?: number;

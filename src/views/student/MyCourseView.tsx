@@ -2,6 +2,7 @@ import { GraduationCap, Calendar, CheckCircle } from 'lucide-react';
 import type { User, Class, Course, CourseStudent, MentorshipLog, SubmissionStatus } from '../../types/lms';
 import { getMyCourses } from '../../utils/roleQueries';
 import { formatDueDate } from '../../utils/dateUtils';
+import { getClassDisplayTitle } from '../../utils/courseUtils';
 import { useStudentHomework, type StudentHomeworkItem } from '../../hooks/useStudentHomework';
 import { SubjectCurriculumPlan } from '../../components/subject/SubjectCurriculumPlan';
 
@@ -105,7 +106,7 @@ export function MyCourseView({
   onOpenClass,
 }: MyCourseViewProps) {
   const { activeHomework, loading: homeworkLoading } =
-    useStudentHomework(currentUser, courseStudents);
+    useStudentHomework(currentUser, courseStudents, courses);
 
   const myCourses = getMyCourses(currentUser.id, courseStudents, courses, getUserById);
 
@@ -197,7 +198,7 @@ export function MyCourseView({
                             onClick={() => onOpenClass(cls.id, subject.id, course.id)}
                             className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
                           >
-                            <span className="font-medium">{cls.title}</span>
+                            <span className="font-medium">{getClassDisplayTitle(cls, subject, currentUser.roles)}</span>
                           </button>
                           <span className="text-gray-500">{cls.date}</span>
                         </div>

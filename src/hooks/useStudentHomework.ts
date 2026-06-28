@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User, CourseStudent, SubmissionStatus } from '../types/lms';
+import type { User, CourseStudent, SubmissionStatus, Course, Class, Subject } from '../types/lms';
+import { getClassDisplayTitle } from '../utils/courseUtils';
 
 export interface StudentHomeworkItem {
   assignmentId: number;
@@ -31,9 +32,23 @@ function asSingle<T>(value: T | T[] | null | undefined): T | null {
   return Array.isArray(value) ? value[0] ?? null : value;
 }
 
+function findClassInCourses(
+  classId: number,
+  courses: Course[]
+): { cls: Class; subject: Subject } | null {
+  for (const course of courses) {
+    for (const subject of course.subjects) {
+      const cls = subject.classes.find(c => c.id === classId);
+      if (cls) return { cls, subject };
+    }
+  }
+  return null;
+}
+
 export function useStudentHomework(
   currentUser: User,
-  courseStudents: CourseStudent[]
+  courseStudents: CourseStudent[],
+  courses: Course[]
 ) {
   const [homeworkItems, setHomeworkItems] = useState<StudentHomeworkItem[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,14 +111,20 @@ export function useStudentHomework(
           course?.course_type === 'first_year' ? 'First Year' : 'Second Year';
         const year = course?.graduation_year;
 
+        const classId = cls?.id ?? 0;
+        const found = findClassInCourses(classId, courses);
+        const classTitle = found
+          ? getClassDisplayTitle(found.cls, found.subject, currentUser.roles)
+          : (cls?.title ?? '');
+
         return {
           assignmentId: row.id,
           assignmentTitle: row.title,
           description: row.description,
           dueDate: row.due_date,
           maxPoints: row.max_points,
-          classId: cls?.id ?? 0,
-          classTitle: cls?.title ?? '',
+          classId,
+          classTitle,
           classDate: cls?.date ?? null,
           subjectTitle: subject?.title ?? '',
           courseName: year != null ? `${courseType} ${year}` : courseType,
@@ -120,7 +141,7 @@ export function useStudentHomework(
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id, courseStudents]);
+  }, [currentUser.id, currentUser.roles, courseStudents, courses]);
 
   useEffect(() => {
     fetchStudentHomework();

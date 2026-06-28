@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Calendar, User as UserIcon, MessageSquare, ChevronDown } from 'lucide-react';
-import type { User, Class, Course } from '../../types/lms';
+import type { User, Class, Course, Subject } from '../../types/lms';
 import { getRoleBadgeColor } from '../../utils/statusStyles';
+import { getClassDisplayTitle } from '../../utils/courseUtils';
 
 interface MyClassesViewProps {
   currentUser: User;
@@ -35,6 +36,7 @@ export function MyClassesView({
           subjectTitle: subject.title,
           courseId: course.id,
           subjectId: subject.id,
+          subject,
         }))
       )
     );
@@ -75,7 +77,7 @@ export function MyClassesView({
                 onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
                 className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
               >
-                <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
+                <h3 className="text-lg font-semibold text-gray-900">{getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}</h3>
               </button>
               {myRoles.map(role => (
                 <span key={role} className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}>

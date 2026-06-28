@@ -20,8 +20,9 @@ import type {
   ClassAttendanceRecord,
   TheWellAttendanceRecord,
   DutyScheduleEntry,
+  Subject,
 } from '../../types/lms';
-import { getCourseDisplayName } from '../../utils/courseUtils';
+import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { sortByFirstName, formatMonthYear } from '../../utils/attendanceUtils';
 
 interface DutyMarkingViewProps {
@@ -204,17 +205,20 @@ export function DutyMarkingView({
     if (!dutyCourse) return [];
     const { weekStart, weekEnd } = myCurrentDuty;
     return dutyCourse.subjects
-      .flatMap(s => s.classes)
-      .filter(cls => cls.date && cls.date >= weekStart && cls.date <= weekEnd)
+      .flatMap((subject: Subject) =>
+        subject.classes
+          .filter(cls => cls.date && cls.date >= weekStart && cls.date <= weekEnd)
+          .map(cls => ({ cls, subject }))
+      )
       .sort((a, b) => {
-        const dateCmp = a.date.localeCompare(b.date);
+        const dateCmp = a.cls.date.localeCompare(b.cls.date);
         if (dateCmp !== 0) return dateCmp;
-        return HOUR_ORDER[a.hour] - HOUR_ORDER[b.hour];
+        return HOUR_ORDER[a.cls.hour] - HOUR_ORDER[b.cls.hour];
       });
   }, [dutyCourse, myCurrentDuty]);
 
   useEffect(() => {
-    setClassDrafts(buildClassDrafts(classesThisWeek, enrolledStudents, classAttendance));
+    setClassDrafts(buildClassDrafts(classesThisWeek.map(({ cls }) => cls), enrolledStudents, classAttendance));
   }, [classesThisWeek, enrolledStudents, classAttendance]);
 
   useEffect(() => {
@@ -410,7 +414,7 @@ export function DutyMarkingView({
               No classes scheduled this week.
             </div>
           ) : (
-            classesThisWeek.map(cls => {
+            classesThisWeek.map(({ cls, subject }) => {
               const isSaved = classHasSavedAttendance(
                 cls.id,
                 enrolledStudents,
@@ -427,7 +431,7 @@ export function DutyMarkingView({
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{cls.title}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">{getClassDisplayTitle(cls, subject, currentUser.roles)}</h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-600">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-amber-600" />

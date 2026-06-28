@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ChevronLeft, Calendar, Clock, User as UserIcon, FolderOpen, Loader2 } from 'lucide-react';
 import type { Class, Subject, Course, User, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
-import { getCourseDisplayName } from '../../utils/courseUtils';
+import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { useClassContent } from '../../hooks/useClassContent';
 import { useHomework } from '../../hooks/useHomework';
 import { MaterialsNotesTab } from '../../components/class/MaterialsNotesTab';
@@ -124,6 +124,7 @@ export function ClassDetailView({
     users.find(u => u.id === id)?.name ?? 'Unassigned';
 
   const courseName = getCourseDisplayName(selectedCourse);
+  const classDisplayTitle = getClassDisplayTitle(selectedClass, selectedSubject, currentUser.roles);
   const status = getClassStatus(selectedClass.date);
   const statusBadge = STATUS_BADGE[status];
 
@@ -151,7 +152,7 @@ export function ClassDetailView({
           <span className="mx-2">/</span>
           <span className="hover:text-amber-600 cursor-default">{selectedSubject.title}</span>
           <span className="mx-2">/</span>
-          <span className="text-amber-700 font-medium">{selectedClass.title}</span>
+          <span className="text-amber-700 font-medium">{classDisplayTitle}</span>
         </nav>
       </div>
 
@@ -159,7 +160,7 @@ export function ClassDetailView({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">{selectedClass.title}</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{classDisplayTitle}</h2>
               <span
                 className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className}`}
               >

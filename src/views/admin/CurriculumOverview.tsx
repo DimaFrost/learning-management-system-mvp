@@ -1,6 +1,6 @@
 import { ChevronRight, ChevronDown, Edit3, Trash2, Plus, Calendar, Eye } from 'lucide-react';
 import type { Course, User, Subject, Class } from '../../types/lms';
-import { isCourseActive } from '../../utils/courseUtils';
+import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { SubjectCurriculumPlan } from '../../components/subject/SubjectCurriculumPlan';
 
 interface CurriculumOverviewProps {
@@ -194,7 +194,7 @@ export function CurriculumOverview({
                                       onClick={() => onOpenClass(cls.id, subject.id, course.id)}
                                       className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
                                     >
-                                      <span className="text-sm font-medium">{cls.title}</span>
+                                      <span className="text-sm font-medium">{getClassDisplayTitle(cls, subject, currentUser.roles)}</span>
                                     </button>
                                     <span className="text-sm text-gray-500">{cls.date}</span>
                                     <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${

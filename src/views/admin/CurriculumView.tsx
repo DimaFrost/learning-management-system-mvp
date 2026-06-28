@@ -119,6 +119,7 @@ export function CurriculumView({
       {activeCurriculumTab === 'date-view' && (
         <CurriculumDateView
           courses={courses}
+          currentUser={currentUser}
           getUserById={getUserById}
           getCourseDisplayName={getCourseDisplayName}
           checkDoubleBooking={checkDoubleBooking}

@@ -1,9 +1,10 @@
 import { Calendar, Plus, BookOpen, Edit3, Trash2, Eye } from 'lucide-react';
-import type { Course, User, Class } from '../../types/lms';
-import { isCourseActive } from '../../utils/courseUtils';
+import type { Course, User, Class, Subject } from '../../types/lms';
+import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 
 interface CurriculumDateViewProps {
   courses: Course[];
+  currentUser: User;
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
@@ -23,6 +24,7 @@ function formatDate(dateStr: string) {
 
 export function CurriculumDateView({
   courses,
+  currentUser,
   getUserById,
   getCourseDisplayName,
   checkDoubleBooking,
@@ -38,7 +40,8 @@ export function CurriculumDateView({
         courseName: getCourseDisplayName(course),
         courseId: course.id,
         subjectTitle: subject.title,
-        subjectId: subject.id
+        subjectId: subject.id,
+        subject,
       }))
     )
   );
@@ -136,7 +139,7 @@ export function CurriculumDateView({
                                         onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
                                         className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
                                       >
-                                        <h6 className="font-medium text-gray-900">{cls.title}</h6>
+                                        <h6 className="font-medium text-gray-900">{getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}</h6>
                                       </button>
                                       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
                                         cls.hour === 'first' ? 'bg-green-100 text-green-800' :
