@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, type ChangeEvent } from 'react';
 import {
   Pencil,
   Trash,
@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { ClassNote, ClassFile, User, Course, Subject, Class } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { formatFileSize } from '../../../utils/formatFileSize';
 
 interface MaterialsTabProps {
   classId: number;
@@ -37,7 +38,7 @@ interface MaterialsTabProps {
     courseSlug: string;
     subjectSlug: string;
     classSlug: string;
-  }) => Promise<void>;
+  }) => Promise<boolean>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
   selectedCourse: Course;
   selectedSubject: Subject;
@@ -83,8 +84,17 @@ export function MaterialsTab({
   const [editingNoteId, setEditingNoteId] = useState<number | null>(null);
   const [editNoteTitle, setEditNoteTitle] = useState('');
   const [editNoteContent, setEditNoteContent] = useState('');
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const uploadSlugs = {
+    courseSlug: getCourseDisplayName(selectedCourse)
+      .toLowerCase()
+      .replace(/\s+/g, '-'),
+    subjectSlug: selectedSubject.title.toLowerCase().replace(/\s+/g, '-'),
+    classSlug: `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`,
+  };
 
   const studentNotes = notes.filter(n => n.noteType === 'student_note');
 
@@ -123,19 +133,44 @@ export function MaterialsTab({
     cancelEditNote();
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    await onUploadFile({
-      file,
-      fileType: 'material',
-      courseSlug: getCourseDisplayName(selectedCourse)
-        .toLowerCase().replace(/\s+/g, '-'),
-      subjectSlug: selectedSubject.title
-        .toLowerCase().replace(/\s+/g, '-'),
-      classSlug: `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`,
-    });
+  const handleFileSelect = (e: ChangeEvent<HTMLInputElement>) => {
+    const added = Array.from(e.target.files ?? []);
     e.target.value = '';
+    if (added.length === 0) return;
+
+    setPendingFiles(prev => {
+      const existing = new Set(prev.map(f => `${f.name}:${f.size}`));
+      return [...prev, ...added.filter(f => !existing.has(`${f.name}:${f.size}`))];
+    });
+  };
+
+  const handleRemovePending = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleCancelPending = () => {
+    setPendingFiles([]);
+  };
+
+  const handleConfirmUpload = async () => {
+    if (pendingFiles.length === 0) return;
+
+    const queue = [...pendingFiles];
+    const remaining: File[] = [];
+
+    for (let i = 0; i < queue.length; i++) {
+      const success = await onUploadFile({
+        file: queue[i],
+        fileType: 'material',
+        ...uploadSlugs,
+      });
+      if (!success) {
+        remaining.push(...queue.slice(i));
+        break;
+      }
+    }
+
+    setPendingFiles(remaining);
   };
 
   const canDeleteFile = (file: ClassFile) =>
@@ -307,8 +342,9 @@ export function MaterialsTab({
                 <input
                   ref={fileInputRef}
                   type="file"
+                  multiple
                   className="hidden"
-                  onChange={handleFileUpload}
+                  onChange={handleFileSelect}
                 />
                 <button
                   type="button"
@@ -317,11 +353,64 @@ export function MaterialsTab({
                   className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
-                  Upload Material
+                  Select Files
                 </button>
               </div>
             )}
           </div>
+
+          {canManageNotes && pendingFiles.length > 0 && (
+            <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 space-y-3">
+              <p className="text-sm font-medium text-gray-800">
+                Ready to upload ({pendingFiles.length})
+              </p>
+              <ul className="space-y-2">
+                {pendingFiles.map((file, index) => {
+                  const PendingIcon = getFileIcon(file.type || null);
+                  return (
+                    <li
+                      key={`${file.name}-${file.size}-${index}`}
+                      className="flex items-center justify-between gap-3 p-2 rounded-md bg-white border border-amber-100"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <PendingIcon className="w-4 h-4 text-amber-600 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 truncate">
+                          {file.name} · {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePending(index)}
+                        disabled={isBusy}
+                        className="p-1 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50 flex-shrink-0"
+                        aria-label={`Remove ${file.name}`}
+                      >
+                        <Trash className="w-4 h-4" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleConfirmUpload}
+                  disabled={isBusy}
+                  className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
+                >
+                  Upload
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancelPending}
+                  disabled={isBusy}
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
           {files.length === 0 ? (
             <p className="text-sm text-gray-500">No materials uploaded yet.</p>

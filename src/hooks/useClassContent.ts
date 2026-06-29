@@ -142,9 +142,11 @@ export function useClassContent(classId: number | null, currentUser: User) {
       });
       if (error) throw error;
       await fetchContent();
+      return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed');
       console.error(err);
+      return false;
     } finally {
       setSaving(false);
     }
