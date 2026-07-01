@@ -1,7 +1,9 @@
 import type {
   AttendanceSettings,
+  AttendanceStatus,
   ClassAttendanceRecord,
   TheWellAttendanceRecord,
+  TheWellSessionRecord,
   SundayAttendanceRecord,
   StudentAttendanceSummary,
   Class,
@@ -187,4 +189,58 @@ export function formatMonthYear(year: number, month: number): string {
     month: 'long',
     year: 'numeric',
   });
+}
+
+function localDateToString(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+export function getWellDateForWeek(weekStart: string): string {
+  const d = new Date(weekStart + 'T00:00:00');
+  const day = d.getDay();
+  const daysUntilWednesday = (3 - day + 7) % 7;
+  d.setDate(d.getDate() + daysUntilWednesday);
+  return localDateToString(d);
+}
+
+export function getYearMonthFromWeekStart(weekStart: string): { year: number; month: number } {
+  const wednesday = getWellDateForWeek(weekStart);
+  const d = new Date(wednesday + 'T00:00:00');
+  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+}
+
+function sessionContributesToMonth(
+  sessionWeekStart: string,
+  year: number,
+  month: number
+): boolean {
+  const { year: sessionYear, month: sessionMonth } = getYearMonthFromWeekStart(sessionWeekStart);
+  return sessionYear === year && sessionMonth === month;
+}
+
+export function aggregateWellSessionsForMonth(
+  sessions: TheWellSessionRecord[],
+  courseId: number,
+  year: number,
+  month: number
+): Map<string, { timesAttended: number; timesLate: number }> {
+  const totals = new Map<string, { timesAttended: number; timesLate: number }>();
+
+  for (const session of sessions) {
+    if (session.courseId !== courseId) continue;
+    if (!sessionContributesToMonth(session.weekStart, year, month)) continue;
+
+    const current = totals.get(session.studentId) ?? { timesAttended: 0, timesLate: 0 };
+    if (session.status === 'present') {
+      current.timesAttended += 1;
+    } else if (session.status === 'late') {
+      current.timesLate += 1;
+    }
+    totals.set(session.studentId, current);
+  }
+
+  return totals;
 }

@@ -7,6 +7,7 @@ import type {
   DutyTransferRequest,
   ClassAttendanceRecord,
   TheWellAttendanceRecord,
+  TheWellSessionRecord,
   SundayAttendanceRecord,
   StudentAttendanceSummary,
   User,
@@ -25,6 +26,8 @@ import {
   calculateTheWellScore,
   calculateSundayScore,
   calculateOverallScore,
+  aggregateWellSessionsForMonth,
+  getYearMonthFromWeekStart,
 } from '../utils/attendanceUtils';
 
 type SupabaseProfileJoin = { id: string; name: string } | { id: string; name: string }[] | null;
@@ -65,6 +68,8 @@ export function useAttendance(
     useState<ClassAttendanceRecord[]>([]);
   const [theWellAttendance, setTheWellAttendance] =
     useState<TheWellAttendanceRecord[]>([]);
+  const [theWellSessionAttendance, setTheWellSessionAttendance] =
+    useState<TheWellSessionRecord[]>([]);
   const [sundayAttendance, setSundayAttendance] =
     useState<SundayAttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
@@ -78,7 +83,7 @@ export function useAttendance(
     setError(null);
     try {
       const [settingsRes, dutyRes, transferRes,
-        classAttRes, wellRes, sundayRes] = await Promise.all([
+        classAttRes, wellRes, wellSessionRes, sundayRes] = await Promise.all([
         supabase.from('attendance_settings').select('*').single(),
         supabase.from('duty_schedule').select(`
           id, course_id, student_id, week_start, week_end, status,
@@ -96,6 +101,7 @@ export function useAttendance(
           student:profiles!student_id(id, name)
         `),
         supabase.from('the_well_attendance').select('*'),
+        supabase.from('the_well_session_attendance').select('*'),
         supabase.from('sunday_attendance').select('*'),
       ]);
 
@@ -106,6 +112,7 @@ export function useAttendance(
       if (transferRes.error) throw transferRes.error;
       if (classAttRes.error) throw classAttRes.error;
       if (wellRes.error) throw wellRes.error;
+      if (wellSessionRes.error) throw wellSessionRes.error;
       if (sundayRes.error) throw sundayRes.error;
 
       if (settingsRes.data) {
@@ -166,6 +173,16 @@ export function useAttendance(
         timesLate: row.times_late ?? 0,
         markedBy: row.marked_by,
         updatedAt: row.updated_at,
+      })));
+
+      setTheWellSessionAttendance((wellSessionRes.data ?? []).map(row => ({
+        id: row.id,
+        studentId: row.student_id,
+        courseId: row.course_id,
+        weekStart: row.week_start,
+        status: row.status,
+        markedBy: row.marked_by,
+        markedAt: row.marked_at,
       })));
 
       setSundayAttendance((sundayRes.data ?? []).map(row => ({
@@ -350,6 +367,85 @@ export function useAttendance(
         updated_at: new Date().toISOString(),
       }, { onConflict: 'student_id,course_id,year,month' });
     if (upsertError) throw upsertError;
+  };
+
+  const markWellSessionAttendance = async (
+    weekStart: string,
+    courseId: number,
+    records: Array<{ studentId: string; status: AttendanceStatus }>
+  ): Promise<void> => {
+    const sessionRows = records.map(r => ({
+      student_id: r.studentId,
+      course_id: courseId,
+      week_start: weekStart,
+      status: r.status,
+      marked_by: currentUser.id,
+      marked_at: new Date().toISOString(),
+    }));
+
+    const { error: sessionError } = await supabase
+      .from('the_well_session_attendance')
+      .upsert(sessionRows, { onConflict: 'student_id,course_id,week_start' });
+    if (sessionError) throw sessionError;
+
+    const mergedSessions = [
+      ...theWellSessionAttendance.filter(
+        s => !(s.courseId === courseId && s.weekStart === weekStart)
+      ),
+      ...records.map(r => ({
+        id: 0,
+        studentId: r.studentId,
+        courseId,
+        weekStart,
+        status: r.status,
+        markedBy: currentUser.id,
+        markedAt: new Date().toISOString(),
+      })),
+    ];
+
+    const { year, month } = getYearMonthFromWeekStart(weekStart);
+    const monthTotals = aggregateWellSessionsForMonth(
+      mergedSessions,
+      courseId,
+      year,
+      month
+    );
+
+    const studentIds = new Set([
+      ...records.map(r => r.studentId),
+      ...mergedSessions
+        .filter(s => {
+          const ym = getYearMonthFromWeekStart(s.weekStart);
+          return s.courseId === courseId && ym.year === year && ym.month === month;
+        })
+        .map(s => s.studentId),
+    ]);
+
+    await Promise.all(
+      Array.from(studentIds).map(studentId => {
+        const totals = monthTotals.get(studentId) ?? { timesAttended: 0, timesLate: 0 };
+        return upsertTheWellAttendance(
+          studentId,
+          courseId,
+          year,
+          month,
+          totals.timesAttended,
+          totals.timesLate
+        );
+      })
+    );
+
+    await fetchAll();
+  };
+
+  const upsertTheWellAttendanceWithRefetch = async (
+    studentId: string, courseId: number,
+    year: number, month: number, timesAttended: number,
+    timesLate: number
+  ): Promise<void> => {
+    await upsertTheWellAttendance(
+      studentId, courseId, year, month, timesAttended, timesLate
+    );
     await fetchAll();
   };
 
@@ -465,13 +561,14 @@ export function useAttendance(
 
   return {
     settings, dutySchedule, transferRequests,
-    classAttendance, theWellAttendance, sundayAttendance,
+    classAttendance, theWellAttendance, theWellSessionAttendance, sundayAttendance,
     loading, error,
     currentDuty, myCurrentDuty, isOnDuty,
     pendingTransferRequests,
     generateDutyScheduleForCourse, updateDutyAssignment,
     requestDutyTransfer, resolveTransferRequest,
-    markClassAttendance, upsertTheWellAttendance,
+    markClassAttendance, markWellSessionAttendance,
+    upsertTheWellAttendance: upsertTheWellAttendanceWithRefetch,
     upsertSundayAttendance, updateSettings,
     getCourseSummaries,
     refetch: fetchAll,

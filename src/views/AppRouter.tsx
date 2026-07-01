@@ -299,10 +299,9 @@ export function AppRouter({
           courseStudents={courseStudents}
           users={users}
           classAttendance={attendance.classAttendance}
-          theWellAttendance={attendance.theWellAttendance}
-          settings={attendance.settings}
+          theWellSessionAttendance={attendance.theWellSessionAttendance}
           onMarkClassAttendance={attendance.markClassAttendance}
-          onUpsertTheWellAttendance={attendance.upsertTheWellAttendance}
+          onMarkWellSessionAttendance={attendance.markWellSessionAttendance}
           onRequestTransfer={attendance.requestDutyTransfer}
           loading={attendance.loading}
         />

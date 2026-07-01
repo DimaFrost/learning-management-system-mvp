@@ -1,30 +1,23 @@
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import {
   CheckCircle,
-  Clock,
-  XCircle,
   Calendar,
-  Users,
   ArrowLeftRight,
   X,
-  ChevronLeft,
-  ChevronRight,
 } from 'lucide-react';
 import type {
   User,
   Course,
   CourseStudent,
   Class,
-  AttendanceSettings,
   AttendanceStatus,
   ClassAttendanceRecord,
-  TheWellAttendanceRecord,
+  TheWellSessionRecord,
   DutyScheduleEntry,
   Subject,
 } from '../../types/lms';
-import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
-import { sortByFirstName, formatMonthYear } from '../../utils/attendanceUtils';
+import { sortByFirstName, getWellDateForWeek } from '../../utils/attendanceUtils';
 
 interface DutyMarkingViewProps {
   currentUser: User;
@@ -33,19 +26,15 @@ interface DutyMarkingViewProps {
   courseStudents: CourseStudent[];
   users: User[];
   classAttendance: ClassAttendanceRecord[];
-  theWellAttendance: TheWellAttendanceRecord[];
-  settings: AttendanceSettings;
+  theWellSessionAttendance: TheWellSessionRecord[];
   onMarkClassAttendance: (
     classId: number,
     records: Array<{ studentId: string; status: AttendanceStatus }>
   ) => Promise<void>;
-  onUpsertTheWellAttendance: (
-    studentId: string,
+  onMarkWellSessionAttendance: (
+    weekStart: string,
     courseId: number,
-    year: number,
-    month: number,
-    timesAttended: number,
-    timesLate: number
+    records: Array<{ studentId: string; status: AttendanceStatus }>
   ) => Promise<void>;
   onRequestTransfer: (params: {
     dutyScheduleId: number;
@@ -55,12 +44,14 @@ interface DutyMarkingViewProps {
   loading?: boolean;
 }
 
-type TabId = 'class' | 'well';
+type ClassTimelineItem = { type: 'class'; cls: Class; subject: Subject };
+type WellTimelineItem = { type: 'well'; date: string };
+type TimelineItem = ClassTimelineItem | WellTimelineItem;
 
 const HOUR_ORDER: Record<Class['hour'], number> = { first: 0, second: 1, both: 2 };
 
 function formatWeekDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -68,7 +59,7 @@ function formatWeekDate(dateStr: string): string {
 }
 
 function formatClassDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
+  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
     weekday: 'long',
     day: 'numeric',
     month: 'long',
@@ -87,26 +78,8 @@ function formatHourLabel(hour: Class['hour']): string {
   }
 }
 
-function getWellEffectiveScoreDisplay(
-  attended: number,
-  late: number,
-  settings: AttendanceSettings
-): { label: string; className: string; Icon: typeof CheckCircle } {
-  const effective = attended + late * settings.lateWellWeight;
-  const score = Math.min(1, effective / settings.theWellRequiredPerMonth);
-  const pct = Math.round(score * 100);
-  if (score >= 1) {
-    return { label: '100% ✅', className: 'text-green-700', Icon: CheckCircle };
-  }
-  if (score >= 0.5) {
-    return { label: `${pct}% ⚠️`, className: 'text-amber-600', Icon: Clock };
-  }
-  return { label: `${pct}% ❌`, className: 'text-red-600', Icon: XCircle };
-}
-
-function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
-  const d = new Date(year, month - 1 + delta, 1);
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+function getDayOfWeek(dateStr: string): number {
+  return new Date(dateStr + 'T00:00:00').getDay();
 }
 
 function buildClassDrafts(
@@ -128,20 +101,18 @@ function buildClassDrafts(
 
 function buildWellDrafts(
   students: User[],
-  records: TheWellAttendanceRecord[],
+  records: TheWellSessionRecord[],
   courseId: number,
-  year: number,
-  month: number
-): Record<string, { attended: number; late: number }> {
-  const drafts: Record<string, { attended: number; late: number }> = {};
+  weekStart: string
+): Record<string, AttendanceStatus> {
+  const drafts: Record<string, AttendanceStatus> = {};
   for (const student of students) {
     const existing = records.find(
-      r => r.studentId === student.id && r.courseId === courseId && r.year === year && r.month === month
+      r => r.studentId === student.id
+        && r.courseId === courseId
+        && r.weekStart === weekStart
     );
-    drafts[student.id] = {
-      attended: existing?.timesAttended ?? 0,
-      late: existing?.timesLate ?? 0,
-    };
+    drafts[student.id] = existing?.status ?? 'absent';
   }
   return drafts;
 }
@@ -156,6 +127,42 @@ function classHasSavedAttendance(
   return students.every(s => records.some(r => r.classId === classId && r.studentId === s.id));
 }
 
+function wellHasSavedAttendance(
+  weekStart: string,
+  courseId: number,
+  students: User[],
+  records: TheWellSessionRecord[],
+  wellSaved: boolean
+): boolean {
+  if (wellSaved) return true;
+  return students.every(s =>
+    records.some(
+      r => r.studentId === s.id && r.courseId === courseId && r.weekStart === weekStart
+    )
+  );
+}
+
+function buildDutyTimeline(
+  classesThisWeek: ClassTimelineItem[],
+  weekStart: string,
+  showWell: boolean
+): TimelineItem[] {
+  const items: TimelineItem[] = [...classesThisWeek];
+  if (showWell) {
+    items.push({ type: 'well', date: getWellDateForWeek(weekStart) });
+  }
+
+  return items.sort((a, b) => {
+    const dateA = a.type === 'well' ? a.date : a.cls.date;
+    const dateB = b.type === 'well' ? b.date : b.cls.date;
+    const dateCmp = dateA.localeCompare(dateB);
+    if (dateCmp !== 0) return dateCmp;
+    if (a.type === 'well') return -1;
+    if (b.type === 'well') return 1;
+    return HOUR_ORDER[a.cls.hour] - HOUR_ORDER[b.cls.hour];
+  });
+}
+
 export function DutyMarkingView({
   currentUser,
   myCurrentDuty,
@@ -163,15 +170,12 @@ export function DutyMarkingView({
   courseStudents,
   users,
   classAttendance,
-  theWellAttendance,
-  settings,
+  theWellSessionAttendance,
   onMarkClassAttendance,
-  onUpsertTheWellAttendance,
+  onMarkWellSessionAttendance,
   onRequestTransfer,
   loading,
 }: DutyMarkingViewProps) {
-  const today = new Date();
-  const [activeTab, setActiveTab] = useState<TabId>('class');
   const [transferOpen, setTransferOpen] = useState(false);
   const [toStudentId, setToStudentId] = useState('');
   const [transferReason, setTransferReason] = useState('');
@@ -179,11 +183,7 @@ export function DutyMarkingView({
   const [classDrafts, setClassDrafts] = useState<Record<number, Record<string, AttendanceStatus>>>({});
   const [savingClassId, setSavingClassId] = useState<number | null>(null);
   const [savedClassIds, setSavedClassIds] = useState<Set<number>>(new Set());
-  const [wellMonth, setWellMonth] = useState({
-    year: today.getFullYear(),
-    month: today.getMonth() + 1,
-  });
-  const [wellDrafts, setWellDrafts] = useState<Record<string, { attended: number; late: number }>>({});
+  const [wellDrafts, setWellDrafts] = useState<Record<string, AttendanceStatus>>({});
   const [savingWell, setSavingWell] = useState(false);
   const [wellSaved, setWellSaved] = useState(false);
 
@@ -209,7 +209,7 @@ export function DutyMarkingView({
       .flatMap((subject: Subject) =>
         subject.classes
           .filter(cls => cls.date && cls.date >= weekStart && cls.date <= weekEnd)
-          .map(cls => ({ cls, subject }))
+          .map(cls => ({ type: 'class' as const, cls, subject }))
       )
       .sort((a, b) => {
         const dateCmp = a.cls.date.localeCompare(b.cls.date);
@@ -218,8 +218,22 @@ export function DutyMarkingView({
       });
   }, [dutyCourse, myCurrentDuty]);
 
+  const showWell = useMemo(
+    () =>
+      classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 2)
+      && classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 4),
+    [classesThisWeek]
+  );
+
+  const dutyTimeline = useMemo(
+    () => buildDutyTimeline(classesThisWeek, myCurrentDuty.weekStart, showWell),
+    [classesThisWeek, myCurrentDuty.weekStart, showWell]
+  );
+
   useEffect(() => {
-    setClassDrafts(buildClassDrafts(classesThisWeek.map(({ cls }) => cls), enrolledStudents, classAttendance));
+    setClassDrafts(
+      buildClassDrafts(classesThisWeek.map(({ cls }) => cls), enrolledStudents, classAttendance)
+    );
   }, [classesThisWeek, enrolledStudents, classAttendance]);
 
   useEffect(() => {
@@ -227,14 +241,13 @@ export function DutyMarkingView({
     setWellDrafts(
       buildWellDrafts(
         enrolledStudents,
-        theWellAttendance,
+        theWellSessionAttendance,
         dutyCourse.id,
-        wellMonth.year,
-        wellMonth.month
+        myCurrentDuty.weekStart
       )
     );
     setWellSaved(false);
-  }, [enrolledStudents, theWellAttendance, dutyCourse, wellMonth.year, wellMonth.month]);
+  }, [enrolledStudents, theWellSessionAttendance, dutyCourse, myCurrentDuty.weekStart]);
 
   const handleClassStatusChange = useCallback(
     (classId: number, studentId: string, status: AttendanceStatus) => {
@@ -247,6 +260,14 @@ export function DutyMarkingView({
         next.delete(classId);
         return next;
       });
+    },
+    []
+  );
+
+  const handleWellStatusChange = useCallback(
+    (studentId: string, status: AttendanceStatus) => {
+      setWellDrafts(prev => ({ ...prev, [studentId]: status }));
+      setWellSaved(false);
     },
     []
   );
@@ -267,47 +288,18 @@ export function DutyMarkingView({
     }
   };
 
-  const handleWellChange = (
-    studentId: string,
-    field: 'attended' | 'late',
-    value: number
-  ) => {
-    const clamped = Math.min(10, Math.max(0, value));
-    setWellDrafts(prev => ({
-      ...prev,
-      [studentId]: { ...(prev[studentId] ?? { attended: 0, late: 0 }), [field]: clamped },
-    }));
-    setWellSaved(false);
-  };
-
   const handleSaveWell = async () => {
     if (!dutyCourse) return;
     setSavingWell(true);
     try {
-      const updates = enrolledStudents.filter(student => {
-        const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
-        const existing = theWellAttendance.find(
-          r => r.studentId === student.id
-            && r.courseId === dutyCourse.id
-            && r.year === wellMonth.year
-            && r.month === wellMonth.month
-        );
-        return (existing?.timesAttended ?? 0) !== draft.attended
-          || (existing?.timesLate ?? 0) !== draft.late;
-      });
-
-      await Promise.all(
-        updates.map(student => {
-          const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
-          return onUpsertTheWellAttendance(
-            student.id,
-            dutyCourse.id,
-            wellMonth.year,
-            wellMonth.month,
-            draft.attended,
-            draft.late
-          );
-        })
+      const records = enrolledStudents.map(s => ({
+        studentId: s.id,
+        status: wellDrafts[s.id] ?? 'absent',
+      }));
+      await onMarkWellSessionAttendance(
+        myCurrentDuty.weekStart,
+        dutyCourse.id,
+        records
       );
       setWellSaved(true);
     } finally {
@@ -337,6 +329,46 @@ export function DutyMarkingView({
     setToStudentId('');
     setTransferReason('');
   };
+
+  const renderAttendanceTable = (
+    draft: Record<string, AttendanceStatus>,
+    onStatusChange: (studentId: string, status: AttendanceStatus) => void,
+    namePrefix: string
+  ) => (
+    <div className="overflow-x-auto">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-gray-200 text-left text-gray-500">
+            <th className="pb-2 pr-4 font-medium">Student</th>
+            <th className="pb-2 px-2 font-medium text-center">Present</th>
+            <th className="pb-2 px-2 font-medium text-center">Late</th>
+            <th className="pb-2 px-2 font-medium text-center">Absent</th>
+          </tr>
+        </thead>
+        <tbody>
+          {enrolledStudents.map(student => (
+            <tr key={student.id} className="border-b border-gray-100">
+              <td className="py-2.5 pr-4 font-medium text-gray-900">
+                {student.name}
+              </td>
+              {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => (
+                <td key={status} className="py-2.5 px-2 text-center">
+                  <input
+                    type="radio"
+                    name={`${namePrefix}-${student.id}`}
+                    checked={(draft[student.id] ?? 'absent') === status}
+                    onChange={() => onStatusChange(student.id, status)}
+                    className="w-4 h-4 text-amber-600 focus:ring-amber-500"
+                    aria-label={`${student.name} — ${status}`}
+                  />
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
 
   if (!dutyCourse) {
     return (
@@ -379,26 +411,15 @@ export function DutyMarkingView({
         </div>
       </div>
 
-      <ScrollableTabs
-        tabs={[
-          { id: 'class', label: 'Mark Class Attendance', icon: <Calendar className="w-4 h-4" /> },
-          { id: 'well', label: 'The Well', icon: <Users className="w-4 h-4" /> },
-        ]}
-        activeTab={activeTab}
-        onTabChange={id => setActiveTab(id as 'class' | 'well')}
-        ariaLabel="Duty marking tabs"
-        activeClassName="border-amber-600 text-amber-700"
-        inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
-      />
-
-      {activeTab === 'class' && (
-        <div className="space-y-4">
-          {classesThisWeek.length === 0 ? (
-            <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center text-gray-500">
-              No classes scheduled this week.
-            </div>
-          ) : (
-            classesThisWeek.map(({ cls, subject }) => {
+      <div className="space-y-4">
+        {dutyTimeline.length === 0 ? (
+          <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center text-gray-500">
+            No classes scheduled this week.
+          </div>
+        ) : (
+          dutyTimeline.map(item => {
+            if (item.type === 'class') {
+              const { cls, subject } = item;
               const isSaved = classHasSavedAttendance(
                 cls.id,
                 enrolledStudents,
@@ -410,12 +431,14 @@ export function DutyMarkingView({
 
               return (
                 <div
-                  key={cls.id}
+                  key={`class-${cls.id}`}
                   className="bg-white rounded-lg shadow border border-gray-200 p-6"
                 >
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
                     <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{getClassDisplayTitle(cls, subject, currentUser.roles)}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900">
+                        {getClassDisplayTitle(cls, subject, currentUser.roles)}
+                      </h3>
                       <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-600">
                         <span className="flex items-center gap-1.5">
                           <Calendar className="w-4 h-4 text-amber-600" />
@@ -434,39 +457,11 @@ export function DutyMarkingView({
                     )}
                   </div>
 
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-sm">
-                      <thead>
-                        <tr className="border-b border-gray-200 text-left text-gray-500">
-                          <th className="pb-2 pr-4 font-medium">Student</th>
-                          <th className="pb-2 px-2 font-medium text-center">Present</th>
-                          <th className="pb-2 px-2 font-medium text-center">Late</th>
-                          <th className="pb-2 px-2 font-medium text-center">Absent</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {enrolledStudents.map(student => (
-                          <tr key={student.id} className="border-b border-gray-100">
-                            <td className="py-2.5 pr-4 font-medium text-gray-900">
-                              {student.name}
-                            </td>
-                            {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => (
-                              <td key={status} className="py-2.5 px-2 text-center">
-                                <input
-                                  type="radio"
-                                  name={`attendance-${cls.id}-${student.id}`}
-                                  checked={(draft[student.id] ?? 'absent') === status}
-                                  onChange={() => handleClassStatusChange(cls.id, student.id, status)}
-                                  className="w-4 h-4 text-amber-600 focus:ring-amber-500"
-                                  aria-label={`${student.name} — ${status}`}
-                                />
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                  {renderAttendanceTable(
+                    draft,
+                    (studentId, status) => handleClassStatusChange(cls.id, studentId, status),
+                    `attendance-${cls.id}`
+                  )}
 
                   <div className="mt-4 flex justify-end">
                     <button
@@ -480,106 +475,60 @@ export function DutyMarkingView({
                   </div>
                 </div>
               );
-            })
-          )}
-        </div>
-      )}
+            }
 
-      {activeTab === 'well' && (
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-4">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setWellMonth(prev => shiftMonth(prev.year, prev.month, -1))}
-              className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h3 className="text-lg font-semibold text-gray-900">
-              {formatMonthYear(wellMonth.year, wellMonth.month)}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setWellMonth(prev => shiftMonth(prev.year, prev.month, 1))}
-              className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
-              aria-label="Next month"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
+            const isSaved = wellHasSavedAttendance(
+              myCurrentDuty.weekStart,
+              dutyCourse.id,
+              enrolledStudents,
+              theWellSessionAttendance,
+              wellSaved
+            );
 
-          <div className="space-y-3">
-            {enrolledStudents.map(student => {
-              const draft = wellDrafts[student.id] ?? { attended: 0, late: 0 };
-              const score = getWellEffectiveScoreDisplay(
-                draft.attended, draft.late, settings
-              );
-              const ScoreIcon = score.Icon;
-
-              return (
-                <div
-                  key={student.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-2 border-b border-gray-100 last:border-0"
-                >
-                  <span className="font-medium text-gray-900 min-w-[140px]">{student.name}</span>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <label className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
-                      On time:
-                      <input
-                        type="number"
-                        min={0}
-                        max={10}
-                        value={draft.attended}
-                        onChange={e => handleWellChange(
-                          student.id, 'attended', parseInt(e.target.value, 10) || 0
-                        )}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
-                      />
-                    </label>
-                    <label className="text-sm text-gray-600 whitespace-nowrap flex items-center gap-2">
-                      Late:
-                      <input
-                        type="number"
-                        min={0}
-                        max={10}
-                        value={draft.late}
-                        onChange={e => handleWellChange(
-                          student.id, 'late', parseInt(e.target.value, 10) || 0
-                        )}
-                        className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
-                      />
-                    </label>
-                    <span className={`flex items-center gap-1 text-sm font-medium ${score.className}`}>
-                      <ScoreIcon className="w-4 h-4" />
-                      {score.label}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            {wellSaved && (
-              <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
-                <CheckCircle className="w-4 h-4" />
-                Saved ✓
-              </span>
-            )}
-            <div className={wellSaved ? '' : 'ml-auto'}>
-              <button
-                type="button"
-                onClick={handleSaveWell}
-                disabled={savingWell}
-                className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+            return (
+              <div
+                key="well"
+                className="bg-white rounded-lg shadow border border-gray-200 p-6"
               >
-                {savingWell ? 'Saving…' : 'Save The Well Attendance'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+                <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">The Well</h3>
+                    <div className="flex flex-wrap items-center gap-3 mt-1 text-sm text-gray-600">
+                      <span className="flex items-center gap-1.5">
+                        <Calendar className="w-4 h-4 text-amber-600" />
+                        {formatClassDate(item.date)}
+                      </span>
+                    </div>
+                  </div>
+                  {isSaved && (
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-green-700">
+                      <CheckCircle className="w-4 h-4" />
+                      Saved ✓
+                    </span>
+                  )}
+                </div>
+
+                {renderAttendanceTable(
+                  wellDrafts,
+                  handleWellStatusChange,
+                  'well-attendance'
+                )}
+
+                <div className="mt-4 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={handleSaveWell}
+                    disabled={savingWell}
+                    className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50 transition-colors"
+                  >
+                    {savingWell ? 'Saving…' : 'Save Attendance'}
+                  </button>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
 
       {transferOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

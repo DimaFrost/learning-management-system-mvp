@@ -306,6 +306,16 @@ export interface TheWellAttendanceRecord {
   updatedAt: string;
 }
 
+export interface TheWellSessionRecord {
+  id: number;
+  studentId: string;
+  courseId: number;
+  weekStart: string;
+  status: AttendanceStatus;
+  markedBy: string;
+  markedAt: string;
+}
+
 export interface SundayAttendanceRecord {
   id: number;
   studentId: string;
