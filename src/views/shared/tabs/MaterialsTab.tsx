@@ -39,6 +39,7 @@ interface MaterialsTabProps {
     subjectSlug: string;
     classSlug: string;
   }) => Promise<boolean>;
+  onMaterialsUploaded: (fileNames: string[]) => Promise<void>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
   selectedCourse: Course;
   selectedSubject: Subject;
@@ -69,6 +70,7 @@ export function MaterialsTab({
   onUpdateNote,
   onDeleteNote,
   onUploadFile,
+  onMaterialsUploaded,
   onDeleteFile,
   selectedCourse,
   selectedSubject,
@@ -157,6 +159,7 @@ export function MaterialsTab({
 
     const queue = [...pendingFiles];
     const remaining: File[] = [];
+    const uploadedNames: string[] = [];
 
     for (let i = 0; i < queue.length; i++) {
       const success = await onUploadFile({
@@ -164,10 +167,16 @@ export function MaterialsTab({
         fileType: 'material',
         ...uploadSlugs,
       });
-      if (!success) {
+      if (success) {
+        uploadedNames.push(queue[i].name);
+      } else {
         remaining.push(...queue.slice(i));
         break;
       }
+    }
+
+    if (uploadedNames.length > 0) {
+      await onMaterialsUploaded(uploadedNames);
     }
 
     setPendingFiles(remaining);

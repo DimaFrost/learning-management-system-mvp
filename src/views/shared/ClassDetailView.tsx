@@ -77,7 +77,7 @@ export function ClassDetailView({
   onProvisionDriveFolders,
   showConfirmation,
 }: ClassDetailViewProps) {
-  const classContent = useClassContent(selectedClass.id, currentUser);
+  const classContent = useClassContent(selectedClass.id, currentUser, courses);
   const homework = useHomework(selectedClass.id, currentUser, courses);
 
   const canManageDriveFolders =

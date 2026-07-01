@@ -15,6 +15,7 @@ import {
   buildStoragePath,
 } from '../utils/storageOperations';
 import { sendNotification } from '../utils/notifications';
+import { findClassCourseContext } from '../utils/courseUtils';
 
 type ShowConfirmation = (
   title: string,
@@ -42,16 +43,6 @@ function mapCommentRow(row: SupabaseCommentRow): HomeworkComment {
     content: row.content,
     createdAt: row.created_at,
   };
-}
-
-function findClassCourseContext(classId: number, courses: Course[]) {
-  for (const course of courses) {
-    for (const subject of course.subjects) {
-      const cls = subject.classes.find(c => c.id === classId);
-      if (cls) return { course, subject, class: cls };
-    }
-  }
-  return null;
 }
 
 export function useHomework(

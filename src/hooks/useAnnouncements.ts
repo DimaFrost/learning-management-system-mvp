@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Announcement, AnnouncementComment, AnnouncementAttachment, User, CourseStudent } from '../types/lms';
+import type { Announcement, AnnouncementComment, AnnouncementAttachment, User, CourseStudent, Course } from '../types/lms';
 import { sendNotification } from '../utils/notifications';
 import { uploadFileToStorage } from '../utils/storageOperations';
+import { userTeachesInCourse } from '../utils/courseUtils';
 
 type ShowConfirmation = (
   title: string,
@@ -118,7 +119,8 @@ function mapUpdatesToRow(updates: Partial<Announcement>) {
 function filterAnnouncementsForUser(
   announcements: Announcement[],
   filterUser: User,
-  courseStudents: CourseStudent[]
+  courseStudents: CourseStudent[],
+  courses: Course[]
 ): Announcement[] {
   let filtered = announcements;
 
@@ -128,7 +130,9 @@ function filterAnnouncementsForUser(
         announcement.courseId === null ||
         courseStudents.some(
           cs => cs.studentId === filterUser.id && cs.courseId === announcement.courseId
-        )
+        ) ||
+        (announcement.courseId !== null &&
+          userTeachesInCourse(filterUser.id, announcement.courseId, courses))
     );
   }
 
@@ -146,7 +150,8 @@ function filterAnnouncementsForUser(
 export function useAnnouncements(
   fetchUser: User,
   filterUser: User,
-  courseStudents: CourseStudent[]
+  courseStudents: CourseStudent[],
+  courses: Course[]
 ) {
   const [allAnnouncements, setAllAnnouncements] = useState<Announcement[]>([]);
   const [loading, setLoading] = useState(true);
@@ -193,8 +198,8 @@ export function useAnnouncements(
   }, [refetchAnnouncements]);
 
   const announcements = useMemo(
-    () => filterAnnouncementsForUser(allAnnouncements, filterUser, courseStudents),
-    [allAnnouncements, filterUser, courseStudents]
+    () => filterAnnouncementsForUser(allAnnouncements, filterUser, courseStudents, courses),
+    [allAnnouncements, filterUser, courseStudents, courses]
   );
 
   const addAnnouncement = useCallback(

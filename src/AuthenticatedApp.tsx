@@ -74,7 +74,7 @@ export function AuthenticatedApp({
     deleteComment,
     addAttachment,
     deleteAttachment,
-  } = useAnnouncements(currentUser, effectiveUser, courseStudents);
+  } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
   const {
     conversations,
     totalUnread,

@@ -1,13 +1,19 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { ClassNote, ClassFile, User } from '../types/lms';
+import type { ClassNote, ClassFile, User, Course } from '../types/lms';
 import {
   uploadFileToStorage,
   deleteFileFromStorage,
   buildStoragePath,
 } from '../utils/storageOperations';
+import { sendNotification } from '../utils/notifications';
+import { findClassCourseContext } from '../utils/courseUtils';
 
-export function useClassContent(classId: number | null, currentUser: User) {
+export function useClassContent(
+  classId: number | null,
+  currentUser: User,
+  courses: Course[]
+) {
   const [notes, setNotes] = useState<ClassNote[]>([]);
   const [files, setFiles] = useState<ClassFile[]>([]);
   const [loading, setLoading] = useState(false);
@@ -163,10 +169,47 @@ export function useClassContent(classId: number | null, currentUser: User) {
     }
   };
 
+  const announceMaterialsUpload = async (fileNames: string[]) => {
+    if (!classId || fileNames.length === 0) return;
+    try {
+      const ctx = findClassCourseContext(classId, courses);
+      const courseId = ctx?.course.id ?? null;
+      const classInfo = ctx
+        ? `${ctx.subject.title} — ${ctx.class.title}`
+        : 'your class';
+      const fileList = fileNames.map(f => `• ${f}`).join('\n');
+      const title = `New Materials: ${classInfo}`;
+      const content = `New materials have been uploaded for ${classInfo}.\n\n${fileList}`;
+
+      const { error: announcementError } = await supabase.from('announcements').insert({
+        title,
+        content,
+        type: 'material',
+        author_id: currentUser.id,
+        course_id: courseId,
+        target_roles: null,
+        is_pinned: false,
+        is_staff_only: false,
+      });
+
+      if (announcementError) throw announcementError;
+
+      sendNotification('announcement', {
+        title,
+        content,
+        authorName: currentUser.name,
+        isStaffOnly: false,
+      }).catch(console.error);
+    } catch (err) {
+      console.error('Materials announcement failed:', err);
+    }
+  };
+
   return {
     notes, files, loading, saving, error,
     addNote, updateNote, deleteNote,
     uploadFile, deleteFile,
+    announceMaterialsUpload,
     refetch: fetchContent,
   };
 }

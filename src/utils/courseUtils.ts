@@ -98,6 +98,29 @@ export function findAcademicYearEntry(
   return buildAcademicYearsFromCourses(courses).find(y => y.label === label);
 }
 
+export function findClassCourseContext(classId: number, courses: Course[]) {
+  for (const course of courses) {
+    for (const subject of course.subjects) {
+      const cls = subject.classes.find(c => c.id === classId);
+      if (cls) return { course, subject, class: cls };
+    }
+  }
+  return null;
+}
+
+export function userTeachesInCourse(
+  userId: string,
+  courseId: number,
+  courses: Course[]
+): boolean {
+  return courses.some(c =>
+    c.id === courseId &&
+    c.subjects.some(s =>
+      s.classes.some(cls => cls.teacherId === userId || cls.translatorId === userId)
+    )
+  );
+}
+
 export const getCourseDisplayName = (course: Course): string => {
   const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
   return `${courseTypeLabel} ${course.graduationYear}`;
