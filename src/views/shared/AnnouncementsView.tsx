@@ -16,6 +16,7 @@ import type { Announcement, AnnouncementAttachment, User, Course } from '../../t
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -467,19 +468,21 @@ export function AnnouncementsView({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Announcements</h2>
-        {canCreateAnnouncement && (
-          <button
-            type="button"
-            onClick={openCreateModal}
-            className="bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 flex items-center gap-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>New Announcement</span>
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Announcements"
+        action={
+          canCreateAnnouncement ? (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="w-full sm:w-auto bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 flex items-center justify-center gap-2"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New Announcement</span>
+            </button>
+          ) : undefined
+        }
+      />
 
       <div className="flex flex-wrap gap-2">
         {FILTER_OPTIONS.map(option => (

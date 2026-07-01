@@ -27,6 +27,7 @@ import {
   isCourseActive,
   isCourseArchived,
 } from '../../utils/courseUtils';
+import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import {
   sortByFirstName,
   formatMonthYear,
@@ -869,30 +870,19 @@ export function AttendanceView({
         )}
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6 flex-wrap" aria-label="Attendance tabs">
-          {([
-            { id: 'overview' as TabId, label: 'Overview', Icon: ClipboardList },
-            { id: 'sunday' as TabId, label: 'Sunday Attendance', Icon: Calendar },
-            { id: 'duty' as TabId, label: 'On Duty Schedule', Icon: Users },
-            { id: 'settings' as TabId, label: 'Settings', Icon: Settings },
-          ]).map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              onClick={() => setActiveTab(id)}
-              className={`flex items-center gap-2 pb-3 text-sm transition-colors ${
-                activeTab === id
-                  ? 'border-b-2 border-amber-600 text-amber-700 font-medium'
-                  : 'text-gray-500 hover:text-amber-600'
-              }`}
-            >
-              <Icon className="w-4 h-4" />
-              {label}
-            </button>
-          ))}
-        </nav>
-      </div>
+      <ScrollableTabs
+        tabs={[
+          { id: 'overview', label: 'Overview', icon: <ClipboardList className="w-4 h-4" /> },
+          { id: 'sunday', label: 'Sunday Attendance', icon: <Calendar className="w-4 h-4" /> },
+          { id: 'duty', label: 'On Duty Schedule', icon: <Users className="w-4 h-4" /> },
+          { id: 'settings', label: 'Settings', icon: <Settings className="w-4 h-4" /> },
+        ]}
+        activeTab={activeTab}
+        onTabChange={id => setActiveTab(id as TabId)}
+        ariaLabel="Attendance tabs"
+        activeClassName="border-amber-600 text-amber-700"
+        inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
+      />
 
       {/* TAB 1 — Overview */}
       {activeTab === 'overview' && (
@@ -1152,8 +1142,8 @@ export function AttendanceView({
             </div>
           )}
 
-          <div className="flex flex-wrap items-center justify-between gap-4">
-            <div>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4">
+            <div className="w-full sm:w-auto">
               <label htmlFor="duty-course" className="block text-sm font-medium text-gray-700 mb-2">
                 Course
               </label>
@@ -1175,13 +1165,14 @@ export function AttendanceView({
             <button
               type="button"
               onClick={() => setGenerateModalOpen(true)}
-              className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
+              className="w-full sm:w-auto px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700"
             >
               Generate Schedule
             </button>
           </div>
 
-          <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden max-h-[480px] overflow-y-auto">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden max-h-[480px] overflow-y-auto min-w-[640px]">
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50 sticky top-0">
                 <tr>
@@ -1254,6 +1245,7 @@ export function AttendanceView({
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         </div>
       )}

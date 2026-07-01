@@ -19,6 +19,7 @@ import {
   calculateOverallScore,
   formatPercent,
 } from '../../utils/attendanceUtils';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 
 interface MyAttendanceViewProps {
   currentUser: User;
@@ -152,7 +153,7 @@ function SectionHeaderRow({ label, colSpan }: { label: string; colSpan: number }
     <tr className="bg-amber-100">
       <td
         colSpan={colSpan}
-        className="px-4 py-2 text-xs font-bold text-amber-900 uppercase tracking-wider"
+        className="px-2 sm:px-4 py-2 text-xs font-bold text-amber-900 uppercase tracking-wider"
       >
         {label}
       </td>
@@ -175,10 +176,10 @@ function DataRow({
 
   return (
     <tr className="border-b border-gray-100">
-      <td className="px-4 py-2.5 text-sm font-medium text-gray-700 whitespace-nowrap">
+      <td className="px-2 sm:px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap">
         {label}
       </td>
-      <td className={`px-4 py-2.5 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${cellClass ?? ''}`}>
+      <td className={`px-2 sm:px-4 py-2 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${cellClass ?? ''}`}>
         {displayTotal}
       </td>
     </tr>
@@ -311,13 +312,13 @@ export function MyAttendanceView({
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900">My Attendance</h2>
+      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Attendance</h2>
         {myCourses.length > 1 && (
           <select
             value={selectedCourse.id}
             onChange={e => setSelectedCourseId(Number(e.target.value))}
-            className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
+            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
             aria-label="Select course"
           >
             {myCourses.map(course => (
@@ -333,19 +334,20 @@ export function MyAttendanceView({
         <p className="text-sm text-gray-600">{getCourseDisplayName(selectedCourse)}</p>
       )}
 
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <table className="min-w-full text-sm">
-          <thead>
-            <tr className="border-b border-gray-200 bg-gray-50">
-              <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                Total
-              </th>
-            </tr>
-          </thead>
-          <tbody>
+      <ResponsiveTable scrollHint={false}>
+        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-gray-200 bg-gray-50">
+                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                  Category
+                </th>
+                <th className="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                  Total
+                </th>
+              </tr>
+            </thead>
+            <tbody>
             <SectionHeaderRow label="Classes" colSpan={colSpan} />
             <DataRow
               label="Absences + Late"
@@ -409,7 +411,8 @@ export function MyAttendanceView({
             No attendance data recorded yet.
           </p>
         )}
-      </div>
+        </div>
+      </ResponsiveTable>
 
       <div className={`rounded-lg border p-6 ${status.cardClass}`}>
         <p className="text-sm font-medium text-gray-600 mb-1">Overall Attendance</p>

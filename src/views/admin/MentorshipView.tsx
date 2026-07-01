@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { User as UserIcon, UserCheck } from 'lucide-react';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 import { MentorAssignModal } from '../../components/modals/MentorAssignModal';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 interface MentorshipViewProps {
   users: User[];
@@ -71,12 +72,14 @@ export function MentorshipView({
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">Mentorship Management</h2>
-        <div className="text-sm text-gray-600">
-          {mentorshipPairs.length} active mentorship pairs
-        </div>
-      </div>
+      <PageHeader
+        title="Mentorship Management"
+        action={
+          <div className="text-sm text-gray-600">
+            {mentorshipPairs.length} active mentorship pairs
+          </div>
+        }
+      />
 
       {studentsWithoutMentors.length > 0 && (
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">

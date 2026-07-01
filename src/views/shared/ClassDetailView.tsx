@@ -5,6 +5,7 @@ import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { useClassContent } from '../../hooks/useClassContent';
 import { useHomework } from '../../hooks/useHomework';
+import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { MaterialsNotesTab } from '../../components/class/MaterialsNotesTab';
 import { StaffNotesTab } from '../../components/class/StaffNotesTab';
 import { HomeworkTab } from '../../components/class/HomeworkTab';
@@ -136,16 +137,16 @@ export function ClassDetailView({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:text-amber-700 hover:border-amber-300 transition-colors"
+          className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:text-amber-700 hover:border-amber-300 transition-colors flex-shrink-0"
           aria-label="Go back"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <nav className="text-sm text-gray-500">
+        <nav className="text-sm text-gray-500 overflow-x-auto scrollbar-hide whitespace-nowrap min-w-0">
           <span className="hover:text-amber-600 cursor-default">Curriculum</span>
           <span className="mx-2">/</span>
           <span className="hover:text-amber-600 cursor-default">{courseName}</span>
@@ -156,7 +157,7 @@ export function ClassDetailView({
         </nav>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -232,26 +233,14 @@ export function ClassDetailView({
         </p>
       )}
 
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6" aria-label="Class tabs">
-          {tabs
-            .filter(tab => tab.visible)
-            .map(tab => (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveTab(tab.id)}
-                className={`pb-3 text-sm transition-colors ${
-                  activeTab === tab.id
-                    ? 'border-b-2 border-amber-600 text-amber-700 font-medium'
-                    : 'text-gray-500 hover:text-amber-600'
-                }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-        </nav>
-      </div>
+      <ScrollableTabs
+        tabs={tabs.filter(tab => tab.visible)}
+        activeTab={activeTab}
+        onTabChange={id => setActiveTab(id as TabId)}
+        ariaLabel="Class tabs"
+        activeClassName="border-amber-600 text-amber-700"
+        inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
+      />
 
       <div>
         {activeTab === 'materials' && (

@@ -56,8 +56,8 @@ export function CurriculumOverview({
         const totalClasses = course.subjects.reduce((sum, subject) => sum + subject.classes.length, 0);
 
         return (
-          <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-            <div className="flex justify-between items-start mb-4">
+          <div key={course.id} className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-4">
               <div className="flex items-center space-x-3">
                 <button
                   onClick={() => toggleCourseCollapse(course.id)}
@@ -102,7 +102,7 @@ export function CurriculumOverview({
 
             {!isCourseCollapsed && (
               <div className="space-y-3">
-                <div className="flex justify-between items-center">
+                <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
                   <h4 className="font-medium text-gray-900">Subjects</h4>
                   <button
                     onClick={() => onEditSubject(course.id)}
@@ -118,7 +118,7 @@ export function CurriculumOverview({
 
                   return (
                     <div key={subject.id} className="bg-gray-50 rounded-lg p-4">
-                      <div className="flex justify-between items-start mb-2">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => toggleSubjectCollapse(course.id, subject.id)}
@@ -165,7 +165,7 @@ export function CurriculumOverview({
 
                       {!isSubjectCollapsed && (
                         <div className="mt-3">
-                          <div className="flex justify-between items-center mb-2">
+                          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
                             <h6 className="text-sm font-medium text-gray-700">Classes</h6>
                             <button
                               onClick={() => onEditClass(course.id, subject.id)}
@@ -184,10 +184,10 @@ export function CurriculumOverview({
                               const needsAttention = hasConflict || hasVacantRoles;
 
                               return (
-                                <div key={cls.id} className={`flex items-center justify-between p-3 rounded border ${
+                                <div key={cls.id} className={`flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 p-3 rounded border ${
                                   needsAttention ? 'bg-orange-50 border-orange-200' : 'bg-white'
                                 }`}>
-                                  <div className="flex items-center space-x-3">
+                                  <div className="flex flex-wrap items-center gap-2 sm:gap-3 min-w-0">
                                     <Calendar className="w-4 h-4 text-gray-400" />
                                     <button
                                       type="button"

@@ -13,6 +13,7 @@ import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { getStatusColor, getStatusBadgeColor } from '../../utils/statusStyles';
 import { calculateOverallStatus, getCheckInStatus } from '../../utils/mentorshipUtils';
 import { ContactMentorModal } from '../../components/modals/ContactMentorModal';
+import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
 
 interface MentorshipManagementProps {
   users: User[];
@@ -127,15 +128,15 @@ export function MentorshipManagement({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <div className="flex justify-between items-start mb-6">
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3 mb-6">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">Mentorship Risk Management</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Mentorship Risk Management</h2>
             <p className="text-gray-600">Cadence-aware monitoring with configurable thresholds</p>
           </div>
           <button
             onClick={() => setShowCadenceSettings(!showCadenceSettings)}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
           >
             <Settings className="w-4 h-4" />
             Configure Cadences
@@ -374,11 +375,11 @@ export function MentorshipManagement({
         </div>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <div className="flex justify-between items-center mb-4">
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-4">
           <h2 className="text-lg font-semibold text-gray-900">Mentorship Pair Status Assessment</h2>
           {statusFilter && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="text-sm text-gray-600">Filtered by:</span>
               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(statusFilter)}`}>
                 {statusFilter === 'at_risk' ? 'At Risk' :
@@ -393,7 +394,7 @@ export function MentorshipManagement({
             </div>
           )}
         </div>
-        <div className="overflow-x-auto">
+        <ResponsiveTable>
           <table className="min-w-full">
             <thead>
               <tr className="bg-gray-50">
@@ -449,7 +450,7 @@ export function MentorshipManagement({
               ))}
             </tbody>
           </table>
-        </div>
+        </ResponsiveTable>
       </div>
 
       <ContactMentorModal

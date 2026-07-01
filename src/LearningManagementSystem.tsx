@@ -138,6 +138,7 @@ const LearningManagementSystem = () => {
   const [sidebarMode, setSidebarMode] = useState<'locked' | 'auto-hide'>(
     () => (localStorage.getItem('tbo-sidebar-mode') as 'locked' | 'auto-hide') ?? 'locked'
   );
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
   useEffect(() => {
     localStorage.setItem('tbo-sidebar-mode', sidebarMode);
@@ -200,15 +201,16 @@ const LearningManagementSystem = () => {
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
 
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="min-h-screen bg-gray-100 flex flex-col">
       <Header
         currentUser={effectiveUser}
         onSignOut={signOut}
         isDev={currentUser.roles.includes('dev')}
         previewRoles={previewRoles}
         onOpenDevPanel={() => setShowDevPanel(true)}
+        onOpenMobileMenu={() => setMobileNavOpen(true)}
       />
-      <div className="relative flex h-[calc(100vh-64px)] overflow-hidden">
+      <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
           activeView={activeView}
           onNavigate={setActiveView}
@@ -217,8 +219,10 @@ const LearningManagementSystem = () => {
           isOnDuty={effectiveIsOnDuty}
           mode={sidebarMode}
           onToggleMode={toggleSidebarMode}
+          mobileOpen={mobileNavOpen}
+          onMobileClose={() => setMobileNavOpen(false)}
         />
-        <main className="flex-1 overflow-y-auto p-8">
+        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
           <AppRouter
             activeView={activeView}
             setActiveView={setActiveView}

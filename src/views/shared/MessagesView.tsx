@@ -360,7 +360,7 @@ export function MessagesView({
         </div>
       )}
 
-      <div className="flex flex-col lg:flex-row h-[calc(100vh-8rem)] min-h-[500px] bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+      <div className="flex flex-col lg:flex-row min-h-[60vh] lg:h-[calc(100vh-8rem)] lg:min-h-[500px] bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
         {/* Left panel */}
         <div
           className={`w-full lg:w-80 shrink-0 border-r border-gray-200 flex flex-col ${

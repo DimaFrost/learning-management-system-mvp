@@ -22,6 +22,7 @@ import type {
   DutyScheduleEntry,
   Subject,
 } from '../../types/lms';
+import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { sortByFirstName, formatMonthYear } from '../../utils/attendanceUtils';
 
@@ -356,10 +357,10 @@ export function DutyMarkingView({
 
   return (
     <div className="space-y-6">
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
+      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-start sm:justify-between gap-4">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">On Duty This Week 🎓</h2>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">On Duty This Week 🎓</h2>
             <p className="text-gray-600 mt-1">
               Week of {formatWeekDate(myCurrentDuty.weekStart)} – {formatWeekDate(myCurrentDuty.weekEnd)}
             </p>
@@ -370,7 +371,7 @@ export function DutyMarkingView({
           <button
             type="button"
             onClick={() => setTransferOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium transition-colors"
+            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium transition-colors"
           >
             <ArrowLeftRight className="w-4 h-4" />
             Transfer Duty
@@ -378,34 +379,17 @@ export function DutyMarkingView({
         </div>
       </div>
 
-      <div className="border-b border-gray-200">
-        <nav className="flex gap-6" aria-label="Duty marking tabs">
-          <button
-            type="button"
-            onClick={() => setActiveTab('class')}
-            className={`flex items-center gap-2 pb-3 text-sm transition-colors ${
-              activeTab === 'class'
-                ? 'border-b-2 border-amber-600 text-amber-700 font-medium'
-                : 'text-gray-500 hover:text-amber-600'
-            }`}
-          >
-            <Calendar className="w-4 h-4" />
-            Mark Class Attendance
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('well')}
-            className={`flex items-center gap-2 pb-3 text-sm transition-colors ${
-              activeTab === 'well'
-                ? 'border-b-2 border-amber-600 text-amber-700 font-medium'
-                : 'text-gray-500 hover:text-amber-600'
-            }`}
-          >
-            <Users className="w-4 h-4" />
-            The Well
-          </button>
-        </nav>
-      </div>
+      <ScrollableTabs
+        tabs={[
+          { id: 'class', label: 'Mark Class Attendance', icon: <Calendar className="w-4 h-4" /> },
+          { id: 'well', label: 'The Well', icon: <Users className="w-4 h-4" /> },
+        ]}
+        activeTab={activeTab}
+        onTabChange={id => setActiveTab(id as 'class' | 'well')}
+        ariaLabel="Duty marking tabs"
+        activeClassName="border-amber-600 text-amber-700"
+        inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
+      />
 
       {activeTab === 'class' && (
         <div className="space-y-4">

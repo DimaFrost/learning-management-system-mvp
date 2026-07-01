@@ -1219,7 +1219,8 @@ export function PlanningCalendarGrid({
   return (
     <div className="space-y-3">
       <PlanningActionToolbar {...toolbarProps} />
-      <div className="overflow-x-auto">
+      <p className="text-xs text-gray-500 lg:hidden">Swipe horizontally to see the full calendar →</p>
+      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
         <table className="min-w-[980px] w-full text-sm border-collapse">
           <thead>
             <tr>

@@ -1,6 +1,7 @@
 import { User as UserIcon, Plus } from 'lucide-react';
 import type { User, Course, CourseStudent, UserRole } from '../../types/lms';
 import { getCourseDisplayName as getCourseDisplayNameUtil } from '../../utils/courseUtils';
+import { PageHeader } from '../../components/ui/PageHeader';
 
 const getRealRoles = (roles: UserRole[]) => roles.filter(r => r !== 'dev');
 
@@ -27,8 +28,94 @@ export function UsersView({
   );
   const studentUsers = users.filter(user => user.roles.includes('student'));
 
+  const renderRoleBadges = (user: User) => (
+    <div className="flex flex-wrap gap-1">
+      {user.roles.length === 0 ? (
+        <span className="text-xs text-gray-500 italic">No roles</span>
+      ) : (
+        user.roles.map(role => (
+          <span
+            key={role}
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+          >
+            {role}
+          </span>
+        ))
+      )}
+    </div>
+  );
+
+  const renderCourseBadges = (user: User) => (
+    <div className="flex flex-wrap gap-1">
+      {courseStudents
+        .filter(cs => cs.studentId === user.id)
+        .map(cs => {
+          const course = courses.find(c => c.id === cs.courseId);
+          return course ? (
+            <span
+              key={`${cs.courseId}-${cs.studentId}`}
+              className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"
+            >
+              {getCourseDisplayName(course)}
+            </span>
+          ) : null;
+        })}
+      {courseStudents.filter(cs => cs.studentId === user.id).length === 0 && (
+        <span className="text-xs text-gray-500 italic">No courses</span>
+      )}
+    </div>
+  );
+
+  const renderUserCards = (userList: User[], showCoursesColumn: boolean = true) => (
+    <div className="md:hidden space-y-3">
+      {userList.map(user => (
+        <div
+          key={user.id}
+          className="bg-white rounded-lg shadow border border-gray-200 p-4 space-y-3"
+        >
+          <div className="flex items-start gap-3">
+            <div className="h-10 w-10 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
+              <UserIcon className="h-5 w-5 text-gray-500" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-sm font-medium text-gray-900">{user.name}</div>
+              <div className="text-sm text-gray-500 truncate">{user.email}</div>
+            </div>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 flex-shrink-0">
+              Active
+            </span>
+          </div>
+          <div>
+            <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Roles</p>
+            {renderRoleBadges(user)}
+          </div>
+          {showCoursesColumn && (
+            <div>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-1">Courses</p>
+              {renderCourseBadges(user)}
+            </div>
+          )}
+          <div className="flex gap-3 pt-1 border-t border-gray-100">
+            <button
+              onClick={() => onEditUser(user)}
+              className="flex-1 text-center py-2 text-sm font-medium text-blue-600 hover:text-blue-900 bg-blue-50 rounded-lg"
+            >
+              Edit
+            </button>
+            <button
+              onClick={() => onDeleteUser(user.id)}
+              className="flex-1 text-center py-2 text-sm font-medium text-red-600 hover:text-red-900 bg-red-50 rounded-lg"
+            >
+              Remove
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
   const renderUserTable = (userList: User[], showCoursesColumn: boolean = true) => (
-    <div className="bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
+    <div className="hidden md:block bg-white rounded-lg shadow border border-gray-200 overflow-hidden">
       <table className="min-w-full divide-y divide-gray-200">
         <thead className="bg-gray-50">
           <tr>
@@ -55,37 +142,9 @@ export function UsersView({
                   </div>
                 </div>
               </td>
-              <td className="px-6 py-4 whitespace-nowrap">
-                <div className="flex flex-wrap gap-1">
-                  {user.roles.length === 0 ? (
-                    <span className="text-xs text-gray-500 italic">No roles</span>
-                  ) : (
-                    user.roles.map(role => (
-                      <span key={role} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                        {role}
-                      </span>
-                    ))
-                  )}
-                </div>
-              </td>
+              <td className="px-6 py-4 whitespace-nowrap">{renderRoleBadges(user)}</td>
               {showCoursesColumn && (
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex flex-wrap gap-1">
-                    {courseStudents
-                      .filter(cs => cs.studentId === user.id)
-                      .map(cs => {
-                        const course = courses.find(c => c.id === cs.courseId);
-                        return course ? (
-                          <span key={`${cs.courseId}-${cs.studentId}`} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                            {getCourseDisplayName(course)}
-                          </span>
-                        ) : null;
-                      })}
-                    {courseStudents.filter(cs => cs.studentId === user.id).length === 0 && (
-                      <span className="text-xs text-gray-500 italic">No courses</span>
-                    )}
-                  </div>
-                </td>
+                <td className="px-6 py-4 whitespace-nowrap">{renderCourseBadges(user)}</td>
               )}
               <td className="px-6 py-4 whitespace-nowrap">
                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -113,26 +172,35 @@ export function UsersView({
     </div>
   );
 
+  const renderUserList = (userList: User[], showCoursesColumn: boolean = true) => (
+    <>
+      {renderUserCards(userList, showCoursesColumn)}
+      {renderUserTable(userList, showCoursesColumn)}
+    </>
+  );
+
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-        <button
-          onClick={() => onEditUser()}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Add User</span>
-        </button>
-      </div>
+      <PageHeader
+        title="User Management"
+        action={
+          <button
+            onClick={() => onEditUser()}
+            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add User</span>
+          </button>
+        }
+      />
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-800">Unassigned</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Unassigned</h3>
           <span className="text-sm text-gray-500">{unassignedUsers.length} users</span>
         </div>
         {unassignedUsers.length > 0 ? (
-          renderUserTable(unassignedUsers, false)
+          renderUserList(unassignedUsers, false)
         ) : (
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
             <p className="text-gray-500">No unassigned users found</p>
@@ -142,11 +210,11 @@ export function UsersView({
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-800">Staff</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Staff</h3>
           <span className="text-sm text-gray-500">{staffUsers.length} users</span>
         </div>
         {staffUsers.length > 0 ? (
-          renderUserTable(staffUsers, false)
+          renderUserList(staffUsers, false)
         ) : (
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
             <p className="text-gray-500">No staff users found</p>
@@ -156,11 +224,11 @@ export function UsersView({
 
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-xl font-semibold text-gray-800">Students</h3>
+          <h3 className="text-lg sm:text-xl font-semibold text-gray-800">Students</h3>
           <span className="text-sm text-gray-500">{studentUsers.length} users</span>
         </div>
         {studentUsers.length > 0 ? (
-          renderUserTable(studentUsers, true)
+          renderUserList(studentUsers, true)
         ) : (
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center">
             <p className="text-gray-500">No students found</p>
