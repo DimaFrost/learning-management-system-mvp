@@ -35,8 +35,11 @@ export function useAuth() {
 
   useEffect(() => {
     let cancelled = false;
+    let hasLoadedUser = false;
 
-    const loadProfile = (userId: string) => {
+    const loadProfile = (userId: string, options?: { showLoading?: boolean }) => {
+      if (options?.showLoading) setLoading(true);
+
       setTimeout(async () => {
         if (cancelled) return;
         try {
@@ -44,6 +47,7 @@ export function useAuth() {
           if (cancelled) return;
           setCurrentUser(profile);
           setError(null);
+          hasLoadedUser = true;
         } catch (err) {
           if (cancelled) return;
           setError('Failed to load user profile');
@@ -72,14 +76,27 @@ export function useAuth() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, session) => {
-      if (event === 'INITIAL_SESSION') return;
+      if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') return;
 
-      if (session?.user) {
-        setLoading(true);
-        loadProfile(session.user.id);
-      } else {
+      if (event === 'SIGNED_OUT' || !session?.user) {
+        hasLoadedUser = false;
         setCurrentUser(null);
         setLoading(false);
+        return;
+      }
+
+      if (event === 'USER_UPDATED') {
+        loadProfile(session.user.id);
+        return;
+      }
+
+      if (event === 'SIGNED_IN') {
+        loadProfile(session.user.id, { showLoading: !hasLoadedUser });
+        return;
+      }
+
+      if (!hasLoadedUser) {
+        loadProfile(session.user.id, { showLoading: true });
       }
     });
 

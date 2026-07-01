@@ -7,7 +7,7 @@ import { AuthenticatedApp } from './AuthenticatedApp';
 const LearningManagementSystem = () => {
   const { currentUser, loading: authLoading, error, signInWithGoogle, signOut, refetchProfile } = useAuth();
 
-  if (authLoading) {
+  if (authLoading && !currentUser) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <LoadingSpinner />
