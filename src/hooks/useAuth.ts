@@ -2,10 +2,30 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
 
-interface AuthState {
-  currentUser: User | null;
-  loading: boolean;
-  error: string | null;
+async function fetchProfileFromDb(userId: string): Promise<User> {
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', userId)
+    .single();
+
+  if (error) throw error;
+
+  return {
+    id: data.id,
+    name: data.name,
+    email: data.email,
+    roles: data.roles,
+    firstName: data.first_name ?? '',
+    lastName: data.last_name ?? '',
+    avatarUrl: data.avatar_url ?? null,
+    notificationPreferences: data.notification_preferences ?? {
+      announcements: true,
+      roleChange: true,
+      enrollment: true,
+      messages: true,
+    },
+  };
 }
 
 export function useAuth() {
@@ -14,72 +34,69 @@ export function useAuth() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    let cancelled = false;
+
+    const loadProfile = (userId: string) => {
+      setTimeout(async () => {
+        if (cancelled) return;
+        try {
+          const profile = await fetchProfileFromDb(userId);
+          if (cancelled) return;
+          setCurrentUser(profile);
+          setError(null);
+        } catch (err) {
+          if (cancelled) return;
+          setError('Failed to load user profile');
+          console.error(err);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      }, 0);
+    };
+
+    supabase.auth
+      .getSession()
+      .then(({ data: { session } }) => {
+        if (cancelled) return;
+        if (session?.user) {
+          loadProfile(session.user.id);
+        } else {
+          setLoading(false);
+        }
+      })
+      .catch((err) => {
+        console.error(err);
+        if (!cancelled) setLoading(false);
+      });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'INITIAL_SESSION') return;
+
       if (session?.user) {
-        fetchProfile(session.user.id);
+        setLoading(true);
+        loadProfile(session.user.id);
       } else {
+        setCurrentUser(null);
         setLoading(false);
       }
     });
 
-    // Listen for auth state changes (login, logout, token refresh)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          await fetchProfile(session.user.id);
-        } else {
-          setCurrentUser(null);
-          setLoading(false);
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
+    return () => {
+      cancelled = true;
+      subscription.unsubscribe();
+    };
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    console.log('Fetching profile for userId:', userId);
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single();
-
-      if (error) throw error;
-
-      setCurrentUser({
-        id: data.id,
-        name: data.name,
-        email: data.email,
-        roles: data.roles,
-        firstName: data.first_name ?? '',
-        lastName: data.last_name ?? '',
-        avatarUrl: data.avatar_url ?? null,
-        notificationPreferences: data.notification_preferences ?? {
-          announcements: true,
-          roleChange: true,
-          enrollment: true,
-          messages: true,
-        },
-      });
-    } catch (err) {
-      setError('Failed to load user profile');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const signInWithGoogle = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const { error: signInError } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: window.location.origin,
       },
     });
-    if (error) setError(error.message);
+    if (signInError) setError(signInError.message);
   };
 
   const signOut = async () => {
@@ -88,8 +105,14 @@ export function useAuth() {
   };
 
   const refetchProfile = useCallback(async () => {
-    if (currentUser) {
-      await fetchProfile(currentUser.id);
+    if (!currentUser) return;
+    try {
+      const profile = await fetchProfileFromDb(currentUser.id);
+      setCurrentUser(profile);
+      setError(null);
+    } catch (err) {
+      setError('Failed to load user profile');
+      console.error(err);
     }
   }, [currentUser]);
 
