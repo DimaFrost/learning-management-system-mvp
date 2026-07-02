@@ -80,7 +80,7 @@ export function CurriculumPlanningView({
     if (!result.success) return;
 
     setSuccessMessage(
-      `Created ${result.createdCount} classes, updated ${result.updatedCount} classes`
+      `Created ${result.createdCount} sessions, updated ${result.updatedCount} sessions`
     );
     const fresh = await onRefetchCourses();
     const entry = findAcademicYearEntry(fresh, activeYearLabel);

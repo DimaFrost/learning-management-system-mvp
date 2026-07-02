@@ -331,7 +331,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
     showConfirmation(
       'Delete Course',
-      `Are you sure you want to delete "${getCourseDisplayName(course)}"? This will also delete all subjects and classes within this course. This action cannot be undone.`,
+      `Are you sure you want to delete "${getCourseDisplayName(course)}"? This will also delete all subjects and sessions within this course. This action cannot be undone.`,
       'Delete Course',
       async () => {
         setError(null);
@@ -379,7 +379,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
         for (let i = 1; i <= duration; i++) {
           classRows.push({
             subject_id: newSubject.id,
-            title: `${title} - Class ${i}`,
+            title: `${title} - Session ${i}`,
             date: getNextClassDate(startDate, i - 1),
             hour: i % 2 === 1 ? 'first' : 'second',
             teacher_id: primaryTeacherId,
@@ -436,7 +436,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
     showConfirmation(
       'Delete Subject',
-      `Are you sure you want to delete "${subject.title}" from "${getCourseDisplayName(course)}"? This will also delete all classes within this subject. This action cannot be undone.`,
+      `Are you sure you want to delete "${subject.title}" from "${getCourseDisplayName(course)}"? This will also delete all sessions within this subject. This action cannot be undone.`,
       'Delete Subject',
       async () => {
         setError(null);
@@ -486,7 +486,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('addClass error:', err);
-      setError('Failed to add class');
+      setError('Failed to add session');
     }
   }, [courses, refetchCourses]);
 
@@ -502,7 +502,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('updateClass error:', err);
-      setError('Failed to update class');
+      setError('Failed to update session');
     }
   }, [refetchCourses]);
 
@@ -513,9 +513,9 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     if (!course || !subject || !classToDelete) return;
 
     showConfirmation(
-      'Delete Class',
+      'Delete Session',
       `Are you sure you want to delete "${classToDelete.title}" from "${subject.title}"? This action cannot be undone.`,
-      'Delete Class',
+      'Delete Session',
       async () => {
         setError(null);
         try {
@@ -528,7 +528,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           await refetchCourses();
         } catch (err) {
           console.error('deleteClass error:', err);
-          setError('Failed to delete class');
+          setError('Failed to delete session');
         }
       }
     );
@@ -543,7 +543,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     const subject = course?.subjects.find(s => s.id === subjectId);
     const cls = subject?.classes.find(c => c.id === classId);
     if (!course || !subject || !cls) {
-      return { ok: false, error: 'Class not found' };
+      return { ok: false, error: 'Session not found' };
     }
 
     setError(null);

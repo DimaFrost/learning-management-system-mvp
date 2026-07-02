@@ -62,7 +62,7 @@ export function Sidebar({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['administrator'] },
     { id: 'curriculum', label: 'Curriculum', icon: BookOpen, roles: ['administrator'] },
     { id: 'users', label: 'Users', icon: Users, roles: ['administrator'] },
-    { id: 'my-classes', label: 'My Classes', icon: Calendar, roles: ['teacher', 'translator'] },
+    { id: 'my-classes', label: 'My Sessions', icon: Calendar, roles: ['teacher', 'translator'] },
     { id: 'mentorship', label: 'Mentorship', icon: UserCheck, roles: ['administrator'] },
     { id: 'mentorship-management', label: 'Mentorship Management', icon: TrendingUp, roles: ['administrator'] },
     { id: 'attendance', label: 'Attendance', icon: ClipboardList, roles: ['administrator'] },

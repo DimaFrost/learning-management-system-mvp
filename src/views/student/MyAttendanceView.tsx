@@ -348,7 +348,7 @@ export function MyAttendanceView({
               </tr>
             </thead>
             <tbody>
-            <SectionHeaderRow label="Classes" colSpan={colSpan} />
+            <SectionHeaderRow label="Sessions" colSpan={colSpan} />
             <DataRow
               label="Absences + Late"
               total={tableData.totalClassAbsencesLate}

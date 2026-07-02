@@ -414,7 +414,7 @@ export function DutyMarkingView({
       <div className="space-y-4">
         {dutyTimeline.length === 0 ? (
           <div className="bg-white rounded-lg shadow border border-gray-200 p-6 text-center text-gray-500">
-            No classes scheduled this week.
+            No sessions scheduled this week.
           </div>
         ) : (
           dutyTimeline.map(item => {

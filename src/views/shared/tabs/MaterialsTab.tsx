@@ -191,7 +191,7 @@ export function MaterialsTab({
     <div className="space-y-8">
       <section className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-6">
         <h3 className="text-lg font-semibold text-gray-900">
-          Class Notes &amp; Materials
+          Session Notes &amp; Materials
         </h3>
 
         <div>

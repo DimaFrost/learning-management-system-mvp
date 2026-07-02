@@ -269,7 +269,7 @@ export function EditModal({
     switch (editingItem.type) {
       case 'course': return `${action} Course`;
       case 'subject': return `${action} Subject`;
-      case 'class': return `${action} Class`;
+      case 'class': return `${action} Session`;
       case 'user': return `${action} User`;
       default: return 'Edit Item';
     }

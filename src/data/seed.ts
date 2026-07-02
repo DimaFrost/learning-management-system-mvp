@@ -50,14 +50,14 @@ export const initialCourses: Course[] = [
         duration: 7,
         primaryTeacherId: 'user-2',
         classes: [
-          { id: 1, date: '2024-09-03', hour: 'first', teacherId: 'user-2', translatorId: 'user-3', title: 'HTML Basics - Class 1' },
-          { id: 2, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-3', title: 'CSS Introduction - Class 2' },
-          { id: 3, date: '2024-09-10', hour: 'first', teacherId: 'user-7', translatorId: 'user-3', title: 'JavaScript Fundamentals - Class 3' },
-          { id: 4, date: '2024-09-10', hour: 'second', teacherId: 'user-8', translatorId: 'user-7', title: 'React Basics - Class 4' },
-          { id: 5, date: '2024-09-17', hour: 'first', teacherId: 'user-2', translatorId: 'user-7', title: 'Advanced CSS - Class 5' },
-          { id: 6, date: '2024-09-17', hour: 'second', teacherId: 'user-7', translatorId: 'user-3', title: 'Node.js Backend - Class 6' },
-          { id: 7, date: '2024-09-24', hour: 'both', teacherId: 'user-8', translatorId: 'user-3', title: 'Database Design - Class 7' },
-          { id: 8, date: '2024-09-24', hour: 'second', teacherId: null, translatorId: null, title: 'Final Project - Class 8' }
+          { id: 1, date: '2024-09-03', hour: 'first', teacherId: 'user-2', translatorId: 'user-3', title: 'HTML Basics - Session 1' },
+          { id: 2, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-3', title: 'CSS Introduction - Session 2' },
+          { id: 3, date: '2024-09-10', hour: 'first', teacherId: 'user-7', translatorId: 'user-3', title: 'JavaScript Fundamentals - Session 3' },
+          { id: 4, date: '2024-09-10', hour: 'second', teacherId: 'user-8', translatorId: 'user-7', title: 'React Basics - Session 4' },
+          { id: 5, date: '2024-09-17', hour: 'first', teacherId: 'user-2', translatorId: 'user-7', title: 'Advanced CSS - Session 5' },
+          { id: 6, date: '2024-09-17', hour: 'second', teacherId: 'user-7', translatorId: 'user-3', title: 'Node.js Backend - Session 6' },
+          { id: 7, date: '2024-09-24', hour: 'both', teacherId: 'user-8', translatorId: 'user-3', title: 'Database Design - Session 7' },
+          { id: 8, date: '2024-09-24', hour: 'second', teacherId: null, translatorId: null, title: 'Final Project - Session 8' }
         ]
       }
     ]
@@ -78,10 +78,10 @@ export const initialCourses: Course[] = [
         duration: 4,
         primaryTeacherId: 'user-7',
         classes: [
-          { id: 8, date: '2024-09-03', hour: 'first', teacherId: 'user-7', translatorId: 'user-3', title: 'Python Introduction - Class 1' },
-          { id: 9, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-7', title: 'Data Types - Class 2' },
-          { id: 10, date: '2024-09-10', hour: 'first', teacherId: 'user-8', translatorId: 'user-3', title: 'Functions - Class 3' },
-          { id: 11, date: '2024-09-10', hour: 'second', teacherId: 'user-7', translatorId: 'user-3', title: 'Modules - Class 4' }
+          { id: 8, date: '2024-09-03', hour: 'first', teacherId: 'user-7', translatorId: 'user-3', title: 'Python Introduction - Session 1' },
+          { id: 9, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-7', title: 'Data Types - Session 2' },
+          { id: 10, date: '2024-09-10', hour: 'first', teacherId: 'user-8', translatorId: 'user-3', title: 'Functions - Session 3' },
+          { id: 11, date: '2024-09-10', hour: 'second', teacherId: 'user-7', translatorId: 'user-3', title: 'Modules - Session 4' }
         ]
       }
     ]
@@ -102,9 +102,9 @@ export const initialCourses: Course[] = [
         duration: 3,
         primaryTeacherId: 'user-8',
         classes: [
-          { id: 12, date: '2024-09-03', hour: 'first', teacherId: 'user-8', translatorId: 'user-7', title: 'Advanced React - Class 1' },
-          { id: 13, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-3', title: 'Node.js Advanced - Class 2' },
-          { id: 14, date: '2024-09-10', hour: 'first', teacherId: 'user-7', translatorId: 'user-8', title: 'Database Optimization - Class 3' }
+          { id: 12, date: '2024-09-03', hour: 'first', teacherId: 'user-8', translatorId: 'user-7', title: 'Advanced React - Session 1' },
+          { id: 13, date: '2024-09-03', hour: 'second', teacherId: 'user-2', translatorId: 'user-3', title: 'Node.js Advanced - Session 2' },
+          { id: 14, date: '2024-09-10', hour: 'first', teacherId: 'user-7', translatorId: 'user-8', title: 'Database Optimization - Session 3' }
         ]
       }
     ]
@@ -128,7 +128,7 @@ export const initialMentorshipLogs: MentorshipLog[] = [
     notes: 'Initial check-in, discussed goals and expectations',
     duration: 30,
     topics: ['goal setting', 'course expectations'],
-    nextSteps: 'Review HTML basics before next class',
+    nextSteps: 'Review HTML basics before next session',
     studentProgress: 'good'
   },
   {

@@ -202,7 +202,7 @@ export function ClassDetailView({
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-amber-900">
-              Google Drive folders are not set up for this class.
+              Google Drive folders are not set up for this session.
             </p>
             <p className="text-sm text-amber-800 mt-1">
               File uploads (materials, staff notes, homework) require Drive folders.
@@ -237,7 +237,7 @@ export function ClassDetailView({
         tabs={tabs.filter(tab => tab.visible)}
         activeTab={activeTab}
         onTabChange={id => setActiveTab(id as TabId)}
-        ariaLabel="Class tabs"
+        ariaLabel="Session tabs"
         activeClassName="border-amber-600 text-amber-700"
         inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
       />

@@ -79,7 +79,7 @@ export function CurriculumOverview({
                   </span>
                   {isCourseCollapsed && (
                     <p className="text-xs text-gray-500 mt-1">
-                      {totalSubjects} subjects • {totalClasses} classes
+                      {totalSubjects} subjects • {totalClasses} sessions
                     </p>
                   )}
                 </div>
@@ -138,11 +138,11 @@ export function CurriculumOverview({
                               currentUser={currentUser}
                             />
                             <p className="text-xs text-gray-500 mt-1">
-                              Start: {subject.startDate} • {subject.duration} classes • Lead Teacher: {getUserById(subject.primaryTeacherId)?.name}
+                              Start: {subject.startDate} • {subject.duration} sessions • Lead Teacher: {getUserById(subject.primaryTeacherId)?.name}
                             </p>
                             {isSubjectCollapsed && (
                               <p className="text-xs text-gray-500 mt-1">
-                                {subjectClassCount} classes
+                                {subjectClassCount} sessions
                               </p>
                             )}
                           </div>
@@ -166,13 +166,13 @@ export function CurriculumOverview({
                       {!isSubjectCollapsed && (
                         <div className="mt-3">
                           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2 mb-2">
-                            <h6 className="text-sm font-medium text-gray-700">Classes</h6>
+                            <h6 className="text-sm font-medium text-gray-700">Sessions</h6>
                             <button
                               onClick={() => onEditClass(course.id, subject.id)}
                               className="text-blue-600 hover:text-blue-800 text-xs flex items-center space-x-1"
                             >
                               <Plus className="w-3 h-3" />
-                              <span>Add Class</span>
+                              <span>Add Session</span>
                             </button>
                           </div>
                           <div className="space-y-2">
@@ -244,7 +244,7 @@ export function CurriculumOverview({
                                       <button
                                         onClick={() => onOpenClass(cls.id, subject.id, course.id)}
                                         className="p-1 text-gray-400 hover:text-amber-600"
-                                        title="Open class"
+                                        title="Open session"
                                       >
                                         <Eye className="w-3 h-3" />
                                       </button>

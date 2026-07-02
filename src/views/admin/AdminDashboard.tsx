@@ -132,7 +132,7 @@ export function AdminDashboard({ courses, users, courseStudents, mentorshipLogs 
         <div className="space-y-3">
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
             <Calendar className="w-4 h-4 text-blue-600" />
-            <span className="text-sm text-gray-600">New class scheduled for HTML Basics</span>
+            <span className="text-sm text-gray-600">New session scheduled for HTML Basics</span>
             <span className="text-xs text-gray-400 ml-auto">2 hours ago</span>
           </div>
           <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">

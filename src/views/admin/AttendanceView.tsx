@@ -223,7 +223,7 @@ function StudentDetailModal({
 
   const rows = [
     {
-      category: 'Classes',
+      category: 'Sessions',
       total: String(summary.totalClasses),
       present: String(summary.classesPresent),
       late: String(summary.classesLate),
@@ -298,7 +298,7 @@ function StudentDetailModal({
                     <td className="py-2.5 px-2 text-gray-700">{row.late}</td>
                     <td className="py-2.5 px-2 text-gray-700">{row.absent}</td>
                     <td className={`py-2.5 px-2 ${scoreCellClass(
-                      row.category === 'Classes' ? summary.classAttendanceScore
+                      row.category === 'Sessions' ? summary.classAttendanceScore
                         : row.category === 'Activation Saturdays' ? summary.saturdayAttendanceScore
                           : row.category === 'The Well' ? summary.theWellScore
                             : summary.sundayScore,
@@ -935,7 +935,7 @@ export function AttendanceView({
             <table className="min-w-full divide-y divide-gray-200 text-sm">
               <thead className="bg-gray-50">
                 <tr>
-                  {['Student', 'Classes %', 'Saturdays %', 'The Well %', 'Sunday %', 'Overall %', 'Status'].map(col => (
+                  {['Student', 'Sessions %', 'Saturdays %', 'The Well %', 'Sunday %', 'Overall %', 'Status'].map(col => (
                     <th key={col} className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       {col}
                     </th>
@@ -1258,7 +1258,7 @@ export function AttendanceView({
             <div className="space-y-4">
               <div>
                 <label htmlFor="late-class" className="block text-sm text-gray-700 mb-1">
-                  Being late for a regular class counts as (× attendance)
+                  Being late for a regular session counts as (× attendance)
                 </label>
                 <input
                   id="late-class"
@@ -1374,7 +1374,7 @@ export function AttendanceView({
           </div>
 
           <p className="text-sm text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-3">
-            Students need {settingsDraft.graduationPercent}% overall. Being late for a class counts as{' '}
+            Students need {settingsDraft.graduationPercent}% overall. Being late for a session counts as{' '}
             {Math.round(settingsDraft.lateClassWeight * 100)}% of a session. Being late for The Well counts as{' '}
             {Math.round(settingsDraft.lateWellWeight * 100)}% of a visit.
           </p>

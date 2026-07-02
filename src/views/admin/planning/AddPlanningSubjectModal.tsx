@@ -62,7 +62,7 @@ export function AddPlanningSubjectModal({
     if (!title.trim()) newErrors.title = 'Title is required';
     if (!startDate) newErrors.startDate = 'Start date is required';
     if (!duration || duration < 1) {
-      newErrors.duration = 'Number of classes must be at least 1';
+      newErrors.duration = 'Number of sessions must be at least 1';
     }
     if (courseSide === 'firstYear' && !canPickFirstYear) {
       newErrors.courseSide = 'First Year course is not available';
@@ -166,7 +166,7 @@ export function AddPlanningSubjectModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Classes
+              Number of Sessions
             </label>
             <input
               type="number"

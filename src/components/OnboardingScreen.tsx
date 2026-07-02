@@ -91,7 +91,7 @@ export function OnboardingScreen({ userName, onSignOut }: OnboardingScreenProps)
               <h3 className="text-lg font-semibold text-gray-900 mb-3">About The Burning Ones</h3>
               <p className="text-gray-600 leading-relaxed">
                 The Burning Ones is a structured Bible school program run by Zoe Church Sofia.
-                Classes meet every Tuesday and Thursday from 7:00 PM to 9:00 PM, with one Saturday
+                Sessions meet every Tuesday and Thursday from 7:00 PM to 9:00 PM, with one Saturday
                 per month from 10:00 AM to 3:00 PM, and twice-monthly attendance at &quot;The Well&quot;.
               </p>
             </div>

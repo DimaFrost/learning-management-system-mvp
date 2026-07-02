@@ -114,7 +114,7 @@ export function MyClassesView({
               onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
               className="text-sm text-amber-700 hover:text-amber-900 font-medium"
             >
-              Open Class
+              Open Session
             </button>
           </div>
         </div>
@@ -126,7 +126,7 @@ export function MyClassesView({
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">
-          My Classes
+          My Sessions
         </h2>
         <div className="text-sm text-gray-600">
           {upcomingClasses.length} upcoming • {pastClasses.length} past
@@ -145,7 +145,7 @@ export function MyClassesView({
               className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${upcomingExpanded ? 'rotate-180' : ''}`}
             />
             <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-            Upcoming Classes ({upcomingClasses.length})
+            Upcoming Sessions ({upcomingClasses.length})
           </button>
           {upcomingExpanded && (
             <div className="space-y-4">
@@ -169,7 +169,7 @@ export function MyClassesView({
               className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${pastExpanded ? 'rotate-180' : ''}`}
             />
             <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-            Past Classes ({pastClasses.length})
+            Past Sessions ({pastClasses.length})
           </button>
           {pastExpanded && (
             <div className="space-y-4">
@@ -184,7 +184,7 @@ export function MyClassesView({
       {myClasses.length === 0 && (
         <div className="text-center py-12">
           <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No classes assigned yet.</p>
+          <p className="text-gray-500">No sessions assigned yet.</p>
         </div>
       )}
     </div>

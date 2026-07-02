@@ -39,7 +39,7 @@ export function sortClassesByDate(classes: Class[]): Class[] {
 
 // Returns the class title appropriate for the viewer's role:
 // - Staff (admin, teacher, translator, mentor): the real class title
-// - Students: "[Subject Name] - Class X" where X is the 1-based
+// - Students: "[Subject Name] - Session X" where X is the 1-based
 //   position of this class within its subject, sorted by date
 export function getClassDisplayTitle(
   cls: Class,
@@ -62,7 +62,7 @@ export function getClassDisplayTitle(
   const index = sorted.findIndex(c => c.id === cls.id);
   const classNumber = index === -1 ? '?' : index + 1;
 
-  return `${subject.title} - Class ${classNumber}`;
+  return `${subject.title} - Session ${classNumber}`;
 }
 
 export interface AcademicYearEntry {

@@ -525,7 +525,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     if (!title) return { ok: false, error: 'Title is required.' };
     if (!params.startDate) return { ok: false, error: 'Start date is required.' };
     if (!params.duration || params.duration < 1) {
-      return { ok: false, error: 'Number of classes must be at least 1.' };
+      return { ok: false, error: 'Number of sessions must be at least 1.' };
     }
 
     const firstKey: PlanningSlotKey =
@@ -537,7 +537,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     for (let i = 0; i < params.duration; i++) {
       const date = getNextClassDate(params.startDate, i, breaks);
       if (!date) {
-        return { ok: false, error: 'Could not schedule all classes from the start date.' };
+        return { ok: false, error: 'Could not schedule all sessions from the start date.' };
       }
       placements.push({
         date,

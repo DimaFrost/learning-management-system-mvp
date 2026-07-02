@@ -67,7 +67,7 @@ export function CurriculumDateView({
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">Schedule by Date</h3>
         <div className="text-sm text-gray-600">
-          {sortedDates.length} days with classes • {allClasses.length} total classes
+          {sortedDates.length} days with sessions • {allClasses.length} total sessions
         </div>
       </div>
 
@@ -88,7 +88,7 @@ export function CurriculumDateView({
                       <p className="text-sm text-gray-600">{dateInfo.monthDay}, {dateInfo.year}</p>
                     </div>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {totalClasses} {totalClasses === 1 ? 'class' : 'classes'}
+                      {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
                     </span>
                   </div>
                   <button
@@ -96,7 +96,7 @@ export function CurriculumDateView({
                     className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 flex items-center space-x-1 text-sm"
                   >
                     <Plus className="w-3 h-3" />
-                    <span>Add Class</span>
+                    <span>Add Session</span>
                   </button>
                 </div>
 
@@ -117,7 +117,7 @@ export function CurriculumDateView({
                       <div key={courseName}>
                         <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
                           <BookOpen className="w-4 h-4 mr-2 text-blue-600" />
-                          {courseName} ({courseClasses.length} {courseClasses.length === 1 ? 'class' : 'classes'})
+                          {courseName} ({courseClasses.length} {courseClasses.length === 1 ? 'session' : 'sessions'})
                         </h5>
                         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                           {courseClasses.map(cls => {
@@ -169,21 +169,21 @@ export function CurriculumDateView({
                                     <button
                                       onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
                                       className="p-1 text-gray-400 hover:text-amber-600"
-                                      title="Open class"
+                                      title="Open session"
                                     >
                                       <Eye className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
                                       className="p-1 text-gray-400 hover:text-blue-600"
-                                      title="Edit class"
+                                      title="Edit session"
                                     >
                                       <Edit3 className="w-4 h-4" />
                                     </button>
                                     <button
                                       onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
                                       className="p-1 text-gray-400 hover:text-red-600"
-                                      title="Delete class"
+                                      title="Delete session"
                                     >
                                       <Trash2 className="w-4 h-4" />
                                     </button>
@@ -231,7 +231,7 @@ export function CurriculumDateView({
       ) : (
         <div className="text-center py-12">
           <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No classes scheduled yet.</p>
+          <p className="text-gray-500">No sessions scheduled yet.</p>
         </div>
       )}
     </div>

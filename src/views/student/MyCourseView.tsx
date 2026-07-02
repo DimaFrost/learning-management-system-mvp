@@ -90,7 +90,7 @@ function ActiveHomeworkCard({
         onClick={handleOpenClass}
         className="text-sm text-amber-700 hover:text-amber-900 font-medium shrink-0"
       >
-        Open Class
+        Open Session
       </button>
     </div>
   );
@@ -188,7 +188,7 @@ export function MyCourseView({
                   </p>
 
                   <div className="space-y-2">
-                    <h5 className="font-medium text-gray-900">Classes</h5>
+                    <h5 className="font-medium text-gray-900">Sessions</h5>
                     {subject.classes.map((cls: Class) => (
                       <div key={cls.id} className="flex items-center justify-between bg-gray-50 p-3 rounded">
                         <div className="flex items-center space-x-3">

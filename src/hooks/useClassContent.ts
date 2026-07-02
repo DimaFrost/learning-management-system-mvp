@@ -64,7 +64,7 @@ export function useClassContent(
         createdAt: row.created_at,
       })));
     } catch (err) {
-      setError('Failed to load class content');
+      setError('Failed to load session content');
       console.error(err);
     } finally {
       setLoading(false);
@@ -176,7 +176,7 @@ export function useClassContent(
       const courseId = ctx?.course.id ?? null;
       const classInfo = ctx
         ? `${ctx.subject.title} — ${ctx.class.title}`
-        : 'your class';
+        : 'your session';
       const fileList = fileNames.map(f => `• ${f}`).join('\n');
       const title = `New Materials: ${classInfo}`;
       const content = `New materials have been uploaded for ${classInfo}.\n\n${fileList}`;

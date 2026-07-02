@@ -174,7 +174,7 @@ export function useHomework(
         const courseId = ctx?.course.id ?? null;
         const classInfo = ctx
           ? `${ctx.subject.title} — ${ctx.class.title}`
-          : 'your class';
+          : 'your session';
 
         let content = `A new homework assignment has been posted for ${classInfo}.`;
         if (data.dueDate) {

@@ -73,7 +73,7 @@ export function EditSubjectForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Number of Classes</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">Number of Sessions</label>
         <input
           type="number"
           value={formData.duration || ''}
@@ -83,7 +83,7 @@ export function EditSubjectForm({
           min="1"
           max="20"
         />
-        <p className="text-xs text-gray-500 mt-1">This will pre-create the specified number of classes</p>
+        <p className="text-xs text-gray-500 mt-1">This will pre-create the specified number of sessions</p>
       </div>
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Primary Teacher</label>

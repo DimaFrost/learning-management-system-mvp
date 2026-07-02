@@ -307,7 +307,7 @@ function RemoveCell({ row, rowSpan, onRemoveRow }: RemoveCellProps) {
   const handleRemove = () => {
     if (rowHasExistingClass(row)) {
       const ok = window.confirm(
-        'This row contains saved classes. Remove anyway?'
+        'This row contains saved sessions. Remove anyway?'
       );
       if (!ok) return;
     }
@@ -1255,7 +1255,7 @@ export function PlanningCalendarGrid({
             </tr>
             <tr className="bg-gray-50">
               <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-blue-50/50">
-                Class
+                Session
               </th>
               <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-blue-50/50">
                 Teacher
@@ -1264,7 +1264,7 @@ export function PlanningCalendarGrid({
                 Translator
               </th>
               <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-emerald-50/50">
-                Class
+                Session
               </th>
               <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-emerald-50/50">
                 Teacher
