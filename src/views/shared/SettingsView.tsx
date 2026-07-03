@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import type { User } from '../../types/lms';
 import { useSettings } from '../../hooks/useSettings';
+import { hasRole } from '../../utils/userUtils';
 import { AvatarCropModal } from '../../components/modals/AvatarCropModal';
 import { Save, Bell, User as UserIcon, Camera } from 'lucide-react';
 
@@ -86,6 +87,7 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [filePickError, setFilePickError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const canEditName = hasRole(currentUser, 'administrator');
 
   useEffect(() => {
     setFirstName(currentUser.firstName);
@@ -136,7 +138,8 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
               type="text"
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              disabled={!canEditName}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
             />
           </div>
           <div>
@@ -148,10 +151,17 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
               type="text"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+              disabled={!canEditName}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
             />
           </div>
         </div>
+
+        {!canEditName && (
+          <p className="text-xs text-gray-500">
+            Name can only be changed by an administrator.
+          </p>
+        )}
 
         <div>
           <p className="block text-sm font-medium text-gray-700 mb-1">Email</p>
@@ -227,15 +237,17 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => updateProfile({ firstName, lastName })}
-          disabled={saving}
-          className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 disabled:opacity-50"
-        >
-          <Save className="w-4 h-4" />
-          <span>{saving ? 'Saving...' : 'Save'}</span>
-        </button>
+        {canEditName && (
+          <button
+            type="button"
+            onClick={() => updateProfile({ firstName, lastName })}
+            disabled={saving}
+            className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 disabled:opacity-50"
+          >
+            <Save className="w-4 h-4" />
+            <span>{saving ? 'Saving...' : 'Save'}</span>
+          </button>
+        )}
       </div>
 
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-4">

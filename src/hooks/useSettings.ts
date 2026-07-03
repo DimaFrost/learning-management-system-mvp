@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
+import { hasRole } from '../utils/userUtils';
 
 interface UpdateProfileData {
   firstName: string;
@@ -22,6 +23,11 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
   const updateProfile = async (data: UpdateProfileData) => {
     setSaving(true);
     setError(null);
+    if (!hasRole(currentUser, 'administrator')) {
+      setSaving(false);
+      setError('Name can only be changed by an administrator.');
+      return;
+    }
     const fullName = `${data.firstName} ${data.lastName}`.trim();
     const { error } = await supabase
       .from('profiles')
