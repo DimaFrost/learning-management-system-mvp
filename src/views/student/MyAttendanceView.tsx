@@ -334,98 +334,102 @@ export function MyAttendanceView({
         <p className="text-sm text-gray-600">{getCourseDisplayName(selectedCourse)}</p>
       )}
 
-      <ResponsiveTable scrollHint={false}>
-        <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
-          <table className="min-w-full text-sm">
-            <thead>
-              <tr className="border-b border-gray-200 bg-gray-50">
-                <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
-                  Category
-                </th>
-                <th className="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                  Total
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-            <SectionHeaderRow label="Sessions" colSpan={colSpan} />
-            <DataRow
-              label="Absences + Late"
-              total={tableData.totalClassAbsencesLate}
-              cellClass={absenceCellClass(
-                tableData.totalClassAbsencesLate,
-                tableData.totalClassAllowed
-              )}
-            />
-            <DataRow
-              label="Allowed"
-              total={tableData.totalClassAllowed}
-            />
+      <div className="flex flex-col lg:flex-row lg:items-start gap-6">
+        <div className="flex-1 min-w-0">
+          <ResponsiveTable scrollHint={false}>
+            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
+              <table className="min-w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-200 bg-gray-50">
+                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
+                      Category
+                    </th>
+                    <th className="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
+                      Total
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                <SectionHeaderRow label="Sessions" colSpan={colSpan} />
+                <DataRow
+                  label="Absences + Late"
+                  total={tableData.totalClassAbsencesLate}
+                  cellClass={absenceCellClass(
+                    tableData.totalClassAbsencesLate,
+                    tableData.totalClassAllowed
+                  )}
+                />
+                <DataRow
+                  label="Allowed"
+                  total={tableData.totalClassAllowed}
+                />
 
-            <SectionHeaderRow label="The Well" colSpan={colSpan} />
-            <DataRow
-              label="Attendance"
-              total={tableData.totalWellAttendance}
-              cellClass={attendanceCellClass(
-                tableData.totalWellAttendance,
-                tableData.totalWellReq
-              )}
-            />
-            <DataRow
-              label="Required"
-              total={tableData.totalWellReq}
-            />
+                <SectionHeaderRow label="The Well" colSpan={colSpan} />
+                <DataRow
+                  label="Attendance"
+                  total={tableData.totalWellAttendance}
+                  cellClass={attendanceCellClass(
+                    tableData.totalWellAttendance,
+                    tableData.totalWellReq
+                  )}
+                />
+                <DataRow
+                  label="Required"
+                  total={tableData.totalWellReq}
+                />
 
-            <SectionHeaderRow label="Activation Saturday" colSpan={colSpan} />
-            <DataRow
-              label="Absences + Late"
-              total={tableData.totalSatAbsencesLate}
-              cellClass={absenceCellClass(
-                tableData.totalSatAbsencesLate,
-                tableData.totalSatAllowed
-              )}
-            />
-            <DataRow
-              label="Allowed"
-              total={tableData.totalSatAllowed}
-            />
+                <SectionHeaderRow label="Activation Saturday" colSpan={colSpan} />
+                <DataRow
+                  label="Absences + Late"
+                  total={tableData.totalSatAbsencesLate}
+                  cellClass={absenceCellClass(
+                    tableData.totalSatAbsencesLate,
+                    tableData.totalSatAllowed
+                  )}
+                />
+                <DataRow
+                  label="Allowed"
+                  total={tableData.totalSatAllowed}
+                />
 
-            <SectionHeaderRow label="Sunday" colSpan={colSpan} />
-            <DataRow
-              label="Attendance"
-              total={tableData.totalSundayAtt}
-              cellClass={attendanceCellClass(
-                tableData.totalSundayAtt,
-                tableData.totalSundayReq
-              )}
-            />
-            <DataRow
-              label="Required"
-              total={tableData.totalSundayReq}
-            />
-          </tbody>
-        </table>
+                <SectionHeaderRow label="Sunday" colSpan={colSpan} />
+                <DataRow
+                  label="Attendance"
+                  total={tableData.totalSundayAtt}
+                  cellClass={attendanceCellClass(
+                    tableData.totalSundayAtt,
+                    tableData.totalSundayReq
+                  )}
+                />
+                <DataRow
+                  label="Required"
+                  total={tableData.totalSundayReq}
+                />
+              </tbody>
+            </table>
 
-        {tableData.monthCount === 0 && (
-          <p className="px-4 py-8 text-center text-gray-500">
-            No attendance data recorded yet.
-          </p>
-        )}
+            {tableData.monthCount === 0 && (
+              <p className="px-4 py-8 text-center text-gray-500">
+                No attendance data recorded yet.
+              </p>
+            )}
+            </div>
+          </ResponsiveTable>
         </div>
-      </ResponsiveTable>
 
-      <div className={`rounded-lg border p-6 ${status.cardClass}`}>
-        <p className="text-sm font-medium text-gray-600 mb-1">Overall Attendance</p>
-        <p className="text-4xl font-bold text-gray-900 mb-2">
-          {formatPercent(tableData.overallScore)}
-        </p>
-        <p className={`text-lg font-semibold mb-3 ${status.className}`}>
-          {status.label}
-        </p>
-        <p className="text-sm text-gray-700">
-          You need {Math.round(settings.graduationThreshold * 100)}% to graduate.
-          Your current score is {formatPercent(tableData.overallScore)}.
-        </p>
+        <div className={`rounded-lg border p-6 shrink-0 w-full lg:w-72 xl:w-80 ${status.cardClass}`}>
+          <p className="text-sm font-medium text-gray-600 mb-1">Overall Attendance</p>
+          <p className="text-4xl font-bold text-gray-900 mb-2">
+            {formatPercent(tableData.overallScore)}
+          </p>
+          <p className={`text-lg font-semibold mb-3 ${status.className}`}>
+            {status.label}
+          </p>
+          <p className="text-sm text-gray-700">
+            You need {Math.round(settings.graduationThreshold * 100)}% to graduate.
+            Your current score is {formatPercent(tableData.overallScore)}.
+          </p>
+        </div>
       </div>
     </div>
   );
