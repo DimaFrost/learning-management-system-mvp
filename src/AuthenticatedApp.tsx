@@ -178,7 +178,7 @@ export function AuthenticatedApp({
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
 
   return (
-    <div className="min-h-screen bg-gray-100 flex flex-col">
+    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
       <Header
         currentUser={effectiveUser}
         onSignOut={onSignOut}

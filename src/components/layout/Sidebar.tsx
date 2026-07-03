@@ -53,6 +53,10 @@ export function Sidebar({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [mobileOpen, onMobileClose]);
 
+  useEffect(() => {
+    setIsHovering(false);
+  }, [mode]);
+
   const universalMenuItems = [
     { id: 'announcements', label: 'Announcements', icon: Megaphone },
     { id: 'messages', label: 'Messages', icon: MessageSquare },
@@ -238,25 +242,28 @@ export function Sidebar({
 
   const desktopSidebar =
     mode === 'locked' ? (
-      <div className="relative w-64 h-full flex-shrink-0 overflow-hidden bg-gray-50 border-r border-gray-200 flex flex-col">
+      <div className="relative w-64 flex-1 min-h-0 flex-shrink-0 overflow-hidden bg-gray-50 border-r border-gray-200 flex flex-col">
         {renderNavContent(false)}
       </div>
     ) : (
-      <div className="relative w-16 flex-shrink-0 h-full">
-        <div
-          className={`absolute left-0 top-0 h-full flex flex-col overflow-hidden bg-gray-50 border-r border-gray-200 transition-[width,box-shadow] duration-200 ${
-            isHovering ? 'w-64 shadow-xl z-30' : 'w-16'
-          }`}
-          onMouseEnter={() => setIsHovering(true)}
-          onMouseLeave={() => setIsHovering(false)}
-        >
+      <div
+        className="relative w-16 min-w-16 flex-shrink-0 self-stretch flex flex-col bg-gray-50 border-r border-gray-200"
+        onMouseEnter={() => setIsHovering(true)}
+        onMouseLeave={() => setIsHovering(false)}
+      >
+        <div className={`flex flex-1 min-h-0 flex-col overflow-hidden ${isHovering ? 'invisible' : ''}`}>
           {renderNavContent(false)}
         </div>
+        {isHovering && (
+          <div className="absolute inset-y-0 left-0 w-64 z-50 flex flex-col overflow-hidden bg-gray-50 border-r border-gray-200 shadow-xl">
+            {renderNavContent(false)}
+          </div>
+        )}
       </div>
     );
 
   return (
-    <>
+    <div className="flex flex-col flex-shrink-0 self-stretch min-h-0">
       {/* Mobile drawer */}
       {mobileOpen && (
         <div className="lg:hidden fixed inset-0 z-40">
@@ -273,7 +280,7 @@ export function Sidebar({
       )}
 
       {/* Desktop sidebar */}
-      <div className="hidden lg:block h-full flex-shrink-0">{desktopSidebar}</div>
-    </>
+      <div className="hidden lg:flex lg:flex-col flex-1 min-h-0 min-w-16 relative z-40 isolation-isolate">{desktopSidebar}</div>
+    </div>
   );
 }
