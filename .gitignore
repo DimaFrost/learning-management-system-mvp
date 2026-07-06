@@ -11,6 +11,7 @@ build/
 # Environment variables
 .env
 .env.local
+.env.mcp.local
 .env.development.local
 .env.test.local
 .env.production.local
@@ -33,6 +34,9 @@ Thumbs.db
 # Logs
 logs
 *.log
+
+# Local design references
+DESIGN (3).md
 
 # Runtime data
 pids

@@ -8,7 +8,9 @@
     "start": "npx create-react-app . --template typescript && npm start",
     "dev": "npx vite",
     "build": "npx vite build",
-    "preview": "npx vite preview"
+    "preview": "npx vite preview",
+    "mcp:supabase": "node scripts/supabase-mcp.mjs",
+    "db:schema:sync": "node scripts/sync-database-schema.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.108.1",

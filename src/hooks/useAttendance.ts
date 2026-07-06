@@ -28,6 +28,7 @@ import {
   calculateOverallScore,
   aggregateWellSessionsForMonth,
   getYearMonthFromWeekStart,
+  isActivationSaturdayClass,
 } from '../utils/attendanceUtils';
 
 type SupabaseProfileJoin = { id: string; name: string } | { id: string; name: string }[] | null;
@@ -498,10 +499,10 @@ export function useAttendance(
       .map(cs => cs.studentId);
 
     const regularClasses = course.subjects.flatMap(s =>
-      s.classes.filter(c => c.date && c.hour !== 'both')
+      s.classes.filter(c => c.date && !isActivationSaturdayClass(c))
     );
     const saturdayClasses = course.subjects.flatMap(s =>
-      s.classes.filter(c => c.date && c.hour === 'both')
+      s.classes.filter(c => isActivationSaturdayClass(c))
     );
 
     return enrolledIds.map(studentId => {

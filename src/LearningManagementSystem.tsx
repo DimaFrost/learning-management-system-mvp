@@ -9,7 +9,8 @@ const LearningManagementSystem = () => {
 
   if (authLoading && !currentUser) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-4">
+        <div className="absolute inset-0 tbo-dot-grid opacity-60" aria-hidden="true" />
         <LoadingSpinner />
       </div>
     );

@@ -17,11 +17,11 @@ import type {
   Subject,
 } from '../../types/lms';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
-import { sortByFirstName, getWellDateForWeek } from '../../utils/attendanceUtils';
+import { sortByFirstName, getWellDateForWeek, isActivationSaturdayClass } from '../../utils/attendanceUtils';
 
 interface DutyMarkingViewProps {
   currentUser: User;
-  myCurrentDuty: DutyScheduleEntry;
+  currentDuties: DutyScheduleEntry[];
   courses: Course[];
   courseStudents: CourseStudent[];
   users: User[];
@@ -67,14 +67,15 @@ function formatClassDate(dateStr: string): string {
   });
 }
 
-function formatHourLabel(hour: Class['hour']): string {
-  switch (hour) {
+function formatSessionType(cls: Class): string {
+  if (isActivationSaturdayClass(cls)) return 'Activation Saturday';
+  switch (cls.hour) {
     case 'first':
       return 'First Hour';
     case 'second':
       return 'Second Hour';
     case 'both':
-      return 'Activation Saturday';
+      return 'Joint Session';
   }
 }
 
@@ -165,7 +166,7 @@ function buildDutyTimeline(
 
 export function DutyMarkingView({
   currentUser,
-  myCurrentDuty,
+  currentDuties,
   courses,
   courseStudents,
   users,
@@ -186,16 +187,28 @@ export function DutyMarkingView({
   const [wellDrafts, setWellDrafts] = useState<Record<string, AttendanceStatus>>({});
   const [savingWell, setSavingWell] = useState(false);
   const [wellSaved, setWellSaved] = useState(false);
+  const [selectedDutyId, setSelectedDutyId] = useState(currentDuties[0]?.id ?? 0);
 
-  const dutyCourse = courses.find(c => c.id === myCurrentDuty.courseId);
+  useEffect(() => {
+    if (currentDuties.length === 0) return;
+    if (!currentDuties.some(duty => duty.id === selectedDutyId)) {
+      setSelectedDutyId(currentDuties[0].id);
+    }
+  }, [currentDuties, selectedDutyId]);
+
+  const selectedDuty = currentDuties.find(duty => duty.id === selectedDutyId) ?? currentDuties[0];
+  const dutyCourse = selectedDuty
+    ? courses.find(c => c.id === selectedDuty.courseId)
+    : undefined;
 
   const enrolledStudents = useMemo(() => {
+    if (!selectedDuty) return [];
     const enrolledIds = courseStudents
-      .filter(cs => cs.courseId === myCurrentDuty.courseId)
+      .filter(cs => cs.courseId === selectedDuty.courseId)
       .map(cs => cs.studentId);
     const enrolledUsers = users.filter(u => enrolledIds.includes(u.id));
     return sortByFirstName(enrolledUsers);
-  }, [courseStudents, myCurrentDuty.courseId, users]);
+  }, [courseStudents, selectedDuty, users]);
 
   const transferCandidates = useMemo(
     () => enrolledStudents.filter(s => s.id !== currentUser.id),
@@ -203,8 +216,8 @@ export function DutyMarkingView({
   );
 
   const classesThisWeek = useMemo(() => {
-    if (!dutyCourse) return [];
-    const { weekStart, weekEnd } = myCurrentDuty;
+    if (!dutyCourse || !selectedDuty) return [];
+    const { weekStart, weekEnd } = selectedDuty;
     return dutyCourse.subjects
       .flatMap((subject: Subject) =>
         subject.classes
@@ -216,7 +229,7 @@ export function DutyMarkingView({
         if (dateCmp !== 0) return dateCmp;
         return HOUR_ORDER[a.cls.hour] - HOUR_ORDER[b.cls.hour];
       });
-  }, [dutyCourse, myCurrentDuty]);
+  }, [dutyCourse, selectedDuty]);
 
   const showWell = useMemo(
     () =>
@@ -226,8 +239,10 @@ export function DutyMarkingView({
   );
 
   const dutyTimeline = useMemo(
-    () => buildDutyTimeline(classesThisWeek, myCurrentDuty.weekStart, showWell),
-    [classesThisWeek, myCurrentDuty.weekStart, showWell]
+    () => selectedDuty
+      ? buildDutyTimeline(classesThisWeek, selectedDuty.weekStart, showWell)
+      : [],
+    [classesThisWeek, selectedDuty, showWell]
   );
 
   useEffect(() => {
@@ -237,17 +252,17 @@ export function DutyMarkingView({
   }, [classesThisWeek, enrolledStudents, classAttendance]);
 
   useEffect(() => {
-    if (!dutyCourse) return;
+    if (!dutyCourse || !selectedDuty) return;
     setWellDrafts(
       buildWellDrafts(
         enrolledStudents,
         theWellSessionAttendance,
         dutyCourse.id,
-        myCurrentDuty.weekStart
+        selectedDuty.weekStart
       )
     );
     setWellSaved(false);
-  }, [enrolledStudents, theWellSessionAttendance, dutyCourse, myCurrentDuty.weekStart]);
+  }, [enrolledStudents, theWellSessionAttendance, dutyCourse, selectedDuty]);
 
   const handleClassStatusChange = useCallback(
     (classId: number, studentId: string, status: AttendanceStatus) => {
@@ -289,7 +304,7 @@ export function DutyMarkingView({
   };
 
   const handleSaveWell = async () => {
-    if (!dutyCourse) return;
+    if (!dutyCourse || !selectedDuty) return;
     setSavingWell(true);
     try {
       const records = enrolledStudents.map(s => ({
@@ -297,7 +312,7 @@ export function DutyMarkingView({
         status: wellDrafts[s.id] ?? 'absent',
       }));
       await onMarkWellSessionAttendance(
-        myCurrentDuty.weekStart,
+        selectedDuty.weekStart,
         dutyCourse.id,
         records
       );
@@ -308,11 +323,11 @@ export function DutyMarkingView({
   };
 
   const handleSendTransfer = async () => {
-    if (!toStudentId) return;
+    if (!toStudentId || !selectedDuty) return;
     setSubmittingTransfer(true);
     try {
       await onRequestTransfer({
-        dutyScheduleId: myCurrentDuty.id,
+        dutyScheduleId: selectedDuty.id,
         toStudentId,
         reason: transferReason.trim() || undefined,
       });
@@ -370,7 +385,7 @@ export function DutyMarkingView({
     </div>
   );
 
-  if (!dutyCourse) {
+  if (!selectedDuty || !dutyCourse) {
     return (
       <div className="text-center py-12">
         <p className="text-gray-500">Course not found for this duty assignment.</p>
@@ -394,20 +409,41 @@ export function DutyMarkingView({
           <div>
             <h2 className="text-xl sm:text-2xl font-bold text-gray-900">On Duty This Week 🎓</h2>
             <p className="text-gray-600 mt-1">
-              Week of {formatWeekDate(myCurrentDuty.weekStart)} – {formatWeekDate(myCurrentDuty.weekEnd)}
+              Week of {formatWeekDate(selectedDuty.weekStart)} – {formatWeekDate(selectedDuty.weekEnd)}
             </p>
             <p className="text-sm font-medium text-amber-700 mt-2">
               {getCourseDisplayName(dutyCourse)}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => setTransferOpen(true)}
-            className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium transition-colors"
-          >
-            <ArrowLeftRight className="w-4 h-4" />
-            Transfer Duty
-          </button>
+          <div className="flex w-full flex-col gap-2 sm:w-auto sm:items-end">
+            {currentDuties.length > 1 && (
+              <label className="w-full sm:w-64">
+                <span className="mb-1 block text-xs font-medium text-gray-500">Duty assignment</span>
+                <select
+                  value={selectedDuty.id}
+                  onChange={event => setSelectedDutyId(Number(event.target.value))}
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-amber-500 focus:ring-amber-500"
+                >
+                  {currentDuties.map(duty => {
+                    const course = courses.find(c => c.id === duty.courseId);
+                    return (
+                      <option key={duty.id} value={duty.id}>
+                        {course ? getCourseDisplayName(course) : `Course ${duty.courseId}`}
+                      </option>
+                    );
+                  })}
+                </select>
+              </label>
+            )}
+            <button
+              type="button"
+              onClick={() => setTransferOpen(true)}
+              className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 text-sm font-medium transition-colors"
+            >
+              <ArrowLeftRight className="w-4 h-4" />
+              Transfer Duty
+            </button>
+          </div>
         </div>
       </div>
 
@@ -445,7 +481,7 @@ export function DutyMarkingView({
                           {formatClassDate(cls.date)}
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">
-                          {formatHourLabel(cls.hour)}
+                          {formatSessionType(cls)}
                         </span>
                       </div>
                     </div>
@@ -478,7 +514,7 @@ export function DutyMarkingView({
             }
 
             const isSaved = wellHasSavedAttendance(
-              myCurrentDuty.weekStart,
+              selectedDuty.weekStart,
               dutyCourse.id,
               enrolledStudents,
               theWellSessionAttendance,

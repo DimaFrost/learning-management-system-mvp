@@ -13,6 +13,7 @@ import type {
   DutyScheduleEntry,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
+import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
 import { MyCourseView } from './student/MyCourseView';
 import { MyAttendanceView } from './student/MyAttendanceView';
@@ -51,6 +52,7 @@ export interface AppRouterProps {
   ) => Promise<{ ok: boolean; error?: string }>;
   showConfirmation: ShowConfirmation;
   hasRole: (role: string) => boolean;
+  activeWorkspace: WorkspaceId | null;
   activeCurriculumTab: string;
   onCurriculumTabChange: (tab: string) => void;
   currentUser: User;
@@ -121,18 +123,20 @@ export interface AppRouterProps {
   onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
   attendance: ReturnType<typeof useAttendance>;
-  effectiveMyCurrentDuty?: DutyScheduleEntry;
+  effectiveCurrentDuties: DutyScheduleEntry[];
   nextScheduledDuty?: DutyScheduleEntry;
 }
 
 export function AppRouter({
   activeView,
+  setActiveView,
   selectedClassId,
   openClassDetail,
   closeClassDetail,
   provisionClassDriveFolders,
   showConfirmation,
   hasRole,
+  activeWorkspace,
   activeCurriculumTab,
   onCurriculumTabChange,
   currentUser,
@@ -181,7 +185,7 @@ export function AppRouter({
   onAddCourse,
   onRefetchCourses,
   attendance,
-  effectiveMyCurrentDuty,
+  effectiveCurrentDuties,
   nextScheduledDuty,
 }: AppRouterProps) {
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
@@ -290,11 +294,11 @@ export function AppRouter({
   }
 
   if (activeView === 'on-duty') {
-    if (effectiveMyCurrentDuty) {
+    if (effectiveCurrentDuties.length > 0) {
       return (
         <DutyMarkingView
           currentUser={currentUser}
-          myCurrentDuty={effectiveMyCurrentDuty}
+          currentDuties={effectiveCurrentDuties}
           courses={courses}
           courseStudents={courseStudents}
           users={users}
@@ -411,8 +415,21 @@ export function AppRouter({
           />
         );
       case 'attendance':
+      case 'attendance-overview':
+      case 'attendance-sunday':
+      case 'attendance-duty':
+      case 'attendance-settings':
         return (
           <AttendanceView
+            activeSection={
+              activeView === 'attendance-sunday'
+                ? 'sunday'
+                : activeView === 'attendance-duty'
+                  ? 'duty'
+                  : activeView === 'attendance-settings'
+                    ? 'settings'
+                    : 'overview'
+            }
             courses={courses}
             courseStudents={courseStudents}
             users={users}
@@ -439,6 +456,13 @@ export function AppRouter({
             users={users}
             courseStudents={courseStudents}
             mentorshipLogs={mentorshipLogs}
+            announcements={announcements}
+            conversations={conversations}
+            attendance={attendance}
+            currentUser={currentUser}
+            activeWorkspace={activeWorkspace}
+            getCourseDisplayName={getCourseDisplayName}
+            onNavigate={setActiveView}
           />
         );
     }
@@ -502,6 +526,13 @@ export function AppRouter({
         users={users}
         courseStudents={courseStudents}
         mentorshipLogs={mentorshipLogs}
+        announcements={announcements}
+        conversations={conversations}
+        attendance={attendance}
+        currentUser={currentUser}
+        activeWorkspace={activeWorkspace}
+        getCourseDisplayName={getCourseDisplayName}
+        onNavigate={setActiveView}
       />
     );
   }

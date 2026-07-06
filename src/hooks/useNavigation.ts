@@ -1,7 +1,7 @@
 import { useState } from 'react';
 
 export function useNavigation() {
-  const [activeView, setActiveView] = useState('announcements');
+  const [activeView, setActiveView] = useState('dashboard');
   const [activeCurriculumTab, setActiveCurriculumTab] = useState('overview');
   const [selectedClassId, setSelectedClassId] = useState<number | null>(null);
   const [selectedSubjectId, setSelectedSubjectId] = useState<number | null>(null);

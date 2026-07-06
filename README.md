@@ -33,6 +33,26 @@ A complete, testable Learning Management System built with React and TypeScript,
 
 ## Quick Start
 
+### Manual Supabase Connection
+
+This app connects to Supabase through local Vite environment variables, so you do
+not need to log in to the Supabase account from this workspace.
+
+1. Copy `.env.example` to `.env.local` if `.env.local` does not already exist.
+2. In the Supabase project you want to use, copy:
+   - Project URL
+   - Anon/public API key, or the newer publishable key
+3. Paste them into `.env.local`:
+
+```bash
+VITE_SUPABASE_URL=https://your-project-ref.supabase.co
+VITE_SUPABASE_ANON_KEY=your-public-anon-or-publishable-key
+```
+
+Only use a browser-safe anon/public/publishable key in `.env.local`. Do not put a
+`service_role` key in any `VITE_*` variable because Vite exposes those values to
+the frontend.
+
 ### Option 1: Direct HTML Test
 1. Open `index.html` in your browser
 2. The application will load with all functionality available

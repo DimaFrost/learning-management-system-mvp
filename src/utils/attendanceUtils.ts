@@ -191,6 +191,11 @@ export function formatMonthYear(year: number, month: number): string {
   });
 }
 
+export function isActivationSaturdayClass(cls: Pick<Class, 'date' | 'hour'>): boolean {
+  if (cls.hour !== 'both' || !cls.date) return false;
+  return new Date(`${cls.date}T00:00:00`).getDay() === 6;
+}
+
 function localDateToString(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, '0');

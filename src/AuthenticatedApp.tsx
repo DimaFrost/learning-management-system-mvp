@@ -23,6 +23,12 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
 import { DevRolePanel } from './components/dev/DevRolePanel';
+import {
+  WORKSPACE_DEFAULT_VIEW,
+  getAvailableWorkspaces,
+  isWorkspaceId,
+  type WorkspaceId,
+} from './types/workspace';
 
 interface AuthenticatedAppProps {
   currentUser: User;
@@ -93,12 +99,12 @@ export function AuthenticatedApp({
   );
 
   const currentWeekStart = getCurrentWeekStart();
-  const effectiveMyCurrentDuty = attendance.dutySchedule.find(
+  const effectiveCurrentDuties = attendance.dutySchedule.filter(
     d => d.weekStart === currentWeekStart
       && d.status === 'active'
       && d.studentId === effectiveUser.id
   );
-  const effectiveIsOnDuty = !!effectiveMyCurrentDuty;
+  const effectiveIsOnDuty = effectiveCurrentDuties.length > 0;
   const nextScheduledDuty = attendance.dutySchedule
     .filter(
       d => d.studentId === effectiveUser.id
@@ -124,17 +130,40 @@ export function AuthenticatedApp({
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
-  const [sidebarMode, setSidebarMode] = useState<'locked' | 'auto-hide'>(
-    () => (localStorage.getItem('tbo-sidebar-mode') as 'locked' | 'auto-hide') ?? 'locked'
-  );
+  const [sidebarMode, setSidebarMode] = useState<'locked' | 'collapsed'>(() => {
+    const storedMode = localStorage.getItem('tbo-sidebar-mode');
+    return storedMode === 'collapsed' || storedMode === 'auto-hide' ? 'collapsed' : 'locked';
+  });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceId | null>(() => {
+    const storedWorkspace = localStorage.getItem('tbo-active-workspace');
+    return isWorkspaceId(storedWorkspace) ? storedWorkspace : null;
+  });
+  const availableWorkspaces = getAvailableWorkspaces(effectiveUser.roles);
+  const selectedWorkspace =
+    activeWorkspace && availableWorkspaces.includes(activeWorkspace)
+      ? activeWorkspace
+      : availableWorkspaces[0] ?? null;
 
   useEffect(() => {
     localStorage.setItem('tbo-sidebar-mode', sidebarMode);
   }, [sidebarMode]);
 
+  useEffect(() => {
+    if (!selectedWorkspace) return;
+    localStorage.setItem('tbo-active-workspace', selectedWorkspace);
+    if (activeWorkspace !== selectedWorkspace) {
+      setActiveWorkspace(selectedWorkspace);
+    }
+  }, [activeWorkspace, selectedWorkspace]);
+
   const toggleSidebarMode = () => {
-    setSidebarMode(prev => (prev === 'locked' ? 'auto-hide' : 'locked'));
+    setSidebarMode(prev => (prev === 'locked' ? 'collapsed' : 'locked'));
+  };
+
+  const handleWorkspaceChange = (workspace: WorkspaceId) => {
+    setActiveWorkspace(workspace);
+    setActiveView(WORKSPACE_DEFAULT_VIEW[workspace]);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -161,7 +190,8 @@ export function AuthenticatedApp({
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-4">
+        <div className="absolute inset-0 tbo-dot-grid opacity-60" aria-hidden="true" />
         <LoadingSpinner message="Loading school data..." />
       </div>
     );
@@ -169,7 +199,8 @@ export function AuthenticatedApp({
 
   if (globalError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4">
+      <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-4">
+        <div className="absolute inset-0 tbo-dot-grid opacity-60" aria-hidden="true" />
         <ErrorMessage message={globalError} />
       </div>
     );
@@ -178,12 +209,15 @@ export function AuthenticatedApp({
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
 
   return (
-    <div className="h-screen bg-gray-100 flex flex-col overflow-hidden">
+    <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#171717]">
       <Header
         currentUser={effectiveUser}
         onSignOut={onSignOut}
         isDev={currentUser.roles.includes('dev')}
         previewRoles={previewRoles}
+        activeWorkspace={selectedWorkspace}
+        availableWorkspaces={availableWorkspaces}
+        onWorkspaceChange={handleWorkspaceChange}
         onOpenDevPanel={() => setShowDevPanel(true)}
         onOpenMobileMenu={() => setMobileNavOpen(true)}
       />
@@ -194,73 +228,77 @@ export function AuthenticatedApp({
           hasRole={hasRole}
           totalUnread={totalUnread}
           isOnDuty={effectiveIsOnDuty}
+          activeWorkspace={selectedWorkspace}
           mode={sidebarMode}
           onToggleMode={toggleSidebarMode}
           mobileOpen={mobileNavOpen}
           onMobileClose={() => setMobileNavOpen(false)}
         />
-        <main className="flex-1 min-w-0 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <AppRouter
-            activeView={activeView}
-            setActiveView={setActiveView}
-            selectedClassId={selectedClassId}
-            previousView={previousView}
-            openClassDetail={openClassDetail}
-            closeClassDetail={closeClassDetail}
-            provisionClassDriveFolders={provisionClassDriveFolders}
-            showConfirmation={showConfirmation}
-            hasRole={hasRole}
-            activeCurriculumTab={activeCurriculumTab}
-            onCurriculumTabChange={setActiveCurriculumTab}
-            currentUser={effectiveUser}
-            courses={courses}
-            users={users}
-            courseStudents={courseStudents}
-            mentorshipLogs={mentorshipLogs}
-            cadenceSettings={cadenceSettings}
-            setCadenceSettings={setCadenceSettings}
-            collapsedCourses={collapsedCourses}
-            collapsedSubjects={collapsedSubjects}
-            toggleCourseCollapse={toggleCourseCollapse}
-            toggleSubjectCollapse={toggleSubjectCollapse}
-            getUserById={getUserById}
-            getCourseDisplayName={getCourseDisplayName}
-            checkDoubleBooking={checkDoubleBooking}
-            setEditingItem={setEditingItem}
-            deleteCourse={deleteCourse}
-            deleteSubject={deleteSubject}
-            deleteClass={deleteClass}
-            addClass={addClass}
-            updateClass={updateClass}
-            deleteUser={handleDeleteUser}
-            updateCourse={updateCourse}
-            setCourseStudents={setCourseStudents}
-            assignUserToCourse={assignUserToCourse}
-            announcements={announcements}
-            announcementsLoading={announcementsLoading}
-            addAnnouncement={addAnnouncement}
-            updateAnnouncement={updateAnnouncement}
-            deleteAnnouncement={handleDeleteAnnouncement}
-            togglePin={togglePin}
-            addComment={addComment}
-            deleteComment={deleteComment}
-            addAttachment={addAttachment}
-            deleteAttachment={deleteAttachment}
-            onProfileUpdated={onRefetchProfile}
-            conversations={conversations}
-            messagesLoading={messagesLoading}
-            messagesSending={sending}
-            messagesError={messagesError}
-            sendMessage={sendMessage}
-            markConversationAsRead={markConversationAsRead}
-            deleteMessage={deleteMessage}
-            messagesCurrentUser={currentUser}
-            onAddCourse={addCourse}
-            onRefetchCourses={refetchCourses}
-            attendance={attendance}
-            effectiveMyCurrentDuty={effectiveMyCurrentDuty}
-            nextScheduledDuty={nextScheduledDuty}
-          />
+        <main className="flex-1 min-w-0 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
+          <div className="tbo-page">
+            <AppRouter
+              activeView={activeView}
+              setActiveView={setActiveView}
+              selectedClassId={selectedClassId}
+              previousView={previousView}
+              openClassDetail={openClassDetail}
+              closeClassDetail={closeClassDetail}
+              provisionClassDriveFolders={provisionClassDriveFolders}
+              showConfirmation={showConfirmation}
+              hasRole={hasRole}
+              activeWorkspace={selectedWorkspace}
+              activeCurriculumTab={activeCurriculumTab}
+              onCurriculumTabChange={setActiveCurriculumTab}
+              currentUser={effectiveUser}
+              courses={courses}
+              users={users}
+              courseStudents={courseStudents}
+              mentorshipLogs={mentorshipLogs}
+              cadenceSettings={cadenceSettings}
+              setCadenceSettings={setCadenceSettings}
+              collapsedCourses={collapsedCourses}
+              collapsedSubjects={collapsedSubjects}
+              toggleCourseCollapse={toggleCourseCollapse}
+              toggleSubjectCollapse={toggleSubjectCollapse}
+              getUserById={getUserById}
+              getCourseDisplayName={getCourseDisplayName}
+              checkDoubleBooking={checkDoubleBooking}
+              setEditingItem={setEditingItem}
+              deleteCourse={deleteCourse}
+              deleteSubject={deleteSubject}
+              deleteClass={deleteClass}
+              addClass={addClass}
+              updateClass={updateClass}
+              deleteUser={handleDeleteUser}
+              updateCourse={updateCourse}
+              setCourseStudents={setCourseStudents}
+              assignUserToCourse={assignUserToCourse}
+              announcements={announcements}
+              announcementsLoading={announcementsLoading}
+              addAnnouncement={addAnnouncement}
+              updateAnnouncement={updateAnnouncement}
+              deleteAnnouncement={handleDeleteAnnouncement}
+              togglePin={togglePin}
+              addComment={addComment}
+              deleteComment={deleteComment}
+              addAttachment={addAttachment}
+              deleteAttachment={deleteAttachment}
+              onProfileUpdated={onRefetchProfile}
+              conversations={conversations}
+              messagesLoading={messagesLoading}
+              messagesSending={sending}
+              messagesError={messagesError}
+              sendMessage={sendMessage}
+              markConversationAsRead={markConversationAsRead}
+              deleteMessage={deleteMessage}
+              messagesCurrentUser={currentUser}
+              onAddCourse={addCourse}
+              onRefetchCourses={refetchCourses}
+              attendance={attendance}
+              effectiveCurrentDuties={effectiveCurrentDuties}
+              nextScheduledDuty={nextScheduledDuty}
+            />
+          </div>
         </main>
       </div>
       <EditModal

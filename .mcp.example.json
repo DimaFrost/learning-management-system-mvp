@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "tbo-supabase": {
+      "command": "node",
+      "args": ["scripts/supabase-mcp.mjs"],
+      "cwd": "C:\\devapps\\theburningones"
+    }
+  }
+}

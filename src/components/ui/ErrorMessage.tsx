@@ -5,13 +5,13 @@ interface ErrorMessageProps {
 
 export function ErrorMessage({ message, onRetry }: ErrorMessageProps) {
   return (
-    <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-red-700">
-      <p className="text-sm">{message}</p>
+    <div className="tbo-card max-w-lg px-4 py-3">
+      <p className="text-sm font-medium text-red-700">{message}</p>
       {onRetry && (
         <button
           type="button"
           onClick={onRetry}
-          className="mt-3 px-3 py-1.5 text-sm font-medium bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"
+          className="tbo-button-primary mt-3 px-4 py-2 text-sm font-semibold transition-colors"
         >
           Try again
         </button>
