@@ -12,14 +12,14 @@ export function PageHeader({ title, eyebrow, description, action }: PageHeaderPr
     <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div className="min-w-0 space-y-2">
         {eyebrow && (
-          <p className="tbo-pill bg-white text-[#2563eb] ring-1 ring-[#e5e5e5]">
+          <p className="tbo-pill bg-white text-[#373734] ring-1 ring-[#e7e6e1]">
             {eyebrow}
           </p>
         )}
         <div className="space-y-1">
-          <h2 className="tbo-display text-2xl leading-tight text-[#171717] sm:text-3xl">{title}</h2>
+          <h2 className="font-serif text-[30px] font-normal leading-[1.2] text-[#121212] sm:text-[36px]">{title}</h2>
           {description && (
-            <p className="max-w-2xl text-sm leading-6 text-[#737373] sm:text-base">{description}</p>
+            <p className="max-w-2xl text-sm leading-6 text-[#7b7974] sm:text-base">{description}</p>
           )}
         </div>
       </div>

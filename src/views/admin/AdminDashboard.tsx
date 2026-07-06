@@ -132,17 +132,24 @@ type MetricInsight = {
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toneClasses = {
-  blue: 'bg-[#dbeaff] text-[#2563eb]',
-  orange: 'bg-[#fff7ed] text-[#ea580c]',
-  green: 'bg-[#dcfce7] text-[#16a34a]',
-  violet: 'bg-[#f3e8ff] text-[#7c3aed]',
+  blue: 'bg-[#efeeeb] text-[#121212]',
+  orange: 'bg-[#fff6f0] text-[#d97757]',
+  green: 'bg-[#efeeeb] text-[#373734]',
+  violet: 'bg-[#efeeeb] text-[#121212]',
 };
 
 const toneBars = {
-  blue: 'bg-[#2563eb]',
-  orange: 'bg-[#ea580c]',
-  green: 'bg-[#16a34a]',
-  violet: 'bg-[#7c3aed]',
+  blue: 'bg-[#121212]',
+  orange: 'bg-[#d97757]',
+  green: 'bg-[#373734]',
+  violet: 'bg-[#121212]',
+};
+
+const toneInk = {
+  blue: '#121212',
+  orange: '#d97757',
+  green: '#373734',
+  violet: '#121212',
 };
 
 function startOfToday() {
@@ -313,7 +320,7 @@ function getInitials(name: string) {
 function PersonAvatar({ person }: { person: UpcomingPerson }) {
   return (
     <span
-      className="group relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-white bg-[#f5f5f5] text-[10px] font-semibold text-[#525252] shadow-[0_0_0_1px_rgba(229,229,229,0.9)]"
+      className="group relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-white bg-[#efeeeb] text-[10px] font-semibold text-[#373734] shadow-[0_0_0_1px_rgba(231,230,225,0.9)]"
       title={`${person.role}: ${person.name}`}
     >
       {person.avatarUrl ? (
@@ -429,17 +436,17 @@ function MiniMetric({
     <>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
-          <p className="mt-2 text-3xl font-semibold leading-none text-[#171717]">{value}</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">{label}</p>
+          <p className="mt-2 font-serif text-3xl font-normal leading-none text-[#121212]">{value}</p>
         </div>
-        <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${toneClasses[tone]}`}>
+        <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ring-1 ring-[#e7e6e1] ${toneClasses[tone]}`}>
           <Icon className="h-4 w-4" />
         </span>
       </div>
-      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#f5f5f5]">
+      <div className="mt-4 h-1.5 overflow-hidden rounded-full bg-[#efeeeb]">
         <div className={`h-full rounded-full ${toneBars[tone]}`} style={{ width: `${progress}%` }} />
       </div>
-      <p className="mt-2 truncate text-xs text-[#737373]">{detail}</p>
+      <p className="mt-2 truncate text-xs text-[#7b7974]">{detail}</p>
     </>
   );
 
@@ -448,7 +455,7 @@ function MiniMetric({
       <button
         type="button"
         onClick={onClick}
-        className="tbo-panel tbo-focus w-full p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]"
+        className="tbo-panel tbo-focus w-full p-4 text-left transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(18,18,18,0.07)]"
       >
         {content}
       </button>
@@ -456,7 +463,7 @@ function MiniMetric({
   }
 
   return (
-    <div className="tbo-panel p-4 transition hover:-translate-y-0.5 hover:shadow-[0_10px_30px_rgba(0,0,0,0.06)]">
+    <div className="tbo-panel p-4 transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(18,18,18,0.07)]">
       {content}
     </div>
   );
@@ -479,10 +486,10 @@ function SectionCard({
 }) {
   return (
     <section className={`tbo-panel flex flex-col overflow-hidden ${className}`}>
-      <div className="flex items-start justify-between gap-3 border-b border-[#e5e5e5] px-4 py-3">
+      <div className="flex items-start justify-between gap-3 border-b border-[#e7e6e1] px-4 py-3">
         <div className="min-w-0">
-          <h3 className="text-sm font-semibold text-[#171717]">{title}</h3>
-          {subtitle && <p className="mt-0.5 text-xs text-[#737373]">{subtitle}</p>}
+          <h3 className="font-serif text-[22px] font-normal leading-tight text-[#121212]">{title}</h3>
+          {subtitle && <p className="mt-0.5 text-xs text-[#7b7974]">{subtitle}</p>}
         </div>
         {action}
       </div>
@@ -502,7 +509,7 @@ function GhostButton({
     <button
       type="button"
       onClick={onClick}
-      className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#f5f5f5]"
+      className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#121212] bg-[#121212] px-3 py-1.5 text-xs font-medium text-[#f8f8f6] hover:bg-[#373734]"
     >
       {children}
       <ArrowUpRight className="h-3.5 w-3.5" />
@@ -529,27 +536,22 @@ function StatusGauge({
   tone: keyof typeof toneClasses;
 }) {
   const safeValue = clampPercent(value);
-  const color = {
-    blue: '#2563eb',
-    orange: '#ea580c',
-    green: '#16a34a',
-    violet: '#7c3aed',
-  }[tone];
+  const color = toneInk[tone];
 
   return (
     <div>
       <div className="flex items-center gap-4">
         <div
           className="grid h-28 w-28 flex-shrink-0 place-items-center rounded-full"
-          style={{ background: `conic-gradient(${color} ${safeValue * 3.6}deg, #f5f5f5 0deg)` }}
+          style={{ background: `conic-gradient(${color} ${safeValue * 3.6}deg, #efeeeb 0deg)` }}
         >
           <div className="grid h-[86px] w-[86px] place-items-center rounded-full bg-white">
-            <span className="text-2xl font-semibold text-[#171717]">{safeValue}%</span>
+            <span className="font-serif text-2xl font-normal text-[#121212]">{safeValue}%</span>
           </div>
         </div>
         <div className="min-w-0">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
-          <div className="mt-1 text-sm font-medium text-[#171717]">{detail}</div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">{label}</p>
+          <div className="mt-1 text-sm font-medium text-[#121212]">{detail}</div>
         </div>
       </div>
       {children}
@@ -573,10 +575,10 @@ function MeterRow({
   return (
     <div>
       <div className="mb-1.5 flex items-center justify-between gap-3">
-        <span className="text-xs font-medium text-[#525252]">{label}</span>
-        <span className="text-xs text-[#737373]">{caption}</span>
+        <span className="text-xs font-medium text-[#373734]">{label}</span>
+        <span className="text-xs text-[#7b7974]">{caption}</span>
       </div>
-      <div className="h-2 overflow-hidden rounded-full bg-[#f5f5f5]">
+      <div className="h-2 overflow-hidden rounded-full bg-[#efeeeb]">
         <div className={`h-full rounded-full ${toneBars[tone]}`} style={{ width: `${safeValue}%` }} />
       </div>
     </div>
@@ -1074,7 +1076,7 @@ export function AdminDashboard({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 text-[#121212]">
       <PageHeader
         title="Dashboard"
         action={
@@ -1085,12 +1087,12 @@ export function AdminDashboard({
       />
 
       <section className="tbo-panel overflow-hidden">
-        <div className="grid gap-px bg-[#e5e5e5] xl:grid-cols-[0.85fr_1.15fr]">
+        <div className="grid gap-px bg-[#e7e6e1] xl:grid-cols-[0.85fr_1.15fr]">
           <div className="flex items-center bg-white p-5">
             <div className="w-full">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">
                     School pulse
                   </p>
                   <button
@@ -1098,16 +1100,16 @@ export function AdminDashboard({
                     onClick={openSignalModal}
                     disabled={signalCount === 0}
                     className={`tbo-focus mt-2 block rounded-lg text-left ${
-                      signalCount > 0 ? 'cursor-pointer hover:bg-[#fafafa]' : 'cursor-default'
+                      signalCount > 0 ? 'cursor-pointer hover:bg-[#efeeeb]' : 'cursor-default'
                     }`}
                   >
                     <span className="flex items-baseline gap-2">
-                      <span className="text-4xl font-semibold leading-none text-[#171717]">{signalCount}</span>
-                      <span className="text-sm font-medium text-[#525252]">
+                      <span className="font-serif text-4xl font-normal leading-none text-[#121212]">{signalCount}</span>
+                      <span className="text-sm font-medium text-[#373734]">
                         {signalCount === 1 ? 'open signal' : 'open signals'}
                       </span>
                     </span>
-                    <span className="mt-1 block text-xs text-[#737373]">
+                    <span className="mt-1 block text-xs text-[#7b7974]">
                       {signalCount === 0 ? 'All clear across tracked operations' : 'Click to review what needs attention'}
                     </span>
                   </button>
@@ -1116,23 +1118,23 @@ export function AdminDashboard({
                   <div
                     className="grid h-20 w-20 place-items-center rounded-full"
                     style={{
-                      background: `conic-gradient(${signalCount > 0 ? '#ea580c' : '#16a34a'} ${schoolPulse * 3.6}deg, #f5f5f5 0deg)`,
+                      background: `conic-gradient(${signalCount > 0 ? '#d97757' : '#121212'} ${schoolPulse * 3.6}deg, #efeeeb 0deg)`,
                     }}
                     title={`School pulse ${schoolPulse}%`}
                   >
                     <div className="grid h-14 w-14 place-items-center rounded-full bg-white">
-                      <span className="text-sm font-semibold text-[#171717]">{schoolPulse}%</span>
+                      <span className="font-serif text-sm font-normal text-[#121212]">{schoolPulse}%</span>
                     </div>
                   </div>
-                  <div className="relative grid h-20 w-11 grid-rows-[16px_1fr_16px] items-center rounded-2xl border border-[#eeeeee] bg-white p-1">
+                  <div className="relative grid h-20 w-11 grid-rows-[16px_1fr_16px] items-center rounded-2xl border border-[#e7e6e1] bg-white p-1">
                     <button
                       type="button"
                       onClick={() => rotateSignalCarousel(-1)}
                       disabled={!canRotateSignals}
                       className={`tbo-focus grid h-full w-full place-items-center rounded-lg transition-colors ${
                         canRotateSignals
-                          ? 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
-                          : 'cursor-default text-[#d4d4d4]'
+                          ? 'text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]'
+                          : 'cursor-default text-[#c8c6bf]'
                       }`}
                       aria-label="Previous signal"
                     >
@@ -1151,14 +1153,14 @@ export function AdminDashboard({
                             disabled={!active}
                             className={`tbo-focus relative flex h-8 w-8 items-center justify-center rounded-xl border transition-colors ${
                               active
-                                ? 'border-[#fed7aa] bg-white shadow-[0_6px_16px_rgba(234,88,12,0.1)] hover:border-[#fdba74] hover:bg-[#fff7ed]'
-                                : 'cursor-default border-[#e5e5e5] bg-white'
+                                ? 'border-[#d97757]/35 bg-white shadow-[0_6px_16px_rgba(217,119,87,0.12)] hover:border-[#d97757]/60 hover:bg-[#fff6f0]'
+                                : 'cursor-default border-[#e7e6e1] bg-white'
                             }`}
                             title={active ? `${item.title}: ${item.count} ${item.detail.toLowerCase()}` : `${item.title}: ${item.clearDetail}`}
                           >
-                            <Icon className={`h-4 w-4 ${active ? toneClasses[item.tone].split(' ')[1] : 'text-[#16a34a]'}`} />
+                            <Icon className={`h-4 w-4 ${active ? toneClasses[item.tone].split(' ')[1] : 'text-[#373734]'}`} />
                             {active && (
-                              <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#ea580c] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
+                              <span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-[#d97757] px-1 text-[10px] font-semibold leading-none text-white ring-2 ring-white">
                                 {item.count > 9 ? '9+' : item.count}
                               </span>
                             )}
@@ -1172,8 +1174,8 @@ export function AdminDashboard({
                       disabled={!canRotateSignals}
                       className={`tbo-focus grid h-full w-full place-items-center rounded-lg transition-colors ${
                         canRotateSignals
-                          ? 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
-                          : 'cursor-default text-[#d4d4d4]'
+                          ? 'text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]'
+                          : 'cursor-default text-[#c8c6bf]'
                       }`}
                       aria-label="Next signal"
                     >
@@ -1186,9 +1188,9 @@ export function AdminDashboard({
                           className={`h-1.5 rounded-full transition-all ${
                             visibleSignalIndexes.has(index)
                               ? item.count > 0
-                                ? 'w-1.5 bg-[#ea580c]'
-                                : 'w-1.5 bg-[#16a34a]'
-                              : 'w-1 bg-[#e5e5e5]'
+                                ? 'w-1.5 bg-[#d97757]'
+                                : 'w-1.5 bg-[#121212]'
+                              : 'w-1 bg-[#e7e6e1]'
                           }`}
                         />
                       ))}
@@ -1202,26 +1204,26 @@ export function AdminDashboard({
           <div className="flex items-center bg-white p-5">
             <div className="w-full">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Today</p>
-                <span className="tbo-pill bg-[#f5f5f5] text-[#525252]">Live</span>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">Today</p>
+                <span className="tbo-pill bg-[#efeeeb] text-[#373734]">Live</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Classes today">
-                  <Calendar className="h-4 w-4 flex-shrink-0 text-[#2563eb]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">{classesToday}</p>
-                  <p className="truncate text-xs text-[#737373]">Classes</p>
+                <div className="flex items-center gap-2 rounded-xl border border-[#e7e6e1] bg-white p-2.5" title="Classes today">
+                  <Calendar className="h-4 w-4 flex-shrink-0 text-[#121212]" />
+                  <p className="font-serif text-xl font-normal leading-none text-[#121212]">{classesToday}</p>
+                  <p className="truncate text-xs text-[#7b7974]">Classes</p>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Assignments due today">
-                  <ClipboardList className="h-4 w-4 flex-shrink-0 text-[#7c3aed]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">
+                <div className="flex items-center gap-2 rounded-xl border border-[#e7e6e1] bg-white p-2.5" title="Assignments due today">
+                  <ClipboardList className="h-4 w-4 flex-shrink-0 text-[#373734]" />
+                  <p className="font-serif text-xl font-normal leading-none text-[#121212]">
                     {homeworkOps.loading ? '...' : homeworkOps.dueToday}
                   </p>
-                  <p className="truncate text-xs text-[#737373]">Due</p>
+                  <p className="truncate text-xs text-[#7b7974]">Due</p>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Mentor check-ins today">
-                  <UserCheck className="h-4 w-4 flex-shrink-0 text-[#16a34a]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">{mentorshipLogsToday}</p>
-                  <p className="truncate text-xs text-[#737373]">Check-ins</p>
+                <div className="flex items-center gap-2 rounded-xl border border-[#e7e6e1] bg-white p-2.5" title="Mentor check-ins today">
+                  <UserCheck className="h-4 w-4 flex-shrink-0 text-[#d97757]" />
+                  <p className="font-serif text-xl font-normal leading-none text-[#121212]">{mentorshipLogsToday}</p>
+                  <p className="truncate text-xs text-[#7b7974]">Check-ins</p>
                 </div>
               </div>
             </div>
@@ -1278,11 +1280,11 @@ export function AdminDashboard({
         >
           <div className="tbo-scrollbar h-full space-y-2 overflow-y-auto pr-1">
             {homeworkOps.loading ? (
-              <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
+              <div className="rounded-xl bg-[#efeeeb] p-4 text-sm text-[#7b7974]">
                 Loading upcoming items...
               </div>
             ) : upcomingGroups.length === 0 ? (
-              <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
+              <div className="rounded-xl bg-[#efeeeb] p-4 text-sm text-[#7b7974]">
                 Nothing is scheduled in the next 7 days.
               </div>
             ) : (
@@ -1298,28 +1300,28 @@ export function AdminDashboard({
                 return (
                   <div
                     key={group.date}
-                    className="grid gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5 sm:grid-cols-[92px_1fr] sm:items-center"
+                    className="grid gap-2 rounded-xl border border-[#e7e6e1] bg-white p-2.5 sm:grid-cols-[92px_1fr] sm:items-center"
                   >
-                    <div className="flex items-center gap-3 self-stretch rounded-lg bg-[#fafafa] px-2.5 py-2 sm:flex-col sm:items-start sm:justify-center">
-                      <p className="text-xs font-semibold text-[#2563eb]">
+                    <div className="flex items-center gap-3 self-stretch rounded-lg bg-[#efeeeb] px-2.5 py-2 sm:flex-col sm:items-start sm:justify-center">
+                      <p className="text-xs font-semibold text-[#d97757]">
                         {formatDateHeading(group.date)}
                       </p>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-semibold leading-none text-[#171717]">{dateParts.day}</span>
-                        <span className="text-xs font-semibold uppercase text-[#737373]">{dateParts.month}</span>
+                        <span className="font-serif text-3xl font-normal leading-none text-[#121212]">{dateParts.day}</span>
+                        <span className="text-xs font-semibold uppercase text-[#7b7974]">{dateParts.month}</span>
                       </div>
                       {showWeekday ? (
-                        <p className="text-[11px] text-[#a3a3a3]">{dateParts.weekday}</p>
+                        <p className="text-[11px] text-[#9c9a92]">{dateParts.weekday}</p>
                       ) : null}
                     </div>
                     <div className="grid items-start gap-2 lg:grid-cols-2">
                       {group.jointItems.map(item => (
-                        <div key={item.id} className="col-span-full self-start overflow-hidden rounded-lg bg-[#fff7ed] ring-1 ring-[#fed7aa] lg:col-span-2">
+                        <div key={item.id} className="col-span-full self-start overflow-hidden rounded-lg bg-[#fff6f0] ring-1 ring-[#d97757]/30 lg:col-span-2">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9a3412]">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#121212]">
                               First & Second Years
                             </p>
-                            <span className="text-[11px] text-[#c2410c]">Joint</span>
+                            <span className="text-[11px] text-[#d97757]">Joint</span>
                           </div>
                           <div className="bg-white">
                             <div className="grid gap-2 px-2.5 py-2 sm:grid-cols-[24px_1fr_auto] sm:items-center">
@@ -1330,7 +1332,7 @@ export function AdminDashboard({
                                 <Users className="h-3 w-3" />
                               </span>
                               <div className="min-w-0">
-                                <p className="truncate text-xs font-semibold text-[#171717] sm:text-sm">{item.title}</p>
+                                <p className="truncate text-xs font-semibold text-[#121212] sm:text-sm">{item.title}</p>
                               </div>
                               {item.speaker || item.translator ? (
                                 <div className="flex -space-x-1.5 justify-self-start sm:justify-self-end">
@@ -1343,14 +1345,14 @@ export function AdminDashboard({
                         </div>
                       ))}
                       {group.years.map(yearGroup => (
-                        <div key={`${group.date}-${yearGroup.yearLabel}`} className="self-start overflow-hidden rounded-lg bg-[#fafafa] ring-1 ring-[#eeeeee]">
+                        <div key={`${group.date}-${yearGroup.yearLabel}`} className="self-start overflow-hidden rounded-lg bg-[#efeeeb] ring-1 ring-[#e7e6e1]">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">
                               {yearGroup.yearLabel}
                             </p>
-                            <span className="text-[11px] text-[#a3a3a3]">{yearGroup.items.length}</span>
+                            <span className="text-[11px] text-[#9c9a92]">{yearGroup.items.length}</span>
                           </div>
-                          <div className="divide-y divide-[#eeeeee] bg-white">
+                          <div className="divide-y divide-[#e7e6e1] bg-white">
                             {yearGroup.items.map(item => (
                               <div
                                 key={item.id}
@@ -1367,7 +1369,7 @@ export function AdminDashboard({
                                   )}
                                 </span>
                                 <div className="min-w-0">
-                                  <p className="truncate text-xs font-semibold text-[#171717] sm:text-sm">{item.title}</p>
+                                  <p className="truncate text-xs font-semibold text-[#121212] sm:text-sm">{item.title}</p>
                                 </div>
                                 {(item.type === 'session' || item.type === 'activation') && (item.speaker || item.translator) ? (
                                   <div className="flex -space-x-1.5 justify-self-start sm:justify-self-end">
@@ -1394,11 +1396,11 @@ export function AdminDashboard({
           subtitle={formatMonthLabel(calendarMonth)}
           action={
             <div className="flex flex-wrap items-center justify-end gap-1.5">
-              <span className="hidden items-center gap-1.5 rounded-full bg-[#dbeaff] px-2 py-1 text-[10px] font-semibold text-[#1e40af] sm:inline-flex">
-                <span className="h-1.5 w-1.5 rounded-full bg-[#2563eb]" />
+              <span className="hidden items-center gap-1.5 rounded-full bg-[#efeeeb] px-2 py-1 text-[10px] font-semibold text-[#373734] sm:inline-flex">
+                <span className="h-1.5 w-1.5 rounded-full bg-[#121212]" />
                 Sessions
               </span>
-              <span className="hidden items-center gap-1.5 rounded-full bg-[#fff7ed] px-2 py-1 text-[10px] font-semibold text-[#c2410c] sm:inline-flex">
+              <span className="hidden items-center gap-1.5 rounded-full bg-[#fff6f0] px-2 py-1 text-[10px] font-semibold text-[#d97757] sm:inline-flex">
                 <Users className="h-3 w-3" />
                 Activation
               </span>
@@ -1406,7 +1408,7 @@ export function AdminDashboard({
                 <button
                   type="button"
                   onClick={() => setCalendarMonth(month => addMonths(month, -1))}
-                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e7e6e1] bg-white text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
                   aria-label="Previous month"
                 >
                   <ChevronLeft className="h-4 w-4" />
@@ -1414,7 +1416,7 @@ export function AdminDashboard({
                 <button
                   type="button"
                   onClick={() => setCalendarMonth(month => addMonths(month, 1))}
-                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e7e6e1] bg-white text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
                   aria-label="Next month"
                 >
                   <ChevronRight className="h-4 w-4" />
@@ -1425,7 +1427,7 @@ export function AdminDashboard({
         >
           <div className="grid grid-cols-7 grid-rows-[auto_repeat(5,minmax(0,1fr))] gap-1.5">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
-              <div key={day} className="rounded-md bg-[#fafafa] px-1 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a3a3a3]">
+              <div key={day} className="rounded-md bg-[#efeeeb] px-1 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#9c9a92]">
                 {day}
               </div>
             ))}
@@ -1443,24 +1445,24 @@ export function AdminDashboard({
                   className={`tbo-focus group flex h-[66px] flex-col justify-between rounded-lg border p-1.5 text-left transition ${
                     day.inMonth
                       ? day.isWeekend
-                        ? 'border-[#eeeeee] bg-[#fffaf5] hover:border-[#fed7aa] hover:bg-[#fff7ed]'
-                        : 'border-[#eeeeee] bg-white hover:border-[#d4d4d4] hover:bg-[#fafafa]'
-                      : 'border-transparent bg-[#fafafa] text-[#c8c8c8]'
-                  } ${hasEvents ? 'shadow-[0_1px_0_rgba(0,0,0,0.03)]' : ''} ${day.isToday ? 'ring-1 ring-[#2563eb]' : ''}`}
+                        ? 'border-[#e7e6e1] bg-[#fff6f0] hover:border-[#d97757]/35 hover:bg-[#fff6f0]'
+                        : 'border-[#e7e6e1] bg-white hover:border-[#c8c6bf] hover:bg-[#efeeeb]'
+                      : 'border-transparent bg-[#efeeeb] text-[#c8c6bf]'
+                  } ${hasEvents ? 'shadow-[0_1px_0_rgba(18,18,18,0.03)]' : ''} ${day.isToday ? 'ring-1 ring-[#d97757]' : ''}`}
                   aria-label={`Open ${events.length} events for ${day.date}`}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span className={`grid h-5 min-w-5 place-items-center rounded-md px-1 text-[11px] font-semibold ${
                       day.isToday
-                        ? 'bg-[#2563eb] text-white'
+                        ? 'bg-[#121212] text-white'
                         : day.inMonth
-                          ? 'text-[#525252]'
+                          ? 'text-[#373734]'
                           : 'text-[#c8c8c8]'
                     }`}>
                       {day.day}
                     </span>
                     {hasActivation ? (
-                      <span className="grid h-5 w-5 place-items-center rounded-md bg-[#fff7ed] text-[#ea580c]">
+                      <span className="grid h-5 w-5 place-items-center rounded-md bg-[#fff6f0] text-[#d97757]">
                         <Users className="h-3 w-3" />
                       </span>
                     ) : null}
@@ -1468,14 +1470,14 @@ export function AdminDashboard({
                   <div className="flex items-center justify-between gap-1">
                     <div className="flex items-center gap-1">
                       {hasSession ? (
-                        <span className="h-2 w-2 rounded-full bg-[#2563eb] shadow-[0_0_0_3px_rgba(37,99,235,0.12)]" />
+                        <span className="h-2 w-2 rounded-full bg-[#121212] shadow-[0_0_0_3px_rgba(18,18,18,0.10)]" />
                       ) : null}
                       {hasActivation ? (
-                        <span className="h-2 w-2 rounded-full bg-[#ea580c] shadow-[0_0_0_3px_rgba(234,88,12,0.12)]" />
+                        <span className="h-2 w-2 rounded-full bg-[#d97757] shadow-[0_0_0_3px_rgba(217,119,87,0.14)]" />
                       ) : null}
                     </div>
                     {hasEvents ? (
-                      <span className="min-w-5 rounded-full border border-[#e5e5e5] bg-white px-1 text-center text-[10px] font-semibold text-[#525252] group-hover:border-[#d4d4d4]">
+                      <span className="min-w-5 rounded-full border border-[#e7e6e1] bg-white px-1 text-center text-[10px] font-semibold text-[#373734] group-hover:border-[#c8c6bf]">
                         {events.length}
                       </span>
                     ) : null}
@@ -1491,20 +1493,20 @@ export function AdminDashboard({
         <SectionCard title="Course Health" subtitle="Setup">
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
-              <div className="rounded-xl bg-[#f5f5f5] p-3">
-                <Users className="mb-2 h-4 w-4 text-[#2563eb]" />
-                <p className="text-xl font-semibold text-[#171717]">{staffingGaps}</p>
-                <p className="text-xs text-[#737373]">Staff</p>
+              <div className="rounded-xl bg-[#efeeeb] p-3">
+                <Users className="mb-2 h-4 w-4 text-[#121212]" />
+                <p className="font-serif text-xl font-normal text-[#121212]">{staffingGaps}</p>
+                <p className="text-xs text-[#7b7974]">Staff</p>
               </div>
-              <div className="rounded-xl bg-[#f5f5f5] p-3">
-                <ShieldCheck className="mb-2 h-4 w-4 text-[#16a34a]" />
-                <p className="text-xl font-semibold text-[#171717]">{driveGaps}</p>
-                <p className="text-xs text-[#737373]">Drive</p>
+              <div className="rounded-xl bg-[#efeeeb] p-3">
+                <ShieldCheck className="mb-2 h-4 w-4 text-[#373734]" />
+                <p className="font-serif text-xl font-normal text-[#121212]">{driveGaps}</p>
+                <p className="text-xs text-[#7b7974]">Drive</p>
               </div>
-              <div className="rounded-xl bg-[#f5f5f5] p-3">
-                <BookOpen className="mb-2 h-4 w-4 text-[#7c3aed]" />
-                <p className="text-xl font-semibold text-[#171717]">{activeSubjectCount}</p>
-                <p className="text-xs text-[#737373]">Subjects</p>
+              <div className="rounded-xl bg-[#efeeeb] p-3">
+                <BookOpen className="mb-2 h-4 w-4 text-[#d97757]" />
+                <p className="font-serif text-xl font-normal text-[#121212]">{activeSubjectCount}</p>
+                <p className="text-xs text-[#7b7974]">Subjects</p>
               </div>
             </div>
             <MeterRow
@@ -1523,25 +1525,25 @@ export function AdminDashboard({
         >
           <div className="space-y-2">
             {atRiskStudents.length === 0 ? (
-              <div className="flex items-center gap-2 rounded-xl bg-[#dcfce7] p-3 text-sm font-medium text-[#166534]">
+              <div className="flex items-center gap-2 rounded-xl bg-[#efeeeb] p-3 text-sm font-medium text-[#373734]">
                 <CheckCircle2 className="h-4 w-4" />
                 No students are currently below threshold.
               </div>
             ) : (
               atRiskStudents.map(student => (
-                <div key={`${student.courseName}-${student.studentId}`} className="rounded-xl border border-[#e5e5e5] p-3">
+                <div key={`${student.courseName}-${student.studentId}`} className="rounded-xl border border-[#e7e6e1] p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-[#171717]">{student.studentName}</p>
-                      <p className="truncate text-xs text-[#737373]">{student.courseName}</p>
+                      <p className="truncate text-sm font-semibold text-[#121212]">{student.studentName}</p>
+                      <p className="truncate text-xs text-[#7b7974]">{student.courseName}</p>
                     </div>
-                    <span className="text-sm font-semibold text-[#ea580c]">
+                    <span className="text-sm font-semibold text-[#d97757]">
                       {Math.round(student.overallScore * 100)}%
                     </span>
                   </div>
-                  <div className="mt-3 h-2 rounded-full bg-[#f5f5f5]">
+                  <div className="mt-3 h-2 rounded-full bg-[#efeeeb]">
                     <div
-                      className="h-2 rounded-full bg-[#ea580c]"
+                      className="h-2 rounded-full bg-[#d97757]"
                       style={{ width: `${Math.max(4, Math.round(student.overallScore * 100))}%` }}
                     />
                   </div>
@@ -1553,25 +1555,25 @@ export function AdminDashboard({
 
         <SectionCard title="Homework Operations" subtitle="Review load">
           <div className="grid grid-cols-2 gap-2">
-            <div className="rounded-xl bg-[#f5f5f5] p-3">
-              <p className="text-xs text-[#737373]">Assignments</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.assignments}</p>
+            <div className="rounded-xl bg-[#efeeeb] p-3">
+              <p className="text-xs text-[#7b7974]">Assignments</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{homeworkOps.loading ? '...' : homeworkOps.assignments}</p>
             </div>
-            <div className="rounded-xl bg-[#dbeaff] p-3">
-              <p className="text-xs text-[#1e40af]">Due soon</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.dueSoon}</p>
+            <div className="rounded-xl bg-[#efeeeb] p-3">
+              <p className="text-xs text-[#7b7974]">Due soon</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{homeworkOps.loading ? '...' : homeworkOps.dueSoon}</p>
             </div>
-            <div className="rounded-xl bg-[#fff7ed] p-3">
-              <p className="text-xs text-[#c2410c]">Overdue</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.overdue}</p>
+            <div className="rounded-xl bg-[#fff6f0] p-3">
+              <p className="text-xs text-[#d97757]">Overdue</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{homeworkOps.loading ? '...' : homeworkOps.overdue}</p>
             </div>
-            <div className="rounded-xl bg-[#f3e8ff] p-3">
-              <p className="text-xs text-[#6d28d9]">Ungraded</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.ungraded}</p>
+            <div className="rounded-xl bg-[#efeeeb] p-3">
+              <p className="text-xs text-[#7b7974]">Ungraded</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{homeworkOps.loading ? '...' : homeworkOps.ungraded}</p>
             </div>
-            <div className="rounded-xl bg-[#dcfce7] p-3">
-              <p className="text-xs text-[#166534]">Returned</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.returned}</p>
+            <div className="rounded-xl bg-[#efeeeb] p-3">
+              <p className="text-xs text-[#7b7974]">Returned</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{homeworkOps.loading ? '...' : homeworkOps.returned}</p>
             </div>
           </div>
         </SectionCard>
@@ -1584,17 +1586,17 @@ export function AdminDashboard({
           action={<GhostButton onClick={() => onNavigate('mentorship-management')}>Mentor Ops</GhostButton>}
         >
           <div className="grid gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">No recent check-in</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{studentsWithoutRecentMentorship.length}</p>
+            <div className="rounded-xl border border-[#e7e6e1] p-3">
+              <p className="text-xs text-[#7b7974]">No recent check-in</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{studentsWithoutRecentMentorship.length}</p>
             </div>
-            <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">Open next steps</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{openNextSteps}</p>
+            <div className="rounded-xl border border-[#e7e6e1] p-3">
+              <p className="text-xs text-[#7b7974]">Open next steps</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{openNextSteps}</p>
             </div>
-            <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">Concern logs</p>
-              <p className="mt-1 text-2xl font-semibold text-[#171717]">{concernLogs}</p>
+            <div className="rounded-xl border border-[#e7e6e1] p-3">
+              <p className="text-xs text-[#7b7974]">Concern logs</p>
+              <p className="mt-1 font-serif text-2xl font-normal text-[#121212]">{concernLogs}</p>
             </div>
           </div>
         </SectionCard>
@@ -1605,25 +1607,25 @@ export function AdminDashboard({
           action={<GhostButton onClick={() => onNavigate('messages')}>Messages</GhostButton>}
         >
           <div className="grid gap-3 md:grid-cols-3">
-            <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
-              <Megaphone className="h-4 w-4 text-[#2563eb]" />
+            <div className="flex items-center gap-3 rounded-xl bg-[#efeeeb] p-3">
+              <Megaphone className="h-4 w-4 text-[#121212]" />
               <div>
-                <p className="text-sm font-semibold text-[#171717]">{pinnedAnnouncements.length}</p>
-                <p className="text-xs text-[#737373]">Pinned posts</p>
+                <p className="text-sm font-semibold text-[#121212]">{pinnedAnnouncements.length}</p>
+                <p className="text-xs text-[#7b7974]">Pinned posts</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
-              <Mail className="h-4 w-4 text-[#7c3aed]" />
+            <div className="flex items-center gap-3 rounded-xl bg-[#efeeeb] p-3">
+              <Mail className="h-4 w-4 text-[#373734]" />
               <div>
-                <p className="text-sm font-semibold text-[#171717]">{staffAnnouncements.length}</p>
-                <p className="text-xs text-[#737373]">Staff notices</p>
+                <p className="text-sm font-semibold text-[#121212]">{staffAnnouncements.length}</p>
+                <p className="text-xs text-[#7b7974]">Staff notices</p>
               </div>
             </div>
-            <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
-              <MessageSquare className="h-4 w-4 text-[#ea580c]" />
+            <div className="flex items-center gap-3 rounded-xl bg-[#fff6f0] p-3">
+              <MessageSquare className="h-4 w-4 text-[#d97757]" />
               <div>
-                <p className="text-sm font-semibold text-[#171717]">{totalUnread}</p>
-                <p className="text-xs text-[#737373]">Unread messages</p>
+                <p className="text-sm font-semibold text-[#121212]">{totalUnread}</p>
+                <p className="text-xs text-[#7b7974]">Unread messages</p>
               </div>
             </div>
           </div>
@@ -1642,20 +1644,20 @@ export function AdminDashboard({
               key={action.label}
               type="button"
               onClick={() => onNavigate(action.view)}
-              className="tbo-focus flex items-center justify-between rounded-xl border border-[#e5e5e5] bg-white p-3 text-left text-sm font-medium text-[#171717] hover:bg-[#f5f5f5]"
+              className="tbo-focus flex items-center justify-between rounded-xl border border-[#e7e6e1] bg-white p-3 text-left text-sm font-medium text-[#121212] hover:bg-[#efeeeb]"
             >
               <span className="flex items-center gap-2">
-                <action.icon className="h-4 w-4 text-[#2563eb]" />
+                <action.icon className="h-4 w-4 text-[#121212]" />
                 {action.label}
               </span>
-              <ArrowUpRight className="h-4 w-4 text-[#a3a3a3]" />
+              <ArrowUpRight className="h-4 w-4 text-[#9c9a92]" />
             </button>
           ))}
         </div>
       </SectionCard>
 
       {selectedMetricInsight && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#121212]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <button
             type="button"
             className="absolute inset-0 cursor-default"
@@ -1666,37 +1668,37 @@ export function AdminDashboard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="metric-insight-title"
-            className="relative w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-lg sm:rounded-2xl"
+            className="relative w-full overflow-hidden rounded-t-2xl border border-[#e7e6e1] bg-white shadow-[0_24px_80px_rgba(18,18,18,0.18)] sm:max-w-lg sm:rounded-2xl"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e7e6e1] px-5 py-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">
                   Dashboard metric
                 </p>
-                <h3 id="metric-insight-title" className="mt-1 text-lg font-semibold text-[#171717]">
+                <h3 id="metric-insight-title" className="mt-1 font-serif text-2xl font-normal text-[#121212]">
                   {selectedMetricInsight.title}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={closeMetricInsight}
-                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e7e6e1] text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
             <div className="space-y-4 p-5">
-              <div className="rounded-xl bg-[#fafafa] p-4">
-                <p className="text-4xl font-semibold leading-none text-[#171717]">{selectedMetricInsight.value}</p>
-                <p className="mt-2 text-sm font-medium text-[#525252]">{selectedMetricInsight.detail}</p>
+              <div className="rounded-xl bg-[#efeeeb] p-4">
+                <p className="font-serif text-4xl font-normal leading-none text-[#121212]">{selectedMetricInsight.value}</p>
+                <p className="mt-2 text-sm font-medium text-[#373734]">{selectedMetricInsight.detail}</p>
               </div>
-              <p className="text-sm leading-6 text-[#525252]">{selectedMetricInsight.description}</p>
+              <p className="text-sm leading-6 text-[#373734]">{selectedMetricInsight.description}</p>
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
-                  <span className="text-xs font-medium text-[#525252]">{selectedMetricInsight.progressLabel}</span>
+                  <span className="text-xs font-medium text-[#373734]">{selectedMetricInsight.progressLabel}</span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-[#f5f5f5]">
+                <div className="h-2 overflow-hidden rounded-full bg-[#efeeeb]">
                   <div
                     className={`h-full rounded-full ${toneBars[selectedMetricInsight.tone]}`}
                     style={{ width: `${clampPercent(selectedMetricInsight.progressValue)}%` }}
@@ -1710,7 +1712,7 @@ export function AdminDashboard({
                   closeMetricInsight();
                   onNavigate(target);
                 }}
-                className="tbo-focus inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm font-medium text-[#171717] hover:bg-[#f5f5f5]"
+                className="tbo-focus inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[#121212] bg-[#121212] px-3 py-2 text-sm font-medium text-[#f8f8f6] hover:bg-[#373734]"
               >
                 {selectedMetricInsight.actionLabel}
                 <ArrowUpRight className="h-4 w-4" />
@@ -1721,7 +1723,7 @@ export function AdminDashboard({
       )}
 
       {selectedCalendarDate && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#121212]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <button
             type="button"
             className="absolute inset-0 cursor-default"
@@ -1732,21 +1734,21 @@ export function AdminDashboard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="calendar-day-title"
-            className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-lg sm:rounded-2xl"
+            className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e7e6e1] bg-white shadow-[0_24px_80px_rgba(18,18,18,0.18)] sm:max-w-lg sm:rounded-2xl"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e7e6e1] px-5 py-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">
                   {selectedCalendarEvents.length} event{selectedCalendarEvents.length === 1 ? '' : 's'}
                 </p>
-                <h3 id="calendar-day-title" className="mt-1 text-lg font-semibold text-[#171717]">
+                <h3 id="calendar-day-title" className="mt-1 font-serif text-2xl font-normal text-[#121212]">
                   {selectedCalendarDateLabel}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={closeCalendarModal}
-                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e7e6e1] text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -1755,14 +1757,14 @@ export function AdminDashboard({
 
             <div className="tbo-scrollbar max-h-[60vh] space-y-3 overflow-y-auto p-5">
               {selectedCalendarEvents.length === 0 ? (
-                <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
+                <div className="rounded-xl bg-[#efeeeb] p-4 text-sm text-[#7b7974]">
                   Nothing is scheduled for this date.
                 </div>
               ) : (
                 selectedCalendarEvents.map(event => (
                   <div
                     key={event.id}
-                    className="grid gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 sm:grid-cols-[36px_1fr] sm:items-center"
+                    className="grid gap-3 rounded-xl border border-[#e7e6e1] bg-white p-3 sm:grid-cols-[36px_1fr] sm:items-center"
                   >
                     <span className={`grid h-9 w-9 place-items-center rounded-lg ${toneClasses[event.tone]}`}>
                       {event.type === 'activation' ? (
@@ -1773,12 +1775,12 @@ export function AdminDashboard({
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-[#171717]">{event.title}</p>
-                        <span className={`tbo-pill ${event.type === 'activation' ? 'bg-[#fff7ed] text-[#ea580c]' : 'bg-[#dbeaff] text-[#2563eb]'}`}>
+                        <p className="truncate text-sm font-semibold text-[#121212]">{event.title}</p>
+                        <span className={`tbo-pill ${event.type === 'activation' ? 'bg-[#fff6f0] text-[#d97757]' : 'bg-[#efeeeb] text-[#373734]'}`}>
                           {event.yearLabel}
                         </span>
                       </div>
-                      <p className="mt-1 text-xs text-[#737373]">
+                      <p className="mt-1 text-xs text-[#7b7974]">
                         {event.type === 'activation' ? 'Activation Saturday' : 'Session'}
                       </p>
                     </div>
@@ -1791,7 +1793,7 @@ export function AdminDashboard({
       )}
 
       {signalModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#121212]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
           <button
             type="button"
             className="absolute inset-0 cursor-default"
@@ -1802,21 +1804,21 @@ export function AdminDashboard({
             role="dialog"
             aria-modal="true"
             aria-labelledby="open-signals-title"
-            className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-2xl sm:rounded-2xl"
+            className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e7e6e1] bg-white shadow-[0_24px_80px_rgba(18,18,18,0.18)] sm:max-w-2xl sm:rounded-2xl"
           >
-            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e7e6e1] px-5 py-4">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7b7974]">
                   {signalCount} open signals
                 </p>
-                <h3 id="open-signals-title" className="mt-1 text-lg font-semibold text-[#171717]">
+                <h3 id="open-signals-title" className="mt-1 font-serif text-2xl font-normal text-[#121212]">
                   Open Signals
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={closeSignalModal}
-                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e7e6e1] text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
                 aria-label="Close"
               >
                 <X className="h-4 w-4" />
@@ -1828,22 +1830,22 @@ export function AdminDashboard({
                 {activeSignalItems.map(item => (
                   <div
                     key={item.title}
-                    className="grid gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 sm:grid-cols-[44px_1fr_auto] sm:items-center"
+                    className="grid gap-3 rounded-xl border border-[#e7e6e1] bg-white p-3 sm:grid-cols-[44px_1fr_auto] sm:items-center"
                   >
                     <span className={`grid h-11 w-11 place-items-center rounded-full text-sm font-semibold ${toneClasses[item.tone]}`}>
                       {item.count}
                     </span>
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
-                        <p className="text-sm font-semibold text-[#171717]">{item.title}</p>
-                        <span className="tbo-pill bg-[#fff7ed] text-[#ea580c]">{item.detail}</span>
+                        <p className="text-sm font-semibold text-[#121212]">{item.title}</p>
+                        <span className="tbo-pill bg-[#fff6f0] text-[#d97757]">{item.detail}</span>
                       </div>
-                      <p className="mt-1 text-xs leading-5 text-[#737373]">{item.description}</p>
+                      <p className="mt-1 text-xs leading-5 text-[#7b7974]">{item.description}</p>
                     </div>
                     <button
                       type="button"
                       onClick={() => reviewSignal(item.view)}
-                      className="tbo-focus inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-xs font-medium text-[#171717] hover:bg-[#f5f5f5]"
+                      className="tbo-focus inline-flex items-center justify-center gap-1.5 rounded-lg border border-[#121212] bg-[#121212] px-3 py-2 text-xs font-medium text-[#f8f8f6] hover:bg-[#373734]"
                     >
                       {item.actionLabel}
                       <ArrowUpRight className="h-3.5 w-3.5" />
@@ -1857,7 +1859,7 @@ export function AdminDashboard({
                   <button
                     type="button"
                     onClick={() => setClearSignalsOpen(current => !current)}
-                    className="tbo-focus inline-flex items-center gap-2 rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-medium text-[#166534] hover:bg-[#dcfce7]"
+                    className="tbo-focus inline-flex items-center gap-2 rounded-full border border-[#e7e6e1] bg-[#efeeeb] px-3 py-1.5 text-xs font-medium text-[#373734] hover:bg-[#e7e6e1]"
                     aria-expanded={clearSignalsOpen}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
@@ -1865,12 +1867,12 @@ export function AdminDashboard({
                   </button>
 
                   {clearSignalsOpen && (
-                    <div className="grid gap-1.5 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-2">
+                    <div className="grid gap-1.5 rounded-xl border border-[#e7e6e1] bg-[#efeeeb] p-2">
                       {clearSignalItems.map(item => (
-                        <div key={item.title} className="flex items-center gap-2 px-2 py-1 text-xs text-[#525252]">
-                          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-[#16a34a]" />
-                          <span className="font-medium text-[#171717]">{item.title}</span>
-                          <span className="text-[#737373]">{item.clearDetail}</span>
+                        <div key={item.title} className="flex items-center gap-2 px-2 py-1 text-xs text-[#373734]">
+                          <CheckCircle2 className="h-3.5 w-3.5 flex-shrink-0 text-[#121212]" />
+                          <span className="font-medium text-[#121212]">{item.title}</span>
+                          <span className="text-[#7b7974]">{item.clearDetail}</span>
                         </div>
                       ))}
                     </div>
