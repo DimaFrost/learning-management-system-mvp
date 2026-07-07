@@ -9,12 +9,13 @@ Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 24
+Exposed tables/views: 25
 
 | Table | Columns | File |
 | --- | ---: | --- |
 | announcement_attachments | 12 | [announcement_attachments](./tables/announcement_attachments.md) |
 | announcement_comments | 5 | [announcement_comments](./tables/announcement_comments.md) |
+| announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
 | announcements | 11 | [announcements](./tables/announcements.md) |
 | attendance_settings | 7 | [attendance_settings](./tables/attendance_settings.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |

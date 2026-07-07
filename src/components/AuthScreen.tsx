@@ -31,7 +31,7 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
     {
       icon: CheckCircle,
       title: 'Workspace opened',
-      description: 'Approved users continue straight into the LMS.',
+      description: 'Approved users continue straight into the Portal.',
     },
   ];
 
@@ -68,7 +68,7 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                     Google account required
                   </span>
                   <span className="hidden text-[11px] font-normal text-[#9c9a92] sm:inline">
-                    LMS access is role based
+                    Portal access is role based
                   </span>
                 </div>
 
@@ -80,7 +80,7 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                       </div>
                       <div className="min-w-0">
                         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#7b7974]">
-                          Learning Management System
+                          School Portal
                         </p>
                         <h1 className="mt-2 font-serif text-[30px] font-normal leading-[1.2] text-[#121212] sm:text-[40px]">
                           The Burning Ones
@@ -89,7 +89,6 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                     </div>
 
                     <div className="mt-10 max-w-md">
-                      <div className="mb-4 h-1.5 w-1.5 rounded-full bg-[#d97757]" />
                       <h2 className="font-serif text-[30px] font-normal leading-[1.2] text-[#121212]">
                         Sign in to continue.
                       </h2>
@@ -183,7 +182,7 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
         </main>
 
         <footer className="py-4 text-center text-xs font-normal text-[#9c9a92] sm:text-left">
-          The Burning Ones LMS
+          The Burning Ones Portal
         </footer>
       </div>
     </div>

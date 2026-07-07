@@ -29,6 +29,7 @@ interface SidebarProps {
   onNavigate: (view: string) => void;
   hasRole: (role: string) => boolean;
   totalUnread: number;
+  announcementDraftCount: number;
   isOnDuty: boolean;
   activeWorkspace: WorkspaceId | null;
   mode: 'locked' | 'collapsed';
@@ -94,6 +95,7 @@ export function Sidebar({
   onNavigate,
   hasRole,
   totalUnread,
+  announcementDraftCount,
   isOnDuty,
   activeWorkspace,
   mode,
@@ -130,6 +132,7 @@ export function Sidebar({
           description: 'Posts and notices',
           icon: Megaphone,
           shared: true,
+          badge: announcementDraftCount > 0 ? (announcementDraftCount > 9 ? '9+' : String(announcementDraftCount)) : undefined,
         },
         {
           id: 'messages',

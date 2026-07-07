@@ -1078,7 +1078,7 @@ export function AdminDashboard({
       <PageHeader
         title="Dashboard"
         action={
-          <GhostButton onClick={() => onNavigate('announcements')}>
+          <GhostButton onClick={() => onNavigate('announcements-new')}>
             New announcement
           </GhostButton>
         }

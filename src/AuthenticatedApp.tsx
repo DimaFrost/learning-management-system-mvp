@@ -75,11 +75,14 @@ export function AuthenticatedApp({
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    restoreAnnouncement,
+    permanentlyDeleteAnnouncement,
     togglePin,
     addComment,
     deleteComment,
     addAttachment,
     deleteAttachment,
+    toggleReaction,
   } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
   const {
     conversations,
@@ -105,6 +108,10 @@ export function AuthenticatedApp({
       && d.studentId === effectiveUser.id
   );
   const effectiveIsOnDuty = effectiveCurrentDuties.length > 0;
+  const announcementDraftCount = announcements.filter(
+    announcement => announcement.status === 'draft' &&
+      (announcement.authorId === effectiveUser.id || effectiveUser.roles.includes('administrator'))
+  ).length;
   const nextScheduledDuty = attendance.dutySchedule
     .filter(
       d => d.studentId === effectiveUser.id
@@ -176,6 +183,10 @@ export function AuthenticatedApp({
     deleteAnnouncement(id, showConfirmation);
   };
 
+  const handlePermanentlyDeleteAnnouncement = (id: number) => {
+    permanentlyDeleteAnnouncement(id, showConfirmation);
+  };
+
   const hasNoRoles = !currentUser.roles ||
     currentUser.roles.filter(r => r !== 'dev').length === 0;
 
@@ -227,6 +238,7 @@ export function AuthenticatedApp({
           onNavigate={setActiveView}
           hasRole={hasRole}
           totalUnread={totalUnread}
+          announcementDraftCount={announcementDraftCount}
           isOnDuty={effectiveIsOnDuty}
           activeWorkspace={selectedWorkspace}
           mode={sidebarMode}
@@ -278,11 +290,14 @@ export function AuthenticatedApp({
               addAnnouncement={addAnnouncement}
               updateAnnouncement={updateAnnouncement}
               deleteAnnouncement={handleDeleteAnnouncement}
+              restoreAnnouncement={restoreAnnouncement}
+              permanentlyDeleteAnnouncement={handlePermanentlyDeleteAnnouncement}
               togglePin={togglePin}
               addComment={addComment}
               deleteComment={deleteComment}
               addAttachment={addAttachment}
               deleteAttachment={deleteAttachment}
+              toggleReaction={toggleReaction}
               onProfileUpdated={onRefetchProfile}
               conversations={conversations}
               messagesLoading={messagesLoading}

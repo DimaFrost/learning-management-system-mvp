@@ -10,6 +10,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | --- | --- |
 | announcement_attachments | id |
 | announcement_comments | id |
+| announcement_reactions | id |
 | announcements | id |
 | attendance_settings | id |
 | class_attendance | id |
@@ -41,6 +42,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | announcement_attachments.uploader_id | profiles.id |
 | announcement_comments.announcement_id | announcements.id |
 | announcement_comments.author_id | profiles.id |
+| announcement_reactions.announcement_id | announcements.id |
+| announcement_reactions.user_id | profiles.id |
 | announcements.author_id | profiles.id |
 | announcements.course_id | courses.id |
 | class_attendance.class_id | classes.id |

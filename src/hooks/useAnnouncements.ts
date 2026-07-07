@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
-import type { Announcement, AnnouncementComment, AnnouncementAttachment, User, CourseStudent, Course } from '../types/lms';
-import { sendNotification } from '../utils/notifications';
+import type { Announcement, AnnouncementComment, AnnouncementAttachment, AnnouncementReaction, User, CourseStudent, Course } from '../types/lms';
 import { uploadFileToStorage } from '../utils/storageOperations';
 import { userTeachesInCourse } from '../utils/courseUtils';
 
@@ -12,7 +11,7 @@ type ShowConfirmation = (
   onConfirm: () => void
 ) => void;
 
-type SupabaseProfileJoin = { id: string; name: string } | null;
+type SupabaseProfileJoin = { id: string; name: string; avatar_url?: string | null } | null;
 
 type SupabaseCommentRow = {
   id: number;
@@ -37,6 +36,15 @@ type SupabaseAttachmentRow = {
   created_at: string;
 };
 
+type SupabaseReactionRow = {
+  id: number;
+  announcement_id: number;
+  user_id: string;
+  emoji: string;
+  created_at: string;
+  user: SupabaseProfileJoin;
+};
+
 type SupabaseAnnouncementRow = {
   id: number;
   title: string;
@@ -45,6 +53,9 @@ type SupabaseAnnouncementRow = {
   author_id: string | null;
   course_id: number | null;
   target_roles: string[] | null;
+  status: Announcement['status'] | null;
+  scheduled_at: string | null;
+  published_at: string | null;
   is_pinned: boolean;
   is_staff_only: boolean;
   created_at: string;
@@ -52,6 +63,11 @@ type SupabaseAnnouncementRow = {
   author: SupabaseProfileJoin;
   comments: SupabaseCommentRow[] | null;
   attachments: SupabaseAttachmentRow[] | null;
+  reactions: SupabaseReactionRow[] | null;
+};
+
+type AnnouncementUpdate = Partial<Announcement> & {
+  notifyAudience?: boolean;
 };
 
 function mapAttachmentRow(row: SupabaseAttachmentRow): AnnouncementAttachment {
@@ -82,6 +98,17 @@ function mapCommentRow(row: SupabaseCommentRow): AnnouncementComment {
   };
 }
 
+function mapReactionRow(row: SupabaseReactionRow): AnnouncementReaction {
+  return {
+    id: row.id,
+    announcementId: row.announcement_id,
+    userId: row.user_id,
+    userName: row.user?.name ?? null,
+    emoji: row.emoji,
+    createdAt: row.created_at,
+  };
+}
+
 function mapAnnouncementRow(row: SupabaseAnnouncementRow): Announcement {
   return {
     id: row.id,
@@ -90,14 +117,19 @@ function mapAnnouncementRow(row: SupabaseAnnouncementRow): Announcement {
     type: row.type,
     authorId: row.author_id,
     authorName: row.author?.name ?? null,
+    authorAvatarUrl: row.author?.avatar_url ?? null,
     courseId: row.course_id,
     targetRoles: row.target_roles,
+    status: row.status ?? 'published',
+    scheduledAt: row.scheduled_at,
+    publishedAt: row.published_at,
     isPinned: row.is_pinned,
     isStaffOnly: row.is_staff_only,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     comments: (row.comments ?? []).map(mapCommentRow),
     attachments: (row.attachments ?? []).map(mapAttachmentRow),
+    reactions: (row.reactions ?? []).map(mapReactionRow),
   };
 }
 
@@ -109,11 +141,97 @@ function mapUpdatesToRow(updates: Partial<Announcement>) {
   if (updates.authorId !== undefined) row.author_id = updates.authorId;
   if (updates.courseId !== undefined) row.course_id = updates.courseId;
   if (updates.targetRoles !== undefined) row.target_roles = updates.targetRoles;
+  if (updates.status !== undefined) row.status = updates.status;
+  if (updates.scheduledAt !== undefined) row.scheduled_at = updates.scheduledAt;
+  if (updates.publishedAt !== undefined) row.published_at = updates.publishedAt;
   if (updates.isPinned !== undefined) row.is_pinned = updates.isPinned;
   if (updates.isStaffOnly !== undefined) row.is_staff_only = updates.isStaffOnly;
   if (updates.createdAt !== undefined) row.created_at = updates.createdAt;
   if (updates.updatedAt !== undefined) row.updated_at = updates.updatedAt;
   return row;
+}
+
+async function syncAnnouncementNotificationJob({
+  announcementId,
+  authorId,
+  status,
+  scheduledAt,
+}: {
+  announcementId: number;
+  authorId: string;
+  status: Announcement['status'];
+  scheduledAt: string | null;
+}) {
+  if (status === 'draft' || status === 'archived') {
+    await supabase
+      .from('notification_jobs')
+      .update({ status: 'canceled' })
+      .eq('type', 'announcement_email')
+      .eq('announcement_id', announcementId)
+      .in('status', ['pending', 'failed']);
+    return;
+  }
+
+  await supabase.from('notification_jobs').upsert(
+    {
+      announcement_id: announcementId,
+      type: 'announcement_email',
+      status: 'pending',
+      scheduled_for: status === 'scheduled' ? scheduledAt : new Date().toISOString(),
+      created_by: authorId,
+      payload: {
+        announcementId,
+      },
+      error_message: null,
+      attempts: 0,
+      processed_at: null,
+    },
+    { onConflict: 'announcement_id,type' }
+  );
+}
+
+const CUSTOM_USER_PREFIX = 'user:';
+
+function getRealRoles(user: User) {
+  return user.roles.filter(role => role !== 'dev');
+}
+
+function isStaffUser(user: User) {
+  const realRoles = getRealRoles(user);
+  return realRoles.length > 0 && !realRoles.every(role => role === 'student');
+}
+
+function userMatchesAudienceTokens(
+  user: User,
+  tokens: string[],
+  courseStudents: CourseStudent[],
+  courses: Course[]
+) {
+  if (tokens.some(token => token === `${CUSTOM_USER_PREFIX}${user.id}`)) return true;
+  if (tokens.includes('audience:staff') && isStaffUser(user)) return true;
+  if (tokens.includes('role:teacher') && user.roles.includes('teacher')) return true;
+
+  const activeCourseIds = new Set(
+    courseStudents
+      .filter(enrollment => enrollment.studentId === user.id && enrollment.status === 'active')
+      .map(enrollment => enrollment.courseId)
+  );
+
+  if (
+    tokens.includes('course:first_year') &&
+    courses.some(course => course.courseType === 'first_year' && activeCourseIds.has(course.id))
+  ) {
+    return true;
+  }
+
+  if (
+    tokens.includes('course:second_year') &&
+    courses.some(course => course.courseType === 'second_year' && activeCourseIds.has(course.id))
+  ) {
+    return true;
+  }
+
+  return false;
 }
 
 function filterAnnouncementsForUser(
@@ -123,16 +241,45 @@ function filterAnnouncementsForUser(
   courses: Course[]
 ): Announcement[] {
   let filtered = announcements;
+  const now = Date.now();
+  const canManageAnnouncements =
+    filterUser.roles.includes('administrator') || filterUser.roles.includes('teacher');
+
+  filtered = filtered.filter(announcement => {
+    const isAuthor = announcement.authorId === filterUser.id;
+    if (announcement.status === 'draft') {
+      return canManageAnnouncements && (isAuthor || filterUser.roles.includes('administrator'));
+    }
+    if (announcement.status === 'scheduled') {
+      if (canManageAnnouncements && (isAuthor || filterUser.roles.includes('administrator'))) return true;
+      return Boolean(announcement.scheduledAt && new Date(announcement.scheduledAt).getTime() <= now);
+    }
+    if (announcement.status === 'archived') {
+      return filterUser.roles.includes('administrator');
+    }
+    if (announcement.scheduledAt && new Date(announcement.scheduledAt).getTime() > now) {
+      return canManageAnnouncements && (isAuthor || filterUser.roles.includes('administrator'));
+    }
+    return true;
+  });
 
   if (!filterUser.roles.includes('administrator')) {
     filtered = filtered.filter(
-      announcement =>
-        announcement.courseId === null ||
-        courseStudents.some(
-          cs => cs.studentId === filterUser.id && cs.courseId === announcement.courseId
-        ) ||
-        (announcement.courseId !== null &&
-          userTeachesInCourse(filterUser.id, announcement.courseId, courses))
+      announcement => {
+        const tokens = announcement.targetRoles ?? [];
+        if (tokens.length > 0) {
+          return userMatchesAudienceTokens(filterUser, tokens, courseStudents, courses);
+        }
+
+        return (
+          announcement.courseId === null ||
+          courseStudents.some(
+            cs => cs.studentId === filterUser.id && cs.courseId === announcement.courseId
+          ) ||
+          (announcement.courseId !== null &&
+            userTeachesInCourse(filterUser.id, announcement.courseId, courses))
+        );
+      }
     );
   }
 
@@ -165,7 +312,7 @@ export function useAnnouncements(
         .from('announcements')
         .select(`
           *,
-          author:profiles!author_id (id, name),
+          author:profiles!author_id (id, name, avatar_url),
           comments:announcement_comments (
             id, announcement_id, content, created_at,
             author:profiles!author_id (id, name)
@@ -182,8 +329,35 @@ export function useAnnouncements(
       if (fetchError) throw fetchError;
 
       const mapped = (data ?? []).map(row =>
-        mapAnnouncementRow(row as unknown as SupabaseAnnouncementRow)
+        mapAnnouncementRow({ ...(row as object), reactions: [] } as unknown as SupabaseAnnouncementRow)
       );
+      const announcementIds = mapped.map(announcement => announcement.id);
+
+      if (announcementIds.length > 0) {
+        const { data: reactionRows, error: reactionError } = await supabase
+          .from('announcement_reactions')
+          .select(`
+            id, announcement_id, user_id, emoji, created_at,
+            user:profiles!user_id (id, name)
+          `)
+          .in('announcement_id', announcementIds);
+
+        if (reactionError) {
+          console.warn('Announcement reactions are unavailable until the reaction migration is applied.', reactionError);
+        } else {
+          const reactionsByAnnouncement = new Map<number, AnnouncementReaction[]>();
+          (reactionRows ?? []).forEach(row => {
+            const reaction = mapReactionRow(row as unknown as SupabaseReactionRow);
+            const existing = reactionsByAnnouncement.get(reaction.announcementId) ?? [];
+            existing.push(reaction);
+            reactionsByAnnouncement.set(reaction.announcementId, existing);
+          });
+          mapped.forEach(announcement => {
+            announcement.reactions = reactionsByAnnouncement.get(announcement.id) ?? [];
+          });
+        }
+      }
+
       setAllAnnouncements(mapped);
     } catch (err) {
       setError('Failed to load announcements');
@@ -211,9 +385,15 @@ export function useAnnouncements(
       targetRoles: string[] | null;
       isPinned: boolean;
       isStaffOnly?: boolean;
+      status?: Announcement['status'];
+      scheduledAt?: string | null;
+      notifyAudience?: boolean;
     }): Promise<number> => {
       setError(null);
       try {
+        const status = data.status ?? 'published';
+        const scheduledAt = status === 'scheduled' ? data.scheduledAt ?? null : null;
+        const publishedAt = status === 'published' ? new Date().toISOString() : null;
         const { data: inserted, error: insertError } = await supabase
           .from('announcements')
           .insert({
@@ -223,6 +403,9 @@ export function useAnnouncements(
             author_id: fetchUser.id,
             course_id: data.courseId,
             target_roles: data.targetRoles,
+            status,
+            scheduled_at: scheduledAt,
+            published_at: publishedAt,
             is_pinned: data.isPinned,
             is_staff_only: data.isStaffOnly ?? false,
           })
@@ -231,14 +414,14 @@ export function useAnnouncements(
 
         if (insertError) throw insertError;
 
-        await refetchAnnouncements();
+        await syncAnnouncementNotificationJob({
+          announcementId: inserted.id,
+          authorId: fetchUser.id,
+          status,
+          scheduledAt,
+        });
 
-        sendNotification('announcement', {
-          title: data.title,
-          content: data.content,
-          authorName: fetchUser.name,
-          isStaffOnly: data.isStaffOnly ?? false,
-        }).catch(console.error);
+        await refetchAnnouncements();
 
         return inserted.id;
       } catch (err) {
@@ -247,19 +430,55 @@ export function useAnnouncements(
         throw err;
       }
     },
-    [fetchUser.id, fetchUser.name, refetchAnnouncements]
+    [fetchUser.id, refetchAnnouncements]
   );
 
   const updateAnnouncement = useCallback(
-    async (id: number, updates: Partial<Announcement>) => {
+    async (id: number, updates: AnnouncementUpdate) => {
       setError(null);
       try {
+        const { notifyAudience = false, ...announcementUpdates } = updates;
+        const previousAnnouncement = allAnnouncements.find(announcement => announcement.id === id);
+        const now = new Date().toISOString();
+        const updatesWithTimestamp: Partial<Announcement> = {
+          ...announcementUpdates,
+          updatedAt: now,
+        };
+
+        if (
+          announcementUpdates.status === 'published' &&
+          previousAnnouncement?.status !== 'published' &&
+          announcementUpdates.publishedAt === undefined
+        ) {
+          updatesWithTimestamp.publishedAt = now;
+        }
+
         const { error: updateError } = await supabase
           .from('announcements')
-          .update(mapUpdatesToRow(updates))
+          .update(mapUpdatesToRow(updatesWithTimestamp))
           .eq('id', id);
 
         if (updateError) throw updateError;
+
+        const updatedStatus = announcementUpdates.status;
+        const effectiveStatus = updatedStatus ?? previousAnnouncement?.status;
+        const shouldNotifyPublishedEdit =
+          notifyAudience && previousAnnouncement?.status === 'published' && effectiveStatus === 'published';
+        const shouldSyncNotificationJob =
+          updatedStatus === 'scheduled' ||
+          updatedStatus === 'draft' ||
+          updatedStatus === 'archived' ||
+          (updatedStatus === 'published' && previousAnnouncement?.status !== 'published') ||
+          shouldNotifyPublishedEdit;
+
+        if (effectiveStatus && shouldSyncNotificationJob) {
+          await syncAnnouncementNotificationJob({
+            announcementId: id,
+            authorId: fetchUser.id,
+            status: effectiveStatus,
+            scheduledAt: announcementUpdates.scheduledAt ?? previousAnnouncement?.scheduledAt ?? null,
+          });
+        }
 
         await refetchAnnouncements();
       } catch (err) {
@@ -267,7 +486,7 @@ export function useAnnouncements(
         console.error(err);
       }
     },
-    [refetchAnnouncements]
+    [allAnnouncements, fetchUser.id, refetchAnnouncements]
   );
 
   const deleteAnnouncement = useCallback(
@@ -276,22 +495,87 @@ export function useAnnouncements(
       if (!announcement) return;
 
       showConfirmation(
-        'Delete Announcement',
-        `Are you sure you want to delete "${announcement.title}"? This action cannot be undone.`,
-        'Delete Announcement',
+        'Move to Trash',
+        `Move "${announcement.title}" to trash? Admins can restore it or delete it permanently later.`,
+        'Move to Trash',
+        async () => {
+          setError(null);
+          try {
+            const { error: updateError } = await supabase
+              .from('announcements')
+              .update({
+                status: 'archived',
+                is_pinned: false,
+                updated_at: new Date().toISOString(),
+              })
+              .eq('id', id);
+
+            if (updateError) throw updateError;
+
+            await syncAnnouncementNotificationJob({
+              announcementId: id,
+              authorId: fetchUser.id,
+              status: 'archived',
+              scheduledAt: null,
+            });
+
+            await refetchAnnouncements();
+          } catch (err) {
+            setError('Failed to move announcement to trash');
+            console.error(err);
+          }
+        }
+      );
+    },
+    [announcements, fetchUser.id, refetchAnnouncements]
+  );
+
+  const restoreAnnouncement = useCallback(
+    async (id: number) => {
+      setError(null);
+      try {
+        const { error: updateError } = await supabase
+          .from('announcements')
+          .update({
+            status: 'published',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('id', id);
+
+        if (updateError) throw updateError;
+
+        await refetchAnnouncements();
+      } catch (err) {
+        setError('Failed to restore announcement');
+        console.error(err);
+      }
+    },
+    [refetchAnnouncements]
+  );
+
+  const permanentlyDeleteAnnouncement = useCallback(
+    (id: number, showConfirmation: ShowConfirmation) => {
+      const announcement = announcements.find(a => a.id === id);
+      if (!announcement) return;
+
+      showConfirmation(
+        'Delete Permanently',
+        `Permanently delete "${announcement.title}"? This cannot be undone.`,
+        'Delete Permanently',
         async () => {
           setError(null);
           try {
             const { error: deleteError } = await supabase
               .from('announcements')
               .delete()
-              .eq('id', id);
+              .eq('id', id)
+              .eq('status', 'archived');
 
             if (deleteError) throw deleteError;
 
             await refetchAnnouncements();
           } catch (err) {
-            setError('Failed to delete announcement');
+            setError('Failed to permanently delete announcement');
             console.error(err);
           }
         }
@@ -390,7 +674,7 @@ export function useAnnouncements(
               announcement_id: announcementId,
               uploader_id: fetchUser.id,
               attachment_type: 'file',
-              file_name: attachment.file.name,
+              file_name: attachment.linkTitle?.trim() || attachment.file.name,
               storage_path: storagePath,
               public_url: publicUrl,
               mime_type: attachment.file.type || null,
@@ -448,6 +732,43 @@ export function useAnnouncements(
     [refetchAnnouncements]
   );
 
+  const toggleReaction = useCallback(
+    async (announcementId: number, emoji: string) => {
+      setError(null);
+      try {
+        const existing = allAnnouncements
+          .find(announcement => announcement.id === announcementId)
+          ?.reactions?.find(reaction => reaction.userId === fetchUser.id && reaction.emoji === emoji);
+
+        if (existing) {
+          const { error: deleteError } = await supabase
+            .from('announcement_reactions')
+            .delete()
+            .eq('id', existing.id)
+            .eq('user_id', fetchUser.id);
+
+          if (deleteError) throw deleteError;
+        } else {
+          const { error: insertError } = await supabase
+            .from('announcement_reactions')
+            .insert({
+              announcement_id: announcementId,
+              user_id: fetchUser.id,
+              emoji,
+            });
+
+          if (insertError) throw insertError;
+        }
+
+        await refetchAnnouncements();
+      } catch (err) {
+        setError('Failed to update reaction');
+        console.error(err);
+      }
+    },
+    [allAnnouncements, fetchUser.id, refetchAnnouncements]
+  );
+
   return {
     announcements,
     loading,
@@ -455,11 +776,14 @@ export function useAnnouncements(
     addAnnouncement,
     updateAnnouncement,
     deleteAnnouncement,
+    restoreAnnouncement,
+    permanentlyDeleteAnnouncement,
     togglePin,
     addComment,
     deleteComment,
     addAttachment,
     deleteAttachment,
+    toggleReaction,
     refetchAnnouncements,
   };
 }

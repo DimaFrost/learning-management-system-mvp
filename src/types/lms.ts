@@ -99,14 +99,28 @@ export interface Announcement {
   type: 'post' | 'homework' | 'material' | 'system';
   authorId: string | null;
   authorName: string | null; // populated from join with profiles
+  authorAvatarUrl?: string | null; // populated from join with profiles
   courseId: number | null; // null = school-wide
   targetRoles: string[] | null;
+  status: 'draft' | 'scheduled' | 'published' | 'archived';
+  scheduledAt: string | null;
+  publishedAt: string | null;
   isPinned: boolean;
   isStaffOnly: boolean;
   createdAt: string;
   updatedAt: string;
   comments?: AnnouncementComment[];
   attachments?: AnnouncementAttachment[];
+  reactions?: AnnouncementReaction[];
+}
+
+export interface AnnouncementReaction {
+  id: number;
+  announcementId: number;
+  userId: string;
+  userName: string | null;
+  emoji: string;
+  createdAt: string;
 }
 
 export interface AnnouncementAttachment {

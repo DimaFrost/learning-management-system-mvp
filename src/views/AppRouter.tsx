@@ -95,9 +95,13 @@ export interface AppRouterProps {
     targetRoles: string[] | null;
     isPinned: boolean;
     isStaffOnly: boolean;
+    status: Announcement['status'];
+    scheduledAt: string | null;
   }) => Promise<number>;
   updateAnnouncement: (id: number, updates: Partial<Announcement>) => Promise<void>;
   deleteAnnouncement: (id: number) => void;
+  restoreAnnouncement: (id: number) => Promise<void>;
+  permanentlyDeleteAnnouncement: (id: number) => void;
   togglePin: (id: number, current: boolean) => Promise<void>;
   addComment: (announcementId: number, content: string) => Promise<void>;
   deleteComment: (commentId: number) => void;
@@ -111,6 +115,7 @@ export interface AppRouterProps {
     }
   ) => Promise<void>;
   deleteAttachment: (attachmentId: number, storagePath: string | null) => Promise<void>;
+  toggleReaction: (announcementId: number, emoji: string) => Promise<void>;
   onProfileUpdated: () => void;
   conversations: Conversation[];
   messagesLoading: boolean;
@@ -168,11 +173,14 @@ export function AppRouter({
   addAnnouncement,
   updateAnnouncement,
   deleteAnnouncement,
+  restoreAnnouncement,
+  permanentlyDeleteAnnouncement,
   togglePin,
   addComment,
   deleteComment,
   addAttachment,
   deleteAttachment,
+  toggleReaction,
   onProfileUpdated,
   conversations,
   messagesLoading,
@@ -242,21 +250,28 @@ export function AppRouter({
     );
   }
 
-  if (activeView === 'announcements') {
+  if (activeView === 'announcements' || activeView === 'announcements-new') {
     return (
       <AnnouncementsView
         announcements={announcements}
         courses={courses}
+        users={users}
+        courseStudents={courseStudents}
         currentUser={currentUser}
         loading={announcementsLoading}
         onAdd={addAnnouncement}
         onUpdate={updateAnnouncement}
         onDelete={deleteAnnouncement}
+        onRestore={restoreAnnouncement}
+        onPermanentDelete={permanentlyDeleteAnnouncement}
         onTogglePin={togglePin}
         onAddComment={addComment}
         onDeleteComment={deleteComment}
         onAddAttachment={addAttachment}
         onDeleteAttachment={deleteAttachment}
+        onToggleReaction={toggleReaction}
+        openCreateOnMount={activeView === 'announcements-new'}
+        onCreateFlowClosed={() => setActiveView('announcements')}
       />
     );
   }

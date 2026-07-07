@@ -1,18 +1,25 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Megaphone,
   Pin,
   Pencil,
   Trash,
   Plus,
+  CalendarClock,
   Lock,
   FileText,
   Table,
   Presentation,
   Image,
+  Link,
   X,
+  BookOpen,
+  MessageCircle,
+  Paperclip,
+  Send,
+  RotateCcw,
 } from 'lucide-react';
-import type { Announcement, AnnouncementAttachment, User, Course } from '../../types/lms';
+import type { Announcement, AnnouncementAttachment, User, Course, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
@@ -21,6 +28,8 @@ import { PageHeader } from '../../components/ui/PageHeader';
 interface AnnouncementsViewProps {
   announcements: Announcement[];
   courses: Course[];
+  users: User[];
+  courseStudents: CourseStudent[];
   currentUser: User;
   loading: boolean;
   onAdd: (data: {
@@ -31,9 +40,14 @@ interface AnnouncementsViewProps {
     targetRoles: string[] | null;
     isPinned: boolean;
     isStaffOnly: boolean;
+    status: Announcement['status'];
+    scheduledAt: string | null;
+    notifyAudience?: boolean;
   }) => Promise<number>;
-  onUpdate: (id: number, updates: Partial<Announcement>) => Promise<void>;
+  onUpdate: (id: number, updates: Partial<Announcement> & { notifyAudience?: boolean }) => Promise<void>;
   onDelete: (id: number) => void;
+  onRestore: (id: number) => Promise<void>;
+  onPermanentDelete: (id: number) => void;
   onTogglePin: (id: number, current: boolean) => Promise<void>;
   onAddComment: (announcementId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => void;
@@ -47,9 +61,12 @@ interface AnnouncementsViewProps {
     }
   ) => Promise<void>;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
+  onToggleReaction: (announcementId: number, emoji: string) => Promise<void>;
+  openCreateOnMount?: boolean;
+  onCreateFlowClosed?: () => void;
 }
 
-type FilterValue = 'all' | Announcement['type'];
+type FilterValue = 'all' | Announcement['type'] | 'draft' | 'scheduled' | 'trash';
 
 const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -57,17 +74,36 @@ const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: 'homework', label: 'Homework' },
   { value: 'material', label: 'Materials' },
   { value: 'system', label: 'System' },
+  { value: 'scheduled', label: 'Scheduled' },
+  { value: 'draft', label: 'Drafts' },
+  { value: 'trash', label: 'Trash' },
 ];
+
+const REACTION_OPTIONS = ['👍', '❤️', '🙏', '🔥', '🎉'];
 
 const TYPE_BADGE: Record<
   Announcement['type'],
-  { label: string; emoji: string; className: string }
+  { label: string }
 > = {
-  post: { label: 'Post', emoji: '📢', className: 'bg-blue-100 text-blue-800' },
-  homework: { label: 'Homework', emoji: '📚', className: 'bg-amber-100 text-amber-800' },
-  material: { label: 'Material', emoji: '📄', className: 'bg-green-100 text-green-800' },
-  system: { label: 'System', emoji: '⚙️', className: 'bg-gray-100 text-gray-800' },
+  post: { label: 'Post' },
+  homework: { label: 'Homework' },
+  material: { label: 'Material' },
+  system: { label: 'System' },
 };
+
+const TYPE_BADGE_CLASS: Record<Announcement['type'], string> = {
+  post: 'bg-[#dbeaff] text-[#171717]',
+  homework: 'bg-[#fff7ed] text-[#9a3412]',
+  material: 'bg-[#f5f5f5] text-[#171717]',
+  system: 'bg-[#f5f5f5] text-[#525252]',
+};
+
+function AnnouncementTypeIcon({ type }: { type: Announcement['type'] }) {
+  if (type === 'homework') return <BookOpen className="h-3.5 w-3.5" />;
+  if (type === 'material') return <FileText className="h-3.5 w-3.5" />;
+  if (type === 'system') return <Lock className="h-3.5 w-3.5" />;
+  return <Megaphone className="h-3.5 w-3.5" />;
+}
 
 function formatRelativeTime(dateString: string): string {
   const diffMs = Date.now() - new Date(dateString).getTime();
@@ -78,6 +114,38 @@ function formatRelativeTime(dateString: string): string {
   if (hours < 24) return `${hours} hours ago`;
   if (days < 7) return `${days} days ago`;
   return new Date(dateString).toLocaleDateString();
+}
+
+function getInitials(name: string | null | undefined): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map(part => part[0]?.toUpperCase()).join('');
+}
+
+function getAnnouncementStatusLabel(announcement: Announcement): string | null {
+  if (announcement.status === 'draft') return 'Draft';
+  if (announcement.status === 'scheduled') return 'Scheduled';
+  if (announcement.status === 'archived') return 'Trash';
+  return null;
+}
+
+function isAnnouncementEdited(announcement: Announcement): boolean {
+  const updatedAt = new Date(announcement.updatedAt).getTime();
+  const baseline = new Date(announcement.publishedAt ?? announcement.createdAt).getTime();
+  if (Number.isNaN(updatedAt) || Number.isNaN(baseline)) return false;
+  return updatedAt - baseline > 60_000;
+}
+
+function getAudienceBadgeLabel(announcement: Announcement): string | null {
+  const tokens = announcement.targetRoles ?? [];
+  if (tokens.some(token => token.startsWith('user:'))) return 'Custom';
+  if (tokens.includes('audience:staff')) return 'Staff';
+  if (tokens.includes('role:teacher')) return 'Teachers';
+  if (tokens.includes('course:first_year')) return 'First Year Students';
+  if (tokens.includes('course:second_year')) return 'Second Year Students';
+  if (announcement.isStaffOnly) return 'Staff only';
+  return null;
 }
 
 import { formatFileSize } from '../../utils/formatFileSize';
@@ -102,20 +170,47 @@ function getAttachmentLabel(attachment: AnnouncementAttachment): string {
   return attachment.linkTitle ?? 'Google Slides';
 }
 
+function getAttachmentTypeLabel(attachment: AnnouncementAttachment): string {
+  if (attachment.attachmentType === 'file') {
+    return attachment.mimeType?.startsWith('image/') ? 'Image' : 'File';
+  }
+  if (attachment.attachmentType === 'google_doc') return 'Google Doc';
+  if (attachment.attachmentType === 'google_sheet') return 'Google Sheet';
+  return 'Google Slides';
+}
+
 function AttachmentTypeIcon({ attachment }: { attachment: AnnouncementAttachment }) {
   if (attachment.attachmentType === 'file') {
     if (attachment.mimeType?.startsWith('image/')) {
-      return <Image className="w-4 h-4 text-gray-500 flex-shrink-0" />;
+      return <Image className="h-4 w-4 flex-shrink-0" />;
     }
-    return <FileText className="w-4 h-4 text-gray-500 flex-shrink-0" />;
+    return <FileText className="h-4 w-4 flex-shrink-0" />;
   }
   if (attachment.attachmentType === 'google_doc') {
-    return <FileText className="w-4 h-4 text-blue-600 flex-shrink-0" />;
+    return <FileText className="h-4 w-4 flex-shrink-0" />;
   }
   if (attachment.attachmentType === 'google_sheet') {
-    return <Table className="w-4 h-4 text-green-600 flex-shrink-0" />;
+    return <Table className="h-4 w-4 flex-shrink-0" />;
   }
-  return <Presentation className="w-4 h-4 text-orange-600 flex-shrink-0" />;
+  return <Presentation className="h-4 w-4 flex-shrink-0" />;
+}
+
+function getAttachmentIconTone(attachment: AnnouncementAttachment): string {
+  if (attachment.attachmentType === 'google_doc') return 'bg-blue-50 text-[#2563eb] ring-blue-100';
+  if (attachment.attachmentType === 'google_sheet') return 'bg-emerald-50 text-[#16a34a] ring-emerald-100';
+  if (attachment.attachmentType === 'google_slide') return 'bg-orange-50 text-[#ea580c] ring-orange-100';
+  if (attachment.mimeType?.startsWith('image/')) return 'bg-rose-50 text-rose-700 ring-rose-100';
+  if (attachment.mimeType === 'application/pdf') return 'bg-red-50 text-red-700 ring-red-100';
+  if (attachment.mimeType?.includes('word') || attachment.fileName?.match(/\.(doc|docx)$/i)) {
+    return 'bg-blue-50 text-blue-700 ring-blue-100';
+  }
+  if (attachment.mimeType?.includes('spreadsheet') || attachment.fileName?.match(/\.(xls|xlsx|csv)$/i)) {
+    return 'bg-emerald-50 text-emerald-700 ring-emerald-100';
+  }
+  if (attachment.mimeType?.includes('presentation') || attachment.fileName?.match(/\.(ppt|pptx)$/i)) {
+    return 'bg-orange-50 text-orange-700 ring-orange-100';
+  }
+  return 'bg-[#f5f5f5] text-[#525252] ring-[#e5e5e5]';
 }
 
 interface AnnouncementAttachmentsRowProps {
@@ -134,58 +229,61 @@ function AnnouncementAttachmentsRow({
   if (attachments.length === 0) return null;
 
   return (
-    <div className="mb-4">
-      <p className="text-xs font-medium uppercase tracking-wider text-gray-400 mb-2">
-        Attachments
-      </p>
-      <div className="flex gap-2 overflow-x-auto pb-1 md:flex-wrap md:overflow-visible">
-        {attachments.map(attachment => {
-          const openUrl = getAttachmentOpenUrl(attachment);
-          const canDelete =
-            isAdmin || attachment.uploaderId === currentUser.id;
-
-          return (
-            <div
-              key={attachment.id}
-              className="inline-flex items-center gap-2 flex-shrink-0 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm min-w-0 max-w-full"
-            >
+    <div className="mb-4 flex flex-wrap gap-2">
+      {attachments.map(attachment => {
+        const openUrl = getAttachmentOpenUrl(attachment);
+        const canDelete = isAdmin || attachment.uploaderId === currentUser.id;
+        const meta =
+          attachment.attachmentType === 'file' && attachment.fileSize != null
+            ? formatFileSize(attachment.fileSize)
+            : getAttachmentTypeLabel(attachment);
+        const chipContent = (
+          <>
+            <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-md ring-1 ${getAttachmentIconTone(attachment)}`}>
               <AttachmentTypeIcon attachment={attachment} />
-              <div className="min-w-0">
-                <p className="text-gray-900 font-medium truncate max-w-[160px] md:max-w-[200px]">
-                  {getAttachmentLabel(attachment)}
-                </p>
-                {attachment.attachmentType === 'file' && attachment.fileSize != null && (
-                  <p className="text-xs text-gray-500">
-                    {formatFileSize(attachment.fileSize)}
-                  </p>
-                )}
-              </div>
-              {openUrl && (
-                <a
-                  href={openUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs font-medium text-amber-700 hover:text-amber-900 flex-shrink-0"
-                >
-                  Open
-                </a>
-              )}
-              {canDelete && (
-                <button
-                  type="button"
-                  onClick={() =>
-                    onDeleteAttachment(attachment.id, attachment.storagePath)
-                  }
-                  className="p-0.5 text-gray-400 hover:text-red-600 flex-shrink-0"
-                  aria-label="Remove attachment"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-          );
-        })}
-      </div>
+            </span>
+            <span className="min-w-0 truncate text-sm font-medium text-[#171717]">
+              {getAttachmentLabel(attachment)}
+            </span>
+            <span className="hidden flex-shrink-0 text-xs text-[#a3a3a3] sm:inline">
+              {meta}
+            </span>
+          </>
+        );
+
+        return (
+          <span
+            key={attachment.id}
+            className="group inline-flex max-w-full items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-2 py-1.5 shadow-[0_1px_1px_rgba(0,0,0,0.03)] transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:max-w-[280px]"
+          >
+            {openUrl ? (
+              <a
+                href={openUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-w-0 items-center gap-2"
+                title={getAttachmentLabel(attachment)}
+              >
+                {chipContent}
+              </a>
+            ) : (
+              <span className="inline-flex min-w-0 items-center gap-2" title={getAttachmentLabel(attachment)}>
+                {chipContent}
+              </span>
+            )}
+            {canDelete && (
+              <button
+                type="button"
+                onClick={() => onDeleteAttachment(attachment.id, attachment.storagePath)}
+                className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 hover:bg-[#fef2f2] hover:text-red-600 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
+                aria-label="Remove attachment"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </span>
+        );
+      })}
     </div>
   );
 }
@@ -202,6 +300,9 @@ interface AnnouncementCardProps {
   onTogglePin: (id: number, current: boolean) => Promise<void>;
   onEdit: (announcement: Announcement) => void;
   onDelete: (id: number) => void;
+  onRestore: (id: number) => Promise<void>;
+  onPermanentDelete: (id: number) => void;
+  onToggleReaction: (announcementId: number, emoji: string) => Promise<void>;
   onAddComment: (announcementId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => void;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
@@ -219,6 +320,9 @@ function AnnouncementCard({
   onTogglePin,
   onEdit,
   onDelete,
+  onRestore,
+  onPermanentDelete,
+  onToggleReaction,
   onAddComment,
   onDeleteComment,
   onDeleteAttachment,
@@ -231,6 +335,24 @@ function AnnouncementCard({
   const comments = announcement.comments ?? [];
   const commentCount = comments.length;
   const canManage = isAdmin || announcement.authorId === currentUser.id;
+  const authorName = announcement.authorName ?? 'Unknown';
+  const authorAvatarUrl = announcement.authorAvatarUrl ?? (announcement.authorId === currentUser.id ? currentUser.avatarUrl : null);
+  const attachments = announcement.attachments ?? [];
+  const fileAttachmentCount = attachments.filter(attachment => attachment.attachmentType === 'file').length;
+  const linkAttachmentCount = attachments.length - fileAttachmentCount;
+  const statusLabel = getAnnouncementStatusLabel(announcement);
+  const audienceBadgeLabel = getAudienceBadgeLabel(announcement);
+  const edited = isAnnouncementEdited(announcement);
+  const isArchived = announcement.status === 'archived';
+  const reactionCounts = (announcement.reactions ?? []).reduce<Record<string, number>>((acc, reaction) => {
+    acc[reaction.emoji] = (acc[reaction.emoji] ?? 0) + 1;
+    return acc;
+  }, {});
+  const userReactions = new Set(
+    (announcement.reactions ?? [])
+      .filter(reaction => reaction.userId === currentUser.id)
+      .map(reaction => reaction.emoji)
+  );
 
   const handlePostComment = async () => {
     const content = commentDraft.trim();
@@ -240,46 +362,110 @@ function AnnouncementCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-      <div className="flex items-start justify-between gap-4 mb-3">
-        <div className="flex flex-wrap items-center gap-2">
+    <article className={`overflow-hidden rounded-2xl border bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04)] ${
+      announcement.isPinned ? 'border-[#fbbf24]/70 ring-1 ring-[#fef3c7]' : 'border-[#e5e5e5]'
+    }`}>
+      <div className="flex items-center justify-between gap-4 border-b border-[#f5f5f5] px-5 py-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <span
-            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium ${typeBadge.className}`}
+            className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${TYPE_BADGE_CLASS[announcement.type]}`}
           >
-            {typeBadge.emoji} {typeBadge.label}
+            <AnnouncementTypeIcon type={announcement.type} />
+            {typeBadge.label}
           </span>
-          {announcement.isStaffOnly && (
-            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+          {statusLabel && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium text-[#525252] ring-1 ring-[#e5e5e5]">
+              <CalendarClock className="h-3 w-3" />
+              {statusLabel}
+            </span>
+          )}
+          {audienceBadgeLabel && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium text-[#525252]">
               <Lock className="w-3 h-3" />
-              Staff only
+              {audienceBadgeLabel}
             </span>
           )}
           {course && (
-            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+            <span className="inline-flex items-center rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium text-[#525252]">
               {getCourseDisplayName(course)}
             </span>
           )}
-        </div>
-        <div className="flex items-center gap-1 flex-shrink-0">
-          {announcement.isPinned && (
-            <Pin className="w-4 h-4 text-amber-600" aria-label="Pinned" />
+          {fileAttachmentCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#525252] ring-1 ring-[#e5e5e5]">
+              <Paperclip className="h-3 w-3 text-[#737373]" />
+              {fileAttachmentCount}
+            </span>
           )}
-          {isAdmin && (
+          {linkAttachmentCount > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-medium text-[#525252] ring-1 ring-[#e5e5e5]">
+              <Link className="h-3 w-3 text-[#737373]" />
+              {linkAttachmentCount}
+            </span>
+          )}
+        </div>
+        <div className="flex flex-shrink-0 items-center gap-2">
+          <div className="flex h-9 items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-2 py-1">
+            <span className="flex h-7 w-7 items-center justify-center overflow-hidden rounded-full bg-[#f5f5f5] text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+              {authorAvatarUrl ? (
+                <img src={authorAvatarUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                getInitials(authorName)
+              )}
+            </span>
+            <span className="hidden min-w-0 items-center gap-1.5 text-xs sm:flex">
+              <span className="max-w-[140px] truncate font-semibold text-[#171717]">{authorName}</span>
+              <span className="h-1 w-1 rounded-full bg-[#d4d4d4]" />
+              <span className="whitespace-nowrap text-[#737373]">{formatRelativeTime(announcement.createdAt)}</span>
+              {edited && (
+                <>
+                  <span className="h-1 w-1 rounded-full bg-[#d4d4d4]" />
+                  <span className="rounded-full bg-[#f5f5f5] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#737373]">
+                    Edited
+                  </span>
+                </>
+              )}
+            </span>
+          </div>
+          {announcement.isPinned && !isArchived && (
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff7ed] text-[#d97706]" title="Pinned">
+              <Pin className="h-4 w-4" aria-label="Pinned" />
+            </span>
+          )}
+          {isAdmin && !isArchived && (
             <button
               type="button"
               onClick={() => onTogglePin(announcement.id, announcement.isPinned)}
-              className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100"
+              className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fff7ed] hover:text-[#d97706]"
               aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
             >
               <Pin className="w-4 h-4" />
             </button>
           )}
-          {canManage && (
+          {isArchived && isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => onRestore(announcement.id)}
+                className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#ecfdf5] hover:text-emerald-700"
+                aria-label="Restore announcement"
+              >
+                <RotateCcw className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => onPermanentDelete(announcement.id)}
+                className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
+                aria-label="Permanently delete announcement"
+              >
+                <Trash className="h-4 w-4" />
+              </button>
+            </>
+          ) : canManage && (
             <>
               <button
                 type="button"
                 onClick={() => onEdit(announcement)}
-                className="p-1.5 text-gray-400 hover:text-blue-600 rounded-md hover:bg-gray-100"
+                className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#dbeaff] hover:text-[#2563eb]"
                 aria-label="Edit announcement"
               >
                 <Pencil className="w-4 h-4" />
@@ -287,7 +473,7 @@ function AnnouncementCard({
               <button
                 type="button"
                 onClick={() => onDelete(announcement.id)}
-                className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
+                className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
                 aria-label="Delete announcement"
               >
                 <Trash className="w-4 h-4" />
@@ -297,42 +483,72 @@ function AnnouncementCard({
         </div>
       </div>
 
-      <h3 className="text-xl font-bold text-gray-900 mb-2">{announcement.title}</h3>
-      <p className="text-gray-700 whitespace-pre-wrap mb-3">{announcement.content}</p>
-      <p className="text-sm text-gray-500 mb-4">
-        {announcement.authorName ?? 'Unknown'} · {formatRelativeTime(announcement.createdAt)}
-      </p>
+      <div className="px-5 py-4">
+        <h3 className="text-xl font-semibold tracking-[-0.01em] text-[#171717]">{announcement.title}</h3>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{announcement.content}</p>
 
-      {announcement.attachments && announcement.attachments.length > 0 && (
-        <AnnouncementAttachmentsRow
-          attachments={announcement.attachments}
-          currentUser={currentUser}
-          isAdmin={isAdmin}
-          onDeleteAttachment={onDeleteAttachment}
-        />
-      )}
+        {announcement.attachments && announcement.attachments.length > 0 && (
+          <div className="mt-4">
+            <AnnouncementAttachmentsRow
+              attachments={announcement.attachments}
+              currentUser={currentUser}
+              isAdmin={isAdmin}
+              onDeleteAttachment={onDeleteAttachment}
+            />
+          </div>
+        )}
 
-      <div className="border-t border-gray-100 pt-3">
-        <button
-          type="button"
-          onClick={onToggleComments}
-          className="text-sm text-amber-700 hover:text-amber-900 font-medium"
-        >
-          {commentCount} comment{commentCount !== 1 ? 's' : ''}
-        </button>
+      </div>
+
+      <div className="border-t border-[#f5f5f5] bg-[#fafafa] px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {REACTION_OPTIONS.map(emoji => {
+              const count = reactionCounts[emoji] ?? 0;
+              const selected = userReactions.has(emoji);
+              return (
+                <button
+                  key={emoji}
+                  type="button"
+                  disabled={isArchived}
+                  onClick={() => onToggleReaction(announcement.id, emoji)}
+                  className={`tbo-focus inline-flex h-8 items-center gap-1 rounded-full border px-2 text-sm transition ${
+                    selected
+                      ? 'border-[#2563eb] bg-[#dbeaff] text-[#171717]'
+                      : count > 0
+                        ? 'border-[#e5e5e5] bg-white text-[#525252] hover:border-[#d4d4d4] hover:bg-[#f5f5f5]'
+                        : 'border-transparent bg-transparent text-[#a3a3a3] hover:bg-white hover:text-[#525252]'
+                  } disabled:cursor-not-allowed disabled:opacity-50`}
+                  aria-label={`React ${emoji}`}
+                >
+                  <span>{emoji}</span>
+                  {count > 0 && <span className="text-xs font-semibold">{count}</span>}
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            onClick={onToggleComments}
+            className="tbo-focus inline-flex items-center gap-2 rounded-lg text-sm font-medium text-[#525252] hover:text-[#171717]"
+          >
+            <MessageCircle className="h-4 w-4" />
+            {commentCount} comment{commentCount !== 1 ? 's' : ''}
+          </button>
+        </div>
 
         {isCommentsExpanded && (
           <div className="mt-3 space-y-3">
             {comments.length === 0 ? (
-              <p className="text-sm text-gray-500">No comments yet.</p>
+              <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-white px-3 py-3 text-sm text-[#737373]">No comments yet.</p>
             ) : (
               comments.map(comment => (
-                <div key={comment.id} className="bg-gray-50 rounded-lg p-3">
+                <div key={comment.id} className="rounded-xl border border-[#e5e5e5] bg-white p-3">
                   <div className="flex items-start justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{comment.authorName}</p>
-                      <p className="text-sm text-gray-700 mt-1">{comment.content}</p>
-                      <p className="text-xs text-gray-400 mt-1">
+                      <p className="text-sm font-medium text-[#171717]">{comment.authorName}</p>
+                      <p className="mt-1 text-sm text-[#525252]">{comment.content}</p>
+                      <p className="mt-1 text-xs text-[#a3a3a3]">
                         {formatRelativeTime(comment.createdAt)}
                       </p>
                     </div>
@@ -340,7 +556,7 @@ function AnnouncementCard({
                       <button
                         type="button"
                         onClick={() => onDeleteComment(comment.id)}
-                        className="text-xs text-red-600 hover:text-red-800 flex-shrink-0"
+                        className="flex-shrink-0 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-[#fef2f2] hover:text-red-800"
                       >
                         Delete
                       </button>
@@ -362,40 +578,48 @@ function AnnouncementCard({
                   }
                 }}
                 placeholder="Add a comment"
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
               />
               <button
                 type="button"
                 onClick={handlePostComment}
                 disabled={!commentDraft.trim()}
-                className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Post
+                <Send className="h-3.5 w-3.5" />
+                <span>Post</span>
               </button>
             </div>
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }
 
 export function AnnouncementsView({
   announcements,
   courses,
+  users,
+  courseStudents,
   currentUser,
   loading,
   onAdd,
   onUpdate,
   onDelete,
+  onRestore,
+  onPermanentDelete,
   onTogglePin,
   onAddComment,
   onDeleteComment,
   onAddAttachment,
   onDeleteAttachment,
+  onToggleReaction,
+  openCreateOnMount = false,
+  onCreateFlowClosed,
 }: AnnouncementsViewProps) {
   const [filter, setFilter] = useState<FilterValue>('all');
-  const [modalOpen, setModalOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(openCreateOnMount);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
@@ -404,8 +628,26 @@ export function AnnouncementsView({
   const canCreateAnnouncement =
     isAdmin || hasRole(currentUser, 'teacher');
 
+  useEffect(() => {
+    if (!openCreateOnMount || !canCreateAnnouncement) return;
+    setEditingAnnouncement(null);
+    setModalOpen(true);
+  }, [canCreateAnnouncement, openCreateOnMount]);
+
+  const visibleFilterOptions = FILTER_OPTIONS.filter(option => {
+    if (option.value === 'trash') return isAdmin;
+    if (option.value === 'scheduled' || option.value === 'draft') return canCreateAnnouncement;
+    return true;
+  });
+
   const filteredList =
-    filter === 'all' ? announcements : announcements.filter(a => a.type === filter);
+    filter === 'all'
+      ? announcements.filter(a => a.status !== 'archived')
+      : filter === 'trash'
+        ? announcements.filter(a => a.status === 'archived')
+      : filter === 'scheduled' || filter === 'draft'
+        ? announcements.filter(a => a.status === filter)
+        : announcements.filter(a => a.type === filter && a.status !== 'archived');
 
   const pinnedList = filteredList.filter(a => a.isPinned);
   const regularList = filteredList.filter(a => !a.isPinned);
@@ -442,6 +684,9 @@ export function AnnouncementsView({
   const closeModal = () => {
     setModalOpen(false);
     setEditingAnnouncement(null);
+    if (openCreateOnMount) {
+      onCreateFlowClosed?.();
+    }
   };
 
   const renderCard = (announcement: Announcement) => (
@@ -460,87 +705,25 @@ export function AnnouncementsView({
       onTogglePin={onTogglePin}
       onEdit={openEditModal}
       onDelete={onDelete}
+      onRestore={onRestore}
+      onPermanentDelete={onPermanentDelete}
+      onToggleReaction={onToggleReaction}
       onAddComment={onAddComment}
       onDeleteComment={onDeleteComment}
       onDeleteAttachment={onDeleteAttachment}
     />
   );
 
-  return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Announcements"
-        action={
-          canCreateAnnouncement ? (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="w-full sm:w-auto bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 flex items-center justify-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              <span>New Announcement</span>
-            </button>
-          ) : undefined
-        }
-      />
-
-      <div className="flex flex-wrap gap-2">
-        {FILTER_OPTIONS.map(option => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => setFilter(option.value)}
-            className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-              filter === option.value
-                ? 'bg-amber-100 text-amber-800 border border-amber-500'
-                : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'
-            }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {loading ? (
-        <div className="flex flex-col items-center justify-center py-16 min-h-[200px] rounded-lg border border-gray-200 bg-white">
-          <div
-            className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
-            role="status"
-            aria-label="Loading announcements"
-          />
-          <p className="text-sm text-gray-400 mt-3">Loading announcements...</p>
-        </div>
-      ) : filteredList.length === 0 ? (
-        <div className="text-center py-12">
-          <Megaphone className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">
-            {filter === 'all'
-              ? 'No announcements yet.'
-              : `No ${activeFilterLabel} announcements.`}
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-6">
-          {pinnedList.length > 0 && (
-            <div className="space-y-4">
-              <p className="text-xs font-medium uppercase tracking-wider text-gray-400">
-                📌 Pinned
-              </p>
-              {pinnedList.map(renderCard)}
-            </div>
-          )}
-          {regularList.length > 0 && (
-            <div className="space-y-4">{regularList.map(renderCard)}</div>
-          )}
-        </div>
-      )}
-
+  if (modalOpen) {
+    return (
       <CreateAnnouncementModal
         isOpen={modalOpen}
         editingAnnouncement={editingAnnouncement}
         announcementId={liveEditingAnnouncement?.id ?? null}
         existingAttachments={liveEditingAnnouncement?.attachments ?? []}
         courses={courses}
+        users={users}
+        courseStudents={courseStudents}
         currentUser={currentUser}
         onClose={closeModal}
         onAddAttachment={onAddAttachment}
@@ -553,6 +736,83 @@ export function AnnouncementsView({
           return await onAdd(data);
         }}
       />
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <PageHeader
+        title="Announcements"
+        action={
+          canCreateAnnouncement ? (
+            <button
+              type="button"
+              onClick={openCreateModal}
+              className="tbo-focus flex w-full items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>New announcement</span>
+            </button>
+          ) : undefined
+        }
+      />
+
+      <div className="tbo-panel flex flex-wrap gap-2 p-2">
+        {visibleFilterOptions.map(option => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => setFilter(option.value)}
+            className={`tbo-focus rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+              filter === option.value
+                ? 'bg-[#dbeaff] text-[#171717]'
+                : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {loading ? (
+        <div className="tbo-panel flex min-h-[240px] flex-col items-center justify-center py-16">
+          <div
+            className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
+            role="status"
+            aria-label="Loading announcements"
+          />
+          <p className="mt-3 text-sm text-[#737373]">Loading announcements...</p>
+        </div>
+      ) : filteredList.length === 0 ? (
+        <div className="tbo-panel grid min-h-[260px] place-items-center px-6 py-12 text-center">
+          <div>
+            <span className="mx-auto mb-4 grid h-12 w-12 place-items-center rounded-2xl bg-[#f5f5f5] text-[#737373]">
+              <Megaphone className="h-6 w-6" />
+            </span>
+            <p className="text-sm text-[#737373]">
+              {filter === 'all'
+                ? 'No announcements yet.'
+                : `No ${activeFilterLabel} announcements.`}
+            </p>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {pinnedList.length > 0 && (
+            <div className="space-y-3">
+              <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">
+                <Pin className="h-3.5 w-3.5 text-[#d97706]" />
+                <span>Pinned</span>
+              </p>
+              {pinnedList.map(renderCard)}
+            </div>
+          )}
+          {regularList.length > 0 && (
+            <div className="space-y-4">{regularList.map(renderCard)}</div>
+          )}
+        </div>
+      )}
+
     </div>
   );
 }
