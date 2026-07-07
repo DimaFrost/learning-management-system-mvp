@@ -291,16 +291,16 @@ export function Sidebar({
         key={`${item.id}-${item.label}`}
         type="button"
         onClick={() => handleNavigate(item.id)}
-        className={`tbo-focus group mx-2 flex w-[calc(100%-1rem)] items-center rounded-xl text-left text-sm transition-colors ${
+        className={`tbo-focus group mx-2 flex w-[calc(100%-1rem)] items-center rounded-lg text-left text-sm transition-colors ${
           expanded ? 'gap-3 px-3 py-2.5' : 'justify-center px-0 py-2.5'
         } ${
           active
             ? alert
-              ? 'bg-[#fff6f0] text-[#d97757]'
-              : 'bg-[#efeeeb] text-[#121212]'
+              ? 'bg-[#fff7ed] text-[#c2410c]'
+              : 'bg-[#dbeaff] text-[#171717]'
             : alert
-              ? 'text-[#d97757] hover:bg-[#fff6f0]'
-              : 'text-[#373734] hover:bg-[#efeeeb] hover:text-[#121212]'
+              ? 'text-[#c2410c] hover:bg-[#fff7ed]'
+              : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
         }`}
         title={!expanded ? item.label : undefined}
       >
@@ -315,7 +315,7 @@ export function Sidebar({
         >
           <Icon className="h-4 w-4" />
           {!expanded && item.badge && (
-            <span className="absolute -right-1 -top-1 h-2.5 min-w-2.5 rounded-full bg-[#d97757] ring-2 ring-white" />
+            <span className="absolute -right-1 -top-1 h-2.5 min-w-2.5 rounded-full bg-[#ea580c] ring-2 ring-white" />
           )}
         </span>
         {expanded && (
@@ -323,13 +323,13 @@ export function Sidebar({
             <span className="min-w-0 flex-1">
               <span className="block truncate font-medium leading-5">{item.label}</span>
               {item.description && (
-                <span className="block truncate text-xs leading-4 text-[#7b7974]">{item.description}</span>
+                <span className="block truncate text-xs leading-4 text-[#737373]">{item.description}</span>
               )}
             </span>
             {item.badge && (
               <span
                 className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
-                  alert ? 'bg-white text-[#d97757]' : 'bg-white text-[#121212]'
+                  alert ? 'bg-white text-[#c2410c]' : 'bg-white text-[#2563eb]'
                 }`}
               >
                 {item.badge}
@@ -350,20 +350,20 @@ export function Sidebar({
     return (
       <>
         <div
-          className={`flex-shrink-0 border-b border-[#e7e6e1] py-3 ${
+          className={`flex-shrink-0 border-b border-[#e5e5e5] py-3 ${
             forceExpanded ? 'px-4' : 'px-2'
           }`}
         >
           {forceExpanded ? (
             <div className="flex items-center justify-between">
               <div>
-                <span className="font-serif text-xl font-normal text-[#121212]">Menu</span>
-                <p className="text-xs text-[#7b7974]">School workspace</p>
+                <span className="text-sm font-semibold text-[#171717]">Menu</span>
+                <p className="text-xs text-[#737373]">School workspace</p>
               </div>
               <button
                 type="button"
                 onClick={onMobileClose}
-                className="tbo-focus rounded-lg p-2 text-[#7b7974] hover:bg-[#efeeeb] hover:text-[#121212]"
+                className="tbo-focus rounded-lg p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                 aria-label="Close menu"
               >
                 <X className="w-5 h-5" />
@@ -373,10 +373,10 @@ export function Sidebar({
             <div className={`flex items-center ${expanded ? 'justify-between pl-2' : 'justify-center'}`}>
               {expanded && (
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#7b7974]">
+                  <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#737373]">
                     {inAttendanceModule ? 'Module' : 'Workspace'}
                   </p>
-                  <p className="truncate font-serif text-lg font-normal leading-tight text-[#121212]">
+                  <p className="truncate text-sm font-semibold text-[#171717]">
                     {inAttendanceModule ? 'Attendance' : workspaceLabel}
                   </p>
                 </div>
@@ -384,7 +384,7 @@ export function Sidebar({
               <button
                 onClick={onToggleMode}
                 title={toggleTitle}
-                className="tbo-focus hidden rounded-lg p-1.5 text-sm text-[#7b7974] transition-colors hover:bg-[#efeeeb] hover:text-[#121212] lg:flex"
+                className="tbo-focus hidden rounded-lg p-1.5 text-sm text-[#737373] transition-colors hover:bg-[#f5f5f5] hover:text-[#171717] lg:flex"
                 type="button"
               >
                 {mode === 'locked' ? (
@@ -402,7 +402,7 @@ export function Sidebar({
             <button
               type="button"
               onClick={() => handleNavigate('dashboard')}
-              className={`tbo-focus group mx-2 mb-3 flex w-[calc(100%-1rem)] items-center rounded-xl text-left text-sm text-[#373734] transition-colors hover:bg-[#efeeeb] hover:text-[#121212] ${
+              className={`tbo-focus group mx-2 mb-3 flex w-[calc(100%-1rem)] items-center rounded-lg text-left text-sm text-[#525252] transition-colors hover:bg-[#f5f5f5] hover:text-[#171717] ${
                 expanded ? 'gap-3 px-3 py-2.5' : 'justify-center px-0 py-2.5'
               }`}
               title={!expanded ? 'Main menu' : undefined}
@@ -413,7 +413,7 @@ export function Sidebar({
               {expanded && (
                 <span className="min-w-0 flex-1">
                   <span className="block truncate font-medium leading-5">Main menu</span>
-                  <span className="block truncate text-xs leading-4 text-[#7b7974]">Back to primary sidebar</span>
+                  <span className="block truncate text-xs leading-4 text-[#737373]">Back to primary sidebar</span>
                 </span>
               )}
             </button>
@@ -422,7 +422,7 @@ export function Sidebar({
           {navSections.map(section => (
             <div key={section.label} className="mb-4 last:mb-0">
               {expanded && (
-                <p className="mb-1 px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#9c9a92]">
+                <p className="mb-1 px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a3a3a3]">
                   {section.label}
                 </p>
               )}
@@ -433,7 +433,7 @@ export function Sidebar({
           ))}
         </nav>
 
-        <div className="border-t border-[#e7e6e1] p-2">
+        <div className="border-t border-[#e5e5e5] p-2">
           {renderItem(
             {
               id: 'settings',
@@ -445,16 +445,16 @@ export function Sidebar({
             forceExpanded
           )}
           {expanded && (
-            <div className="mx-2 mt-2 rounded-2xl border border-[#e7e6e1] bg-[#efeeeb] p-3">
+            <div className="mx-2 mt-2 rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] p-3">
               <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#121212]">
+                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2563eb]">
                   {inAttendanceModule ? <Clock3 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-[#121212]">
+                  <p className="truncate text-xs font-semibold text-[#171717]">
                     {inAttendanceModule ? 'Attendance module' : `${workspaceLabel} view`}
                   </p>
-                  <p className="truncate text-[11px] text-[#7b7974]">
+                  <p className="truncate text-[11px] text-[#737373]">
                     {inAttendanceModule ? 'Presence and duty' : 'Live school data'}
                   </p>
                 </div>
@@ -468,7 +468,7 @@ export function Sidebar({
 
   const desktopSidebar = (
     <div
-      className={`relative h-full flex-shrink-0 overflow-hidden border-r border-[#e7e6e1] bg-[#f8f8f6]/95 flex flex-col transition-[width] duration-200 ${
+      className={`relative h-full flex-shrink-0 overflow-hidden border-r border-[#e5e5e5] bg-white/95 flex flex-col transition-[width] duration-200 ${
         mode === 'locked' ? 'w-72' : 'w-16'
       }`}
     >
@@ -482,11 +482,11 @@ export function Sidebar({
         <div className="fixed inset-0 z-40 lg:hidden">
           <button
             type="button"
-            className="absolute inset-0 bg-[#121212]/40"
+            className="absolute inset-0 bg-black/40"
             onClick={onMobileClose}
             aria-label="Close menu"
           />
-          <div className="absolute inset-y-0 left-0 z-50 flex w-80 max-w-[88vw] flex-col border-r border-[#e7e6e1] bg-[#f8f8f6] shadow-[rgba(18,18,18,0.12)_0px_0px_0px_4px]">
+          <div className="absolute inset-y-0 left-0 z-50 flex w-80 max-w-[88vw] flex-col border-r border-[#e5e5e5] bg-white shadow-[rgba(0,0,0,0.1)_0px_0px_0px_4px]">
             {renderNavContent(true)}
           </div>
         </div>

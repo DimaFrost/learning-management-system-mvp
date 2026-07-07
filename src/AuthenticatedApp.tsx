@@ -209,7 +209,7 @@ export function AuthenticatedApp({
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
 
   return (
-    <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#121212]">
+    <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#171717]">
       <Header
         currentUser={effectiveUser}
         onSignOut={onSignOut}
