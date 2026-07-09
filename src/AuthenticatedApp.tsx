@@ -10,9 +10,12 @@ import { useEnrollments } from './hooks/useEnrollments';
 import { useMentorshipLogs } from './hooks/useMentorshipLogs';
 import { useAnnouncements } from './hooks/useAnnouncements';
 import { useMessages } from './hooks/useMessages';
+import { useTodos } from './hooks/useTodos';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
 import { useAttendance } from './hooks/useAttendance';
 import { getCurrentWeekStart } from './utils/attendanceUtils';
+import { supabase } from './lib/supabase';
+import { useLanguage, type AppLanguage } from './i18n/LanguageContext';
 import { ConfirmationModal } from './components/modals/ConfirmationModal';
 import { LogCheckinModal } from './components/modals/LogCheckinModal';
 import { EditModal } from './components/modals/EditModal/EditModal';
@@ -41,6 +44,7 @@ export function AuthenticatedApp({
   onSignOut,
   onRefetchProfile,
 }: AuthenticatedAppProps) {
+  const { setLanguage } = useLanguage();
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
   const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
     refetchCourses, addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
@@ -84,6 +88,7 @@ export function AuthenticatedApp({
     deleteAttachment,
     toggleReaction,
   } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
+  const todos = useTodos(effectiveUser, users, courseStudents, courses);
   const {
     conversations,
     totalUnread,
@@ -112,6 +117,7 @@ export function AuthenticatedApp({
     announcement => announcement.status === 'draft' &&
       (announcement.authorId === effectiveUser.id || effectiveUser.roles.includes('administrator'))
   ).length;
+  const todoTodayCount = todos.todosToday.length;
   const nextScheduledDuty = attendance.dutySchedule
     .filter(
       d => d.studentId === effectiveUser.id
@@ -163,6 +169,26 @@ export function AuthenticatedApp({
       setActiveWorkspace(selectedWorkspace);
     }
   }, [activeWorkspace, selectedWorkspace]);
+
+  useEffect(() => {
+    setLanguage(currentUser.preferredLanguage ?? 'en');
+  }, [currentUser.id, currentUser.preferredLanguage, setLanguage]);
+
+  const handleLanguageChange = async (language: AppLanguage) => {
+    setLanguage(language);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update({ preferred_language: language })
+      .eq('id', currentUser.id);
+
+    if (error) {
+      console.error('Failed to save language preference', error);
+      return;
+    }
+
+    await onRefetchProfile();
+  };
 
   const toggleSidebarMode = () => {
     setSidebarMode(prev => (prev === 'locked' ? 'collapsed' : 'locked'));
@@ -229,6 +255,7 @@ export function AuthenticatedApp({
         activeWorkspace={selectedWorkspace}
         availableWorkspaces={availableWorkspaces}
         onWorkspaceChange={handleWorkspaceChange}
+        onLanguageChange={handleLanguageChange}
         onOpenDevPanel={() => setShowDevPanel(true)}
         onOpenMobileMenu={() => setMobileNavOpen(true)}
       />
@@ -239,6 +266,7 @@ export function AuthenticatedApp({
           hasRole={hasRole}
           totalUnread={totalUnread}
           announcementDraftCount={announcementDraftCount}
+          todoTodayCount={todoTodayCount}
           isOnDuty={effectiveIsOnDuty}
           activeWorkspace={selectedWorkspace}
           mode={sidebarMode}
@@ -298,6 +326,19 @@ export function AuthenticatedApp({
               addAttachment={addAttachment}
               deleteAttachment={deleteAttachment}
               toggleReaction={toggleReaction}
+              todos={todos.todos}
+              todosToday={todos.todosToday}
+              todosLoading={todos.loading}
+              todosError={todos.error}
+              todoAssignableUsers={todos.assignableUsers}
+              todoAssignmentCategories={todos.assignmentCategories}
+              canUseTodos={todos.canUseTodos}
+              canCreateTodos={todos.canCreateTodos}
+              isTodoAdmin={todos.isAdmin}
+              createTodo={todos.createTodo}
+              updateTodo={todos.updateTodo}
+              toggleTodoStatus={todos.toggleTodoStatus}
+              deleteTodo={todos.deleteTodo}
               onProfileUpdated={onRefetchProfile}
               conversations={conversations}
               messagesLoading={messagesLoading}

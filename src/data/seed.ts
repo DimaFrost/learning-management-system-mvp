@@ -23,14 +23,14 @@ const defaultNotificationPreferences = {
 };
 
 export const initialUsers: User[] = [
-  { id: 'user-1', name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-2', name: 'John Teacher', email: 'john@example.com', roles: ['teacher'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-3', name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-4', name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-5', name: 'Alice Student', email: 'alice@example.com', roles: ['student'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-6', name: 'David Student', email: 'david@example.com', roles: ['student'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-7', name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences },
-  { id: 'user-8', name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'], firstName: '', lastName: '', avatarUrl: null, notificationPreferences: defaultNotificationPreferences }
+  { id: 'user-1', name: 'Admin User', email: 'admin@example.com', roles: ['administrator', 'mentor'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-2', name: 'John Teacher', email: 'john@example.com', roles: ['teacher'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-3', name: 'Maria Translator', email: 'maria@example.com', roles: ['translator'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-4', name: 'Bob Mentor', email: 'bob@example.com', roles: ['mentor'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-5', name: 'Alice Student', email: 'alice@example.com', roles: ['student'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-6', name: 'David Student', email: 'david@example.com', roles: ['student'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-7', name: 'Sarah Multi-Role', email: 'sarah@example.com', roles: ['teacher', 'translator', 'mentor'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences },
+  { id: 'user-8', name: 'Mike Teacher-Mentor', email: 'mike@example.com', roles: ['teacher', 'mentor'], firstName: '', lastName: '', avatarUrl: null, preferredLanguage: 'en', notificationPreferences: defaultNotificationPreferences }
 ];
 
 export const initialCourses: Course[] = [

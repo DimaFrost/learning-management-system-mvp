@@ -6,8 +6,10 @@ type Profile = {
   name: string;
   email: string;
   roles: string[];
+  preferred_language?: 'en' | 'bg' | null;
   notification_preferences?: {
     announcements?: boolean;
+    todos?: boolean;
   } | null;
 };
 
@@ -15,6 +17,8 @@ type Announcement = {
   id: number;
   title: string;
   content: string;
+  title_bg: string | null;
+  content_bg: string | null;
   course_id: number | null;
   target_roles: string[] | null;
   is_staff_only: boolean;
@@ -33,6 +37,17 @@ type NotificationJob = {
   payload: Record<string, unknown>;
 };
 
+type TodoItem = {
+  id: number;
+  title: string;
+  description: string | null;
+  assigned_to: string;
+  due_date: string;
+  priority: 'none' | 'priority';
+  status: 'open' | 'completed';
+  assigned?: Profile | null;
+};
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-notification-secret',
@@ -40,7 +55,7 @@ const corsHeaders = {
 
 const APP_URL = Deno.env.get('APP_URL') ?? 'http://localhost:3000';
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY') ?? '';
-const FROM_EMAIL = Deno.env.get('BREVO_FROM_EMAIL') ?? 'no-reply@example.com';
+const FROM_EMAIL = Deno.env.get('BREVO_FROM_EMAIL') ?? 'zsml@theburningones.bg';
 const FROM_NAME = Deno.env.get('BREVO_FROM_NAME') ?? 'The Burning Ones';
 const PROCESS_SECRET = Deno.env.get('PROCESS_NOTIFICATION_SECRET') ?? '';
 const DEFAULT_LOGO_URL = APP_URL.includes('localhost') || APP_URL.includes('127.0.0.1')
@@ -48,6 +63,25 @@ const DEFAULT_LOGO_URL = APP_URL.includes('localhost') || APP_URL.includes('127.
   : `${APP_URL.replace(/\/$/, '')}/tbo-logo.png`;
 const LOGO_URL = Deno.env.get('LOGO_URL') ?? DEFAULT_LOGO_URL;
 const CUSTOM_USER_PREFIX = 'user:';
+
+function getAnnouncementEmailContent(announcement: Announcement, preferredLanguage: 'en' | 'bg' | null | undefined = 'en') {
+  const englishTitle = announcement.title?.trim() ?? '';
+  const englishContent = announcement.content?.trim() ?? '';
+  const bgTitle = announcement.title_bg?.trim() ?? '';
+  const bgContent = announcement.content_bg?.trim() ?? '';
+
+  if (preferredLanguage === 'bg' && bgTitle && bgContent) {
+    return { title: bgTitle, content: bgContent, language: 'bg' as const };
+  }
+
+  if (englishTitle && englishContent) {
+    return { title: englishTitle, content: englishContent, language: 'en' as const };
+  }
+
+  const title = bgTitle || englishTitle || 'Announcement';
+  const content = bgContent || englishContent || '';
+  return { title, content };
+}
 
 const supabase = createClient(
   Deno.env.get('SUPABASE_URL')!,
@@ -116,14 +150,20 @@ async function processJob(job: NotificationJob) {
     .eq('status', 'pending');
 
   try {
-    if (job.type !== 'announcement_email') {
+    let result: Record<string, unknown>;
+
+    if (job.type === 'announcement_email') {
+      const announcementId = job.announcement_id ?? Number(job.payload?.announcementId);
+      if (!announcementId) throw new Error('Missing announcement id');
+      result = await sendAnnouncementEmails(job.id, announcementId);
+    } else if (job.type === 'todo_reminder_email') {
+      const todoId = Number(job.payload?.todoId);
+      if (!todoId) throw new Error('Missing todo id');
+      const reminderKind = job.payload?.reminderKind === 'day_before' ? 'day_before' : 'due_day';
+      result = await sendTodoReminderEmail(job.id, todoId, reminderKind);
+    } else {
       throw new Error(`Unsupported notification job type: ${job.type}`);
     }
-
-    const announcementId = job.announcement_id ?? Number(job.payload?.announcementId);
-    if (!announcementId) throw new Error('Missing announcement id');
-
-    const result = await sendAnnouncementEmails(job.id, announcementId);
 
     await supabase
       .from('notification_jobs')
@@ -182,12 +222,14 @@ async function sendAnnouncementEmails(jobId: number, announcementId: number) {
 
   for (const recipient of recipients) {
     const delivery = await createDelivery(jobId, recipient);
+    const emailContent = getAnnouncementEmailContent(typedAnnouncement, recipient.preferred_language ?? 'en');
     try {
       const response = await sendBrevoEmail({
         to: recipient,
-        subject: `New announcement: ${typedAnnouncement.title}`,
-        html: renderAnnouncementEmail(typedAnnouncement),
-        text: `${typedAnnouncement.title}\n\n${truncateText(typedAnnouncement.content)}\n\nPosted by ${typedAnnouncement.author?.name ?? 'The Burning Ones team'}\n\nOpen The Burning Ones Portal: ${APP_URL}`,
+        subject: `New announcement: ${emailContent.title}`,
+        html: renderAnnouncementEmail(typedAnnouncement, emailContent),
+        text: `${emailContent.title}\n\n${truncateText(emailContent.content)}\n\nPosted by ${typedAnnouncement.author?.name ?? 'The Burning Ones team'}\n\nOpen The Burning Ones Portal: ${APP_URL}`,
+        tags: ['announcement', 'portal'],
       });
       await supabase
         .from('notification_deliveries')
@@ -214,10 +256,74 @@ async function sendAnnouncementEmails(jobId: number, announcementId: number) {
   return { sent, failed, recipientCount: recipients.length };
 }
 
+async function sendTodoReminderEmail(
+  jobId: number,
+  todoId: number,
+  reminderKind: 'day_before' | 'due_day'
+) {
+  const { data: todo, error: todoError } = await supabase
+    .from('todo_items')
+    .select('*, assigned:profiles!todo_items_assigned_to_fkey(id, name, email, roles, notification_preferences)')
+    .eq('id', todoId)
+    .single();
+
+  if (todoError) throw todoError;
+  const typedTodo = todo as TodoItem;
+
+  if (typedTodo.status === 'completed') {
+    return { skipped: true, reason: 'Todo already completed' };
+  }
+
+  if (typedTodo.priority !== 'priority') {
+    return { skipped: true, reason: 'Todo is no longer priority' };
+  }
+
+  const recipient = typedTodo.assigned;
+  if (!recipient?.email) {
+    return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Assigned user has no email' };
+  }
+
+  if (recipient.notification_preferences?.todos === false) {
+    return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Todo notifications disabled' };
+  }
+
+  const delivery = await createDelivery(jobId, recipient);
+  try {
+    const response = await sendBrevoEmail({
+      to: recipient,
+      subject: reminderKind === 'day_before'
+        ? `Priority to-do due tomorrow: ${typedTodo.title}`
+        : `Priority to-do due today: ${typedTodo.title}`,
+      html: renderTodoReminderEmail(typedTodo, reminderKind),
+      text: `${typedTodo.title}\n\n${typedTodo.description ? `${truncateText(typedTodo.description)}\n\n` : ''}Due ${formatDateLabel(typedTodo.due_date)}.\n\nOpen: ${APP_URL}`,
+      tags: ['todo', 'portal'],
+    });
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'sent',
+        provider_message_id: response.messageId ?? null,
+        sent_at: new Date().toISOString(),
+      })
+      .eq('id', delivery.id);
+    return { sent: 1, failed: 0, recipientCount: 1 };
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'failed',
+        error_message: message,
+      })
+      .eq('id', delivery.id);
+    return { sent: 0, failed: 1, recipientCount: 1 };
+  }
+}
+
 async function resolveAnnouncementRecipients(announcement: Announcement): Promise<Profile[]> {
   const { data: profiles, error: profilesError } = await supabase
     .from('profiles')
-    .select('id, name, email, roles, notification_preferences');
+    .select('id, name, email, roles, preferred_language, notification_preferences');
 
   if (profilesError) throw profilesError;
 
@@ -348,11 +454,13 @@ async function sendBrevoEmail({
   subject,
   html,
   text,
+  tags,
 }: {
   to: Profile;
   subject: string;
   html: string;
   text: string;
+  tags?: string[];
 }) {
   if (!BREVO_API_KEY) throw new Error('Missing BREVO_API_KEY');
 
@@ -377,7 +485,7 @@ async function sendBrevoEmail({
       subject,
       htmlContent: html,
       textContent: text,
-      tags: ['announcement', 'lms'],
+      tags: tags ?? ['portal'],
     }),
   });
 
@@ -388,10 +496,13 @@ async function sendBrevoEmail({
   return data as { messageId?: string };
 }
 
-function renderAnnouncementEmail(announcement: Announcement) {
+function renderAnnouncementEmail(
+  announcement: Announcement,
+  emailContent: { title: string; content: string }
+) {
   const theme = getNotificationTheme('announcement');
-  const title = escapeHtml(announcement.title);
-  const content = escapeHtml(truncateText(announcement.content)).replace(/\n/g, '<br>');
+  const title = escapeHtml(emailContent.title);
+  const content = escapeHtml(truncateText(emailContent.content)).replace(/\n/g, '<br>');
   const authorName = escapeHtml(announcement.author?.name ?? 'The Burning Ones team');
   const authorInitials = escapeHtml(getInitials(announcement.author?.name ?? 'TBO'));
   const scopeLabel = escapeHtml(getAnnouncementScopeLabel(announcement));
@@ -519,6 +630,117 @@ function renderAnnouncementEmail(announcement: Announcement) {
 </html>`;
 }
 
+function renderTodoReminderEmail(todo: TodoItem, reminderKind: 'day_before' | 'due_day') {
+  const theme = getNotificationTheme('assignment');
+  const title = escapeHtml(todo.title);
+  const description = todo.description
+    ? escapeHtml(truncateText(todo.description, 420)).replace(/\n/g, '<br>')
+    : '';
+  const dueLabel = escapeHtml(formatDateLabel(todo.due_date));
+  const reminderLabel = reminderKind === 'day_before' ? 'Due tomorrow' : 'Due today';
+  const appUrl = escapeHtml(APP_URL);
+  const logoUrl = escapeHtml(LOGO_URL);
+  const brandMark = logoUrl
+    ? `<img src="${logoUrl}" width="36" height="36" alt="The Burning Ones" style="display:block;width:36px;height:36px;margin:6px auto;object-fit:contain;border:0;">`
+    : `<div style="width:36px;height:36px;margin:6px auto;border-radius:50%;background:${theme.accent};color:#ffffff;font-size:11px;font-weight:700;line-height:36px;text-align:center;letter-spacing:.02em;">TBO</div>`;
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>${title}</title>
+  </head>
+  <body style="margin:0;background:#f8faf7;padding:0;font-family:Roboto,Arial,'Segoe UI',sans-serif;color:#202124;">
+    <div style="display:none;max-height:0;overflow:hidden;opacity:0;color:transparent;">
+      Priority to-do reminder from The Burning Ones Portal.
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8faf7;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;margin:0 auto;">
+            <tr>
+              <td style="padding:0 4px 14px;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="width:48px;height:48px;border-radius:14px;background:#ffffff;border:1px solid ${theme.border};text-align:center;vertical-align:middle;">
+                            ${brandMark}
+                          </td>
+                          <td style="padding-left:12px;">
+                            <div style="font-size:15px;font-weight:600;line-height:1.2;color:#202124;">Priority to-do</div>
+                            <div style="padding-top:3px;font-size:12px;line-height:1.3;color:#5f6368;">${reminderLabel}</div>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                    <td align="right" style="vertical-align:middle;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td style="border-radius:999px;background:${theme.tint};color:${theme.accent};font-size:12px;font-weight:700;line-height:1;padding:8px 12px;">
+                            ${dueLabel}
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #dadce0;border-radius:24px;background:#ffffff;box-shadow:0 1px 2px rgba(60,64,67,.12),0 2px 6px rgba(60,64,67,.08);overflow:hidden;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="height:10px;background:${theme.accent};font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:18px;">
+                        <tr>
+                          <td style="width:34px;height:34px;border-radius:50%;background:${theme.tint};text-align:center;vertical-align:middle;">
+                            <img src="${theme.groupIconUrl}" width="18" height="18" alt="" style="display:block;width:18px;height:18px;margin:8px auto;border:0;object-fit:contain;">
+                          </td>
+                          <td style="padding-left:10px;font-size:13px;line-height:1.4;color:#5f6368;">
+                            This priority item is still open.
+                          </td>
+                        </tr>
+                      </table>
+                      <h1 style="margin:0;font-family:Roboto,Arial,'Segoe UI',sans-serif;font-size:24px;line-height:1.25;font-weight:500;letter-spacing:0;color:#202124;">
+                        ${title}
+                      </h1>
+                      ${description ? `<div style="margin-top:16px;font-size:14px;line-height:1.7;color:#3c4043;border-left:4px solid ${theme.tint};padding-left:14px;">${description}</div>` : ''}
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:26px;">
+                        <tr>
+                          <td style="border-radius:999px;background:${theme.accent};">
+                            <a href="${appUrl}" style="display:inline-block;padding:12px 22px;border-radius:999px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;line-height:1;">
+                              Open
+                            </a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:16px 6px 0;text-align:center;font-size:12px;line-height:1.6;color:#5f6368;">
+                You received this because the to-do is marked priority and has not been completed.
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 function getNotificationTheme(kind: 'announcement' | 'assignment' | 'attendance' | 'system') {
   const iconBaseUrl = 'https://theburningones.bg/wp-content/uploads/2026/07';
   const themes = {
@@ -549,6 +771,14 @@ function getNotificationTheme(kind: 'announcement' | 'assignment' | 'attendance'
   };
 
   return themes[kind];
+}
+
+function formatDateLabel(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  }).format(new Date(`${value}T00:00:00`));
 }
 
 function getAnnouncementScopeLabel(announcement: Announcement) {

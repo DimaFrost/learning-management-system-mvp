@@ -31,8 +31,10 @@ import type {
   Course,
   CourseStudent,
   MentorshipLog,
+  TodoItem,
   User,
 } from '../../types/lms';
+import { formatPlatformDate } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
 import type { useAttendance } from '../../hooks/useAttendance';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -47,6 +49,9 @@ interface AdminDashboardProps {
   mentorshipLogs: MentorshipLog[];
   announcements: Announcement[];
   conversations: Conversation[];
+  todos: TodoItem[];
+  todosToday: TodoItem[];
+  todosLoading: boolean;
   attendance: AttendanceController;
   currentUser: User;
   activeWorkspace: WorkspaceId | null;
@@ -151,6 +156,15 @@ function startOfToday() {
   return today;
 }
 
+function startOfWeekMonday(date: Date) {
+  const value = new Date(date);
+  const day = value.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  value.setDate(value.getDate() + diff);
+  value.setHours(0, 0, 0, 0);
+  return value;
+}
+
 function dateKey(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
@@ -193,11 +207,7 @@ function getMonthCalendarDays(month: Date) {
 
 function formatClassDate(date: string) {
   if (!date) return 'Unscheduled';
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-  });
+  return formatPlatformDate(date);
 }
 
 function formatDateHeading(date: string) {
@@ -216,9 +226,7 @@ function formatDateHeading(date: string) {
     7: 'In a week',
   };
 
-  return relativeLabels[dayOffset] ?? value.toLocaleDateString('en-GB', {
-    weekday: 'long',
-  });
+  return relativeLabels[dayOffset] ?? formatPlatformDate(date);
 }
 
 function formatDateParts(date: string) {
@@ -320,6 +328,18 @@ function PersonAvatar({ person }: { person: UpcomingPerson }) {
         <img src={person.avatarUrl} alt="" className="h-full w-full object-cover" />
       ) : (
         getInitials(person.name)
+      )}
+    </span>
+  );
+}
+
+function CompactAvatar({ name, avatarUrl }: { name: string; avatarUrl: string | null }) {
+  return (
+    <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#f5f5f5] text-[10px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+      {avatarUrl ? (
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        getInitials(name)
       )}
     </span>
   );
@@ -590,6 +610,9 @@ export function AdminDashboard({
   mentorshipLogs,
   announcements,
   conversations,
+  todos,
+  todosToday,
+  todosLoading,
   attendance,
   currentUser,
   activeWorkspace,
@@ -700,6 +723,7 @@ export function AdminDashboard({
   const pinnedAnnouncements = announcements.filter(announcement => announcement.isPinned);
   const staffAnnouncements = announcements.filter(announcement => announcement.isStaffOnly);
   const todayKey = dateKey(startOfToday());
+  const currentWeekKey = dateKey(startOfWeekMonday(startOfToday()));
 
   const upcomingGroups = useMemo(() => {
     const today = startOfToday();
@@ -852,19 +876,8 @@ export function AdminDashboard({
     ? monthEventsByDate.get(selectedCalendarDate) ?? []
     : [];
   const selectedCalendarDateLabel = selectedCalendarDate
-    ? new Date(`${selectedCalendarDate}T00:00:00`).toLocaleDateString('en-GB', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'long',
-      year: 'numeric',
-    })
+    ? formatPlatformDate(selectedCalendarDate)
     : '';
-  const classesToday = activeCourses.flatMap(course =>
-    course.subjects.flatMap(subject =>
-      subject.classes.filter(cls => cls.date === todayKey)
-    )
-  ).length;
-
   const staffingGaps = activeCourses.flatMap(course =>
     course.subjects.flatMap(subject =>
       subject.classes.filter(cls => !cls.teacherId || !cls.translatorId)
@@ -891,7 +904,32 @@ export function AdminDashboard({
     .slice(0, 5);
 
   const recentMentorshipLogs = mentorshipLogs.filter(log => daysSince(log.date) <= 7).length;
-  const mentorshipLogsToday = mentorshipLogs.filter(log => log.date === todayKey).length;
+  const openTodos = todos.filter(todo => todo.status === 'open');
+  const todoPreview = [...todosToday]
+    .sort((a, b) => {
+      if (a.priority !== b.priority) return a.priority === 'priority' ? -1 : 1;
+      return a.createdAt.localeCompare(b.createdAt);
+    })
+    .slice(0, 2);
+  const currentDutyRows = attendance.dutySchedule.filter(
+    duty => duty.weekStart === currentWeekKey && duty.status === 'active'
+  );
+  const weeklyDutyKeepers = (['first_year', 'second_year'] as const).map(courseType => {
+    const course = activeCourses.find(item => item.courseType === courseType);
+    const duty = course
+      ? currentDutyRows.find(item => item.courseId === course.id)
+      : undefined;
+    const user = duty ? users.find(item => item.id === duty.studentId) : undefined;
+
+    return {
+      key: courseType,
+      label: courseType === 'first_year' ? 'First Year' : 'Second Year',
+      name: duty?.studentName ?? 'Not assigned',
+      avatarUrl: user?.avatarUrl ?? null,
+      courseName: course ? getCourseDisplayName(course) : 'No active course',
+      assigned: Boolean(duty),
+    };
+  });
   const studentsWithoutRecentMentorship = Array.from(activeStudentIds).filter(studentId => {
     const latest = mentorshipLogs
       .filter(log => log.studentId === studentId)
@@ -1086,7 +1124,7 @@ export function AdminDashboard({
 
       <section className="tbo-panel overflow-hidden">
         <div className="grid gap-px bg-[#e5e5e5] xl:grid-cols-[0.85fr_1.15fr]">
-          <div className="flex items-center bg-white p-5">
+          <div className="flex items-start bg-white p-4">
             <div className="w-full">
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
@@ -1097,7 +1135,7 @@ export function AdminDashboard({
                     type="button"
                     onClick={openSignalModal}
                     disabled={signalCount === 0}
-                    className={`tbo-focus mt-2 block rounded-lg text-left ${
+                    className={`tbo-focus mt-1 block rounded-lg text-left ${
                       signalCount > 0 ? 'cursor-pointer hover:bg-[#fafafa]' : 'cursor-default'
                     }`}
                   >
@@ -1199,29 +1237,99 @@ export function AdminDashboard({
 
             </div>
           </div>
-          <div className="flex items-center bg-white p-5">
-            <div className="w-full">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Today</p>
-                <span className="tbo-pill bg-[#f5f5f5] text-[#525252]">Live</span>
+          <div className="flex items-start bg-white p-4">
+            <div className="grid w-full gap-2 divide-y divide-[#e5e5e5] lg:grid-cols-[0.9fr_1.1fr] lg:divide-x lg:divide-y-0">
+              <div className="min-w-0">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">To-dos</p>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('todos')}
+                    className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
+                  >
+                    {openTodos.length} open
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {todosLoading ? (
+                    <div className="col-span-2 flex min-h-[3.5rem] items-center justify-center rounded-xl border border-[#e5e5e5] bg-white text-sm text-[#737373]">
+                      Loading to-dos...
+                    </div>
+                  ) : todoPreview.length === 0 ? (
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('todos')}
+                      className="tbo-focus col-span-2 flex min-h-[3.5rem] items-center gap-3 rounded-xl border border-dashed border-[#bbf7d0] bg-[#f0fdf4] p-2 text-left hover:border-[#86efac] hover:bg-white"
+                    >
+                      <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-white text-[#16a34a]">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </span>
+                      <div className="min-w-0">
+                        <p className="text-xs font-semibold text-[#171717]">No to-dos due today</p>
+                        <p className="text-[11px] text-[#15803d]">Open the board to plan ahead.</p>
+                      </div>
+                    </button>
+                  ) : (
+                    todoPreview.map(todo => (
+                      <button
+                        key={todo.id}
+                        type="button"
+                        onClick={() => onNavigate('todos')}
+                        className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
+                          todo.priority === 'priority'
+                            ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
+                            : 'border-[#bfdbfe] hover:bg-[#eff6ff]'
+                        }`}
+                        title={todo.title}
+                      >
+                        <span className={`grid h-5 w-5 flex-shrink-0 place-items-center rounded-full ${
+                          todo.priority === 'priority'
+                            ? 'bg-[#fff7ed] text-[#ea580c]'
+                            : 'bg-[#eff6ff] text-[#2563eb]'
+                        }`}>
+                          {todo.priority === 'priority' ? <Sparkles className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3" />}
+                        </span>
+                        <div className="min-w-0">
+                          <p className="truncate text-xs font-semibold text-[#171717]">{todo.title}</p>
+                          <p className="truncate text-[11px] text-[#737373]">{todo.assignedToName ?? 'Unassigned'}</p>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Classes today">
-                  <Calendar className="h-4 w-4 flex-shrink-0 text-[#2563eb]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">{classesToday}</p>
-                  <p className="truncate text-xs text-[#737373]">Classes</p>
+
+              <div className="min-w-0 pt-2 lg:pl-3 lg:pt-0">
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">On Duty</p>
+                  <span className={`tbo-pill ${
+                    attendance.pendingTransferRequests.length > 0
+                      ? 'bg-[#fff7ed] text-[#ea580c]'
+                      : 'bg-[#f5f5f5] text-[#525252]'
+                  }`}>
+                    {attendance.pendingTransferRequests.length} transfer{attendance.pendingTransferRequests.length === 1 ? '' : 's'}
+                  </span>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Assignments due today">
-                  <ClipboardList className="h-4 w-4 flex-shrink-0 text-[#7c3aed]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">
-                    {homeworkOps.loading ? '...' : homeworkOps.dueToday}
-                  </p>
-                  <p className="truncate text-xs text-[#737373]">Due</p>
-                </div>
-                <div className="flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-white p-2.5" title="Mentor check-ins today">
-                  <UserCheck className="h-4 w-4 flex-shrink-0 text-[#16a34a]" />
-                  <p className="text-xl font-semibold leading-none text-[#171717]">{mentorshipLogsToday}</p>
-                  <p className="truncate text-xs text-[#737373]">Check-ins</p>
+                <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  {weeklyDutyKeepers.map(keeper => (
+                    <div
+                      key={keeper.key}
+                      className={`flex min-w-0 items-center gap-2 rounded-xl border p-2 ${
+                        keeper.assigned
+                          ? 'border-[#e5e5e5] bg-white'
+                          : 'border-dashed border-[#d4d4d4] bg-[#fafafa]'
+                      }`}
+                      title={`${keeper.label}: ${keeper.name}`}
+                    >
+                      <CompactAvatar name={keeper.name} avatarUrl={keeper.avatarUrl} />
+                      <div className="min-w-0">
+                        <p className="truncate text-[11px] font-medium text-[#737373]">{keeper.label}</p>
+                        <p className={`truncate text-sm font-semibold ${keeper.assigned ? 'text-[#171717]' : 'text-[#737373]'}`}>
+                          {keeper.name}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>

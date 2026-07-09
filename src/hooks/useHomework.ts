@@ -16,6 +16,7 @@ import {
 } from '../utils/storageOperations';
 import { sendNotification } from '../utils/notifications';
 import { findClassCourseContext } from '../utils/courseUtils';
+import { formatPlatformDate } from '../utils/dateUtils';
 
 type ShowConfirmation = (
   title: string,
@@ -178,11 +179,7 @@ export function useHomework(
 
         let content = `A new homework assignment has been posted for ${classInfo}.`;
         if (data.dueDate) {
-          content += ` Due: ${new Date(data.dueDate).toLocaleDateString('en-GB', {
-            day: 'numeric',
-            month: 'long',
-            year: 'numeric',
-          })}.`;
+          content += ` Due: ${formatPlatformDate(data.dueDate)}.`;
         }
         if (data.description) {
           content += `\n\n${data.description}`;

@@ -14,6 +14,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { Class, ClassNote, ClassFile, User, Course, Subject } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { formatPlatformDate } from '../../../utils/dateUtils';
 
 interface StaffNotesTabProps {
   currentUser: User;
@@ -64,11 +65,7 @@ interface StaffNotesColumnProps {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateString);
 }
 
 function getFileIcon(mimeType: string | null): LucideIcon {

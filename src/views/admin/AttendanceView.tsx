@@ -1,46 +1,102 @@
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  X,
+  Activity,
+  Calendar,
+  CheckCircle2,
   ChevronLeft,
   ChevronRight,
-  Users,
-  ShieldCheck,
-  Activity,
-  ArrowUpRight,
-  Search,
+  ClipboardList,
+  ArrowUpDown,
+  BarChart3,
   Pencil,
+  Plus,
+  Search,
+  Settings,
+  ShieldCheck,
+  SlidersHorizontal,
+  Users,
+  X,
 } from 'lucide-react';
 import type {
-  User,
+  AttendanceSettings,
+  AttendanceStatus,
+  ClassAttendanceRecord,
   Course,
   CourseStudent,
-  AttendanceSettings,
-  ClassAttendanceRecord,
-  TheWellAttendanceRecord,
-  SundayAttendanceRecord,
   DutyScheduleEntry,
   DutyTransferRequest,
+  MinistryRotation,
+  MinistryServiceAttendanceRecord,
+  MinistryServiceSession,
+  MinistryTeam,
   StudentAttendanceSummary,
+  SundayAttendanceRecord,
+  TheWellAttendanceRecord,
+  User,
 } from '../../types/lms';
 import {
   getCourseDisplayName,
   getCourseOptions,
   isCourseActive,
-  isCourseArchived,
 } from '../../utils/courseUtils';
+import { formatPlatformDate, formatPlatformDateTime } from '../../utils/dateUtils';
 import {
-  sortByFirstName,
   formatMonthYear,
   formatPercent,
-  calculateAllowedAbsences,
   getCurrentWeekStart,
+  isActivationSaturdayClass,
+  sortByFirstName,
 } from '../../utils/attendanceUtils';
 
-// ============================================
-// TYPES & PROPS
-// ============================================
+type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'settings';
+type MinistrySortKey =
+  | 'student'
+  | 'course'
+  | 'team'
+  | 'requiredCredits'
+  | 'earnedCredits'
+  | 'present'
+  | 'late'
+  | 'absent'
+  | 'health'
+  | 'lastService';
+type SortDirection = 'asc' | 'desc';
+type RotationDateMode = 'month' | 'date';
+type MinistryHealthStatus = 'all' | 'passing' | 'at_risk' | 'failing' | 'unassigned';
 
-type TabId = 'overview' | 'sunday' | 'duty' | 'settings';
+type MinistryStudentRow = {
+  student: User;
+  course: Course | null;
+  rotation: MinistryRotation | null;
+  team: MinistryTeam | null;
+  requiredCredits: number;
+  earnedCredits: number;
+  present: number;
+  late: number;
+  absent: number;
+  unmarked: number;
+  health: number;
+  healthStatus: MinistryHealthStatus;
+  lastService: string | null;
+};
+
+type MinistryTeamHealth = {
+  team: MinistryTeam;
+  assignedStudents: User[];
+  present: number;
+  late: number;
+  absent: number;
+  unmarked: number;
+  health: number;
+  rows: MinistryStudentRow[];
+};
+
+type DutyWeekRow = {
+  weekStart: string;
+  weekEnd: string;
+  firstYear: DutyScheduleEntry | null;
+  secondYear: DutyScheduleEntry | null;
+};
 
 export interface AttendanceViewProps {
   activeSection?: TabId;
@@ -53,38 +109,56 @@ export interface AttendanceViewProps {
   classAttendance: ClassAttendanceRecord[];
   theWellAttendance: TheWellAttendanceRecord[];
   sundayAttendance: SundayAttendanceRecord[];
+  ministryTeams: MinistryTeam[];
+  ministryRotations: MinistryRotation[];
+  ministrySessions: MinistryServiceSession[];
+  ministryAttendance: MinistryServiceAttendanceRecord[];
   loading?: boolean;
   error?: string | null;
   getCourseSummaries: (courseId: number) => StudentAttendanceSummary[];
-  generateDutyScheduleForCourse: (
-    courseId: number,
-    startFromStudentIndex?: number
-  ) => Promise<void>;
+  generateDutyScheduleForCourse: (courseId: number, startFromStudentIndex?: number) => Promise<void>;
   updateDutyAssignment: (entryId: number, newStudentId: string) => Promise<void>;
   resolveTransferRequest: (requestId: number, approved: boolean) => Promise<void>;
-  upsertSundayAttendance: (
-    studentId: string,
-    courseId: number,
-    year: number,
-    month: number,
-    timesServed: number
-  ) => Promise<void>;
+  upsertSundayAttendance: (studentId: string, courseId: number, year: number, month: number, timesServed: number) => Promise<void>;
   updateSettings: (newSettings: Partial<AttendanceSettings>) => Promise<void>;
+  upsertMinistryTeam: (input: Partial<MinistryTeam> & { name: string }) => Promise<void>;
+  upsertMinistryRotation: (input: Partial<MinistryRotation> & {
+    courseId: number;
+    studentId: string;
+    teamId: number;
+    startDate: string;
+    endDate: string;
+  }) => Promise<void>;
+  createMinistrySession: (input: { teamId: number; serviceDate: string; title: string; serviceType?: 'sunday' | 'non_sunday' }) => Promise<void>;
+  markMinistryAttendance: (sessionId: number, records: Array<{ studentId: string; status: AttendanceStatus }>) => Promise<void>;
 }
 
-type DutyWeekRow = {
-  weekStart: string;
-  weekEnd: string;
-  firstYear: DutyScheduleEntry | null;
-  secondYear: DutyScheduleEntry | null;
+const STATUS_CLASS = {
+  passing: 'bg-[#dcfce7] text-[#166534]',
+  at_risk: 'bg-[#fff7ed] text-[#c2410c]',
+  failing: 'bg-[#fee2e2] text-[#b91c1c]',
 };
 
-// ============================================
-// HELPERS
-// ============================================
+const WEEKDAYS = [
+  { value: 0, label: 'Sun' },
+  { value: 1, label: 'Mon' },
+  { value: 2, label: 'Tue' },
+  { value: 3, label: 'Wed' },
+  { value: 4, label: 'Thu' },
+  { value: 5, label: 'Fri' },
+  { value: 6, label: 'Sat' },
+];
+
+function getInitials(name: string): string {
+  return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?';
+}
+
+function formatDate(date: string): string {
+  return formatPlatformDate(date);
+}
 
 function formatWeekDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
+  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -110,450 +184,185 @@ function getWeekLabel(weekStart: string, currentWeekStart: string): string {
   return 'Scheduled';
 }
 
+function dateInputValue(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function latestSunday(): string {
+  const date = new Date();
+  date.setDate(date.getDate() - date.getDay());
+  return dateInputValue(date);
+}
+
+function parsePlatformDateInput(value: string): string | null {
+  const match = value.trim().match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, dayText, monthText, yearText] = match;
+  const day = Number(dayText);
+  const month = Number(monthText);
+  const year = Number(yearText);
+  const date = new Date(year, month - 1, day);
+  if (
+    date.getFullYear() !== year ||
+    date.getMonth() !== month - 1 ||
+    date.getDate() !== day
+  ) {
+    return null;
+  }
+  return dateInputValue(date);
+}
+
 function shiftMonth(year: number, month: number, delta: number): { year: number; month: number } {
-  const d = new Date(year, month - 1 + delta, 1);
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
+  const date = new Date(year, month - 1 + delta, 1);
+  return { year: date.getFullYear(), month: date.getMonth() + 1 };
 }
 
-function scoreCellClass(score: number, graduationThreshold: number): string {
-  if (score >= graduationThreshold) return 'text-green-700 font-medium';
-  if (score >= graduationThreshold - 0.1) return 'text-amber-600 font-medium';
-  return 'text-red-600 font-medium';
+function monthInputValue(month: { year: number; month: number }): string {
+  return `${month.year}-${String(month.month).padStart(2, '0')}`;
 }
 
-function overallStatus(
-  overallScore: number,
-  graduationThreshold: number
-): { label: string; className: string } {
-  if (overallScore >= graduationThreshold) {
-    return { label: 'On Track', className: 'bg-green-100 text-green-800' };
-  }
-  if (overallScore >= graduationThreshold - 0.1) {
-    return { label: 'At Risk', className: 'bg-amber-100 text-amber-800' };
-  }
-  return { label: 'Failing', className: 'bg-red-100 text-red-800' };
+function parseMonthInput(value: string): { year: number; month: number } {
+  const [year, month] = value.split('-').map(Number);
+  return { year, month };
 }
 
-function getInitials(name: string): string {
-  const parts = name.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  return parts.slice(0, 2).map(part => part[0]?.toUpperCase()).join('');
+function firstDayOfMonth(value: string): string {
+  const { year, month } = parseMonthInput(value);
+  return `${year}-${String(month).padStart(2, '0')}-01`;
 }
 
-function ScoreCell({
-  score,
-  threshold,
-}: {
-  score: number;
-  threshold: number;
-}) {
-  const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
-  const tone =
-    score >= threshold
-      ? 'bg-[#16a34a]'
-      : score >= threshold - 0.1
-        ? 'bg-[#ea580c]'
-        : 'bg-[#dc2626]';
-
-  return (
-    <div className="min-w-[96px]">
-      <div className="flex items-center justify-between gap-2">
-        <span className={scoreCellClass(score, threshold)}>{percent}%</span>
-      </div>
-      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f5f5f5]">
-        <div className={`h-full rounded-full ${tone}`} style={{ width: `${percent}%` }} />
-      </div>
-    </div>
-  );
+function lastDayOfMonth(value: string): string {
+  const { year, month } = parseMonthInput(value);
+  const last = new Date(year, month, 0).getDate();
+  return `${year}-${String(month).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
 }
 
-function getEnrolledStudents(
+function dateToMonthInput(date: string): string {
+  return date.slice(0, 7);
+}
+
+function monthRange(month: { year: number; month: number }): { start: string; end: string } {
+  const value = monthInputValue(month);
+  return { start: firstDayOfMonth(value), end: lastDayOfMonth(value) };
+}
+
+function percentInput(value: number): number {
+  return Math.round(value * 100);
+}
+
+function toPercent(value: number): number {
+  return Math.max(0, Math.min(100, value)) / 100;
+}
+
+function getEnrolledStudents(courseId: number, courseStudents: CourseStudent[], users: User[]): User[] {
+  const enrolledIds = new Set(courseStudents.filter(cs => cs.courseId === courseId).map(cs => cs.studentId));
+  return sortByFirstName(users.filter(user => enrolledIds.has(user.id)));
+}
+
+function creditForStatus(status: AttendanceStatus): number {
+  if (status === 'present') return 1;
+  if (status === 'late') return 0.5;
+  return 0;
+}
+
+function resolveRotationForMonth(
+  studentId: string,
   courseId: number,
-  courseStudents: CourseStudent[],
-  users: User[]
-): User[] {
-  const enrolledIds = courseStudents
-    .filter(cs => cs.courseId === courseId)
-    .map(cs => cs.studentId);
-  return sortByFirstName(users.filter(u => enrolledIds.includes(u.id)));
+  rotations: MinistryRotation[],
+  month: { year: number; month: number }
+): MinistryRotation | null {
+  const range = monthRange(month);
+  return rotations.find(rotation =>
+    rotation.studentId === studentId &&
+    rotation.courseId === courseId &&
+    rotation.startDate <= range.end &&
+    rotation.endDate >= range.start
+  ) ?? null;
 }
 
-function getMonthsBetween(
-  startDate: string,
-  endDate: string
-): Array<{ year: number; month: number }> {
-  const months: Array<{ year: number; month: number }> = [];
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const current = new Date(start.getFullYear(), start.getMonth(), 1);
-  const endMonth = new Date(end.getFullYear(), end.getMonth(), 1);
-  while (current <= endMonth) {
-    months.push({ year: current.getFullYear(), month: current.getMonth() + 1 });
-    current.setMonth(current.getMonth() + 1);
-  }
-  return months;
+function sessionInMonth(session: MinistryServiceSession, month: { year: number; month: number }): boolean {
+  const range = monthRange(month);
+  return session.serviceDate >= range.start && session.serviceDate <= range.end;
 }
 
-// ============================================
-// STUDENT DETAIL MODAL
-// ============================================
-
-interface StudentDetailModalProps {
-  summary: StudentAttendanceSummary;
-  course: Course;
-  settings: AttendanceSettings;
-  sundayAttendance: SundayAttendanceRecord[];
-  onClose: () => void;
-  onUpsertSundayAttendance: AttendanceViewProps['upsertSundayAttendance'];
-}
-
-function StudentDetailModal({
-  summary,
-  course,
-  settings,
-  sundayAttendance,
-  onClose,
-  onUpsertSundayAttendance,
-}: StudentDetailModalProps) {
-  const months = useMemo(
-    () => getMonthsBetween(course.startDate, course.endDate),
-    [course.startDate, course.endDate]
-  );
-
-  const [sundayDrafts, setSundayDrafts] = useState<Record<string, number>>({});
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
-
-  useEffect(() => {
-    const drafts: Record<string, number> = {};
-    for (const { year, month } of months) {
-      const key = `${year}-${month}`;
-      const existing = sundayAttendance.find(
-        r => r.studentId === summary.studentId
-          && r.courseId === course.id
-          && r.year === year
-          && r.month === month
-      );
-      drafts[key] = existing?.timesServed ?? 0;
-    }
-    setSundayDrafts(drafts);
-    setSaved(false);
-  }, [summary.studentId, course.id, sundayAttendance, months]);
-
-  const handleSaveSunday = async () => {
-    setSaving(true);
-    try {
-      const updates = months.filter(({ year, month }) => {
-        const key = `${year}-${month}`;
-        const draft = sundayDrafts[key] ?? 0;
-        const existing = sundayAttendance.find(
-          r => r.studentId === summary.studentId
-            && r.courseId === course.id
-            && r.year === year
-            && r.month === month
-        );
-        return (existing?.timesServed ?? 0) !== draft;
-      });
-
-      await Promise.all(
-        updates.map(({ year, month }) =>
-          onUpsertSundayAttendance(
-            summary.studentId,
-            course.id,
-            year,
-            month,
-            sundayDrafts[`${year}-${month}`] ?? 0
-          )
-        )
-      );
-      setSaved(true);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const rows = [
-    {
-      category: 'Sessions',
-      total: String(summary.totalClasses),
-      present: String(summary.classesPresent),
-      late: String(summary.classesLate),
-      absent: String(summary.classesAbsent),
-      score: formatPercent(summary.classAttendanceScore),
-      allowed: String(calculateAllowedAbsences(summary.totalClasses, settings)),
-    },
-    {
-      category: 'Activation Saturdays',
-      total: String(summary.totalSaturdays),
-      present: String(summary.saturdaysPresent),
-      late: String(summary.saturdaysLate),
-      absent: String(summary.saturdaysAbsent),
-      score: formatPercent(summary.saturdayAttendanceScore),
-      allowed: String(calculateAllowedAbsences(summary.totalSaturdays, settings)),
-    },
-    {
-      category: 'The Well',
-      total: `${summary.theWellMonthsTracked} months`,
-      present: '—',
-      late: '—',
-      absent: '—',
-      score: formatPercent(summary.theWellScore),
-      allowed: '—',
-    },
-    {
-      category: 'Sunday',
-      total: `${summary.sundayMonthsTracked} months`,
-      present: '—',
-      late: '—',
-      absent: '—',
-      score: formatPercent(summary.sundayScore),
-      allowed: '—',
-    },
-  ];
-
+function ScoreBar({ score }: { score: number }) {
+  const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
+  const color = percent >= 80 ? 'bg-[#16a34a]' : percent >= 65 ? 'bg-[#ea580c]' : 'bg-[#dc2626]';
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center">
-          <h3 className="text-lg font-semibold text-gray-900">{summary.studentName}</h3>
-          <button
-            type="button"
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
-            aria-label="Close"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-6">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
-                  <th className="pb-2 pr-3 font-medium">Category</th>
-                  <th className="pb-2 px-2 font-medium">Total</th>
-                  <th className="pb-2 px-2 font-medium">Present</th>
-                  <th className="pb-2 px-2 font-medium">Late</th>
-                  <th className="pb-2 px-2 font-medium">Absent</th>
-                  <th className="pb-2 px-2 font-medium">Score</th>
-                  <th className="pb-2 pl-2 font-medium">Allowed miss/late</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(row => (
-                  <tr key={row.category} className="border-b border-gray-100">
-                    <td className="py-2.5 pr-3 font-medium text-gray-900">{row.category}</td>
-                    <td className="py-2.5 px-2 text-gray-700">{row.total}</td>
-                    <td className="py-2.5 px-2 text-gray-700">{row.present}</td>
-                    <td className="py-2.5 px-2 text-gray-700">{row.late}</td>
-                    <td className="py-2.5 px-2 text-gray-700">{row.absent}</td>
-                    <td className={`py-2.5 px-2 ${scoreCellClass(
-                      row.category === 'Sessions' ? summary.classAttendanceScore
-                        : row.category === 'Activation Saturdays' ? summary.saturdayAttendanceScore
-                          : row.category === 'The Well' ? summary.theWellScore
-                            : summary.sundayScore,
-                      settings.graduationThreshold
-                    )}`}>
-                      {row.score}
-                    </td>
-                    <td className="py-2.5 pl-2 text-gray-700">{row.allowed}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div>
-            <h4 className="text-sm font-semibold text-gray-900 mb-3">Sunday Attendance by Month</h4>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {months.map(({ year, month }) => {
-                const key = `${year}-${month}`;
-                return (
-                  <div key={key} className="flex items-center justify-between gap-3">
-                    <span className="text-sm text-gray-700">{formatMonthYear(year, month)}</span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={8}
-                      value={sundayDrafts[key] ?? 0}
-                      onChange={e => {
-                        setSundayDrafts(prev => ({
-                          ...prev,
-                          [key]: Math.min(8, Math.max(0, parseInt(e.target.value, 10) || 0)),
-                        }));
-                        setSaved(false);
-                      }}
-                      className="w-16 px-2 py-1 border border-gray-300 rounded-lg text-sm text-center focus:ring-amber-500 focus:border-amber-500"
-                    />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="mt-4 flex items-center justify-between">
-              {saved && (
-                <span className="text-sm font-medium text-green-700">Saved</span>
-              )}
-              <button
-                type="button"
-                onClick={handleSaveSunday}
-                disabled={saving}
-                className="ml-auto px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-              >
-                {saving ? 'Saving…' : 'Save Sunday'}
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="min-w-[104px]">
+      <span className="text-sm font-semibold text-[#171717]">{percent}%</span>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f5f5f5]">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />
       </div>
     </div>
   );
 }
 
-// ============================================
-// GENERATE SCHEDULE MODAL
-// ============================================
-
-interface GenerateScheduleModalProps {
-  courses: Course[];
-  courseStudents: CourseStudent[];
-  users: User[];
-  onClose: () => void;
-  onGenerate: (courseId: number, startIndex: number) => Promise<void>;
+function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
+  return <section className={`rounded-xl border border-[#e5e5e5] bg-white ${className}`}>{children}</section>;
 }
 
-function GenerateScheduleModal({
-  courses,
-  courseStudents,
-  users,
-  onClose,
-  onGenerate,
-}: GenerateScheduleModalProps) {
-  const courseOptions = getCourseOptions(courses);
-  const [courseId, setCourseId] = useState(courseOptions[0]?.id ?? 0);
-  const [startingStudentId, setStartingStudentId] = useState('');
-  const [generating, setGenerating] = useState(false);
-
-  const enrolledStudents = useMemo(
-    () => getEnrolledStudents(courseId, courseStudents, users),
-    [courseId, courseStudents, users]
-  );
-
-  useEffect(() => {
-    if (courseOptions.length === 0) {
-      setCourseId(0);
-      return;
-    }
-    if (!courseOptions.some(o => o.id === courseId)) {
-      setCourseId(courseOptions[0].id);
-    }
-  }, [courseOptions, courseId]);
-
-  useEffect(() => {
-    if (enrolledStudents.length > 0 && !startingStudentId) {
-      setStartingStudentId(enrolledStudents[0].id);
-    }
-  }, [enrolledStudents, startingStudentId]);
-
-  const handleGenerate = async () => {
-    const startIndex = enrolledStudents.findIndex(s => s.id === startingStudentId);
-    if (startIndex === -1) return;
-    setGenerating(true);
-    try {
-      await onGenerate(courseId, startIndex);
-      onClose();
-    } finally {
-      setGenerating(false);
-    }
-  };
-
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Generate Schedule</h3>
-          <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          <div>
-            <label htmlFor="gen-course" className="block text-sm font-medium text-gray-700 mb-2">
-              Course
-            </label>
-            {courseOptions.length === 0 ? (
-              <p className="text-sm text-gray-500">No active courses.</p>
-            ) : (
-              <select
-                id="gen-course"
-                value={courseId}
-                onChange={e => {
-                  setCourseId(Number(e.target.value));
-                  setStartingStudentId('');
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-              >
-                {courseOptions.map(opt => (
-                  <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-                ))}
-              </select>
-            )}
-          </div>
-
-          <div>
-            <label htmlFor="gen-start" className="block text-sm font-medium text-gray-700 mb-2">
-              Starting student
-            </label>
-            <select
-              id="gen-start"
-              value={startingStudentId}
-              onChange={e => setStartingStudentId(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            >
-              {enrolledStudents.map(s => (
-                <option key={s.id} value={s.id}>{s.name}</option>
-              ))}
-            </select>
-          </div>
-
-          <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg p-3">
-            This will overwrite the existing schedule for this course.
-          </p>
-
-          <div className="flex justify-end gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="px-4 py-2 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-100"
-            >
-              Cancel
-            </button>
-            <button
-              type="button"
-              onClick={handleGenerate}
-              disabled={generating || !startingStudentId}
-              className="px-4 py-2 rounded-lg bg-amber-600 text-white text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
-            >
-              {generating ? 'Generating…' : 'Generate'}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+    <label className="block">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</span>
+      {children}
+    </label>
   );
 }
 
-// ============================================
-// EDIT DUTY MODAL
-// ============================================
+function NumberInput({
+  value,
+  min = 0,
+  max,
+  step = 1,
+  onChange,
+}: {
+  value: number;
+  min?: number;
+  max?: number;
+  step?: number;
+  onChange: (value: number) => void;
+}) {
+  return (
+    <input
+      type="number"
+      min={min}
+      max={max}
+      step={step}
+      value={value}
+      onChange={event => onChange(Number(event.target.value))}
+      className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm text-[#171717] focus:border-[#2563eb] focus:ring-[#2563eb]"
+    />
+  );
+}
 
-interface EditDutyWeekModalProps {
-  row: DutyWeekRow;
-  courseStudents: CourseStudent[];
-  users: User[];
-  onClose: () => void;
-  onSave: (entryId: number, studentId: string) => Promise<void>;
+function Toggle({
+  checked,
+  onChange,
+  label,
+}: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className={`flex items-center justify-between rounded-xl border px-3 py-2 text-sm transition ${
+        checked ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]' : 'border-[#e5e5e5] bg-white text-[#525252]'
+      }`}
+    >
+      <span className="font-medium">{label}</span>
+      <span className={`h-5 w-9 rounded-full p-0.5 transition ${checked ? 'bg-[#16a34a]' : 'bg-[#d4d4d4]'}`}>
+        <span className={`block h-4 w-4 rounded-full bg-white transition ${checked ? 'translate-x-4' : ''}`} />
+      </span>
+    </button>
+  );
 }
 
 function EditDutyWeekModal({
@@ -562,20 +371,21 @@ function EditDutyWeekModal({
   users,
   onClose,
   onSave,
-}: EditDutyWeekModalProps) {
+}: {
+  row: DutyWeekRow;
+  courseStudents: CourseStudent[];
+  users: User[];
+  onClose: () => void;
+  onSave: (entryId: number, studentId: string) => Promise<void>;
+}) {
   const firstYearStudents = useMemo(
-    () => row.firstYear
-      ? getEnrolledStudents(row.firstYear.courseId, courseStudents, users)
-      : [],
+    () => row.firstYear ? getEnrolledStudents(row.firstYear.courseId, courseStudents, users) : [],
     [row.firstYear, courseStudents, users]
   );
   const secondYearStudents = useMemo(
-    () => row.secondYear
-      ? getEnrolledStudents(row.secondYear.courseId, courseStudents, users)
-      : [],
+    () => row.secondYear ? getEnrolledStudents(row.secondYear.courseId, courseStudents, users) : [],
     [row.secondYear, courseStudents, users]
   );
-
   const [firstYearStudentId, setFirstYearStudentId] = useState(row.firstYear?.studentId ?? '');
   const [secondYearStudentId, setSecondYearStudentId] = useState(row.secondYear?.studentId ?? '');
   const [saving, setSaving] = useState(false);
@@ -602,13 +412,11 @@ function EditDutyWeekModal({
       <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-              On duty schedule
-            </p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">On duty schedule</p>
             <h3 className="mt-1 text-lg font-semibold text-[#171717]">Edit Week Keepers</h3>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
-            <X className="w-5 h-5" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 
@@ -618,75 +426,48 @@ function EditDutyWeekModal({
 
         <div className="space-y-4">
           <div className="rounded-xl border border-[#e5e5e5] p-4">
-            <label htmlFor="edit-first-year-student" className="mb-2 block text-sm font-medium text-[#171717]">
-              First Year Keeper
-            </label>
+            <label htmlFor="edit-first-year-student" className="mb-2 block text-sm font-medium text-[#171717]">First Year Keeper</label>
             {row.firstYear ? (
               <select
                 id="edit-first-year-student"
                 value={firstYearStudentId}
-                onChange={e => setFirstYearStudentId(e.target.value)}
+                onChange={event => setFirstYearStudentId(event.target.value)}
                 className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
               >
-                {firstYearStudents.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
+                {firstYearStudents.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
               </select>
             ) : (
-              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">
-                No first year duty slot exists for this week.
-              </p>
+              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">No first year duty slot exists for this week.</p>
             )}
           </div>
 
           <div className="rounded-xl border border-[#e5e5e5] p-4">
-            <label htmlFor="edit-second-year-student" className="mb-2 block text-sm font-medium text-[#171717]">
-              Second Year Keeper
-            </label>
+            <label htmlFor="edit-second-year-student" className="mb-2 block text-sm font-medium text-[#171717]">Second Year Keeper</label>
             {row.secondYear ? (
               <select
                 id="edit-second-year-student"
                 value={secondYearStudentId}
-                onChange={e => setSecondYearStudentId(e.target.value)}
+                onChange={event => setSecondYearStudentId(event.target.value)}
                 className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
               >
-                {secondYearStudents.map(s => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
+                {secondYearStudents.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
               </select>
             ) : (
-              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">
-                No second year duty slot exists for this week.
-              </p>
+              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">No second year duty slot exists for this week.</p>
             )}
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]"
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={handleSave}
-            disabled={saving}
-            className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
-          >
-            {saving ? 'Saving…' : 'Save'}
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save'}
           </button>
         </div>
       </div>
     </div>
   );
 }
-
-// ============================================
-// MAIN VIEW
-// ============================================
 
 export function AttendanceView({
   activeSection = 'overview',
@@ -696,131 +477,147 @@ export function AttendanceView({
   settings,
   dutySchedule,
   pendingTransferRequests,
-  sundayAttendance,
+  classAttendance,
+  theWellAttendance,
+  ministryTeams,
+  ministryRotations,
+  ministrySessions,
+  ministryAttendance,
   loading,
   error,
   getCourseSummaries,
   generateDutyScheduleForCourse,
   updateDutyAssignment,
   resolveTransferRequest,
-  upsertSundayAttendance,
   updateSettings,
+  upsertMinistryTeam,
+  upsertMinistryRotation,
+  createMinistrySession,
+  markMinistryAttendance,
 }: AttendanceViewProps) {
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
-  const archivedCourses = useMemo(() => courses.filter(isCourseArchived), [courses]);
-  const activeCourseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
-  const archivedCourseOptions = useMemo(() => getCourseOptions(archivedCourses), [archivedCourses]);
-  const today = new Date();
-
-  const activeTab = activeSection;
-  const [overviewCourseId, setOverviewCourseId] = useState(0);
-  const [overviewSearch, setOverviewSearch] = useState('');
-  const [sundayCourseId, setSundayCourseId] = useState(0);
-
-  const overviewCourseOptions = useMemo(
-    () => [...activeCourseOptions, ...archivedCourseOptions],
-    [activeCourseOptions, archivedCourseOptions]
-  );
-  const [sundayMonth, setSundayMonth] = useState({
-    year: today.getFullYear(),
-    month: today.getMonth() + 1,
+  const courseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
+  const defaultCourseId = courseOptions[0]?.id ?? 0;
+  const [courseId, setCourseId] = useState(defaultCourseId);
+  const [search, setSearch] = useState('');
+  const [month, setMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() + 1 };
   });
-  const [sundayDrafts, setSundayDrafts] = useState<Record<string, number>>({});
-  const [savingSunday, setSavingSunday] = useState(false);
-  const [sundaySaved, setSundaySaved] = useState(false);
-  const [selectedSummary, setSelectedSummary] = useState<StudentAttendanceSummary | null>(null);
-  const [generateModalOpen, setGenerateModalOpen] = useState(false);
+  const [reportDate, setReportDate] = useState(latestSunday);
+  const [reportDateText, setReportDateText] = useState(() => formatPlatformDate(latestSunday()));
+  const reportDatePickerRef = useRef<HTMLInputElement | null>(null);
+  const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsDraft, setSettingsDraft] = useState(settings);
+  const [teamDraft, setTeamDraft] = useState({
+    name: '',
+    nameBg: '',
+    serviceType: 'sunday' as 'sunday' | 'non_sunday',
+    requiredCredits: settings.ministrySundayRequiredCredits,
+    requirementPeriodMonths: 1,
+    memberIds: [] as string[],
+  });
+  const [sessionDraft, setSessionDraft] = useState({
+    teamId: 0,
+    serviceDate: new Date().toISOString().slice(0, 10),
+    title: '',
+  });
+  const [rotationDraft, setRotationDraft] = useState({
+    courseId: defaultCourseId,
+    studentId: '',
+    teamId: 0,
+    startDate: new Date().toISOString().slice(0, 10),
+    endDate: new Date().toISOString().slice(0, 10),
+  });
+  const [rotationModalOpen, setRotationModalOpen] = useState(false);
+  const [rotationDateMode, setRotationDateMode] = useState<RotationDateMode>('month');
+  const [rotationStartMonth, setRotationStartMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [rotationEndMonth, setRotationEndMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [editingRotationId, setEditingRotationId] = useState<number | null>(null);
+  const [ministryTeamFilter, setMinistryTeamFilter] = useState('all');
+  const [ministryCourseFilter, setMinistryCourseFilter] = useState('all');
+  const [ministryStatusFilter, setMinistryStatusFilter] = useState<MinistryHealthStatus>('all');
+  const [ministryServiceTypeFilter, setMinistryServiceTypeFilter] = useState('all');
+  const [ministrySortKey, setMinistrySortKey] = useState<MinistrySortKey>('student');
+  const [ministrySortDirection, setMinistrySortDirection] = useState<SortDirection>('asc');
+  const [teamHealthOpen, setTeamHealthOpen] = useState(false);
+  const [teamHealthMonth, setTeamHealthMonth] = useState(month);
+  const [expandedHealthTeamId, setExpandedHealthTeamId] = useState<number | null>(null);
+  const [showTeamForm, setShowTeamForm] = useState(false);
+  const [attendanceDrafts, setAttendanceDrafts] = useState<Record<number, Record<string, AttendanceStatus>>>({});
   const [editDutyWeekRow, setEditDutyWeekRow] = useState<DutyWeekRow | null>(null);
-  const [resolvingId, setResolvingId] = useState<number | null>(null);
-
   const dutyScheduleScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDutyRowRef = useRef<HTMLDivElement | null>(null);
 
-  const currentWeekStart = getCurrentWeekStart();
+  useEffect(() => setSettingsDraft(settings), [settings]);
 
   useEffect(() => {
-    if (overviewCourseOptions.length === 0) {
-      setOverviewCourseId(0);
+    if (courseOptions.length === 0) {
+      setCourseId(0);
       return;
     }
-    if (!overviewCourseOptions.some(o => o.id === overviewCourseId)) {
-      setOverviewCourseId(activeCourseOptions[0]?.id ?? overviewCourseOptions[0].id);
+    if (!courseOptions.some(option => option.id === courseId)) {
+      setCourseId(defaultCourseId);
     }
-  }, [activeCourseOptions, overviewCourseId, overviewCourseOptions]);
+  }, [courseId, courseOptions, defaultCourseId]);
 
   useEffect(() => {
-    if (activeCourseOptions.length === 0) {
-      setSundayCourseId(0);
-      return;
-    }
-    if (!activeCourseOptions.some(o => o.id === sundayCourseId)) {
-      setSundayCourseId(activeCourseOptions[0].id);
-    }
-  }, [activeCourseOptions, sundayCourseId]);
+    setTeamDraft(prev => ({
+      ...prev,
+      requiredCredits: prev.requiredCredits || settings.ministrySundayRequiredCredits,
+    }));
+  }, [settings.ministrySundayRequiredCredits]);
 
+  useEffect(() => {
+    setSessionDraft(prev => ({ ...prev, teamId: prev.teamId || ministryTeams[0]?.id || 0 }));
+    setRotationDraft(prev => ({ ...prev, teamId: prev.teamId || ministryTeams[0]?.id || 0 }));
+  }, [ministryTeams]);
+
+  const selectedCourse = courses.find(course => course.id === courseId);
   const summaries = useMemo(
-    () => getCourseSummaries(overviewCourseId).sort((a, b) =>
-      a.studentName.localeCompare(b.studentName)
-    ),
-    [getCourseSummaries, overviewCourseId]
+    () => getCourseSummaries(courseId).sort((a, b) => a.studentName.localeCompare(b.studentName)),
+    [courseId, getCourseSummaries]
   );
   const filteredSummaries = useMemo(() => {
-    const query = overviewSearch.trim().toLowerCase();
-    if (!query) return summaries;
-    return summaries.filter(summary => summary.studentName.toLowerCase().includes(query));
-  }, [overviewSearch, summaries]);
-
-  const overviewCourse = courses.find(c => c.id === overviewCourseId);
-  const sundayEnrolled = useMemo(
-    () => getEnrolledStudents(sundayCourseId, courseStudents, users),
-    [sundayCourseId, courseStudents, users]
+    const query = search.trim().toLowerCase();
+    return query ? summaries.filter(summary => summary.studentName.toLowerCase().includes(query)) : summaries;
+  }, [summaries, search]);
+  const enrolledStudents = useMemo(
+    () => getEnrolledStudents(courseId, courseStudents, users),
+    [courseId, courseStudents, users]
   );
+  const activeStudents = users.filter(user => user.roles.includes('student'));
+  const teamLeaders = users.filter(user => user.roles.some(role => ['administrator', 'team_leader'].includes(role)));
+  const formatTeamUsers = (team: MinistryTeam | null | undefined) => {
+    const names = team?.members
+      .filter(member => member.active && member.canSubmitReports)
+      .map(member => member.userName)
+      .filter(Boolean) ?? [];
+    return names.length > 0 ? names.join(', ') : 'No team users';
+  };
+  const toggleTeamMember = (userId: string) => {
+    setTeamDraft(prev => ({
+      ...prev,
+      memberIds: prev.memberIds.includes(userId)
+        ? prev.memberIds.filter(id => id !== userId)
+        : [...prev.memberIds, userId],
+    }));
+  };
+  const regularClasses = selectedCourse?.subjects.flatMap(subject =>
+    subject.classes.filter(cls => cls.date && !isActivationSaturdayClass(cls))
+  ) ?? [];
+  const activationClasses = selectedCourse?.subjects.flatMap(subject =>
+    subject.classes.filter(cls => cls.date && isActivationSaturdayClass(cls))
+  ) ?? [];
+  const currentWeekStart = getCurrentWeekStart();
+  const dutyRows = dutySchedule
+    .filter(entry => activeCourses.some(course => course.id === entry.courseId))
+    .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
+  const courseById = useMemo(() => new Map(courses.map(course => [course.id, course])), [courses]);
+  const dutyWeekRows = useMemo<DutyWeekRow[]>(() => {
+    const rows = new Map<string, DutyWeekRow>();
 
-  const activeCourseIdSet = useMemo(
-    () => new Set(activeCourses.map(course => course.id)),
-    [activeCourses]
-  );
-
-  const courseById = useMemo(
-    () => new Map(courses.map(course => [course.id, course])),
-    [courses]
-  );
-
-  const unifiedDutySchedule = useMemo(
-    () => dutySchedule
-      .filter(d => activeCourseIdSet.has(d.courseId))
-      .sort((a, b) => {
-        const weekCompare = a.weekStart.localeCompare(b.weekStart);
-        if (weekCompare !== 0) return weekCompare;
-        const courseA = courseById.get(a.courseId);
-        const courseB = courseById.get(b.courseId);
-        return (courseA?.courseType ?? '').localeCompare(courseB?.courseType ?? '');
-      }),
-    [dutySchedule, activeCourseIdSet, courseById]
-  );
-
-  const dutyLoadByStudent = useMemo(() => {
-    const stats = new Map<string, { served: number; total: number }>();
-    for (const entry of unifiedDutySchedule) {
-      const current = stats.get(entry.studentId) ?? { served: 0, total: 0 };
-      current.total += 1;
-      if (entry.weekStart < currentWeekStart) {
-        current.served += 1;
-      }
-      stats.set(entry.studentId, current);
-    }
-    return stats;
-  }, [unifiedDutySchedule, currentWeekStart]);
-
-  const dutyWeekRows = useMemo(() => {
-    const rows = new Map<string, {
-      weekStart: string;
-      weekEnd: string;
-      firstYear: DutyScheduleEntry | null;
-      secondYear: DutyScheduleEntry | null;
-    }>();
-
-    for (const entry of unifiedDutySchedule) {
+    for (const entry of dutyRows) {
       const current = rows.get(entry.weekStart) ?? {
         weekStart: entry.weekStart,
         weekEnd: entry.weekEnd,
@@ -837,63 +634,166 @@ export function AttendanceView({
     }
 
     return Array.from(rows.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
-  }, [unifiedDutySchedule, courseById]);
-
-  const currentWeekDuties = useMemo(
-    () => dutySchedule.filter(
-      d => d.weekStart === currentWeekStart && d.status === 'active'
-    ),
-    [dutySchedule, currentWeekStart]
-  );
-
-  useEffect(() => {
-    const drafts: Record<string, number> = {};
-    for (const student of sundayEnrolled) {
-      const existing = sundayAttendance.find(
-        r => r.studentId === student.id
-          && r.courseId === sundayCourseId
-          && r.year === sundayMonth.year
-          && r.month === sundayMonth.month
-      );
-      drafts[student.id] = existing?.timesServed ?? 0;
+  }, [courseById, dutyRows]);
+  const dutyLoadByStudent = useMemo(() => {
+    const stats = new Map<string, { served: number; total: number }>();
+    for (const entry of dutyRows) {
+      const current = stats.get(entry.studentId) ?? { served: 0, total: 0 };
+      current.total += 1;
+      if (entry.weekStart < currentWeekStart) current.served += 1;
+      stats.set(entry.studentId, current);
     }
-    setSundayDrafts(drafts);
-    setSundaySaved(false);
-  }, [sundayEnrolled, sundayAttendance, sundayCourseId, sundayMonth.year, sundayMonth.month]);
+    return stats;
+  }, [currentWeekStart, dutyRows]);
+  const activeSummaries = activeCourses.flatMap(course => getCourseSummaries(course.id));
+  const passingCount = activeSummaries.filter(summary => summary.meetsGraduationThreshold).length;
+  const averageOverall = activeSummaries.length
+    ? activeSummaries.reduce((sum, summary) => sum + summary.overallScore, 0) / activeSummaries.length
+    : 1;
+  const ministryRows = useMemo<MinistryStudentRow[]>(() => {
+    const rows: MinistryStudentRow[] = [];
 
-  const handleSaveSundayTab = async () => {
-    setSavingSunday(true);
-    try {
-      const updates = sundayEnrolled.filter(student => {
-        const draft = sundayDrafts[student.id] ?? 0;
-        const existing = sundayAttendance.find(
-          r => r.studentId === student.id
-            && r.courseId === sundayCourseId
-            && r.year === sundayMonth.year
-            && r.month === sundayMonth.month
-        );
-        return (existing?.timesServed ?? 0) !== draft;
+    for (const enrollment of courseStudents) {
+      const course = courses.find(item => item.id === enrollment.courseId) ?? null;
+      if (!course || !isCourseActive(course)) continue;
+      const student = users.find(user => user.id === enrollment.studentId && user.roles.includes('student'));
+      if (!student) continue;
+
+      const rotation = resolveRotationForMonth(student.id, course.id, ministryRotations, month);
+      const team = rotation ? ministryTeams.find(item => item.id === rotation.teamId) ?? null : null;
+      const teamSessions = team
+        ? ministrySessions.filter(session => session.teamId === team.id && sessionInMonth(session, month))
+        : [];
+      const teamSessionIds = new Set(teamSessions.map(session => session.id));
+      const records = ministryAttendance.filter(record =>
+        record.studentId === student.id && teamSessionIds.has(record.sessionId)
+      );
+      const earnedCredits = records.reduce((sum, record) => sum + creditForStatus(record.status), 0);
+      const requiredCredits = team ? team.requiredCredits : 0;
+      const health = requiredCredits > 0 ? Math.min(1, earnedCredits / requiredCredits) : 0;
+      const present = records.filter(record => record.status === 'present').length;
+      const late = records.filter(record => record.status === 'late').length;
+      const absent = records.filter(record => record.status === 'absent').length;
+      const unmarked = Math.max(0, teamSessions.length - records.length);
+      const serviceDates = records
+        .map(record => ministrySessions.find(session => session.id === record.sessionId)?.serviceDate ?? null)
+        .filter((date): date is string => Boolean(date))
+        .sort();
+      const lastService = serviceDates.length > 0 ? serviceDates[serviceDates.length - 1] : null;
+      const healthStatus: MinistryHealthStatus = !team
+        ? 'unassigned'
+        : health >= 1
+          ? 'passing'
+          : health >= 0.7
+            ? 'at_risk'
+            : 'failing';
+
+      rows.push({
+        student,
+        course,
+        rotation,
+        team,
+        requiredCredits,
+        earnedCredits,
+        present,
+        late,
+        absent,
+        unmarked,
+        health,
+        healthStatus,
+        lastService,
       });
-
-      await Promise.all(
-        updates.map(student =>
-          upsertSundayAttendance(
-            student.id,
-            sundayCourseId,
-            sundayMonth.year,
-            sundayMonth.month,
-            sundayDrafts[student.id] ?? 0
-          )
-        )
-      );
-      setSundaySaved(true);
-    } finally {
-      setSavingSunday(false);
     }
-  };
+
+    return rows;
+  }, [courseStudents, courses, ministryAttendance, ministryRotations, ministrySessions, ministryTeams, month, users]);
+
+  const filteredMinistryRows = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const filtered = ministryRows.filter(row => {
+      const matchesSearch = !query || row.student.name.toLowerCase().includes(query);
+      const matchesTeam = ministryTeamFilter === 'all' || row.team?.id === Number(ministryTeamFilter);
+      const matchesCourse = ministryCourseFilter === 'all' || row.course?.id === Number(ministryCourseFilter);
+      const matchesStatus = ministryStatusFilter === 'all' || row.healthStatus === ministryStatusFilter;
+      const matchesServiceType = ministryServiceTypeFilter === 'all' || row.team?.serviceType === ministryServiceTypeFilter;
+      return matchesSearch && matchesTeam && matchesCourse && matchesStatus && matchesServiceType;
+    });
+
+    const direction = ministrySortDirection === 'asc' ? 1 : -1;
+    return [...filtered].sort((a, b) => {
+      const getValue = (row: MinistryStudentRow): string | number => {
+        switch (ministrySortKey) {
+          case 'student': return row.student.name;
+          case 'course': return row.course ? getCourseDisplayName(row.course) : '';
+          case 'team': return row.team?.name ?? '';
+          case 'requiredCredits': return row.requiredCredits;
+          case 'earnedCredits': return row.earnedCredits;
+          case 'present': return row.present;
+          case 'late': return row.late;
+          case 'absent': return row.absent;
+          case 'health': return row.health;
+          case 'lastService': return row.lastService ?? '';
+          default: return '';
+        }
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      if (typeof valueA === 'number' && typeof valueB === 'number') return (valueA - valueB) * direction;
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [
+    ministryRows,
+    ministryTeamFilter,
+    ministryCourseFilter,
+    ministryStatusFilter,
+    ministryServiceTypeFilter,
+    ministrySortDirection,
+    ministrySortKey,
+    search,
+  ]);
+
+  const teamHealthRows = useMemo<MinistryTeamHealth[]>(() => {
+    return ministryTeams.map(team => {
+      const rows = ministryRows.filter(row => row.team?.id === team.id);
+      const sessions = ministrySessions.filter(session => session.teamId === team.id && sessionInMonth(session, teamHealthMonth));
+      const sessionIds = new Set(sessions.map(session => session.id));
+      const records = ministryAttendance.filter(record => sessionIds.has(record.sessionId));
+      const present = records.filter(record => record.status === 'present').length;
+      const late = records.filter(record => record.status === 'late').length;
+      const absent = records.filter(record => record.status === 'absent').length;
+      const assignedStudents = rows.map(row => row.student);
+      const unmarked = Math.max(0, assignedStudents.length * sessions.length - records.length);
+      const possible = Math.max(1, assignedStudents.length * Math.max(team.requiredCredits, 1));
+      const earned = records.reduce((sum, record) => sum + creditForStatus(record.status), 0);
+      return {
+        team,
+        assignedStudents,
+        present,
+        late,
+        absent,
+        unmarked,
+        health: Math.min(1, earned / possible),
+        rows,
+      };
+    });
+  }, [ministryAttendance, ministryRows, ministrySessions, ministryTeams, teamHealthMonth]);
+
+  const ministryAssignedCount = ministryRows.filter(row => row.team).length;
+  const averageMinistryHealth = ministryRows.length
+    ? ministryRows.reduce((sum, row) => sum + row.health, 0) / ministryRows.length
+    : 1;
+  const ministryBelowRequirement = ministryRows.filter(row => row.healthStatus === 'failing' || row.healthStatus === 'at_risk').length;
+  const missingClassRecords = Math.max(0, regularClasses.length * enrolledStudents.length - classAttendance.filter(record =>
+    regularClasses.some(cls => cls.id === record.classId)
+  ).length);
+  const missingActivationRecords = Math.max(0, activationClasses.length * enrolledStudents.length - classAttendance.filter(record =>
+    activationClasses.some(cls => cls.id === record.classId)
+  ).length);
+  const currentWeekKeepers = dutyRows.filter(row => row.weekStart === currentWeekStart).length;
+  const unassignedKeeperSlots = 2 - currentWeekKeepers;
 
   useEffect(() => {
-    if (activeTab !== 'duty') return;
+    if (activeSection !== 'duty') return;
     const scrollContainer = dutyScheduleScrollRef.current;
     const currentRow = currentDutyRowRef.current;
     if (!scrollContainer || !currentRow) return;
@@ -904,56 +804,175 @@ export function AttendanceView({
         currentRow.offsetTop - (scrollContainer.clientHeight / 2) + (currentRow.clientHeight / 2)
       );
     });
-  }, [activeTab, unifiedDutySchedule, currentWeekStart]);
+  }, [activeSection, currentWeekStart, dutyWeekRows]);
 
-  // Settings draft
-  const [settingsDraft, setSettingsDraft] = useState({
-    lateClassWeight: settings.lateClassWeight,
-    lateSaturdayWeight: settings.lateSaturdayWeight,
-    lateWellWeight: settings.lateWellWeight,
-    graduationPercent: Math.round(settings.graduationThreshold * 100),
-    theWellRequiredPerMonth: settings.theWellRequiredPerMonth,
-    sundayRequiredPerMonth: settings.sundayRequiredPerMonth,
-  });
-  const [savingSettings, setSavingSettings] = useState(false);
+  const sectionMeta: Record<TabId, { title: string; eyebrow: string; description: string }> = {
+    overview: {
+      title: 'Overview',
+      eyebrow: 'Graduation readiness',
+      description: 'Four independent gates: Classes, The Well, Ministry, and Activation Saturday.',
+    },
+    classes: {
+      title: 'Classes',
+      eyebrow: 'Weekly sessions',
+      description: 'Tuesday and Thursday class sessions count toward the class attendance requirement.',
+    },
+    well: {
+      title: 'The Well',
+      eyebrow: 'Wednesday attendance',
+      description: 'Monthly Well credits are official, with yearly fallback progress shown separately.',
+    },
+    ministry: {
+      title: 'Ministry',
+      eyebrow: 'Service teams',
+      description: 'Manage ministry teams, rotations, sessions, and service attendance.',
+    },
+    activation: {
+      title: 'Activation Saturday',
+      eyebrow: 'Monthly joint sessions',
+      description: 'Students may lose only the configured number of Activation Saturday credits.',
+    },
+    duty: {
+      title: 'On Duty Schedule',
+      eyebrow: 'Attendance keepers',
+      description: 'Class and The Well attendance keepers remain separate from ministry team leaders.',
+    },
+    settings: {
+      title: 'Settings',
+      eyebrow: 'Configurable attendance rules',
+      description: 'Tune every graduation gate without changing code.',
+    },
+  };
 
-  useEffect(() => {
-    setSettingsDraft({
-      lateClassWeight: settings.lateClassWeight,
-      lateSaturdayWeight: settings.lateSaturdayWeight,
-      lateWellWeight: settings.lateWellWeight,
-      graduationPercent: Math.round(settings.graduationThreshold * 100),
-      theWellRequiredPerMonth: settings.theWellRequiredPerMonth,
-      sundayRequiredPerMonth: settings.sundayRequiredPerMonth,
-    });
-  }, [settings]);
-
-  const handleSaveSettings = async () => {
+  const saveSettings = async () => {
     setSavingSettings(true);
     try {
-      await updateSettings({
-        lateClassWeight: settingsDraft.lateClassWeight,
-        lateSaturdayWeight: settingsDraft.lateSaturdayWeight,
-        lateWellWeight: settingsDraft.lateWellWeight,
-        graduationThreshold: settingsDraft.graduationPercent / 100,
-        theWellRequiredPerMonth: settingsDraft.theWellRequiredPerMonth,
-        sundayRequiredPerMonth: settingsDraft.sundayRequiredPerMonth,
-      });
+      await updateSettings(settingsDraft);
     } finally {
       setSavingSettings(false);
     }
   };
 
-  const activeSummaries = useMemo(
-    () => activeCourses.flatMap(course => getCourseSummaries(course.id)),
-    [activeCourses, getCourseSummaries]
+  const saveTeam = async () => {
+    if (!teamDraft.name.trim()) return;
+    await upsertMinistryTeam({
+      name: teamDraft.name.trim(),
+      nameBg: teamDraft.nameBg.trim() || null,
+      serviceType: teamDraft.serviceType,
+      serviceDay: teamDraft.serviceType === 'sunday' ? 0 : null,
+      requiredCredits: teamDraft.requiredCredits,
+      requirementPeriodMonths: teamDraft.requirementPeriodMonths,
+      requirementUnit: 'month',
+      leaderId: teamDraft.memberIds[0] ?? null,
+      memberIds: teamDraft.memberIds,
+      active: true,
+    });
+    setTeamDraft(prev => ({ ...prev, name: '', nameBg: '', memberIds: [] }));
+    setShowTeamForm(false);
+  };
+
+  const renderTeamUserPicker = () => (
+    <div className="md:col-span-2">
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Team users</span>
+      <div className="max-h-44 overflow-y-auto rounded-xl border border-[#d4d4d4] bg-white p-2">
+        <div className="grid gap-1 sm:grid-cols-2">
+          {teamLeaders.map(user => {
+            const selected = teamDraft.memberIds.includes(user.id);
+            return (
+              <button
+                key={user.id}
+                type="button"
+                onClick={() => toggleTeamMember(user.id)}
+                className={`flex items-center gap-2 rounded-lg px-2 py-2 text-left text-sm transition ${
+                  selected ? 'bg-[#eef6ff] text-[#1d4ed8] ring-1 ring-[#bfdbfe]' : 'text-[#525252] hover:bg-[#f5f5f5]'
+                }`}
+              >
+                <span className="grid h-7 w-7 shrink-0 place-items-center overflow-hidden rounded-full bg-[#f5f5f5] text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                  {user.avatarUrl ? <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" /> : getInitials(user.name)}
+                </span>
+                <span className="min-w-0">
+                  <span className="block truncate font-semibold">{user.name}</span>
+                  <span className="block truncate text-xs opacity-70">{user.roles.includes('team_leader') ? 'Team leader' : 'Administrator'}</span>
+                </span>
+                <span className={`ml-auto h-4 w-4 rounded border ${selected ? 'border-[#2563eb] bg-[#2563eb]' : 'border-[#d4d4d4] bg-white'}`}>
+                  {selected && <CheckCircle2 className="h-4 w-4 text-white" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {teamLeaders.length === 0 && <p className="px-2 py-3 text-sm text-[#737373]">No administrators or team leaders are available.</p>}
+      </div>
+    </div>
   );
-  const studentsOnTrack = activeSummaries.filter(summary => summary.meetsGraduationThreshold).length;
-  const atRiskCount = activeSummaries.length - studentsOnTrack;
-  const averageOverall = activeSummaries.length === 0
-    ? 1
-    : activeSummaries.reduce((sum, summary) => sum + summary.overallScore, 0) / activeSummaries.length;
-  const currentKeeperCount = currentWeekDuties.filter(d => activeCourseIdSet.has(d.courseId)).length;
+
+  const openRotationModal = (row?: MinistryStudentRow) => {
+    setRotationDateMode('month');
+    if (row?.rotation) {
+      setEditingRotationId(row.rotation.id);
+      setRotationDraft({
+        courseId: row.rotation.courseId,
+        studentId: row.rotation.studentId,
+        teamId: row.rotation.teamId,
+        startDate: row.rotation.startDate,
+        endDate: row.rotation.endDate,
+      });
+      setRotationStartMonth(dateToMonthInput(row.rotation.startDate));
+      setRotationEndMonth(dateToMonthInput(row.rotation.endDate));
+    } else {
+      setEditingRotationId(null);
+      setRotationDraft({
+        courseId: row?.course?.id ?? courseId,
+        studentId: row?.student.id ?? '',
+        teamId: row?.team?.id ?? ministryTeams[0]?.id ?? 0,
+        startDate: firstDayOfMonth(monthInputValue(month)),
+        endDate: lastDayOfMonth(monthInputValue(month)),
+      });
+      setRotationStartMonth(monthInputValue(month));
+      setRotationEndMonth(monthInputValue(month));
+    }
+    setRotationModalOpen(true);
+  };
+
+  const saveRotation = async () => {
+    if (!rotationDraft.courseId || !rotationDraft.studentId || !rotationDraft.teamId) return;
+    const startDate = rotationDateMode === 'month'
+      ? firstDayOfMonth(rotationStartMonth)
+      : rotationDraft.startDate;
+    const endDate = rotationDateMode === 'month'
+      ? lastDayOfMonth(rotationEndMonth)
+      : rotationDraft.endDate;
+    await upsertMinistryRotation({
+      id: editingRotationId ?? undefined,
+      courseId: rotationDraft.courseId,
+      studentId: rotationDraft.studentId,
+      teamId: rotationDraft.teamId,
+      startDate,
+      endDate,
+      status: 'active',
+      locked: false,
+    });
+    setRotationModalOpen(false);
+  };
+
+  const saveSession = async () => {
+    if (!sessionDraft.teamId || !sessionDraft.title.trim()) return;
+    const team = ministryTeams.find(item => item.id === sessionDraft.teamId);
+    await createMinistrySession({
+      teamId: sessionDraft.teamId,
+      serviceDate: sessionDraft.serviceDate,
+      title: sessionDraft.title.trim(),
+      serviceType: team?.serviceType ?? 'sunday',
+    });
+    setSessionDraft(prev => ({ ...prev, title: '' }));
+  };
+
+  const saveMinistryAttendance = async (sessionId: number) => {
+    const records = Object.entries(attendanceDrafts[sessionId] ?? {}).map(([studentId, status]) => ({ studentId, status }));
+    if (records.length === 0) return;
+    await markMinistryAttendance(sessionId, records);
+  };
+
   const renderDutyKeeperCell = (entry: DutyScheduleEntry | null, label: string) => {
     if (!entry) {
       return (
@@ -972,14 +991,11 @@ export function AttendanceView({
         <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full border border-[#e5e5e5] bg-[#f5f5f5] text-[11px] font-semibold text-[#525252]">
           {getInitials(entry.studentName)}
         </span>
-
         <div className="min-w-0 flex-1">
           <div className="flex min-w-0 items-center gap-2">
             <p className="truncate font-medium text-[#171717]">{entry.studentName}</p>
             <span className={`hidden rounded-full px-2 py-0.5 text-[11px] font-medium sm:inline-flex ${
-              entry.status === 'active'
-                ? 'bg-[#dcfce7] text-[#166534]'
-                : 'bg-[#f5f5f5] text-[#525252]'
+              entry.status === 'active' ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#f5f5f5] text-[#525252]'
             }`}>
               {statusLabel}
             </span>
@@ -991,608 +1007,1172 @@ export function AttendanceView({
       </div>
     );
   };
-  const sectionMeta = {
-    overview: {
-      title: 'Overview',
-      eyebrow: 'Attendance standing',
-      description: 'Scan student attendance health across sessions, Activation Saturdays, The Well, and Sunday service.',
-    },
-    sunday: {
-      title: 'Sunday Attendance',
-      eyebrow: 'Monthly service',
-      description: 'Record how many times each student served for the selected month.',
-    },
-    duty: {
-      title: 'On Duty Schedule',
-      eyebrow: 'Attendance keepers',
-      description: 'Choose the students responsible for marking attendance each week.',
-    },
-    settings: {
-      title: 'Settings',
-      eyebrow: 'Rules and weights',
-      description: 'Tune late weights, monthly requirements, and graduation thresholds.',
-    },
-  }[activeTab];
+
+  const pageStats: Partial<Record<TabId, Array<{ label: string; value: string | number; detail: string; icon: typeof Activity; accent: string }>>> = {
+    overview: [
+      { label: 'Average', value: formatPercent(averageOverall), detail: `${activeSummaries.length} students`, icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Passing gates', value: passingCount, detail: `${Math.max(activeSummaries.length - passingCount, 0)} need review`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Ministry teams', value: ministryTeams.length, detail: `${ministryRotations.length} rotations`, icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: 'Transfers', value: pendingTransferRequests.length, detail: 'pending duty requests', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+    ],
+    classes: [
+      { label: 'Planned sessions', value: regularClasses.length, detail: selectedCourse ? getCourseDisplayName(selectedCourse) : 'selected course', icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Average score', value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.classAttendanceScore, 0) / summaries.length : 1), detail: 'class gate only', icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Below rule', value: summaries.filter(summary => summary.classAttendanceScore < settings.classRequiredPercent).length, detail: `${percentInput(settings.classRequiredPercent)}% required`, icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: 'Missing records', value: missingClassRecords, detail: 'unmarked class slots', icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+    ],
+    well: [
+      { label: 'Monthly credits', value: settings.theWellRequiredPerMonth, detail: `${formatMonthYear(month.year, month.month)} requirement`, icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Meeting rule', value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'the_well')?.status ?? 'failing') === 'passing').length, detail: `${summaries.length} students`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Fallback risk', value: summaries.filter(summary => summary.theWellScore < settings.theWellFallbackPercent).length, detail: `${percentInput(settings.theWellFallbackPercent)}% fallback`, icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: 'Tracked records', value: theWellAttendance.filter(item => item.courseId === courseId).length, detail: 'student-month rows', icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+    ],
+    ministry: [
+      { label: 'Teams', value: ministryTeams.length, detail: `${ministryTeams.filter(team => team.active).length} active`, icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: 'Assigned', value: ministryAssignedCount, detail: `${ministryRows.length} students tracked`, icon: ClipboardList, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Avg health', value: formatPercent(averageMinistryHealth), detail: formatMonthYear(month.year, month.month), icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Below req.', value: ministryBelowRequirement, detail: 'at risk or failing', icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+    ],
+    activation: [
+      { label: 'Sessions', value: activationClasses.length, detail: 'detected Saturdays', icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Over limit', value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'activation')?.status ?? 'passing') === 'failing').length, detail: `${settings.activationMaxLostCredits} max lost credits`, icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: 'Avg score', value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.saturdayAttendanceScore, 0) / summaries.length : 1), detail: 'Activation only', icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Missing records', value: missingActivationRecords, detail: 'unmarked Activation slots', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+    ],
+    duty: [
+      { label: 'This week', value: currentWeekKeepers, detail: 'keepers assigned', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Transfers', value: pendingTransferRequests.length, detail: 'waiting for review', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: 'Scheduled weeks', value: new Set(dutyRows.map(row => row.weekStart)).size, detail: 'in active courses', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Open slots', value: Math.max(0, unassignedKeeperSlots), detail: 'current week estimate', icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+    ],
+  };
+
+  const renderPageStats = () => {
+    const stats = pageStats[activeSection];
+    if (!stats || stats.length === 0) return null;
+    return (
+      <div className="grid gap-px bg-[#e5e5e5] sm:grid-cols-2 xl:grid-cols-4">
+        {stats.map(card => (
+          <div key={card.label} className="bg-white p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{card.label}</p>
+                <p className="mt-2 text-2xl font-semibold leading-none text-[#171717]">{card.value}</p>
+              </div>
+              <span className={`grid h-9 w-9 place-items-center rounded-lg ${card.accent}`}>
+                <card.icon className="h-4 w-4" />
+              </span>
+            </div>
+            <p className="mt-2 text-xs text-[#737373]">{card.detail}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+  const renderCourseFilter = () => (
+    <SectionCard className="p-3">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+        <div className="flex flex-wrap items-center gap-2">
+          {courseOptions.map(option => (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setCourseId(option.id)}
+              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+                courseId === option.id
+                  ? 'bg-[#171717] text-white'
+                  : 'border border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#f5f5f5]'
+              }`}
+            >
+              {option.displayName}
+            </button>
+          ))}
+        </div>
+        <label className="relative block w-full sm:w-72">
+          <span className="sr-only">Search students</span>
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+          <input
+            type="search"
+            value={search}
+            onChange={event => setSearch(event.target.value)}
+            placeholder="Search students"
+            className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#171717] focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
+          />
+        </label>
+      </div>
+    </SectionCard>
+  );
+
+  const renderOverview = () => (
+    <div className="space-y-4">
+      {renderCourseFilter()}
+      <SectionCard className="overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+            <thead className="bg-[#f5f5f5]">
+              <tr>
+                {['Student', 'Classes', 'The Well', 'Ministry', 'Activation', 'Result'].map(column => (
+                  <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                    {column}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e5e5e5]">
+              {filteredSummaries.map(summary => (
+                <tr key={summary.studentId} className="bg-white">
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-3">
+                      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                        {getInitials(summary.studentName)}
+                      </span>
+                      <span className="font-semibold text-[#171717]">{summary.studentName}</span>
+                    </div>
+                  </td>
+                  {(['classes', 'the_well', 'ministry', 'activation'] as const).map(key => {
+                    const gate = summary.gates.find(item => item.key === key);
+                    return (
+                      <td key={key} className="px-4 py-3">
+                        {gate ? (
+                          <div>
+                            <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[gate.status]}`}>
+                              {gate.status === 'passing' ? 'Passing' : gate.status === 'at_risk' ? 'At risk' : 'Failing'}
+                            </span>
+                            <p className="mt-1 text-xs text-[#737373]">{gate.detail}</p>
+                          </div>
+                        ) : (
+                          <span className="text-[#737373]">Not tracked</span>
+                        )}
+                      </td>
+                    );
+                  })}
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                      summary.meetsGraduationThreshold ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'
+                    }`}>
+                      {summary.meetsGraduationThreshold ? <CheckCircle2 className="h-3 w-3" /> : null}
+                      {summary.meetsGraduationThreshold ? 'Meets gates' : 'Needs review'}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+              {filteredSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+      </SectionCard>
+    </div>
+  );
+
+  const renderClasses = () => (
+    <div className="space-y-4">
+      {renderCourseFilter()}
+      <SectionCard className="p-4">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="text-sm font-semibold text-[#171717]">Class rule</p>
+            <p className="mt-1 text-sm text-[#737373]">Required attendance credit for weekly classes.</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[560px]">
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Required</p>
+              <p className="mt-1 text-xl font-semibold text-[#171717]">{percentInput(settings.classRequiredPercent)}%</p>
+            </div>
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Sessions</p>
+              <p className="mt-1 text-xl font-semibold text-[#171717]">{regularClasses.length}</p>
+              <p className="text-xs text-[#737373]">{settings.classSessionsPerDay} per day</p>
+            </div>
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Included</p>
+              <p className="mt-1 text-sm font-semibold text-[#171717]">{settings.classIncludedWeekdays.map(day => WEEKDAYS.find(item => item.value === day)?.label).join(', ')}</p>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+      <SectionCard className="overflow-hidden">
+        <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+          <thead className="bg-[#f5f5f5]">
+            <tr>
+              {['Student', 'Present', 'Late', 'Absent', 'Score'].map(column => (
+                <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#e5e5e5]">
+            {filteredSummaries.map(summary => (
+              <tr key={summary.studentId}>
+                <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                <td className="px-4 py-3">{summary.classesPresent}</td>
+                <td className="px-4 py-3">{summary.classesLate}</td>
+                <td className="px-4 py-3">{summary.classesAbsent}</td>
+                <td className="px-4 py-3"><ScoreBar score={summary.classAttendanceScore} /></td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </SectionCard>
+    </div>
+  );
+
+  const renderWell = () => (
+    <div className="space-y-4">
+      {renderCourseFilter()}
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SectionCard className="p-4">
+          <p className="text-sm font-semibold text-[#171717]">Official monthly rule</p>
+          <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.theWellRequiredPerMonth}</p>
+          <p className="mt-1 text-sm text-[#737373]">credits per month</p>
+        </SectionCard>
+        <SectionCard className="p-4">
+          <p className="text-sm font-semibold text-[#171717]">Fallback</p>
+          <p className="mt-2 text-3xl font-semibold text-[#171717]">{percentInput(settings.theWellFallbackPercent)}%</p>
+          <p className="mt-1 text-sm text-[#737373]">of yearly Well sessions</p>
+        </SectionCard>
+        <SectionCard className="p-4">
+          <p className="text-sm font-semibold text-[#171717]">Tracked months</p>
+          <p className="mt-2 text-3xl font-semibold text-[#171717]">{theWellAttendance.filter(item => item.courseId === courseId).length}</p>
+          <p className="mt-1 text-sm text-[#737373]">student-month records</p>
+        </SectionCard>
+      </div>
+      <SectionCard className="overflow-hidden">
+        <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+          <thead className="bg-[#f5f5f5]">
+            <tr>
+              {['Student', 'Months', 'Well score', 'Gate detail'].map(column => (
+                <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#e5e5e5]">
+            {filteredSummaries.map(summary => {
+              const gate = summary.gates.find(item => item.key === 'the_well');
+              return (
+                <tr key={summary.studentId}>
+                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                  <td className="px-4 py-3">{summary.theWellMonthsTracked}</td>
+                  <td className="px-4 py-3"><ScoreBar score={summary.theWellScore} /></td>
+                  <td className="px-4 py-3 text-sm text-[#525252]">{gate?.detail}{gate?.fallbackDetail ? `; ${gate.fallbackDetail}` : ''}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </SectionCard>
+    </div>
+  );
+
+  const renderActivation = () => (
+    <div className="space-y-4">
+      {renderCourseFilter()}
+      <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
+        <SectionCard className="p-4">
+          <p className="text-sm font-semibold text-[#171717]">Activation rule</p>
+          <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.activationMaxLostCredits}</p>
+          <p className="mt-1 text-sm text-[#737373]">maximum lost credits</p>
+          <p className="mt-4 text-sm text-[#525252]">{activationClasses.length} Activation Saturdays detected.</p>
+        </SectionCard>
+        <SectionCard className="overflow-hidden">
+          <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+            <thead className="bg-[#f5f5f5]">
+              <tr>
+                {['Date', 'Title', 'Attendance records'].map(column => (
+                  <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e5e5e5]">
+              {activationClasses.map(cls => (
+                <tr key={cls.id}>
+                  <td className="px-4 py-3 font-semibold text-[#171717]">{formatDate(cls.date)}</td>
+                  <td className="px-4 py-3">{cls.title || 'Activation Saturday'}</td>
+                  <td className="px-4 py-3">{classAttendance.filter(item => item.classId === cls.id).length}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </SectionCard>
+      </div>
+    </div>
+  );
+
+  const renderMinistry = () => {
+    const selectedSession = ministrySessions[0];
+    const selectedSessionTeam = selectedSession ? ministryTeams.find(team => team.id === selectedSession.teamId) : null;
+    const sessionStudents = selectedSession
+      ? activeStudents.filter(student => ministryRotations.some(rotation =>
+        rotation.studentId === student.id &&
+        rotation.teamId === selectedSession.teamId &&
+        selectedSession.serviceDate >= rotation.startDate &&
+        selectedSession.serviceDate <= rotation.endDate
+      ))
+      : [];
+
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 xl:grid-cols-[1fr_1fr]">
+          <SectionCard className="p-4">
+            <div className="mb-4 flex items-center justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-[#171717]">Ministry teams</h3>
+                <p className="text-sm text-[#737373]">Sunday and non-Sunday service requirements.</p>
+              </div>
+              <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#166534]">{ministryTeams.length} teams</span>
+            </div>
+            <div className="space-y-2">
+              {ministryTeams.map(team => (
+                <div key={team.id} className="rounded-xl border border-[#e5e5e5] p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <p className="font-semibold text-[#171717]">{team.name}</p>
+                      <p className="text-xs text-[#737373]">{team.serviceType === 'sunday' ? 'Sunday' : 'Non-Sunday'} - {team.requiredCredits} credit(s) every {team.requirementPeriodMonths} month(s)</p>
+                    </div>
+                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
+                  </div>
+                  {team.info && <p className="mt-2 text-sm text-[#525252]">{team.info}</p>}
+                </div>
+              ))}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <Field label="Team name">
+                <input value={teamDraft.name} onChange={event => setTeamDraft(prev => ({ ...prev, name: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+              </Field>
+              <Field label="Bulgarian name">
+                <input value={teamDraft.nameBg} onChange={event => setTeamDraft(prev => ({ ...prev, nameBg: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+              </Field>
+              <Field label="Type">
+                <select value={teamDraft.serviceType} onChange={event => setTeamDraft(prev => ({ ...prev, serviceType: event.target.value as 'sunday' | 'non_sunday' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  <option value="sunday">Sunday</option>
+                  <option value="non_sunday">Non-Sunday</option>
+                </select>
+              </Field>
+              <Field label="Required credits">
+                <NumberInput value={teamDraft.requiredCredits} min={0} step={0.5} onChange={value => setTeamDraft(prev => ({ ...prev, requiredCredits: value }))} />
+              </Field>
+              <Field label="Period months">
+                <NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} />
+              </Field>
+              {renderTeamUserPicker()}
+            </div>
+            <button type="button" onClick={saveTeam} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
+              <Plus className="h-4 w-4" /> Save team
+            </button>
+          </SectionCard>
+
+          <SectionCard className="p-4">
+            <h3 className="font-semibold text-[#171717]">Rotations</h3>
+            <p className="text-sm text-[#737373]">Assign students to ministry teams for a date range.</p>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              <Field label="Course">
+                <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+                </select>
+              </Field>
+              <Field label="Student">
+                <select value={rotationDraft.studentId} onChange={event => setRotationDraft(prev => ({ ...prev, studentId: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  <option value="">Choose student</option>
+                  {activeStudents.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Team">
+                <select value={rotationDraft.teamId} onChange={event => setRotationDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Start date">
+                <input type="date" value={rotationDraft.startDate} onChange={event => setRotationDraft(prev => ({ ...prev, startDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+              </Field>
+              <Field label="End date">
+                <input type="date" value={rotationDraft.endDate} onChange={event => setRotationDraft(prev => ({ ...prev, endDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+              </Field>
+            </div>
+            <button type="button" onClick={saveRotation} className="mt-3 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save rotation</button>
+            <div className="mt-4 max-h-72 space-y-2 overflow-y-auto">
+              {ministryRotations.map(rotation => {
+                const team = ministryTeams.find(item => item.id === rotation.teamId);
+                return (
+                  <div key={rotation.id} className="rounded-xl border border-[#e5e5e5] p-3 text-sm">
+                    <p className="font-semibold text-[#171717]">{rotation.studentName}</p>
+                    <p className="text-[#737373]">{team?.name ?? 'Team'} - {formatDate(rotation.startDate)} to {formatDate(rotation.endDate)}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+        </div>
+
+        <SectionCard className="p-4">
+          <h3 className="font-semibold text-[#171717]">Service sessions</h3>
+          <div className="mt-4 grid gap-3 md:grid-cols-4">
+            <Field label="Team">
+              <select value={sessionDraft.teamId} onChange={event => setSessionDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Date">
+              <input type="date" value={sessionDraft.serviceDate} onChange={event => setSessionDraft(prev => ({ ...prev, serviceDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+            </Field>
+            <Field label="Title">
+              <input value={sessionDraft.title} onChange={event => setSessionDraft(prev => ({ ...prev, title: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+            </Field>
+            <button type="button" onClick={saveSession} className="self-end rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Create session</button>
+          </div>
+          {selectedSession && (
+            <div className="mt-5 rounded-xl border border-[#e5e5e5] p-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="font-semibold text-[#171717]">Latest: {selectedSession.title}</p>
+                  <p className="text-sm text-[#737373]">{selectedSessionTeam?.name} - {formatDate(selectedSession.serviceDate)}</p>
+                </div>
+                <button type="button" onClick={() => saveMinistryAttendance(selectedSession.id)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save attendance</button>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {sessionStudents.map(student => {
+                  const existing = ministryAttendance.find(record => record.sessionId === selectedSession.id && record.studentId === student.id);
+                  const value = attendanceDrafts[selectedSession.id]?.[student.id] ?? existing?.status ?? 'present';
+                  return (
+                    <div key={student.id} className="flex items-center justify-between gap-3 rounded-lg border border-[#e5e5e5] px-3 py-2">
+                      <span className="font-medium text-[#171717]">{student.name}</span>
+                      <select
+                        value={value}
+                        onChange={event => setAttendanceDrafts(prev => ({
+                          ...prev,
+                          [selectedSession.id]: {
+                            ...(prev[selectedSession.id] ?? {}),
+                            [student.id]: event.target.value as AttendanceStatus,
+                          },
+                        }))}
+                        className="rounded-lg border border-[#d4d4d4] px-2 py-1 text-sm"
+                      >
+                        <option value="present">Present</option>
+                        <option value="late">Late</option>
+                        <option value="absent">Absent</option>
+                      </select>
+                    </div>
+                  );
+                })}
+                {sessionStudents.length === 0 && <p className="text-sm text-[#737373]">No rotations match this session yet.</p>}
+              </div>
+            </div>
+          )}
+        </SectionCard>
+      </div>
+    );
+  };
+
+  const renderMinistryTable = () => {
+    const activeMinistryTeams = ministryTeams.filter(team => team.active);
+    const selectedDateReports = ministrySessions
+      .filter(session => session.serviceDate === reportDate)
+      .sort((a, b) => new Date(b.submittedAt).getTime() - new Date(a.submittedAt).getTime());
+    const submittedTeamIds = new Set(selectedDateReports.map(report => report.teamId));
+    const submittedTeams = activeMinistryTeams.filter(team => submittedTeamIds.has(team.id));
+    const missingTeams = activeMinistryTeams.filter(team => !submittedTeamIds.has(team.id));
+    const sortHeader = (label: string, key: MinistrySortKey, title?: string) => (
+      <button
+        type="button"
+        title={title ?? label}
+        aria-label={`Sort by ${title ?? label}`}
+        onClick={() => {
+          if (ministrySortKey === key) {
+            setMinistrySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+          } else {
+            setMinistrySortKey(key);
+            setMinistrySortDirection('asc');
+          }
+        }}
+        className="inline-flex items-center justify-center gap-1 text-left"
+      >
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${ministrySortKey === key ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
+      </button>
+    );
+
+    return (
+      <div className="space-y-4">
+        <SectionCard className="p-4">
+          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+            <div>
+              <h3 className="font-semibold text-[#171717]">Student ministry standing</h3>
+              <p className="text-sm text-[#737373]">Filter and sort students by team, monthly health, service type, and rotation.</p>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" onClick={() => openRotationModal()} className="inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
+                <SlidersHorizontal className="h-4 w-4" /> Manage Rotations
+              </button>
+              <button type="button" onClick={() => setTeamHealthOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-4 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
+                <BarChart3 className="h-4 w-4" /> Team Health
+              </button>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
+            <Field label="Month">
+              <input
+                type="month"
+                value={monthInputValue(month)}
+                onChange={event => setMonth(parseMonthInput(event.target.value))}
+                className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm"
+              />
+            </Field>
+            <Field label="Team">
+              <select value={ministryTeamFilter} onChange={event => setMinistryTeamFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                <option value="all">All teams</option>
+                {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+              </select>
+            </Field>
+            <Field label="Course">
+              <select value={ministryCourseFilter} onChange={event => setMinistryCourseFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                <option value="all">All years</option>
+                {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+              </select>
+            </Field>
+            <Field label="Health">
+              <select value={ministryStatusFilter} onChange={event => setMinistryStatusFilter(event.target.value as MinistryHealthStatus)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                <option value="all">All statuses</option>
+                <option value="passing">Passing</option>
+                <option value="at_risk">At risk</option>
+                <option value="failing">Failing</option>
+                <option value="unassigned">Unassigned</option>
+              </select>
+            </Field>
+            <Field label="Type">
+              <select value={ministryServiceTypeFilter} onChange={event => setMinistryServiceTypeFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                <option value="all">All types</option>
+                <option value="sunday">Sunday</option>
+                <option value="non_sunday">Non-Sunday</option>
+              </select>
+            </Field>
+            <label className="block">
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Search</span>
+              <span className="relative block">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Student name" className="h-10 w-full rounded-lg border border-[#d4d4d4] pl-9 pr-3 text-sm" />
+              </span>
+            </label>
+          </div>
+        </SectionCard>
+
+        <SectionCard className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="min-w-[1000px] divide-y divide-[#e5e5e5] text-sm">
+              <thead className="bg-[#f5f5f5]">
+                <tr>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Course/Year', 'course')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Current Team', 'team')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Rotation Period</th>
+                  <th className="w-28 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Credits', 'earnedCredits', 'Earned credits')}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('P', 'present', 'Present')}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('L', 'late', 'Late')}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('A', 'absent', 'Absent')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Health', 'health')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Last Service', 'lastService')}</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e5e5]">
+                {filteredMinistryRows.map(row => {
+                  const creditProgress = row.requiredCredits > 0 ? Math.min(1, row.earnedCredits / row.requiredCredits) : 0;
+
+                  return (
+                    <tr key={`${row.course?.id}-${row.student.id}`} className="bg-white hover:bg-[#fafafa]">
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-8 w-8 place-items-center rounded-full bg-[#f5f5f5] text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">{getInitials(row.student.name)}</span>
+                          <span className="font-semibold text-[#171717]">{row.student.name}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-[#525252]">{row.course ? getCourseDisplayName(row.course) : 'No course'}</td>
+                      <td className="px-4 py-3">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.team ? 'bg-[#f0fdf4] text-[#166534]' : 'bg-[#f5f5f5] text-[#737373]'}`}>
+                          {row.team?.name ?? 'Unassigned'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-[#525252]">{row.rotation ? `${formatDate(row.rotation.startDate)} - ${formatDate(row.rotation.endDate)}` : 'No rotation'}</td>
+                      <td className="w-28 px-4 py-3">
+                        <div className="flex w-24 flex-col gap-1.5">
+                          <span className="font-semibold text-[#171717]">{row.earnedCredits.toFixed(1)} / {row.requiredCredits.toFixed(1)}</span>
+                          <span className="h-1.5 overflow-hidden rounded-full bg-[#e5e5e5]" aria-hidden="true">
+                            <span className="block h-full rounded-full bg-[#2563eb]" style={{ width: `${creditProgress * 100}%` }} />
+                          </span>
+                        </div>
+                      </td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Present">{row.present}</td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Late">{row.late}</td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Absent">{row.absent}</td>
+                      <td className="px-4 py-3"><ScoreBar score={row.health} /></td>
+                      <td className="px-4 py-3 text-[#525252]">{row.lastService ? formatDate(row.lastService) : 'None'}</td>
+                      <td className="px-4 py-3 text-right">
+                        <button type="button" onClick={() => openRotationModal(row)} className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
+                          <Pencil className="h-3.5 w-3.5" /> Rotation
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+                {filteredMinistryRows.length === 0 && (
+                  <tr>
+                    <td colSpan={11} className="px-4 py-10 text-center text-[#737373]">No students match the current ministry filters.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </SectionCard>
+
+        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+          <SectionCard className="p-4">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <h3 className="font-semibold text-[#171717]">{showTeamForm ? 'New team' : 'Teams'}</h3>
+                <p className="text-sm text-[#737373]">{showTeamForm ? 'Add a ministry team and its service requirement.' : 'Review ministry team requirements.'}</p>
+              </div>
+              {showTeamForm ? (
+                <button
+                  type="button"
+                  onClick={() => setShowTeamForm(false)}
+                  className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
+                >
+                  <ChevronLeft className="h-4 w-4" /> Teams
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setShowTeamForm(true)}
+                  title="Add ministry team"
+                  aria-label="Add ministry team"
+                  className="grid h-9 w-9 place-items-center rounded-lg bg-[#171717] text-white shadow-sm hover:bg-[#262626]"
+                >
+                  <Plus className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+
+            {showTeamForm ? (
+              <>
+                <div className="mt-4 grid gap-3 md:grid-cols-2">
+                  <Field label="Team name"><input value={teamDraft.name} onChange={event => setTeamDraft(prev => ({ ...prev, name: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
+                  <Field label="Bulgarian name"><input value={teamDraft.nameBg} onChange={event => setTeamDraft(prev => ({ ...prev, nameBg: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
+                  <Field label="Type">
+                    <select value={teamDraft.serviceType} onChange={event => setTeamDraft(prev => ({ ...prev, serviceType: event.target.value as 'sunday' | 'non_sunday' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                      <option value="sunday">Sunday</option>
+                      <option value="non_sunday">Non-Sunday</option>
+                    </select>
+                  </Field>
+                  <Field label="Required credits"><NumberInput value={teamDraft.requiredCredits} min={0} step={0.5} onChange={value => setTeamDraft(prev => ({ ...prev, requiredCredits: value }))} /></Field>
+                  <Field label="Period months"><NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} /></Field>
+                  {renderTeamUserPicker()}
+                </div>
+                <button type="button" onClick={saveTeam} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
+                  <Plus className="h-4 w-4" /> Save team
+                </button>
+              </>
+            ) : (
+              <div className="mt-4 grid max-h-56 gap-2 overflow-y-auto">
+                {ministryTeams.map(team => (
+                  <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3">
+                    <div>
+                      <p className="font-semibold text-[#171717]">{team.name}</p>
+                      <p className="text-xs text-[#737373]">{team.serviceType === 'sunday' ? 'Sunday' : 'Non-Sunday'} - {team.requiredCredits} credit(s) / {team.requirementPeriodMonths} month(s)</p>
+                    </div>
+                    <span className="max-w-[220px] truncate rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </SectionCard>
+
+          <SectionCard className="p-4">
+            <div className="border-b border-[#e5e5e5] pb-3">
+              <h3 className="font-semibold text-[#171717]">Submitted reports</h3>
+              <p className="mt-1 text-sm text-[#737373]">Review team leader reports by the service date on the form.</p>
+            </div>
+
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
+              <div className="relative sm:w-32">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const picker = reportDatePickerRef.current;
+                    if (!picker) return;
+                    if (typeof picker.showPicker === 'function') {
+                      picker.showPicker();
+                    } else {
+                      picker.click();
+                      picker.focus();
+                    }
+                  }}
+                  className="h-9 w-32 rounded-lg border border-[#d4d4d4] bg-white px-3 text-left text-sm text-[#171717] hover:bg-[#f5f5f5]"
+                >
+                  {reportDateText}
+                </button>
+                <input
+                  ref={reportDatePickerRef}
+                  type="date"
+                  value={reportDate}
+                  onChange={event => {
+                    setReportDate(event.target.value);
+                    setReportDateText(formatPlatformDate(event.target.value));
+                  }}
+                  aria-label="Choose report date"
+                  className="pointer-events-none absolute inset-0 h-9 w-32 opacity-0"
+                />
+              </div>
+              <div className="grid flex-1 grid-cols-2 gap-2">
+                {[
+                  { label: 'Submitted', teams: submittedTeams, tone: 'bg-[#f0fdf4] text-[#166534] border-[#bbf7d0]' },
+                  { label: 'Missing', teams: missingTeams, tone: 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]' },
+                ].map(item => (
+                  <div key={item.label} className={`group relative rounded-lg border px-3 py-2 ${item.tone}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold uppercase tracking-[0.1em]">{item.label}</span>
+                      <span className="text-lg font-semibold leading-none">{item.teams.length}</span>
+                    </div>
+                    <div className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-20 hidden w-64 rounded-xl border border-[#e5e5e5] bg-white p-3 text-[#171717] shadow-[0_18px_40px_rgba(15,23,42,0.14)] group-hover:block">
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{item.label} teams</p>
+                      <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
+                        {item.teams.map(team => (
+                          <div key={team.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f5f5f5] px-2 py-1.5 text-xs">
+                            <span className="font-semibold text-[#171717]">{team.name}</span>
+                            <span className="truncate text-[#737373]">{formatTeamUsers(team)}</span>
+                          </div>
+                        ))}
+                        {item.teams.length === 0 && <p className="text-sm text-[#737373]">None</p>}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="mt-4 max-h-[420px] space-y-3 overflow-y-auto pr-1">
+              {selectedDateReports.map(report => {
+                const team = ministryTeams.find(item => item.id === report.teamId);
+                const records = ministryAttendance.filter(record => record.sessionId === report.id);
+                const present = records.filter(record => record.status === 'present').length;
+                const late = records.filter(record => record.status === 'late').length;
+                const absent = records.filter(record => record.status === 'absent').length;
+                const submittedTime = formatPlatformDateTime(report.submittedAt);
+
+                return (
+                  <article key={report.id} className="rounded-xl border border-[#e5e5e5] bg-white p-3">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <p className="font-semibold text-[#171717]">{team?.name ?? 'Ministry team'}</p>
+                        <p className="text-xs text-[#737373]">Submitted {submittedTime} by {report.createdByName || 'team user'}</p>
+                      </div>
+                      <div className="flex gap-1.5 text-xs font-semibold">
+                        <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534]">{present} P</span>
+                        <span className="rounded-full bg-[#fff7ed] px-2 py-1 text-[#c2410c]">{late} L</span>
+                        <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#737373]">{absent} A</span>
+                      </div>
+                    </div>
+                    <div className="mt-3 grid gap-2 text-sm">
+                      <p className="rounded-lg bg-[#f8fafc] px-3 py-2 text-[#525252]"><span className="font-semibold text-[#171717]">General:</span> {report.generalView || 'No summary added.'}</p>
+                      {report.winsTestimonies && <p className="rounded-lg bg-[#f0fdf4] px-3 py-2 text-[#166534]"><span className="font-semibold">Wins:</span> {report.winsTestimonies}</p>}
+                      {report.challenges && <p className="rounded-lg bg-[#fff7ed] px-3 py-2 text-[#c2410c]"><span className="font-semibold">Challenges:</span> {report.challenges}</p>}
+                      <p className="rounded-lg bg-[#eff6ff] px-3 py-2 text-[#1d4ed8]"><span className="font-semibold">Actions:</span> {report.timelyActions || 'No actions added.'}</p>
+                    </div>
+                  </article>
+                );
+              })}
+              {selectedDateReports.length === 0 && (
+                <div className="rounded-xl border border-dashed border-[#d4d4d4] p-6 text-center text-sm text-[#737373]">
+                  No reports submitted for {formatDate(reportDate)}.
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        </div>
+      </div>
+    );
+  };
+
+  const renderDuty = () => (
+    <div className="space-y-4">
+      {pendingTransferRequests.length > 0 && (
+        <SectionCard className="p-4">
+          <h3 className="font-semibold text-[#171717]">Pending transfers</h3>
+          <div className="mt-3 space-y-2">
+            {pendingTransferRequests.map(request => (
+              <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3 text-sm">
+                <p>
+                  <span className="font-semibold">{request.fromStudentName}</span>
+                  {' '}to{' '}
+                  <span className="font-semibold">{request.toStudentName}</span>
+                  {' '}for {formatDate(request.weekStart)}
+                </p>
+                <div className="flex gap-2">
+                  <button type="button" onClick={() => resolveTransferRequest(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">Approve</button>
+                  <button type="button" onClick={() => resolveTransferRequest(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">Reject</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
+      <SectionCard className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
+            <p className="text-sm text-[#737373]">Creates weekly attendance keeper rows for the selected course.</p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
+              {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+            </select>
+            <button type="button" onClick={() => generateDutyScheduleForCourse(courseId)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Generate</button>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="overflow-hidden">
+        <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
+          <span>Week</span>
+          <span>First Year Keeper</span>
+          <span>Second Year Keeper</span>
+          <span />
+        </div>
+
+        <div ref={dutyScheduleScrollRef} className="tbo-scrollbar max-h-[520px] overflow-y-auto">
+          {dutyWeekRows.map(row => {
+            const isCurrentWeek = row.weekStart === currentWeekStart;
+            return (
+              <div
+                key={row.weekStart}
+                ref={isCurrentWeek ? currentDutyRowRef : undefined}
+                className={`group grid gap-3 border-b border-[#e5e5e5] px-3 py-3 last:border-0 lg:grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] lg:items-center ${
+                  isCurrentWeek ? 'bg-[#dbeaff]/35' : 'bg-white'
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart)}</p>
+                    {isCurrentWeek && (
+                      <span className="rounded-full bg-[#dbeaff] px-2 py-0.5 text-[11px] font-medium text-[#2563eb]">Live</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-[#737373]">
+                    {formatCompactWeekDate(row.weekStart)} - {formatCompactWeekDate(row.weekEnd)}
+                  </p>
+                </div>
+
+                <div className="space-y-1 lg:space-y-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">First Year Keeper</p>
+                  {renderDutyKeeperCell(row.firstYear, 'First Year')}
+                </div>
+
+                <div className="space-y-1 lg:space-y-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Second Year Keeper</p>
+                  {renderDutyKeeperCell(row.secondYear, 'Second Year')}
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditDutyWeekRow(row)}
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] opacity-100 transition hover:bg-[#f5f5f5] hover:text-[#171717] lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                    aria-label={`Edit duty keepers for week of ${formatWeekDate(row.weekStart)}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {dutyWeekRows.length === 0 && (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-[#171717]">No duty schedule yet.</p>
+              <p className="mt-1 text-sm text-[#737373]">Use Generate to create duty slots for an active course.</p>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+    </div>
+  );
+
+  const renderSettings = () => (
+    <div className="space-y-4">
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">Global scoring</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Field label="Present credit"><NumberInput value={settingsDraft.presentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, presentCredit: value }))} /></Field>
+          <Field label="Late credit"><NumberInput value={settingsDraft.lateCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, lateCredit: value, lateClassWeight: value, lateSaturdayWeight: value, lateWellWeight: value }))} /></Field>
+          <Field label="Absent credit"><NumberInput value={settingsDraft.absentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, absentCredit: value }))} /></Field>
+          <Toggle checked={settingsDraft.lateUsesGlobalCredit} onChange={checked => setSettingsDraft(prev => ({ ...prev, lateUsesGlobalCredit: checked }))} label="Global late rule" />
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">Classes</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Field label="Required percent"><NumberInput value={percentInput(settingsDraft.classRequiredPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, classRequiredPercent: toPercent(value), graduationThreshold: toPercent(value) }))} /></Field>
+          <Field label="Sessions per day"><NumberInput value={settingsDraft.classSessionsPerDay} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, classSessionsPerDay: value }))} /></Field>
+          <Toggle checked={settingsDraft.classJointCountsOnce} onChange={checked => setSettingsDraft(prev => ({ ...prev, classJointCountsOnce: checked }))} label="Joint counts once" />
+          <div>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Weekdays</span>
+            <div className="flex flex-wrap gap-1">
+              {WEEKDAYS.map(day => {
+                const selected = settingsDraft.classIncludedWeekdays.includes(day.value);
+                return (
+                  <button
+                    key={day.value}
+                    type="button"
+                    onClick={() => setSettingsDraft(prev => ({
+                      ...prev,
+                      classIncludedWeekdays: selected
+                        ? prev.classIncludedWeekdays.filter(value => value !== day.value)
+                        : [...prev.classIncludedWeekdays, day.value].sort(),
+                    }))}
+                    className={`rounded-full px-2 py-1 text-xs font-semibold ${selected ? 'bg-[#171717] text-white' : 'bg-[#f5f5f5] text-[#525252]'}`}
+                  >
+                    {day.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">The Well</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-5">
+          <Toggle checked={settingsDraft.theWellEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellEnabled: checked }))} label="Enabled" />
+          <Field label="Weekday">
+            <select value={settingsDraft.theWellWeekday} onChange={event => setSettingsDraft(prev => ({ ...prev, theWellWeekday: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+              {WEEKDAYS.map(day => <option key={day.value} value={day.value}>{day.label}</option>)}
+            </select>
+          </Field>
+          <Field label="Monthly credits"><NumberInput value={settingsDraft.theWellRequiredPerMonth} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellRequiredPerMonth: value }))} /></Field>
+          <Toggle checked={settingsDraft.theWellFallbackEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellFallbackEnabled: checked }))} label="Fallback" />
+          <Field label="Fallback percent"><NumberInput value={percentInput(settingsDraft.theWellFallbackPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellFallbackPercent: toPercent(value) }))} /></Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">Activation Saturday</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Toggle checked={settingsDraft.activationEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, activationEnabled: checked }))} label="Enabled" />
+          <Field label="Frequency">
+            <select value={settingsDraft.activationFrequency} onChange={event => setSettingsDraft(prev => ({ ...prev, activationFrequency: event.target.value as 'monthly' | 'custom' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+              <option value="monthly">Monthly</option>
+              <option value="custom">Custom</option>
+            </select>
+          </Field>
+          <Field label="Max lost credits"><NumberInput value={settingsDraft.activationMaxLostCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, activationMaxLostCredits: value }))} /></Field>
+          <Field label="Detection">
+            <select value={settingsDraft.activationDetectionRule} onChange={event => setSettingsDraft(prev => ({ ...prev, activationDetectionRule: event.target.value as 'saturday_both' | 'manual' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+              <option value="saturday_both">Saturday + both</option>
+              <option value="manual">Manual</option>
+            </select>
+          </Field>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">Ministry</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-4">
+          <Toggle checked={settingsDraft.ministryEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryEnabled: checked }))} label="Enabled" />
+          <Field label="Sunday credits"><NumberInput value={settingsDraft.ministrySundayRequiredCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayRequiredCredits: value, sundayRequiredPerMonth: value }))} /></Field>
+          <Field label="Sunday period"><NumberInput value={settingsDraft.ministrySundayPeriodMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayPeriodMonths: value }))} /></Field>
+          <Field label="First year rotation"><NumberInput value={settingsDraft.ministryFirstYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministryFirstYearRotationMonths: value }))} /></Field>
+          <Field label="Second year rotation"><NumberInput value={settingsDraft.ministrySecondYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySecondYearRotationMonths: value }))} /></Field>
+          <Toggle checked={settingsDraft.ministryTeamLeadersCanMark} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryTeamLeadersCanMark: checked }))} label="Leaders mark" />
+          <Toggle checked={settingsDraft.ministryAdminsCanOverrideRotations} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryAdminsCanOverrideRotations: checked }))} label="Admin override" />
+        </div>
+      </SectionCard>
+
+      <SectionCard className="p-4">
+        <h3 className="font-semibold text-[#171717]">Display and reminders</h3>
+        <div className="mt-4 grid gap-3 md:grid-cols-3">
+          <Toggle checked={settingsDraft.showClassesOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showClassesOnStudentView: checked }))} label="Show classes" />
+          <Toggle checked={settingsDraft.showTheWellOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showTheWellOnStudentView: checked }))} label="Show Well" />
+          <Toggle checked={settingsDraft.showActivationOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showActivationOnStudentView: checked }))} label="Show Activation" />
+          <Toggle checked={settingsDraft.showMinistryOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showMinistryOnStudentView: checked }))} label="Show Ministry" />
+          <Toggle checked={settingsDraft.showFallbackScores} onChange={checked => setSettingsDraft(prev => ({ ...prev, showFallbackScores: checked }))} label="Show fallback" />
+          <Toggle checked={settingsDraft.remindMissingClassAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingClassAttendance: checked }))} label="Class reminders" />
+          <Toggle checked={settingsDraft.remindMissingWellAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingWellAttendance: checked }))} label="Well reminders" />
+          <Toggle checked={settingsDraft.remindMissingMinistryAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingMinistryAttendance: checked }))} label="Ministry reminders" />
+        </div>
+      </SectionCard>
+
+      <button type="button" onClick={saveSettings} disabled={savingSettings} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        {savingSettings ? 'Saving...' : 'Save settings'}
+      </button>
+    </div>
+  );
+
+  const renderRotationModal = () => {
+    if (!rotationModalOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+          <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] p-5">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Ministry rotation</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{editingRotationId ? 'Edit rotation' : 'Create rotation'}</h3>
+              <p className="mt-1 text-sm text-[#737373]">Month mode uses the first and last day of the selected months.</p>
+            </div>
+            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="space-y-4 p-5">
+            <div className="inline-flex rounded-lg border border-[#e5e5e5] bg-[#f5f5f5] p-1">
+              {(['month', 'date'] as RotationDateMode[]).map(mode => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setRotationDateMode(mode)}
+                  className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize ${rotationDateMode === mode ? 'bg-white text-[#171717] shadow-sm' : 'text-[#737373]'}`}
+                >
+                  {mode}
+                </button>
+              ))}
+            </div>
+
+            <div className="grid gap-3 md:grid-cols-2">
+              <Field label="Course">
+                <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+                </select>
+              </Field>
+              <Field label="Student">
+                <select value={rotationDraft.studentId} onChange={event => setRotationDraft(prev => ({ ...prev, studentId: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  <option value="">Choose student</option>
+                  {activeStudents.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
+                </select>
+              </Field>
+              <Field label="Team">
+                <select value={rotationDraft.teamId} onChange={event => setRotationDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                  {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+                </select>
+              </Field>
+              {rotationDateMode === 'month' ? (
+                <>
+                  <Field label="Start month">
+                    <input type="month" value={rotationStartMonth} onChange={event => setRotationStartMonth(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  </Field>
+                  <Field label="End month">
+                    <input type="month" value={rotationEndMonth} onChange={event => setRotationEndMonth(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  </Field>
+                </>
+              ) : (
+                <>
+                  <Field label="Start date">
+                    <input type="date" value={rotationDraft.startDate} onChange={event => setRotationDraft(prev => ({ ...prev, startDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  </Field>
+                  <Field label="End date">
+                    <input type="date" value={rotationDraft.endDate} onChange={event => setRotationDraft(prev => ({ ...prev, endDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  </Field>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 border-t border-[#e5e5e5] p-5">
+            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg border border-[#d4d4d4] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
+            <button type="button" onClick={saveRotation} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save rotation</button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  const renderTeamHealthModal = () => {
+    if (!teamHealthOpen) return null;
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+          <div className="flex flex-col gap-4 border-b border-[#e5e5e5] p-5 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Team health</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{formatMonthYear(teamHealthMonth.year, teamHealthMonth.month)}</h3>
+            </div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setTeamHealthMonth(prev => shiftMonth(prev.year, prev.month, -1))} className="grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] hover:bg-[#f5f5f5]"><ChevronLeft className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setTeamHealthMonth(prev => shiftMonth(prev.year, prev.month, 1))} className="grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] hover:bg-[#f5f5f5]"><ChevronRight className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setTeamHealthOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"><X className="h-5 w-5" /></button>
+            </div>
+          </div>
+
+          <div className="space-y-3 p-5">
+            {teamHealthRows.map(row => {
+              const expanded = expandedHealthTeamId === row.team.id;
+              return (
+                <div key={row.team.id} className="rounded-xl border border-[#e5e5e5] bg-white">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedHealthTeamId(expanded ? null : row.team.id)}
+                    className="grid w-full gap-3 p-4 text-left lg:grid-cols-[1.1fr_0.8fr_0.8fr_0.8fr_0.8fr_0.8fr]"
+                  >
+                    <div>
+                      <p className="font-semibold text-[#171717]">{row.team.name}</p>
+                      <p className="text-xs text-[#737373]">{row.assignedStudents.length} assigned students</p>
+                    </div>
+                    <ScoreBar score={row.health} />
+                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.present}</span> present</p>
+                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.late}</span> late</p>
+                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.absent}</span> absent</p>
+                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.unmarked}</span> unmarked</p>
+                  </button>
+                  {expanded && (
+                    <div className="border-t border-[#e5e5e5] bg-[#fafafa] p-4">
+                      <div className="grid gap-2 md:grid-cols-2">
+                        {row.rows.map(studentRow => (
+                          <div key={`${row.team.id}-${studentRow.student.id}`} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-sm ring-1 ring-[#e5e5e5]">
+                            <span className="font-medium text-[#171717]">{studentRow.student.name}</span>
+                            <span className="text-[#737373]">{studentRow.earnedCredits.toFixed(1)} / {studentRow.requiredCredits.toFixed(1)}</span>
+                          </div>
+                        ))}
+                        {row.rows.length === 0 && <p className="text-sm text-[#737373]">No students assigned for this team.</p>}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  };
+
 
   return (
     <div className="space-y-4">
-      <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white">
+      <SectionCard className="overflow-hidden">
         <div className="flex flex-col gap-4 border-b border-[#e5e5e5] p-4 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{sectionMeta.eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{sectionMeta.title}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#525252]">{sectionMeta.description}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{sectionMeta[activeSection].eyebrow}</p>
+            <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{sectionMeta[activeSection].title}</h2>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#525252]">{sectionMeta[activeSection].description}</p>
           </div>
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e5e5e5] bg-[#f5f5f5] px-3 py-1.5 text-xs font-medium text-[#525252]">
             <Activity className="h-3.5 w-3.5 text-[#2563eb]" />
             {loading ? 'Syncing attendance data' : 'Live attendance data'}
           </div>
         </div>
-        <div className="grid gap-px bg-[#e5e5e5] sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: 'Overall Average', value: formatPercent(averageOverall), detail: `${activeSummaries.length} active students`, icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-            { label: 'On Track', value: studentsOnTrack, detail: `${atRiskCount} need attention`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-            { label: 'Keepers', value: currentKeeperCount, detail: 'assigned this week', icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
-            { label: 'Transfers', value: pendingTransferRequests.length, detail: 'pending requests', icon: ArrowUpRight, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-          ].map(card => (
-            <div key={card.label} className="bg-white p-4">
-              <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{card.label}</p>
-                  <p className="mt-2 text-2xl font-semibold leading-none text-[#171717]">{card.value}</p>
-                </div>
-                <span className={`grid h-9 w-9 place-items-center rounded-lg ${card.accent}`}>
-                  <card.icon className="h-4 w-4" />
-                </span>
-              </div>
-              <p className="mt-2 text-xs text-[#737373]">{card.detail}</p>
-            </div>
-          ))}
-        </div>
-        {error && (
-          <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">
-            {error}
-          </p>
-        )}
-      </div>
-      <div className="hidden">
-        <h2 className="text-2xl font-bold text-gray-900">Attendance</h2>
-        {loading && <p className="text-sm text-gray-500 mt-1">Loading attendance data…</p>}
-        {error && (
-          <p className="text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg px-4 py-2 mt-2">
-            {error}
-          </p>
-        )}
-      </div>
+        {renderPageStats()}
+        {error && <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
+      </SectionCard>
 
-      {/* TAB 1 — Overview */}
-      {activeTab === 'overview' && (
-        <div className="space-y-4">
-          <div className="rounded-xl border border-[#e5e5e5] bg-white p-3">
-            {overviewCourseOptions.length === 0 ? (
-              <p className="text-sm text-[#737373]">No courses are available for attendance review.</p>
-            ) : (
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <div className="flex min-w-0 flex-wrap items-center gap-2" aria-label="Active course filter">
-                  {activeCourseOptions.map(opt => (
-                    <button
-                      key={opt.id}
-                      type="button"
-                      onClick={() => setOverviewCourseId(opt.id)}
-                      className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                        overviewCourseId === opt.id
-                          ? 'bg-[#171717] text-white'
-                          : 'border border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
-                      }`}
-                    >
-                      {opt.displayName}
-                    </button>
-                  ))}
-
-                  <label className="relative block w-full sm:w-72">
-                    <span className="sr-only">Search students</span>
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-                    <input
-                      type="search"
-                      value={overviewSearch}
-                      onChange={event => setOverviewSearch(event.target.value)}
-                      placeholder="Search students"
-                      className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#171717] placeholder:text-[#737373] transition focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
-                    />
-                  </label>
-                </div>
-
-                {archivedCourseOptions.length > 0 && (
-                  <label className="flex shrink-0 items-center gap-2 text-xs text-[#737373]">
-                    Archived
-                    <select
-                      value={archivedCourseOptions.some(opt => opt.id === overviewCourseId) ? overviewCourseId : ''}
-                      onChange={event => {
-                        if (event.target.value) setOverviewCourseId(Number(event.target.value));
-                      }}
-                      className="rounded-md border border-[#e5e5e5] bg-white px-2 py-1.5 text-sm text-[#525252] focus:border-[#2563eb] focus:ring-[#2563eb]"
-                    >
-                      <option value="">Choose...</option>
-                      {archivedCourseOptions.map(opt => (
-                        <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-                      ))}
-                    </select>
-                  </label>
-                )}
-              </div>
-            )}
-          </div>
-
-          <div className="overflow-hidden rounded-xl border border-[#e5e5e5] bg-white">
-            <div className="flex justify-end border-b border-[#e5e5e5] px-4 py-2">
-              <p className="text-xs font-medium text-[#737373]">
-                {filteredSummaries.length} of {summaries.length} students
-              </p>
-            </div>
-            <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
-              <thead className="bg-[#f5f5f5]">
-                <tr>
-                  {['Student', 'Sessions', 'Activation', 'The Well', 'Sunday', 'Overall', 'Status'].map(col => (
-                    <th key={col} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                      {col}
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-[#e5e5e5]">
-                {filteredSummaries.map(summary => {
-                  const status = overallStatus(summary.overallScore, settings.graduationThreshold);
-                  return (
-                    <tr
-                      key={summary.studentId}
-                      onClick={() => setSelectedSummary(summary)}
-                      className="cursor-pointer bg-white hover:bg-[#f5f5f5]"
-                    >
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-3">
-                          <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-[#e5e5e5] bg-[#f5f5f5] text-[11px] font-semibold text-[#525252]">
-                            {getInitials(summary.studentName)}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="truncate font-medium text-[#171717]">{summary.studentName}</p>
-                            <p className="text-xs text-[#737373]">Open attendance profile</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell score={summary.classAttendanceScore} threshold={settings.graduationThreshold} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell score={summary.saturdayAttendanceScore} threshold={settings.graduationThreshold} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell score={summary.theWellScore} threshold={settings.graduationThreshold} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell score={summary.sundayScore} threshold={settings.graduationThreshold} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <ScoreCell score={summary.overallScore} threshold={settings.graduationThreshold} />
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${status.className}`}>
-                          {status.label}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-                {summaries.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-[#737373]">
-                      No enrolled students for this course.
-                    </td>
-                  </tr>
-                )}
-                {summaries.length > 0 && filteredSummaries.length === 0 && (
-                  <tr>
-                    <td colSpan={7} className="px-4 py-8 text-center text-[#737373]">
-                      No students match your search.
-                    </td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 2 — Sunday Attendance */}
-      {activeTab === 'sunday' && (
-        <div className="space-y-4 rounded-xl border border-[#e5e5e5] bg-white p-4">
-          <div className="flex flex-wrap items-end gap-4">
-            <div>
-              <label htmlFor="sunday-course" className="block text-sm font-medium text-gray-700 mb-2">
-                Course
-              </label>
-              {activeCourseOptions.length === 0 ? (
-                <p className="text-sm text-gray-500">No active courses.</p>
-              ) : (
-                <select
-                  id="sunday-course"
-                  value={sundayCourseId}
-                  onChange={e => setSundayCourseId(Number(e.target.value))}
-                  className="rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                >
-                  {activeCourseOptions.map(opt => (
-                    <option key={opt.id} value={opt.id}>{opt.displayName}</option>
-                  ))}
-                </select>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={() => setSundayMonth(prev => shiftMonth(prev.year, prev.month, -1))}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e5e5] text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-              aria-label="Previous month"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h3 className="text-lg font-semibold text-[#171717]">
-              {formatMonthYear(sundayMonth.year, sundayMonth.month)}
-            </h3>
-            <button
-              type="button"
-              onClick={() => setSundayMonth(prev => shiftMonth(prev.year, prev.month, 1))}
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-[#e5e5e5] text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-              aria-label="Next month"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-
-          <div className="space-y-3">
-            {sundayEnrolled.map(student => (
-              <div
-                key={student.id}
-                className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] py-2 last:border-0"
-              >
-                <span className="font-medium text-[#171717]">{student.name}</span>
-                <div className="flex items-center gap-2">
-                  <label className="text-sm text-[#525252]">Times served:</label>
-                  <input
-                    type="number"
-                    min={0}
-                    max={8}
-                    value={sundayDrafts[student.id] ?? 0}
-                    onChange={e => {
-                      setSundayDrafts(prev => ({
-                        ...prev,
-                        [student.id]: Math.min(8, Math.max(0, parseInt(e.target.value, 10) || 0)),
-                      }));
-                      setSundaySaved(false);
-                    }}
-                    className="w-16 rounded-md border border-[#171717] px-2 py-1 text-center text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between pt-2">
-            {sundaySaved && <span className="text-sm font-medium text-green-700">Saved</span>}
-            <button
-              type="button"
-              onClick={handleSaveSundayTab}
-              disabled={savingSunday}
-              className="ml-auto rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
-            >
-              {savingSunday ? 'Saving…' : 'Save'}
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 3 — On Duty Schedule */}
-      {activeTab === 'duty' && (
-        <div className="space-y-4">
-          {pendingTransferRequests.length > 0 && (
-            <div className="space-y-4 rounded-xl border border-[#e5e5e5] bg-white p-4">
-              <h3 className="text-lg font-semibold text-[#171717]">Pending Transfer Requests</h3>
-              {pendingTransferRequests.map(req => (
-                <div key={req.id} className="space-y-2 rounded-lg border border-[#e5e5e5] p-4">
-                  <p className="text-sm text-[#171717]">
-                    <span className="font-medium">{req.fromStudentName}</span>
-                    {' '}wants to transfer duty to{' '}
-                    <span className="font-medium">{req.toStudentName}</span>
-                    {' '}for week of {formatWeekDate(req.weekStart)}
-                  </p>
-                  {req.reason && (
-                    <p className="text-sm text-[#525252]">Reason: {req.reason}</p>
-                  )}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      disabled={resolvingId === req.id}
-                      onClick={async () => {
-                        setResolvingId(req.id);
-                        try {
-                          await resolveTransferRequest(req.id, true);
-                        } finally {
-                          setResolvingId(null);
-                        }
-                      }}
-                      className="rounded-lg bg-[#171717] px-3 py-1.5 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                    <button
-                      type="button"
-                      disabled={resolvingId === req.id}
-                      onClick={async () => {
-                        setResolvingId(req.id);
-                        try {
-                          await resolveTransferRequest(req.id, false);
-                        } finally {
-                          setResolvingId(null);
-                        }
-                      }}
-                      className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-sm font-medium text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
-                    >
-                      Reject
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <div className="flex flex-col gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-sm font-medium text-[#171717]">All active courses</p>
-              <p className="mt-0.5 text-xs text-[#737373]">
-                {dutyWeekRows.length} weeks scheduled across first and second year.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setGenerateModalOpen(true)}
-              className="w-full rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] sm:w-auto"
-            >
-              Generate Schedule
-            </button>
-          </div>
-
-          <div className="rounded-xl border border-[#e5e5e5] bg-white">
-            <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
-              <span>Week</span>
-              <span>First Year Keeper</span>
-              <span>Second Year Keeper</span>
-              <span />
-            </div>
-
-            <div ref={dutyScheduleScrollRef} className="tbo-scrollbar max-h-[520px] overflow-y-auto">
-              {dutyWeekRows.map(row => {
-                const isCurrentWeek = row.weekStart === currentWeekStart;
-                return (
-                  <div
-                    key={row.weekStart}
-                    ref={isCurrentWeek ? currentDutyRowRef : undefined}
-                    className={`group grid gap-3 border-b border-[#e5e5e5] px-3 py-3 last:border-0 lg:grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] lg:items-center ${
-                      isCurrentWeek ? 'bg-[#dbeaff]/35' : 'bg-white'
-                    }`}
-                  >
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart)}</p>
-                        {isCurrentWeek && (
-                          <span className="rounded-full bg-[#dbeaff] px-2 py-0.5 text-[11px] font-medium text-[#2563eb]">
-                            Live
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-1 text-xs text-[#737373]">
-                        {formatCompactWeekDate(row.weekStart)} - {formatCompactWeekDate(row.weekEnd)}
-                      </p>
-                    </div>
-
-                    <div className="space-y-1 lg:space-y-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">First Year Keeper</p>
-                      {renderDutyKeeperCell(row.firstYear, 'First Year')}
-                    </div>
-
-                    <div className="space-y-1 lg:space-y-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Second Year Keeper</p>
-                      {renderDutyKeeperCell(row.secondYear, 'Second Year')}
-                    </div>
-
-                    <div className="flex justify-end">
-                      <button
-                        type="button"
-                        onClick={() => setEditDutyWeekRow(row)}
-                        className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] opacity-100 transition hover:bg-[#f5f5f5] hover:text-[#171717] lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-                        aria-label={`Edit duty keepers for week of ${formatWeekDate(row.weekStart)}`}
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-
-              {dutyWeekRows.length === 0 && (
-                <div className="px-4 py-10 text-center">
-                  <p className="text-sm font-medium text-[#171717]">No duty schedule yet.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Use Generate Schedule to create duty slots for an active course.</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4 — Settings */}
-      {activeTab === 'settings' && (
-        <div className="max-w-2xl space-y-6 rounded-xl border border-[#e5e5e5] bg-white p-4">
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-[#171717]">Late Penalties</h3>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="late-class" className="mb-1 block text-sm text-[#525252]">
-                  Being late for a regular session counts as (× attendance)
-                </label>
-                <input
-                  id="late-class"
-                  type="number"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={settingsDraft.lateClassWeight}
-                  onChange={e => setSettingsDraft(prev => ({
-                    ...prev,
-                    lateClassWeight: parseFloat(e.target.value) || 0,
-                  }))}
-                  className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                />
-              </div>
-              <div>
-                <label htmlFor="late-sat" className="mb-1 block text-sm text-[#525252]">
-                  Being late for Activation Saturday counts as (× attendance)
-                </label>
-                <input
-                  id="late-sat"
-                  type="number"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={settingsDraft.lateSaturdayWeight}
-                  onChange={e => setSettingsDraft(prev => ({
-                    ...prev,
-                    lateSaturdayWeight: parseFloat(e.target.value) || 0,
-                  }))}
-                  className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                />
-              </div>
-              <div>
-                <label htmlFor="late-well" className="mb-1 block text-sm text-[#525252]">
-                  Being late for The Well counts as (× attendance)
-                </label>
-                <input
-                  id="late-well"
-                  type="number"
-                  min={0}
-                  max={1}
-                  step={0.05}
-                  value={settingsDraft.lateWellWeight}
-                  onChange={e => setSettingsDraft(prev => ({
-                    ...prev,
-                    lateWellWeight: parseFloat(e.target.value) || 0,
-                  }))}
-                  className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-[#171717]">Graduation Requirement</h3>
-            <label htmlFor="grad-threshold" className="mb-1 block text-sm text-[#525252]">
-              Minimum overall attendance to graduate (%)
-            </label>
-            <input
-              id="grad-threshold"
-              type="number"
-              min={0}
-              max={100}
-              step={5}
-              value={settingsDraft.graduationPercent}
-              onChange={e => setSettingsDraft(prev => ({
-                ...prev,
-                graduationPercent: parseInt(e.target.value, 10) || 0,
-              }))}
-              className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-            />
-          </div>
-
-          <div>
-            <h3 className="mb-3 text-sm font-semibold text-[#171717]">Monthly Requirements</h3>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="well-req" className="mb-1 block text-sm text-[#525252]">
-                  The Well minimum per month
-                </label>
-                <input
-                  id="well-req"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={settingsDraft.theWellRequiredPerMonth}
-                  onChange={e => setSettingsDraft(prev => ({
-                    ...prev,
-                    theWellRequiredPerMonth: parseInt(e.target.value, 10) || 1,
-                  }))}
-                  className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                />
-              </div>
-              <div>
-                <label htmlFor="sunday-req" className="mb-1 block text-sm text-[#525252]">
-                  Sunday minimum per month
-                </label>
-                <input
-                  id="sunday-req"
-                  type="number"
-                  min={1}
-                  max={5}
-                  value={settingsDraft.sundayRequiredPerMonth}
-                  onChange={e => setSettingsDraft(prev => ({
-                    ...prev,
-                    sundayRequiredPerMonth: parseInt(e.target.value, 10) || 1,
-                  }))}
-                  className="w-full rounded-md border border-[#171717] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <p className="rounded-lg border border-[#e5e5e5] bg-[#f5f5f5] p-3 text-sm text-[#525252]">
-            Students need {settingsDraft.graduationPercent}% overall. Being late for a session counts as{' '}
-            {Math.round(settingsDraft.lateClassWeight * 100)}% of a session. Being late for The Well counts as{' '}
-            {Math.round(settingsDraft.lateWellWeight * 100)}% of a visit.
-          </p>
-
-          <button
-            type="button"
-            onClick={handleSaveSettings}
-            disabled={savingSettings}
-            className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
-          >
-            {savingSettings ? 'Saving…' : 'Save Settings'}
-          </button>
-        </div>
-      )}
-
-      {/* Modals */}
-      {selectedSummary && overviewCourse && (
-        <StudentDetailModal
-          summary={selectedSummary}
-          course={overviewCourse}
-          settings={settings}
-          sundayAttendance={sundayAttendance}
-          onClose={() => setSelectedSummary(null)}
-          onUpsertSundayAttendance={upsertSundayAttendance}
-        />
-      )}
-
-      {generateModalOpen && (
-        <GenerateScheduleModal
-          courses={activeCourses}
-          courseStudents={courseStudents}
-          users={users}
-          onClose={() => setGenerateModalOpen(false)}
-          onGenerate={generateDutyScheduleForCourse}
-        />
-      )}
-
+      {activeSection === 'overview' && renderOverview()}
+      {activeSection === 'classes' && renderClasses()}
+      {activeSection === 'well' && renderWell()}
+      {activeSection === 'ministry' && renderMinistryTable()}
+      {activeSection === 'activation' && renderActivation()}
+      {activeSection === 'duty' && renderDuty()}
+      {activeSection === 'settings' && renderSettings()}
       {editDutyWeekRow && (
         <EditDutyWeekModal
           row={editDutyWeekRow}
@@ -1602,6 +2182,8 @@ export function AttendanceView({
           onSave={updateDutyAssignment}
         />
       )}
+      {renderRotationModal()}
+      {renderTeamHealthModal()}
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { MaterialsNotesTab } from '../../components/class/MaterialsNotesTab';
 import { StaffNotesTab } from '../../components/class/StaffNotesTab';
 import { HomeworkTab } from '../../components/class/HomeworkTab';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface ClassDetailViewProps {
   selectedClass: Class;
@@ -51,12 +52,7 @@ function getClassStatus(date: string): ClassStatus {
 }
 
 function formatClassDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(date);
 }
 
 const STATUS_BADGE: Record<ClassStatus, { label: string; className: string }> = {

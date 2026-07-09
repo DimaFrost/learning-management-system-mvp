@@ -26,6 +26,13 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | homework_submissions | id |
 | mentorship_logs | id |
 | messages | id |
+| ministry_rotations | id |
+| ministry_service_attendance | id |
+| ministry_service_sessions | id |
+| ministry_team_members | id |
+| ministry_teams | id |
+| notification_deliveries | id |
+| notification_jobs | id |
 | profiles | id |
 | settings | key |
 | subject_notes | id |
@@ -33,6 +40,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | sunday_attendance | id |
 | the_well_attendance | id |
 | the_well_session_attendance | id |
+| todo_batches | id |
+| todo_items | id |
 
 ## Foreign Keys
 
@@ -77,6 +86,21 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | mentorship_logs.student_id | profiles.id |
 | messages.recipient_id | profiles.id |
 | messages.sender_id | profiles.id |
+| ministry_rotations.course_id | courses.id |
+| ministry_rotations.student_id | profiles.id |
+| ministry_rotations.team_id | ministry_teams.id |
+| ministry_service_attendance.marked_by | profiles.id |
+| ministry_service_attendance.session_id | ministry_service_sessions.id |
+| ministry_service_attendance.student_id | profiles.id |
+| ministry_service_sessions.created_by | profiles.id |
+| ministry_service_sessions.team_id | ministry_teams.id |
+| ministry_team_members.team_id | ministry_teams.id |
+| ministry_team_members.user_id | profiles.id |
+| ministry_teams.leader_id | profiles.id |
+| notification_deliveries.job_id | notification_jobs.id |
+| notification_deliveries.recipient_id | profiles.id |
+| notification_jobs.announcement_id | announcements.id |
+| notification_jobs.created_by | profiles.id |
 | subject_notes.author_id | profiles.id |
 | subject_notes.subject_id | subjects.id |
 | subjects.course_id | courses.id |
@@ -87,3 +111,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | the_well_attendance.course_id | courses.id |
 | the_well_attendance.marked_by | profiles.id |
 | the_well_attendance.student_id | profiles.id |
+| todo_batches.created_by | profiles.id |
+| todo_items.assigned_to | profiles.id |
+| todo_items.batch_id | todo_batches.id |
+| todo_items.created_by | profiles.id |

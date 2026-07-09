@@ -49,6 +49,8 @@ type SupabaseAnnouncementRow = {
   id: number;
   title: string;
   content: string;
+  title_bg: string | null;
+  content_bg: string | null;
   type: Announcement['type'];
   author_id: string | null;
   course_id: number | null;
@@ -114,6 +116,8 @@ function mapAnnouncementRow(row: SupabaseAnnouncementRow): Announcement {
     id: row.id,
     title: row.title,
     content: row.content,
+    titleBg: row.title_bg ?? null,
+    contentBg: row.content_bg ?? null,
     type: row.type,
     authorId: row.author_id,
     authorName: row.author?.name ?? null,
@@ -137,6 +141,8 @@ function mapUpdatesToRow(updates: Partial<Announcement>) {
   const row: Record<string, unknown> = {};
   if (updates.title !== undefined) row.title = updates.title;
   if (updates.content !== undefined) row.content = updates.content;
+  if (updates.titleBg !== undefined) row.title_bg = updates.titleBg;
+  if (updates.contentBg !== undefined) row.content_bg = updates.contentBg;
   if (updates.type !== undefined) row.type = updates.type;
   if (updates.authorId !== undefined) row.author_id = updates.authorId;
   if (updates.courseId !== undefined) row.course_id = updates.courseId;
@@ -380,6 +386,8 @@ export function useAnnouncements(
     async (data: {
       title: string;
       content: string;
+      titleBg?: string | null;
+      contentBg?: string | null;
       type: Announcement['type'];
       courseId: number | null;
       targetRoles: string[] | null;
@@ -399,6 +407,8 @@ export function useAnnouncements(
           .insert({
             title: data.title,
             content: data.content,
+            title_bg: data.titleBg ?? null,
+            content_bg: data.contentBg ?? null,
             type: data.type,
             author_id: fetchUser.id,
             course_id: data.courseId,

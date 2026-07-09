@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { WORKSPACE_LABELS } from '../../types/workspace';
-import { LogOut, Code2, Menu, Briefcase, Check, ChevronsUpDown } from 'lucide-react';
+import { LogOut, Code2, Menu, Briefcase, Check, ChevronsUpDown, ChevronDown, Languages } from 'lucide-react';
 import tboLogo from '../../assets/tbo-logo.svg';
+import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
 
 const ROLE_ABBREVS: Record<string, string> = {
   administrator: 'A',
   teacher: 'T',
   translator: 'Tr',
   mentor: 'M',
+  team_leader: 'TL',
   student: 'S',
 };
 
@@ -27,6 +29,7 @@ interface HeaderProps {
   activeWorkspace: WorkspaceId | null;
   availableWorkspaces: WorkspaceId[];
   onWorkspaceChange: (workspace: WorkspaceId) => void;
+  onLanguageChange: (language: AppLanguage) => void;
   onOpenDevPanel: () => void;
   onOpenMobileMenu?: () => void;
 }
@@ -39,11 +42,16 @@ export function Header({
   activeWorkspace,
   availableWorkspaces,
   onWorkspaceChange,
+  onLanguageChange,
   onOpenDevPanel,
   onOpenMobileMenu,
 }: HeaderProps) {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const [languageMenuOpen, setLanguageMenuOpen] = useState(false);
   const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
+  const mobileLanguageMenuRef = useRef<HTMLDivElement | null>(null);
+  const desktopLanguageMenuRef = useRef<HTMLDivElement | null>(null);
+  const { language, t } = useLanguage();
   const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : 'Workspace';
   const canSwitchWorkspace = !!activeWorkspace && availableWorkspaces.length > 1;
   const roleButtonLabel = activeWorkspace ? workspaceLabel : 'No role';
@@ -60,6 +68,23 @@ export function Header({
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [workspaceMenuOpen]);
+
+  useEffect(() => {
+    if (!languageMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        !mobileLanguageMenuRef.current?.contains(target) &&
+        !desktopLanguageMenuRef.current?.contains(target)
+      ) {
+        setLanguageMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [languageMenuOpen]);
 
   const avatar = currentUser.avatarUrl ? (
     <img
@@ -104,11 +129,43 @@ export function Header({
             </button>
           )}
           {avatar}
+          <div ref={mobileLanguageMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setLanguageMenuOpen(open => !open)}
+              className="tbo-focus inline-flex items-center gap-1 rounded-lg border border-[#e5e5e5] bg-white px-2.5 py-2 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+              aria-label={t('language.label')}
+              aria-expanded={languageMenuOpen}
+            >
+              <Languages className="h-4 w-4" />
+              {language.toUpperCase()}
+            </button>
+            {languageMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-36 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+                {(['en', 'bg'] as const).map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      onLanguageChange(option);
+                      setLanguageMenuOpen(false);
+                    }}
+                    className={`tbo-focus flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-sm font-medium ${
+                      language === option ? 'bg-[#eff6ff] text-[#1d4ed8]' : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                    }`}
+                  >
+                    {option === 'en' ? t('language.english') : t('language.bulgarian')}
+                    {language === option && <Check className="h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           <button
             onClick={onSignOut}
             className="tbo-focus rounded-lg p-2.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            title="Sign out"
-            aria-label="Sign out"
+            title={t('header.signOut')}
+            aria-label={t('header.signOut')}
           >
             <LogOut className="w-4 h-4" />
           </button>
@@ -122,8 +179,8 @@ export function Header({
             <img src={tboLogo} alt="" className="h-8 w-8" />
           </span>
           <div>
-            <h1 className="text-sm font-semibold text-[#171717]">The Burning Ones</h1>
-            <p className="text-xs text-[#737373]">Learning management system</p>
+            <h1 className="text-sm font-semibold text-[#171717]">{t('app.brand')}</h1>
+            <p className="text-xs text-[#737373]">{t('app.subtitle')}</p>
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-3">
@@ -151,8 +208,8 @@ export function Header({
                     : 'cursor-default border-[#e5e5e5] bg-white text-[#171717]'
                   : 'cursor-default border-[#e5e5e5] bg-[#fafafa] text-[#a3a3a3]'
               }`}
-              title={canSwitchWorkspace ? 'Switch role' : roleButtonLabel}
-              aria-label={canSwitchWorkspace ? 'Switch role' : roleButtonLabel}
+              title={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
+              aria-label={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
               aria-expanded={canSwitchWorkspace ? workspaceMenuOpen : undefined}
             >
               <Briefcase className={`h-4 w-4 ${activeWorkspace ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
@@ -190,6 +247,41 @@ export function Header({
               </div>
             )}
           </div>
+          <div ref={desktopLanguageMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setLanguageMenuOpen(open => !open)}
+              className="tbo-focus flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-2.5 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+              aria-label={t('language.label')}
+              aria-expanded={languageMenuOpen}
+            >
+              <Languages className="h-4 w-4 text-[#2563eb]" />
+              <span>{language.toUpperCase()}</span>
+              <ChevronDown className={`h-3.5 w-3.5 text-[#737373] transition-transform ${languageMenuOpen ? 'rotate-180' : ''}`} />
+            </button>
+            {languageMenuOpen && (
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-40 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+                {(['en', 'bg'] as const).map(option => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      onLanguageChange(option);
+                      setLanguageMenuOpen(false);
+                    }}
+                    className={`tbo-focus flex w-full items-center justify-between rounded-lg px-2.5 py-2 text-left text-sm font-medium transition-colors ${
+                      language === option
+                        ? 'bg-[#eff6ff] text-[#1d4ed8]'
+                        : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                    }`}
+                  >
+                    <span>{option === 'en' ? t('language.english') : t('language.bulgarian')}</span>
+                    {language === option && <Check className="h-3.5 w-3.5" />}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
           {isDev && (
             <button
               type="button"
@@ -211,7 +303,7 @@ export function Header({
           <button
             onClick={onSignOut}
             className="tbo-focus rounded-lg border border-[#e5e5e5] bg-white p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            title="Sign out"
+            title={t('header.signOut')}
           >
             <LogOut className="w-4 h-4" />
           </button>

@@ -1,6 +1,7 @@
 import { Calendar, Plus, BookOpen, Edit3, Trash2, Eye } from 'lucide-react';
 import type { Course, User, Class, Subject } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface CurriculumDateViewProps {
   courses: Course[];
@@ -17,8 +18,7 @@ function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return {
     weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
-    monthDay: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    year: date.getFullYear()
+    fullDate: formatPlatformDate(dateStr),
   };
 }
 
@@ -85,7 +85,7 @@ export function CurriculumDateView({
                     <Calendar className="w-5 h-5 text-blue-600" />
                     <div>
                       <h4 className="text-lg font-semibold text-gray-900">{dateInfo.weekday}</h4>
-                      <p className="text-sm text-gray-600">{dateInfo.monthDay}, {dateInfo.year}</p>
+                      <p className="text-sm text-gray-600">{dateInfo.fullDate}</p>
                     </div>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                       {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}

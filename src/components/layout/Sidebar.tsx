@@ -16,13 +16,17 @@ import {
   PanelLeftClose,
   PanelLeft,
   ClipboardList,
+  ListTodo,
   BarChart2,
   Shield,
   X,
   Sparkles,
   Languages,
   Clock3,
+  Activity,
+  ShieldCheck,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface SidebarProps {
   activeView: string;
@@ -30,6 +34,7 @@ interface SidebarProps {
   hasRole: (role: string) => boolean;
   totalUnread: number;
   announcementDraftCount: number;
+  todoTodayCount: number;
   isOnDuty: boolean;
   activeWorkspace: WorkspaceId | null;
   mode: 'locked' | 'collapsed';
@@ -55,47 +60,13 @@ type NavSection = {
   items: NavItem[];
 };
 
-const attendanceItems: NavItem[] = [
-  {
-    id: 'attendance-overview',
-    label: 'Overview',
-    description: 'Student standing',
-    icon: ClipboardList,
-    roles: ['administrator'],
-    workspaces: ['administrator'],
-  },
-  {
-    id: 'attendance-sunday',
-    label: 'Sunday Attendance',
-    description: 'Monthly service',
-    icon: Calendar,
-    roles: ['administrator'],
-    workspaces: ['administrator'],
-  },
-  {
-    id: 'attendance-duty',
-    label: 'On Duty Schedule',
-    description: 'Attendance keepers',
-    icon: Users,
-    roles: ['administrator'],
-    workspaces: ['administrator'],
-  },
-  {
-    id: 'attendance-settings',
-    label: 'Settings',
-    description: 'Rules and weights',
-    icon: Settings,
-    roles: ['administrator'],
-    workspaces: ['administrator'],
-  },
-];
-
 export function Sidebar({
   activeView,
   onNavigate,
   hasRole,
   totalUnread,
   announcementDraftCount,
+  todoTodayCount,
   isOnDuty,
   activeWorkspace,
   mode,
@@ -104,6 +75,7 @@ export function Sidebar({
   onMobileClose,
 }: SidebarProps) {
   const isExpanded = mode === 'locked';
+  const { t } = useLanguage();
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -114,75 +86,143 @@ export function Sidebar({
     return () => document.removeEventListener('keydown', handleEscape);
   }, [mobileOpen, onMobileClose]);
 
+  const attendanceItems: NavItem[] = [
+    {
+      id: 'attendance-overview',
+      label: 'Overview',
+      description: 'Graduation gates',
+      icon: ClipboardList,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-classes',
+      label: 'Classes',
+      description: 'Weekly sessions',
+      icon: Calendar,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-well',
+      label: 'The Well',
+      description: 'Wednesday attendance',
+      icon: Activity,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-ministry',
+      label: 'Ministry',
+      description: 'Teams and service',
+      icon: UserCheck,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-activation',
+      label: 'Activation Saturday',
+      description: 'Monthly joint sessions',
+      icon: ShieldCheck,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-duty',
+      label: 'On Duty Schedule',
+      description: 'Attendance keepers',
+      icon: Users,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-settings',
+      label: t('sidebar.settings'),
+      description: 'Rules and weights',
+      icon: Settings,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+  ];
+
   const sections: NavSection[] = [
     {
-      label: 'School',
+      label: t('sidebar.school'),
       items: [
         {
           id: 'dashboard',
-          label: 'Dashboard',
-          description: 'Overview',
+          label: t('sidebar.dashboard'),
+          description: t('sidebar.dashboard.desc'),
           icon: LayoutDashboard,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'announcements',
-          label: 'Announcements',
-          description: 'Posts and notices',
+          label: t('sidebar.announcements'),
+          description: t('sidebar.announcements.desc'),
           icon: Megaphone,
           shared: true,
           badge: announcementDraftCount > 0 ? (announcementDraftCount > 9 ? '9+' : String(announcementDraftCount)) : undefined,
         },
         {
           id: 'messages',
-          label: 'Messages',
-          description: 'Conversations',
+          label: t('sidebar.messages'),
+          description: t('sidebar.messages.desc'),
           icon: MessageSquare,
           shared: true,
           badge: totalUnread > 0 ? (totalUnread > 9 ? '9+' : String(totalUnread)) : undefined,
         },
+        {
+          id: 'todos',
+          label: t('sidebar.todos'),
+          description: t('sidebar.todos.desc'),
+          icon: ListTodo,
+          roles: ['administrator', 'teacher', 'translator', 'mentor', 'student'],
+          shared: true,
+          badge: todoTodayCount > 0 ? (todoTodayCount > 9 ? '9+' : String(todoTodayCount)) : undefined,
+        },
       ],
     },
     {
-      label: 'Operations',
+      label: t('sidebar.operations'),
       items: [
         {
           id: 'curriculum',
-          label: 'Curriculum',
-          description: 'Courses and sessions',
+          label: t('sidebar.curriculum'),
+          description: t('sidebar.curriculum.desc'),
           icon: BookOpen,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'users',
-          label: 'Users',
-          description: 'People and roles',
+          label: t('sidebar.users'),
+          description: t('sidebar.users.desc'),
           icon: Users,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'attendance-overview',
-          label: 'Attendance',
-          description: 'Presence and duty',
+          label: t('sidebar.attendance'),
+          description: t('sidebar.attendance.desc'),
           icon: ClipboardList,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'mentorship',
-          label: 'Mentorship',
-          description: 'Assignments',
+          label: t('sidebar.mentorship'),
+          description: t('sidebar.mentorship.desc'),
           icon: UserCheck,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'mentorship-management',
-          label: 'Mentor Ops',
-          description: 'Cadence and logs',
+          label: t('sidebar.mentorOps'),
+          description: t('sidebar.mentorOps.desc'),
           icon: TrendingUp,
           roles: ['administrator'],
           workspaces: ['administrator'],
@@ -190,54 +230,62 @@ export function Sidebar({
       ],
     },
     {
-      label: 'My Work',
+      label: t('sidebar.myWork'),
       items: [
         {
           id: 'my-classes',
-          label: 'My Sessions',
-          description: 'Teaching schedule',
+          label: t('sidebar.mySessions'),
+          description: t('sidebar.mySessions.desc'),
           icon: Calendar,
           roles: ['teacher'],
           workspaces: ['teacher'],
         },
         {
           id: 'my-classes',
-          label: 'Translation Desk',
-          description: 'Session support',
+          label: t('sidebar.translationDesk'),
+          description: t('sidebar.translationDesk.desc'),
           icon: Languages,
           roles: ['translator'],
           workspaces: ['translator'],
         },
         {
           id: 'mentor-dashboard',
-          label: 'Mentor Dashboard',
-          description: 'Students',
+          label: t('sidebar.mentorDashboard'),
+          description: t('sidebar.mentorDashboard.desc'),
           icon: UserCheck,
           roles: ['mentor'],
           workspaces: ['mentor'],
         },
         {
+          id: 'ministry-report',
+          label: 'Ministry Report',
+          description: 'Team attendance',
+          icon: ClipboardList,
+          roles: ['team_leader'],
+          workspaces: ['team_leader'],
+        },
+        {
           id: 'my-course',
-          label: 'My Course',
-          description: 'Student view',
+          label: t('sidebar.myCourse'),
+          description: t('sidebar.myCourse.desc'),
           icon: GraduationCap,
           roles: ['student'],
           workspaces: ['student'],
         },
         {
           id: 'on-duty',
-          label: 'On Duty',
-          description: 'This week',
+          label: t('sidebar.onDuty'),
+          description: t('sidebar.onDuty.desc'),
           icon: Shield,
-          badge: 'Live',
+          badge: t('sidebar.live'),
           tone: 'alert',
           roles: isOnDuty ? undefined : ['__hidden__'],
           shared: true,
         },
         {
           id: 'my-attendance',
-          label: 'My Attendance',
-          description: 'Personal record',
+          label: t('sidebar.myAttendance'),
+          description: t('sidebar.myAttendance.desc'),
           icon: BarChart2,
           shared: true,
         },
@@ -281,7 +329,7 @@ export function Sidebar({
   };
 
   const toggleTitle = mode === 'locked' ? 'Collapse sidebar' : 'Expand sidebar';
-  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : 'Workspace';
+  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
 
   const renderItem = (item: NavItem, forceExpanded: boolean) => {
     const expanded = forceExpanded || isExpanded;
@@ -346,8 +394,24 @@ export function Sidebar({
 
   const renderNavContent = (forceExpanded: boolean) => {
     const expanded = forceExpanded || isExpanded;
+    const attendanceGroupIds = new Set([
+      'attendance-overview',
+      'attendance-classes',
+      'attendance-well',
+      'attendance-ministry',
+      'attendance-activation',
+    ]);
     const navSections = inAttendanceModule && visibleAttendanceItems.length > 0
-      ? [{ label: 'Attendance', items: visibleAttendanceItems }]
+      ? [
+          {
+            label: 'Attendance Groups',
+            items: visibleAttendanceItems.filter(item => attendanceGroupIds.has(item.id)),
+          },
+          {
+            label: 'Operations',
+            items: visibleAttendanceItems.filter(item => !attendanceGroupIds.has(item.id)),
+          },
+        ].filter(section => section.items.length > 0)
       : visibleSections;
 
     return (
@@ -360,8 +424,8 @@ export function Sidebar({
           {forceExpanded ? (
             <div className="flex items-center justify-between">
               <div>
-                <span className="text-sm font-semibold text-[#171717]">Menu</span>
-                <p className="text-xs text-[#737373]">School workspace</p>
+                <span className="text-sm font-semibold text-[#171717]">{t('sidebar.menu')}</span>
+                <p className="text-xs text-[#737373]">{t('sidebar.schoolWorkspace')}</p>
               </div>
               <button
                 type="button"
@@ -377,10 +441,10 @@ export function Sidebar({
               {expanded && (
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#737373]">
-                    {inAttendanceModule ? 'Module' : 'Workspace'}
+                    {inAttendanceModule ? t('sidebar.module') : t('sidebar.workspace')}
                   </p>
                   <p className="truncate text-sm font-semibold text-[#171717]">
-                    {inAttendanceModule ? 'Attendance' : workspaceLabel}
+                    {inAttendanceModule ? t('sidebar.attendance') : workspaceLabel}
                   </p>
                 </div>
               )}
@@ -408,15 +472,15 @@ export function Sidebar({
               className={`tbo-focus group mx-2 mb-3 flex w-[calc(100%-1rem)] items-center rounded-lg text-left text-sm text-[#525252] transition-colors hover:bg-[#f5f5f5] hover:text-[#171717] ${
                 expanded ? 'gap-3 px-3 py-2.5' : 'justify-center px-0 py-2.5'
               }`}
-              title={!expanded ? 'Main menu' : undefined}
+              title={!expanded ? t('sidebar.mainMenu') : undefined}
             >
               <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md group-hover:bg-white">
                 <ArrowLeft className="h-4 w-4" />
               </span>
               {expanded && (
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium leading-5">Main menu</span>
-                  <span className="block truncate text-xs leading-4 text-[#737373]">Back to primary sidebar</span>
+                  <span className="block truncate font-medium leading-5">{t('sidebar.mainMenu')}</span>
+                  <span className="block truncate text-xs leading-4 text-[#737373]">{t('sidebar.mainMenu.desc')}</span>
                 </span>
               )}
             </button>
@@ -440,8 +504,8 @@ export function Sidebar({
           {renderItem(
             {
               id: 'settings',
-              label: 'Settings',
-              description: 'Profile and account',
+              label: t('sidebar.settings'),
+              description: t('sidebar.settings.desc'),
               icon: Settings,
               shared: true,
             },
@@ -455,10 +519,10 @@ export function Sidebar({
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-[#171717]">
-                    {inAttendanceModule ? 'Attendance module' : `${workspaceLabel} view`}
+                    {inAttendanceModule ? `${t('sidebar.attendance')} ${t('sidebar.module').toLowerCase()}` : `${workspaceLabel} view`}
                   </p>
                   <p className="truncate text-[11px] text-[#737373]">
-                    {inAttendanceModule ? 'Presence and duty' : 'Live school data'}
+                    {inAttendanceModule ? t('sidebar.attendance.desc') : 'Live school data'}
                   </p>
                 </div>
               </div>

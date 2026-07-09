@@ -3,6 +3,7 @@ export type UserRole =
   | 'teacher'
   | 'translator'
   | 'mentor'
+  | 'team_leader'
   | 'student'
   | 'dev';
 
@@ -14,6 +15,7 @@ export interface User {
   firstName: string;
   lastName: string;
   avatarUrl: string | null;
+  preferredLanguage: 'en' | 'bg';
   notificationPreferences: {
     announcements: boolean;
     roleChange: boolean;
@@ -96,6 +98,8 @@ export interface Announcement {
   id: number;
   title: string;
   content: string;
+  titleBg: string | null;
+  contentBg: string | null;
   type: 'post' | 'homework' | 'material' | 'system';
   authorId: string | null;
   authorName: string | null; // populated from join with profiles
@@ -145,6 +149,39 @@ export interface AnnouncementComment {
   authorName: string; // populated from join
   content: string;
   createdAt: string;
+}
+
+export type TodoPriority = 'none' | 'priority';
+export type TodoStatus = 'open' | 'completed';
+export type TodoAssignmentType = 'person' | 'category';
+
+export interface TodoItem {
+  id: number;
+  batchId: number | null;
+  title: string;
+  description: string | null;
+  assignedTo: string;
+  assignedToName: string | null;
+  assignedToAvatarUrl: string | null;
+  createdBy: string;
+  createdByName: string | null;
+  dueDate: string;
+  priority: TodoPriority;
+  status: TodoStatus;
+  assignmentType: TodoAssignmentType;
+  targetLabel: string | null;
+  recipientCount: number | null;
+  completedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TodoAssignmentCategory {
+  id: string;
+  label: string;
+  description: string;
+  userIds: string[];
+  tone: 'blue' | 'green' | 'orange' | 'violet' | 'gray';
 }
 
 export interface ClassNote {
@@ -261,12 +298,46 @@ export interface Conversation {
 }
 
 export interface AttendanceSettings {
-  lateClassWeight: number;       // default 0.5
-  lateSaturdayWeight: number;    // default 0.25
-  lateWellWeight: number;      // default 0.5
-  graduationThreshold: number;   // default 0.80
-  theWellRequiredPerMonth: number;  // default 2
-  sundayRequiredPerMonth: number;   // default 2
+  presentCredit: number;
+  lateCredit: number;
+  absentCredit: number;
+  lateUsesGlobalCredit: boolean;
+  lateClassWeight: number;
+  lateSaturdayWeight: number;
+  lateWellWeight: number;
+  graduationThreshold: number;
+  classRequiredPercent: number;
+  classIncludedWeekdays: number[];
+  classSessionsPerDay: number;
+  classJointCountsOnce: boolean;
+  theWellEnabled: boolean;
+  theWellWeekday: number;
+  theWellRequiredPerMonth: number;
+  theWellFallbackEnabled: boolean;
+  theWellFallbackPercent: number;
+  activationEnabled: boolean;
+  activationFrequency: 'monthly' | 'custom';
+  activationMaxLostCredits: number;
+  activationDetectionRule: 'saturday_both' | 'manual';
+  ministryEnabled: boolean;
+  ministrySundayRequiredCredits: number;
+  ministrySundayPeriodMonths: number;
+  ministryFirstYearRotationMonths: number;
+  ministrySecondYearRotationMonths: number;
+  ministryTeamLeadersCanMark: boolean;
+  ministryAdminsCanOverrideRotations: boolean;
+  statusOnTrackThreshold: number;
+  statusAtRiskThreshold: number;
+  statusFailingThreshold: number;
+  showClassesOnStudentView: boolean;
+  showTheWellOnStudentView: boolean;
+  showActivationOnStudentView: boolean;
+  showMinistryOnStudentView: boolean;
+  showFallbackScores: boolean;
+  remindMissingClassAttendance: boolean;
+  remindMissingWellAttendance: boolean;
+  remindMissingMinistryAttendance: boolean;
+  sundayRequiredPerMonth: number;
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent';
@@ -341,7 +412,101 @@ export interface SundayAttendanceRecord {
   updatedAt: string;
 }
 
-// Computed attendance summary per student
+export type MinistryServiceType = 'sunday' | 'non_sunday';
+export type MinistryRequirementUnit = 'month' | 'rotation' | 'school_year';
+export type MinistryRotationStatus = 'active' | 'locked' | 'completed';
+export type MinistryTeamMemberRole = 'leader' | 'assistant' | 'member';
+
+export interface MinistryTeamMember {
+  id: number;
+  teamId: number;
+  userId: string;
+  userName: string;
+  userEmail: string | null;
+  userAvatarUrl: string | null;
+  role: MinistryTeamMemberRole;
+  canSubmitReports: boolean;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MinistryTeam {
+  id: number;
+  name: string;
+  nameBg: string | null;
+  info: string | null;
+  leaderId: string | null;
+  leaderName: string | null;
+  members: MinistryTeamMember[];
+  memberIds?: string[];
+  contactName: string | null;
+  contactPhone: string | null;
+  callTime: string | null;
+  serviceType: MinistryServiceType;
+  serviceDay: number | null;
+  requiredCredits: number;
+  requirementPeriodMonths: number;
+  requirementUnit: MinistryRequirementUnit;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MinistryRotation {
+  id: number;
+  courseId: number;
+  studentId: string;
+  studentName: string;
+  teamId: number;
+  startDate: string;
+  endDate: string;
+  status: MinistryRotationStatus;
+  locked: boolean;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MinistryServiceSession {
+  id: number;
+  teamId: number;
+  serviceDate: string;
+  title: string;
+  serviceType: MinistryServiceType;
+  createdBy: string;
+  createdByName: string | null;
+  generalView: string | null;
+  winsTestimonies: string | null;
+  challenges: string | null;
+  timelyActions: string | null;
+  submittedAt: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface MinistryServiceAttendanceRecord {
+  id: number;
+  sessionId: number;
+  studentId: string;
+  studentName: string;
+  status: AttendanceStatus;
+  markedBy: string;
+  markedAt: string;
+}
+
+export interface AttendanceGateSummary {
+  key: 'classes' | 'the_well' | 'activation' | 'ministry';
+  label: string;
+  earnedCredits: number;
+  requiredCredits: number;
+  possibleCredits: number;
+  score: number;
+  status: 'passing' | 'at_risk' | 'failing';
+  detail: string;
+  fallbackDetail?: string;
+}
+
 export interface StudentAttendanceSummary {
   studentId: string;
   studentName: string;
@@ -367,6 +532,8 @@ export interface StudentAttendanceSummary {
   // Sunday (monthly aggregate)
   sundayMonthsTracked: number;
   sundayScore: number;
+  ministryScore: number;
+  gates: AttendanceGateSummary[];
 
   // Overall
   overallScore: number;

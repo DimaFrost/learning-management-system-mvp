@@ -54,7 +54,7 @@ export function EditUserForm({
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
         <div className="space-y-2">
-          {['administrator', 'teacher', 'translator', 'mentor', 'student'].map(role => (
+          {['administrator', 'teacher', 'translator', 'mentor', 'team_leader', 'student'].map(role => (
             <label key={role} className="flex items-center">
               <input
                 type="checkbox"

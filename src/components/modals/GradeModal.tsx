@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import type { HomeworkAssignment, HomeworkSubmission } from '../../types/lms';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface GradeModalProps {
   submission: HomeworkSubmission | null;
@@ -15,11 +16,7 @@ interface GradeModalProps {
 }
 
 function formatGradedDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateString);
 }
 
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {

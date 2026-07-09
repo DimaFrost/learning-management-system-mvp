@@ -18,6 +18,7 @@ function mapProfileToUser(row: {
   first_name?: string | null;
   last_name?: string | null;
   avatar_url?: string | null;
+  preferred_language?: string | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
 }): User {
   return {
@@ -28,6 +29,7 @@ function mapProfileToUser(row: {
     firstName: row.first_name ?? '',
     lastName: row.last_name ?? '',
     avatarUrl: row.avatar_url ?? null,
+    preferredLanguage: row.preferred_language === 'bg' ? 'bg' : 'en',
     notificationPreferences: {
       announcements: true,
       roleChange: true,
@@ -93,6 +95,7 @@ export function useUsers() {
         .update({
           name: user.name,
           roles: user.roles,
+          ...(user.preferredLanguage !== undefined && { preferred_language: user.preferredLanguage }),
           ...(user.firstName !== undefined && { first_name: user.firstName }),
           ...(user.lastName !== undefined && { last_name: user.lastName }),
         })
@@ -117,6 +120,7 @@ export function useUsers() {
           name: updates.name,
           email: updates.email,
           roles: updates.roles,
+          ...(updates.preferredLanguage !== undefined && { preferred_language: updates.preferredLanguage }),
           ...(updates.firstName !== undefined && { first_name: updates.firstName }),
           ...(updates.lastName !== undefined && { last_name: updates.lastName }),
         })

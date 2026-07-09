@@ -24,6 +24,8 @@ import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -35,6 +37,8 @@ interface AnnouncementsViewProps {
   onAdd: (data: {
     title: string;
     content: string;
+    titleBg?: string | null;
+    contentBg?: string | null;
     type: Announcement['type'];
     courseId: number | null;
     targetRoles: string[] | null;
@@ -110,10 +114,14 @@ function formatRelativeTime(dateString: string): string {
   const minutes = Math.floor(diffMs / 60000);
   const hours = Math.floor(diffMs / 3600000);
   const days = Math.floor(diffMs / 86400000);
-  if (minutes < 60) return `${Math.max(minutes, 1)} minutes ago`;
+  if (minutes < 1) return 'Now';
+  if (minutes === 1) return '1 minute ago';
+  if (minutes < 60) return `${minutes} minutes ago`;
+  if (hours === 1) return '1 hour ago';
   if (hours < 24) return `${hours} hours ago`;
+  if (days === 1) return 'Yesterday';
   if (days < 7) return `${days} days ago`;
-  return new Date(dateString).toLocaleDateString();
+  return formatPlatformDate(dateString);
 }
 
 function getInitials(name: string | null | undefined): string {
@@ -128,6 +136,31 @@ function getAnnouncementStatusLabel(announcement: Announcement): string | null {
   if (announcement.status === 'scheduled') return 'Scheduled';
   if (announcement.status === 'archived') return 'Trash';
   return null;
+}
+
+function getLocalizedAnnouncement(announcement: Announcement, language: AppLanguage) {
+  const englishTitle = announcement.title?.trim() ?? '';
+  const englishContent = announcement.content?.trim() ?? '';
+  const bgTitle = announcement.titleBg?.trim() ?? '';
+  const bgContent = announcement.contentBg?.trim() ?? '';
+
+  if (language === 'bg' && bgTitle && bgContent) {
+    return { title: bgTitle, content: bgContent, fallbackLanguage: null };
+  }
+
+  if (englishTitle && englishContent) {
+    return {
+      title: englishTitle,
+      content: englishContent,
+      fallbackLanguage: language === 'bg' ? 'English' : null,
+    };
+  }
+
+  return {
+    title: bgTitle || englishTitle || 'Untitled announcement',
+    content: bgContent || englishContent || '',
+    fallbackLanguage: language === 'en' && bgTitle && bgContent ? 'Bulgarian' : null,
+  };
 }
 
 function isAnnouncementEdited(announcement: Announcement): boolean {
@@ -327,7 +360,9 @@ function AnnouncementCard({
   onDeleteComment,
   onDeleteAttachment,
 }: AnnouncementCardProps) {
+  const { language, t } = useLanguage();
   const typeBadge = TYPE_BADGE[announcement.type];
+  const localized = getLocalizedAnnouncement(announcement, language);
   const course =
     announcement.courseId !== null
       ? courses.find(c => c.id === announcement.courseId)
@@ -420,15 +455,15 @@ function AnnouncementCard({
                 <>
                   <span className="h-1 w-1 rounded-full bg-[#d4d4d4]" />
                   <span className="rounded-full bg-[#f5f5f5] px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#737373]">
-                    Edited
+                    {t('announcements.edited')}
                   </span>
                 </>
               )}
             </span>
           </div>
           {announcement.isPinned && !isArchived && (
-            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff7ed] text-[#d97706]" title="Pinned">
-              <Pin className="h-4 w-4" aria-label="Pinned" />
+            <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fff7ed] text-[#d97706]" title={t('announcements.pinned')}>
+              <Pin className="h-4 w-4" aria-label={t('announcements.pinned')} />
             </span>
           )}
           {isAdmin && !isArchived && (
@@ -484,8 +519,15 @@ function AnnouncementCard({
       </div>
 
       <div className="px-5 py-4">
-        <h3 className="text-xl font-semibold tracking-[-0.01em] text-[#171717]">{announcement.title}</h3>
-        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{announcement.content}</p>
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <h3 className="min-w-0 flex-1 text-xl font-semibold tracking-[-0.01em] text-[#171717]">{localized.title}</h3>
+          {localized.fallbackLanguage && (
+            <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-medium text-[#737373] ring-1 ring-[#e5e5e5]">
+              {localized.fallbackLanguage}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{localized.content}</p>
 
         {announcement.attachments && announcement.attachments.length > 0 && (
           <div className="mt-4">
@@ -506,24 +548,53 @@ function AnnouncementCard({
             {REACTION_OPTIONS.map(emoji => {
               const count = reactionCounts[emoji] ?? 0;
               const selected = userReactions.has(emoji);
+              const reactionUsers = (announcement.reactions ?? []).filter(reaction => reaction.emoji === emoji);
+              const visibleReactionUsers = reactionUsers.slice(0, 6);
+              const hiddenReactionUserCount = Math.max(reactionUsers.length - visibleReactionUsers.length, 0);
               return (
-                <button
-                  key={emoji}
-                  type="button"
-                  disabled={isArchived}
-                  onClick={() => onToggleReaction(announcement.id, emoji)}
-                  className={`tbo-focus inline-flex h-8 items-center gap-1 rounded-full border px-2 text-sm transition ${
-                    selected
-                      ? 'border-[#2563eb] bg-[#dbeaff] text-[#171717]'
-                      : count > 0
-                        ? 'border-[#e5e5e5] bg-white text-[#525252] hover:border-[#d4d4d4] hover:bg-[#f5f5f5]'
-                        : 'border-transparent bg-transparent text-[#a3a3a3] hover:bg-white hover:text-[#525252]'
-                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                  aria-label={`React ${emoji}`}
-                >
-                  <span>{emoji}</span>
-                  {count > 0 && <span className="text-xs font-semibold">{count}</span>}
-                </button>
+                <span key={emoji} className="group relative inline-flex">
+                  <button
+                    type="button"
+                    disabled={isArchived}
+                    onClick={() => onToggleReaction(announcement.id, emoji)}
+                    className={`tbo-focus inline-flex h-8 items-center gap-1 rounded-full border px-2 text-sm transition ${
+                      selected
+                        ? 'border-[#2563eb] bg-[#dbeaff] text-[#171717]'
+                        : count > 0
+                          ? 'border-[#e5e5e5] bg-white text-[#525252] hover:border-[#d4d4d4] hover:bg-[#f5f5f5]'
+                          : 'border-transparent bg-transparent text-[#a3a3a3] hover:bg-white hover:text-[#525252]'
+                    } disabled:cursor-not-allowed disabled:opacity-50`}
+                    aria-label={`React ${emoji}`}
+                  >
+                    <span>{emoji}</span>
+                    {count > 0 && <span className="text-xs font-semibold">{count}</span>}
+                  </button>
+                  {count > 0 && (
+                    <span className="pointer-events-none absolute bottom-full left-0 z-30 mb-2 hidden w-64 rounded-2xl border border-[#e5e5e5] bg-white p-3 text-left shadow-[0_16px_40px_rgba(15,23,42,0.14)] group-hover:block group-focus-within:block">
+                      <span className="mb-2 flex items-center justify-between gap-3">
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{emoji} reactions</span>
+                        <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#525252]">
+                          {count}
+                        </span>
+                      </span>
+                      <span className="grid gap-2">
+                        {visibleReactionUsers.map(reaction => (
+                          <span key={`${reaction.userId}-${reaction.emoji}`} className="flex min-w-0 items-center gap-2">
+                            <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-full bg-[#f5f5f5] text-[10px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                              {getInitials(reaction.userName)}
+                            </span>
+                            <span className="min-w-0 truncate text-sm font-medium text-[#171717]">{reaction.userName}</span>
+                          </span>
+                        ))}
+                        {hiddenReactionUserCount > 0 && (
+                          <span className="rounded-lg bg-[#fafafa] px-2 py-1 text-xs font-medium text-[#737373]">
+                            +{hiddenReactionUserCount} more
+                          </span>
+                        )}
+                      </span>
+                    </span>
+                  )}
+                </span>
               );
             })}
           </div>
@@ -618,6 +689,7 @@ export function AnnouncementsView({
   openCreateOnMount = false,
   onCreateFlowClosed,
 }: AnnouncementsViewProps) {
+  const { t } = useLanguage();
   const [filter, setFilter] = useState<FilterValue>('all');
   const [modalOpen, setModalOpen] = useState(openCreateOnMount);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -742,7 +814,7 @@ export function AnnouncementsView({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Announcements"
+        title={t('announcements.title')}
         action={
           canCreateAnnouncement ? (
             <button
@@ -751,7 +823,7 @@ export function AnnouncementsView({
               className="tbo-focus flex w-full items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
             >
               <Plus className="w-4 h-4" />
-              <span>New announcement</span>
+              <span>{t('announcements.new')}</span>
             </button>
           ) : undefined
         }
@@ -781,7 +853,7 @@ export function AnnouncementsView({
             role="status"
             aria-label="Loading announcements"
           />
-          <p className="mt-3 text-sm text-[#737373]">Loading announcements...</p>
+          <p className="mt-3 text-sm text-[#737373]">{t('announcements.loading')}</p>
         </div>
       ) : filteredList.length === 0 ? (
         <div className="tbo-panel grid min-h-[260px] place-items-center px-6 py-12 text-center">
@@ -791,8 +863,8 @@ export function AnnouncementsView({
             </span>
             <p className="text-sm text-[#737373]">
               {filter === 'all'
-                ? 'No announcements yet.'
-                : `No ${activeFilterLabel} announcements.`}
+                ? t('announcements.empty')
+                : `${t('announcements.emptyFiltered')} ${activeFilterLabel}`}
             </p>
           </div>
         </div>
@@ -802,7 +874,7 @@ export function AnnouncementsView({
             <div className="space-y-3">
               <p className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">
                 <Pin className="h-3.5 w-3.5 text-[#d97706]" />
-                <span>Pinned</span>
+                <span>{t('announcements.pinned')}</span>
               </p>
               {pinnedList.map(renderCard)}
             </div>

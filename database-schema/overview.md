@@ -2,22 +2,22 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-04T02:08:05.312Z
+Generated at: 2026-07-09T13:07:45.547Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 25
+Exposed tables/views: 34
 
 | Table | Columns | File |
 | --- | ---: | --- |
 | announcement_attachments | 12 | [announcement_attachments](./tables/announcement_attachments.md) |
 | announcement_comments | 5 | [announcement_comments](./tables/announcement_comments.md) |
 | announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
-| announcements | 11 | [announcements](./tables/announcements.md) |
-| attendance_settings | 7 | [attendance_settings](./tables/attendance_settings.md) |
+| announcements | 16 | [announcements](./tables/announcements.md) |
+| attendance_settings | 41 | [attendance_settings](./tables/attendance_settings.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
 | class_files | 10 | [class_files](./tables/class_files.md) |
 | class_notes | 8 | [class_notes](./tables/class_notes.md) |
@@ -31,13 +31,22 @@ Exposed tables/views: 25
 | homework_submissions | 17 | [homework_submissions](./tables/homework_submissions.md) |
 | mentorship_logs | 11 | [mentorship_logs](./tables/mentorship_logs.md) |
 | messages | 6 | [messages](./tables/messages.md) |
-| profiles | 10 | [profiles](./tables/profiles.md) |
+| ministry_rotations | 11 | [ministry_rotations](./tables/ministry_rotations.md) |
+| ministry_service_attendance | 6 | [ministry_service_attendance](./tables/ministry_service_attendance.md) |
+| ministry_service_sessions | 13 | [ministry_service_sessions](./tables/ministry_service_sessions.md) |
+| ministry_team_members | 8 | [ministry_team_members](./tables/ministry_team_members.md) |
+| ministry_teams | 16 | [ministry_teams](./tables/ministry_teams.md) |
+| notification_deliveries | 10 | [notification_deliveries](./tables/notification_deliveries.md) |
+| notification_jobs | 13 | [notification_jobs](./tables/notification_jobs.md) |
+| profiles | 11 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | subject_notes | 13 | [subject_notes](./tables/subject_notes.md) |
 | subjects | 9 | [subjects](./tables/subjects.md) |
 | sunday_attendance | 8 | [sunday_attendance](./tables/sunday_attendance.md) |
 | the_well_attendance | 9 | [the_well_attendance](./tables/the_well_attendance.md) |
 | the_well_session_attendance | 7 | [the_well_session_attendance](./tables/the_well_session_attendance.md) |
+| todo_batches | 12 | [todo_batches](./tables/todo_batches.md) |
+| todo_items | 12 | [todo_items](./tables/todo_items.md) |
 
 ## Notes For AI
 

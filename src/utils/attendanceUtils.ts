@@ -103,11 +103,22 @@ export function calculateClassScore(
 ): number {
   if (totalClasses === 0) return 1;
   const earnedPoints = records.reduce((sum, r) => {
-    if (r.status === 'present') return sum + 1;
-    if (r.status === 'late') return sum + settings.lateClassWeight;
-    return sum; // absent = 0
+    if (r.status === 'present') return sum + settings.presentCredit;
+    if (r.status === 'late') return sum + settings.lateCredit;
+    return sum + settings.absentCredit;
   }, 0);
   return earnedPoints / totalClasses;
+}
+
+export function calculateAttendanceCredits(
+  records: Array<{ status: AttendanceStatus }>,
+  settings: AttendanceSettings
+): number {
+  return records.reduce((sum, record) => {
+    if (record.status === 'present') return sum + settings.presentCredit;
+    if (record.status === 'late') return sum + settings.lateCredit;
+    return sum + settings.absentCredit;
+  }, 0);
 }
 
 export function calculateSaturdayScore(
@@ -117,9 +128,9 @@ export function calculateSaturdayScore(
 ): number {
   if (totalSaturdays === 0) return 1;
   const earnedPoints = records.reduce((sum, r) => {
-    if (r.status === 'present') return sum + 1;
-    if (r.status === 'late') return sum + settings.lateSaturdayWeight;
-    return sum;
+    if (r.status === 'present') return sum + settings.presentCredit;
+    if (r.status === 'late') return sum + settings.lateCredit;
+    return sum + settings.absentCredit;
   }, 0);
   return earnedPoints / totalSaturdays;
 }
@@ -133,7 +144,7 @@ export function calculateTheWellScore(
   if (records.length === 0) return 1;
   const scores = records.map((r) => {
     const effective = r.timesAttended +
-      (r.timesLate * settings.lateWellWeight);
+      (r.timesLate * settings.lateCredit);
     if (effective >= settings.theWellRequiredPerMonth) return 1;
     return Math.min(1, effective / settings.theWellRequiredPerMonth);
   });
@@ -147,9 +158,8 @@ export function calculateSundayScore(
 ): number {
   if (records.length === 0) return 1;
   const scores = records.map((r) => {
-    if (r.timesServed >= settings.sundayRequiredPerMonth) return 1;
-    if (r.timesServed === 1) return 0.5;
-    return 0;
+    if (r.timesServed >= settings.ministrySundayRequiredCredits) return 1;
+    return Math.min(1, r.timesServed / settings.ministrySundayRequiredCredits);
   });
   return scores.reduce<number>((a, b) => a + b, 0) / scores.length;
 }

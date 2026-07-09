@@ -18,6 +18,7 @@ import type {
 } from '../../types/lms';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { sortByFirstName, getWellDateForWeek, isActivationSaturdayClass } from '../../utils/attendanceUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface DutyMarkingViewProps {
   currentUser: User;
@@ -51,20 +52,11 @@ type TimelineItem = ClassTimelineItem | WellTimelineItem;
 const HOUR_ORDER: Record<Class['hour'], number> = { first: 0, second: 1, both: 2 };
 
 function formatWeekDate(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateStr);
 }
 
 function formatClassDate(dateStr: string): string {
-  return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', {
-    weekday: 'long',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateStr);
 }
 
 function formatSessionType(cls: Class): string {

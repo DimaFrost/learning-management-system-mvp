@@ -10,6 +10,7 @@ import type {
 import type { User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { isDateInBreak } from '../../../utils/scheduling';
+import { formatPlatformDate } from '../../../utils/dateUtils';
 
 type CourseSide = 'firstYear' | 'secondYear';
 type BreakResult = { ok: true } | { ok: false; error: string };
@@ -152,8 +153,7 @@ function mergeScheduledWithBreaks(
 }
 
 function formatDisplayDate(dateStr: string): string {
-  const d = new Date(dateStr + 'T00:00:00');
-  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  return formatPlatformDate(dateStr);
 }
 
 function collectSubjectTitles(rows: PlanningRow[], side: CourseSide): string[] {

@@ -11,6 +11,9 @@ import type {
   AnnouncementAttachment,
   Conversation,
   DutyScheduleEntry,
+  TodoAssignmentCategory,
+  TodoItem,
+  TodoPriority,
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import type { WorkspaceId } from '../types/workspace';
@@ -26,10 +29,13 @@ import { MentorshipView } from './admin/MentorshipView';
 import { MentorshipManagement } from './admin/MentorshipManagement';
 import { AttendanceView } from './admin/AttendanceView';
 import { MentorDashboard } from './mentor/MentorDashboard';
+import { MinistryReportView } from './teamLeader/MinistryReportView';
 import { AnnouncementsView } from './shared/AnnouncementsView';
 import { MessagesView } from './shared/MessagesView';
+import { TodosView } from './shared/TodosView';
 import { SettingsView } from './shared/SettingsView';
 import { ClassDetailView } from './shared/ClassDetailView';
+import { formatPlatformDate } from '../utils/dateUtils';
 
 type ShowConfirmation = (
   title: string,
@@ -90,6 +96,8 @@ export interface AppRouterProps {
   addAnnouncement: (data: {
     title: string;
     content: string;
+    titleBg?: string | null;
+    contentBg?: string | null;
     type: Announcement['type'];
     courseId: number | null;
     targetRoles: string[] | null;
@@ -116,6 +124,36 @@ export interface AppRouterProps {
   ) => Promise<void>;
   deleteAttachment: (attachmentId: number, storagePath: string | null) => Promise<void>;
   toggleReaction: (announcementId: number, emoji: string) => Promise<void>;
+  todos: TodoItem[];
+  todosToday: TodoItem[];
+  todosLoading: boolean;
+  todosError: string | null;
+  todoAssignableUsers: User[];
+  todoAssignmentCategories: TodoAssignmentCategory[];
+  canUseTodos: boolean;
+  canCreateTodos: boolean;
+  isTodoAdmin: boolean;
+  createTodo: (input: {
+    title: string;
+    description?: string | null;
+    assignedTo?: string;
+    assignedToIds?: string[];
+    assignmentType?: 'person' | 'category';
+    targetLabel?: string;
+    targetIds?: string[];
+    dueDate: string;
+    priority: TodoPriority;
+  }) => Promise<TodoItem>;
+  updateTodo: (todoId: number, updates: Partial<{
+    title: string;
+    description: string | null;
+    assignedTo: string;
+    dueDate: string;
+    priority: TodoPriority;
+    status: TodoItem['status'];
+  }>) => Promise<TodoItem>;
+  toggleTodoStatus: (todoId: number, completed: boolean) => Promise<TodoItem>;
+  deleteTodo: (todoId: number) => Promise<void>;
   onProfileUpdated: () => void;
   conversations: Conversation[];
   messagesLoading: boolean;
@@ -181,6 +219,18 @@ export function AppRouter({
   addAttachment,
   deleteAttachment,
   toggleReaction,
+  todos,
+  todosToday,
+  todosLoading,
+  todosError,
+  todoAssignableUsers,
+  todoAssignmentCategories,
+  canUseTodos,
+  canCreateTodos,
+  isTodoAdmin,
+  createTodo,
+  toggleTodoStatus,
+  deleteTodo,
   onProfileUpdated,
   conversations,
   messagesLoading,
@@ -292,6 +342,24 @@ export function AppRouter({
     );
   }
 
+  if (activeView === 'todos' && canUseTodos) {
+    return (
+      <TodosView
+        todos={todos}
+        assignableUsers={todoAssignableUsers}
+        assignmentCategories={todoAssignmentCategories}
+        currentUser={currentUser}
+        loading={todosLoading}
+        error={todosError}
+        isAdmin={isTodoAdmin}
+        canCreate={canCreateTodos}
+        onCreate={createTodo}
+        onToggleStatus={toggleTodoStatus}
+        onDelete={deleteTodo}
+      />
+    );
+  }
+
   if (activeView === 'my-attendance') {
     return (
       <MyAttendanceView
@@ -333,17 +401,9 @@ export function AppRouter({
         {nextScheduledDuty && (
           <p className="text-sm text-gray-500">
             Your next scheduled duty:{' '}
-            {new Date(nextScheduledDuty.weekStart).toLocaleDateString('en-GB', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
+            {formatPlatformDate(nextScheduledDuty.weekStart)}
             {' – '}
-            {new Date(nextScheduledDuty.weekEnd).toLocaleDateString('en-GB', {
-              day: 'numeric',
-              month: 'long',
-              year: 'numeric',
-            })}
+            {formatPlatformDate(nextScheduledDuty.weekEnd)}
           </p>
         )}
       </div>
@@ -431,14 +491,23 @@ export function AppRouter({
         );
       case 'attendance':
       case 'attendance-overview':
-      case 'attendance-sunday':
+      case 'attendance-classes':
+      case 'attendance-well':
+      case 'attendance-ministry':
+      case 'attendance-activation':
       case 'attendance-duty':
       case 'attendance-settings':
         return (
           <AttendanceView
             activeSection={
-              activeView === 'attendance-sunday'
-                ? 'sunday'
+              activeView === 'attendance-classes'
+                ? 'classes'
+                : activeView === 'attendance-well'
+                  ? 'well'
+                  : activeView === 'attendance-ministry'
+                    ? 'ministry'
+                    : activeView === 'attendance-activation'
+                      ? 'activation'
                 : activeView === 'attendance-duty'
                   ? 'duty'
                   : activeView === 'attendance-settings'
@@ -454,6 +523,10 @@ export function AppRouter({
             classAttendance={attendance.classAttendance}
             theWellAttendance={attendance.theWellAttendance}
             sundayAttendance={attendance.sundayAttendance}
+            ministryTeams={attendance.ministryTeams}
+            ministryRotations={attendance.ministryRotations}
+            ministrySessions={attendance.ministrySessions}
+            ministryAttendance={attendance.ministryAttendance}
             loading={attendance.loading}
             error={attendance.error}
             getCourseSummaries={attendance.getCourseSummaries}
@@ -462,6 +535,10 @@ export function AppRouter({
             resolveTransferRequest={attendance.resolveTransferRequest}
             upsertSundayAttendance={attendance.upsertSundayAttendance}
             updateSettings={attendance.updateSettings}
+            upsertMinistryTeam={attendance.upsertMinistryTeam}
+            upsertMinistryRotation={attendance.upsertMinistryRotation}
+            createMinistrySession={attendance.createMinistrySession}
+            markMinistryAttendance={attendance.markMinistryAttendance}
           />
         );
       case 'dashboard':
@@ -473,6 +550,9 @@ export function AppRouter({
             mentorshipLogs={mentorshipLogs}
             announcements={announcements}
             conversations={conversations}
+            todos={todos}
+            todosToday={todosToday}
+            todosLoading={todosLoading}
             attendance={attendance}
             currentUser={currentUser}
             activeWorkspace={activeWorkspace}
@@ -496,6 +576,26 @@ export function AppRouter({
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onOpenCheckin={openCheckin}
+          />
+        );
+    }
+  }
+
+  if (hasRole('team_leader')) {
+    switch (activeView) {
+      case 'ministry-report':
+        return (
+          <MinistryReportView
+            currentUser={currentUser}
+            courses={courses}
+            courseStudents={courseStudents}
+            users={users}
+            ministryTeams={attendance.ministryTeams}
+            ministryRotations={attendance.ministryRotations}
+            ministrySessions={attendance.ministrySessions}
+            ministryAttendance={attendance.ministryAttendance}
+            loading={attendance.loading}
+            onSubmit={attendance.submitMinistryServiceReport}
           />
         );
     }
@@ -543,6 +643,9 @@ export function AppRouter({
         mentorshipLogs={mentorshipLogs}
         announcements={announcements}
         conversations={conversations}
+        todos={todos}
+        todosToday={todosToday}
+        todosLoading={todosLoading}
         attendance={attendance}
         currentUser={currentUser}
         activeWorkspace={activeWorkspace}

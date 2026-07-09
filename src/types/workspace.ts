@@ -1,6 +1,7 @@
 export type WorkspaceId =
   | 'administrator'
   | 'mentor'
+  | 'team_leader'
   | 'teacher'
   | 'translator'
   | 'student';
@@ -8,6 +9,7 @@ export type WorkspaceId =
 export const WORKSPACE_ORDER: WorkspaceId[] = [
   'administrator',
   'mentor',
+  'team_leader',
   'teacher',
   'translator',
   'student',
@@ -16,6 +18,7 @@ export const WORKSPACE_ORDER: WorkspaceId[] = [
 export const WORKSPACE_LABELS: Record<WorkspaceId, string> = {
   administrator: 'Administrator',
   mentor: 'Mentor',
+  team_leader: 'Team Leader',
   teacher: 'Teacher',
   translator: 'Translator',
   student: 'Student',
@@ -24,6 +27,7 @@ export const WORKSPACE_LABELS: Record<WorkspaceId, string> = {
 export const WORKSPACE_DEFAULT_VIEW: Record<WorkspaceId, string> = {
   administrator: 'dashboard',
   mentor: 'mentor-dashboard',
+  team_leader: 'ministry-report',
   teacher: 'my-classes',
   translator: 'my-classes',
   student: 'my-course',

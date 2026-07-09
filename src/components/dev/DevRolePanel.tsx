@@ -6,6 +6,7 @@ const PREVIEWABLE_ROLES: UserRole[] = [
   'teacher',
   'translator',
   'mentor',
+  'team_leader',
   'student',
 ];
 

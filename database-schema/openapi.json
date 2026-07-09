@@ -201,6 +201,149 @@
         ]
       }
     },
+    "/announcement_reactions": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.emoji"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/announcement_reactions"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "announcement_reactions"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.announcement_reactions"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "announcement_reactions"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.emoji"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "announcement_reactions"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.emoji"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcement_reactions.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.announcement_reactions"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "announcement_reactions"
+        ]
+      }
+    },
     "/homework_assignments": {
       "get": {
         "parameters": [
@@ -1508,6 +1651,418 @@
         ]
       }
     },
+    "/ministry_rotations": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.locked"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/ministry_rotations"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "ministry_rotations"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.ministry_rotations"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "ministry_rotations"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.locked"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_rotations"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.locked"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_rotations.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.ministry_rotations"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_rotations"
+        ]
+      }
+    },
+    "/ministry_service_sessions": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.general_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.wins_testimonies"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.timely_actions"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/ministry_service_sessions"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "ministry_service_sessions"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.ministry_service_sessions"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "ministry_service_sessions"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.general_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.wins_testimonies"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.timely_actions"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_service_sessions"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.general_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.wins_testimonies"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.timely_actions"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_sessions.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/body.ministry_service_sessions"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_service_sessions"
+        ]
+      }
+    },
     "/profiles": {
       "get": {
         "parameters": [
@@ -1540,6 +2095,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.profiles.avatar_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.profiles.preferred_language"
           },
           {
             "$ref": "#/parameters/select"
@@ -1635,6 +2193,9 @@
             "$ref": "#/parameters/rowFilter.profiles.avatar_url"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.preferred_language"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -1680,6 +2241,9 @@
             "$ref": "#/parameters/rowFilter.profiles.avatar_url"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.preferred_language"
+          },
+          {
             "$ref": "#/parameters/body.profiles"
           },
           {
@@ -1693,6 +2257,248 @@
         },
         "tags": [
           "profiles"
+        ]
+      }
+    },
+    "/ministry_teams": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.info"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.leader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.call_time"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/ministry_teams"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "ministry_teams"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.ministry_teams"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "ministry_teams"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.info"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.leader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.call_time"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_teams"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.name_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.info"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.leader_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.contact_phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.call_time"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.service_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.requirement_unit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_teams.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.ministry_teams"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_teams"
         ]
       }
     },
@@ -1818,6 +2624,221 @@
         },
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/notification_jobs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.scheduled_for"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.processed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.max_attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.payload"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/notification_jobs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "notification_jobs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.notification_jobs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "notification_jobs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.scheduled_for"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.processed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.max_attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.payload"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "notification_jobs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.announcement_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.scheduled_for"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.processed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.max_attempts"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.payload"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_jobs.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.notification_jobs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "notification_jobs"
         ]
       }
     },
@@ -2485,6 +3506,21 @@
             "$ref": "#/parameters/rowFilter.announcements.is_staff_only"
           },
           {
+            "$ref": "#/parameters/rowFilter.announcements.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.scheduled_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.published_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.title_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.content_bg"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -2581,6 +3617,21 @@
             "$ref": "#/parameters/rowFilter.announcements.is_staff_only"
           },
           {
+            "$ref": "#/parameters/rowFilter.announcements.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.scheduled_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.published_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.title_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.content_bg"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -2629,6 +3680,21 @@
             "$ref": "#/parameters/rowFilter.announcements.is_staff_only"
           },
           {
+            "$ref": "#/parameters/rowFilter.announcements.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.scheduled_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.published_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.title_bg"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.announcements.content_bg"
+          },
+          {
             "$ref": "#/parameters/body.announcements"
           },
           {
@@ -2642,6 +3708,212 @@
         },
         "tags": [
           "announcements"
+        ]
+      }
+    },
+    "/todo_items": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.assigned_to"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.completed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.batch_id"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/todo_items"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "todo_items"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.todo_items"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "todo_items"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.assigned_to"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.completed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.batch_id"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "todo_items"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.assigned_to"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.completed_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_items.batch_id"
+          },
+          {
+            "$ref": "#/parameters/body.todo_items"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "todo_items"
         ]
       }
     },
@@ -2842,6 +4114,176 @@
         ]
       }
     },
+    "/ministry_team_members": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.can_submit_reports"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/ministry_team_members"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "ministry_team_members"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.ministry_team_members"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "ministry_team_members"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.can_submit_reports"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_team_members"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.team_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.user_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.role"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.can_submit_reports"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_team_members.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.ministry_team_members"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_team_members"
+        ]
+      }
+    },
     "/attendance_settings": {
       "get": {
         "parameters": [
@@ -2865,6 +4307,108 @@
           },
           {
             "$ref": "#/parameters/rowFilter.attendance_settings.late_well_weight"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.present_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.absent_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_uses_global_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_required_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_included_weekdays"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_sessions_per_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_joint_counts_once"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_weekday"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_frequency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_max_lost_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_detection_rule"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_first_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_second_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_team_leaders_can_mark"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_admins_can_override_rotations"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_on_track_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_at_risk_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_failing_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_classes_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_the_well_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_activation_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_ministry_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_fallback_scores"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_class_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_well_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
           },
           {
             "$ref": "#/parameters/select"
@@ -2951,6 +4495,108 @@
             "$ref": "#/parameters/rowFilter.attendance_settings.late_well_weight"
           },
           {
+            "$ref": "#/parameters/rowFilter.attendance_settings.present_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.absent_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_uses_global_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_required_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_included_weekdays"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_sessions_per_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_joint_counts_once"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_weekday"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_frequency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_max_lost_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_detection_rule"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_first_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_second_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_team_leaders_can_mark"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_admins_can_override_rotations"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_on_track_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_at_risk_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_failing_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_classes_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_the_well_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_activation_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_ministry_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_fallback_scores"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_class_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_well_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -2987,6 +4633,108 @@
             "$ref": "#/parameters/rowFilter.attendance_settings.late_well_weight"
           },
           {
+            "$ref": "#/parameters/rowFilter.attendance_settings.present_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.absent_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.late_uses_global_credit"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_required_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_included_weekdays"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_sessions_per_day"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.class_joint_counts_once"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_weekday"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.the_well_fallback_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_frequency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_max_lost_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.activation_detection_rule"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_enabled"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_required_credits"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_sunday_period_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_first_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_second_year_rotation_months"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_team_leaders_can_mark"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.ministry_admins_can_override_rotations"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_on_track_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_at_risk_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.status_failing_threshold"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_classes_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_the_well_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_activation_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_ministry_on_student_view"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.show_fallback_scores"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_class_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_well_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
+          },
+          {
             "$ref": "#/parameters/body.attendance_settings"
           },
           {
@@ -3000,6 +4748,158 @@
         },
         "tags": [
           "attendance_settings"
+        ]
+      }
+    },
+    "/ministry_service_attendance": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/ministry_service_attendance"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "ministry_service_attendance"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.ministry_service_attendance"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "ministry_service_attendance"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_service_attendance"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.ministry_service_attendance.marked_at"
+          },
+          {
+            "$ref": "#/parameters/body.ministry_service_attendance"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "ministry_service_attendance"
         ]
       }
     },
@@ -3331,6 +5231,212 @@
         },
         "tags": [
           "messages"
+        ]
+      }
+    },
+    "/todo_batches": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.assignment_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_label"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_ids"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.recipient_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/todo_batches"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "todo_batches"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.todo_batches"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "todo_batches"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.assignment_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_label"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_ids"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.recipient_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "todo_batches"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.description"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.priority"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.assignment_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_label"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.target_ids"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.recipient_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.todo_batches.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.todo_batches"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "todo_batches"
         ]
       }
     },
@@ -3969,6 +6075,194 @@
         ]
       }
     },
+    "/notification_deliveries": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider_message_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/notification_deliveries"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "notification_deliveries"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.notification_deliveries"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "notification_deliveries"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider_message_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "notification_deliveries"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.recipient_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.provider_message_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.error_message"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.notification_deliveries.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.notification_deliveries"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "notification_deliveries"
+        ]
+      }
+    },
     "/duty_schedule": {
       "get": {
         "parameters": [
@@ -4391,6 +6685,42 @@
       },
       "type": "object"
     },
+    "announcement_reactions": {
+      "required": [
+        "id",
+        "announcement_id",
+        "user_id",
+        "emoji",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "announcement_id": {
+          "description": "Note:\nThis is a Foreign Key to `announcements.id`.<fk table='announcements' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "user_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "emoji": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "homework_assignments": {
       "required": [
         "id",
@@ -4799,6 +7129,150 @@
       },
       "type": "object"
     },
+    "ministry_rotations": {
+      "required": [
+        "id",
+        "course_id",
+        "student_id",
+        "team_id",
+        "start_date",
+        "end_date",
+        "status",
+        "locked",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "team_id": {
+          "description": "Note:\nThis is a Foreign Key to `ministry_teams.id`.<fk table='ministry_teams' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "start_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "end_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "status": {
+          "default": "active",
+          "format": "text",
+          "type": "string"
+        },
+        "locked": {
+          "default": false,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "notes": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ministry_service_sessions": {
+      "required": [
+        "id",
+        "team_id",
+        "service_date",
+        "title",
+        "service_type",
+        "created_by",
+        "created_at",
+        "updated_at",
+        "submitted_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "team_id": {
+          "description": "Note:\nThis is a Foreign Key to `ministry_teams.id`.<fk table='ministry_teams' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "service_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "title": {
+          "format": "text",
+          "type": "string"
+        },
+        "service_type": {
+          "default": "sunday",
+          "format": "text",
+          "type": "string"
+        },
+        "created_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "general_view": {
+          "format": "text",
+          "type": "string"
+        },
+        "wins_testimonies": {
+          "format": "text",
+          "type": "string"
+        },
+        "challenges": {
+          "format": "text",
+          "type": "string"
+        },
+        "timely_actions": {
+          "format": "text",
+          "type": "string"
+        },
+        "submitted_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "profiles": {
       "required": [
         "id",
@@ -4809,7 +7283,8 @@
         "updated_at",
         "first_name",
         "last_name",
-        "notification_preferences"
+        "notification_preferences",
+        "preferred_language"
       ],
       "properties": {
         "id": {
@@ -4858,6 +7333,100 @@
         "avatar_url": {
           "format": "text",
           "type": "string"
+        },
+        "preferred_language": {
+          "default": "en",
+          "format": "text",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "ministry_teams": {
+      "required": [
+        "id",
+        "name",
+        "service_type",
+        "required_credits",
+        "requirement_period_months",
+        "requirement_unit",
+        "active",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "name": {
+          "format": "text",
+          "type": "string"
+        },
+        "name_bg": {
+          "format": "text",
+          "type": "string"
+        },
+        "info": {
+          "format": "text",
+          "type": "string"
+        },
+        "leader_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "contact_name": {
+          "format": "text",
+          "type": "string"
+        },
+        "contact_phone": {
+          "format": "text",
+          "type": "string"
+        },
+        "call_time": {
+          "format": "text",
+          "type": "string"
+        },
+        "service_type": {
+          "default": "sunday",
+          "format": "text",
+          "type": "string"
+        },
+        "service_day": {
+          "format": "integer",
+          "type": "integer"
+        },
+        "required_credits": {
+          "default": 2,
+          "format": "numeric",
+          "type": "number"
+        },
+        "requirement_period_months": {
+          "default": 1,
+          "format": "integer",
+          "type": "integer"
+        },
+        "requirement_unit": {
+          "default": "month",
+          "format": "text",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
         }
       },
       "type": "object"
@@ -4876,6 +7445,82 @@
         },
         "value": {
           "format": "jsonb"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "notification_jobs": {
+      "required": [
+        "id",
+        "type",
+        "status",
+        "scheduled_for",
+        "attempts",
+        "max_attempts",
+        "payload",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "type": {
+          "format": "text",
+          "type": "string"
+        },
+        "announcement_id": {
+          "description": "Note:\nThis is a Foreign Key to `announcements.id`.<fk table='announcements' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "status": {
+          "default": "pending",
+          "format": "text",
+          "type": "string"
+        },
+        "scheduled_for": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "processed_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "attempts": {
+          "default": 0,
+          "format": "integer",
+          "type": "integer"
+        },
+        "max_attempts": {
+          "default": 3,
+          "format": "integer",
+          "type": "integer"
+        },
+        "payload": {
+          "format": "jsonb"
+        },
+        "error_message": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
         },
         "updated_at": {
           "default": "now()",
@@ -5097,7 +7742,8 @@
         "is_pinned",
         "created_at",
         "updated_at",
-        "is_staff_only"
+        "is_staff_only",
+        "status"
       ],
       "properties": {
         "id": {
@@ -5154,6 +7800,99 @@
           "default": false,
           "format": "boolean",
           "type": "boolean"
+        },
+        "status": {
+          "default": "published",
+          "format": "text",
+          "type": "string"
+        },
+        "scheduled_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "title_bg": {
+          "format": "text",
+          "type": "string"
+        },
+        "content_bg": {
+          "format": "text",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "todo_items": {
+      "required": [
+        "id",
+        "title",
+        "assigned_to",
+        "created_by",
+        "due_date",
+        "priority",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "title": {
+          "format": "text",
+          "type": "string"
+        },
+        "description": {
+          "format": "text",
+          "type": "string"
+        },
+        "assigned_to": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "due_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "priority": {
+          "default": "none",
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "open",
+          "format": "text",
+          "type": "string"
+        },
+        "completed_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "batch_id": {
+          "description": "Note:\nThis is a Foreign Key to `todo_batches.id`.<fk table='todo_batches' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
         }
       },
       "type": "object"
@@ -5222,6 +7961,61 @@
       },
       "type": "object"
     },
+    "ministry_team_members": {
+      "required": [
+        "id",
+        "team_id",
+        "user_id",
+        "role",
+        "can_submit_reports",
+        "active",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "team_id": {
+          "description": "Note:\nThis is a Foreign Key to `ministry_teams.id`.<fk table='ministry_teams' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "user_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "role": {
+          "default": "leader",
+          "format": "text",
+          "type": "string"
+        },
+        "can_submit_reports": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "active": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "attendance_settings": {
       "required": [
         "id",
@@ -5230,7 +8024,41 @@
         "graduation_threshold",
         "the_well_required_per_month",
         "sunday_required_per_month",
-        "late_well_weight"
+        "late_well_weight",
+        "present_credit",
+        "late_credit",
+        "absent_credit",
+        "late_uses_global_credit",
+        "class_required_percent",
+        "class_included_weekdays",
+        "class_sessions_per_day",
+        "class_joint_counts_once",
+        "the_well_enabled",
+        "the_well_weekday",
+        "the_well_fallback_enabled",
+        "the_well_fallback_percent",
+        "activation_enabled",
+        "activation_frequency",
+        "activation_max_lost_credits",
+        "activation_detection_rule",
+        "ministry_enabled",
+        "ministry_sunday_required_credits",
+        "ministry_sunday_period_months",
+        "ministry_first_year_rotation_months",
+        "ministry_second_year_rotation_months",
+        "ministry_team_leaders_can_mark",
+        "ministry_admins_can_override_rotations",
+        "status_on_track_threshold",
+        "status_at_risk_threshold",
+        "status_failing_threshold",
+        "show_classes_on_student_view",
+        "show_the_well_on_student_view",
+        "show_activation_on_student_view",
+        "show_ministry_on_student_view",
+        "show_fallback_scores",
+        "remind_missing_class_attendance",
+        "remind_missing_well_attendance",
+        "remind_missing_ministry_attendance"
       ],
       "properties": {
         "id": {
@@ -5268,6 +8096,221 @@
           "default": 0.5,
           "format": "numeric",
           "type": "number"
+        },
+        "present_credit": {
+          "default": 1,
+          "format": "numeric",
+          "type": "number"
+        },
+        "late_credit": {
+          "default": 0.5,
+          "format": "numeric",
+          "type": "number"
+        },
+        "absent_credit": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "late_uses_global_credit": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "class_required_percent": {
+          "default": 0.8,
+          "format": "numeric",
+          "type": "number"
+        },
+        "class_included_weekdays": {
+          "format": "integer[]",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "class_sessions_per_day": {
+          "default": 2,
+          "format": "integer",
+          "type": "integer"
+        },
+        "class_joint_counts_once": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "the_well_enabled": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "the_well_weekday": {
+          "default": 3,
+          "format": "integer",
+          "type": "integer"
+        },
+        "the_well_fallback_enabled": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "the_well_fallback_percent": {
+          "default": 0.5,
+          "format": "numeric",
+          "type": "number"
+        },
+        "activation_enabled": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "activation_frequency": {
+          "default": "monthly",
+          "format": "text",
+          "type": "string"
+        },
+        "activation_max_lost_credits": {
+          "default": 1,
+          "format": "numeric",
+          "type": "number"
+        },
+        "activation_detection_rule": {
+          "default": "saturday_both",
+          "format": "text",
+          "type": "string"
+        },
+        "ministry_enabled": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "ministry_sunday_required_credits": {
+          "default": 2,
+          "format": "numeric",
+          "type": "number"
+        },
+        "ministry_sunday_period_months": {
+          "default": 1,
+          "format": "integer",
+          "type": "integer"
+        },
+        "ministry_first_year_rotation_months": {
+          "default": 2,
+          "format": "integer",
+          "type": "integer"
+        },
+        "ministry_second_year_rotation_months": {
+          "default": 4,
+          "format": "integer",
+          "type": "integer"
+        },
+        "ministry_team_leaders_can_mark": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "ministry_admins_can_override_rotations": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "status_on_track_threshold": {
+          "default": 0.9,
+          "format": "numeric",
+          "type": "number"
+        },
+        "status_at_risk_threshold": {
+          "default": 0.8,
+          "format": "numeric",
+          "type": "number"
+        },
+        "status_failing_threshold": {
+          "default": 0.8,
+          "format": "numeric",
+          "type": "number"
+        },
+        "show_classes_on_student_view": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "show_the_well_on_student_view": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "show_activation_on_student_view": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "show_ministry_on_student_view": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "show_fallback_scores": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "remind_missing_class_attendance": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "remind_missing_well_attendance": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "remind_missing_ministry_attendance": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        }
+      },
+      "type": "object"
+    },
+    "ministry_service_attendance": {
+      "required": [
+        "id",
+        "session_id",
+        "student_id",
+        "status",
+        "marked_by",
+        "marked_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "session_id": {
+          "description": "Note:\nThis is a Foreign Key to `ministry_service_sessions.id`.<fk table='ministry_service_sessions' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "status": {
+          "default": "absent",
+          "format": "text",
+          "type": "string"
+        },
+        "marked_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "marked_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
         }
       },
       "type": "object"
@@ -5364,6 +8407,82 @@
           "type": "string"
         },
         "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "todo_batches": {
+      "required": [
+        "id",
+        "title",
+        "created_by",
+        "due_date",
+        "priority",
+        "assignment_type",
+        "target_label",
+        "target_ids",
+        "recipient_count",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "title": {
+          "format": "text",
+          "type": "string"
+        },
+        "description": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "due_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "priority": {
+          "default": "none",
+          "format": "text",
+          "type": "string"
+        },
+        "assignment_type": {
+          "default": "person",
+          "format": "text",
+          "type": "string"
+        },
+        "target_label": {
+          "format": "text",
+          "type": "string"
+        },
+        "target_ids": {
+          "format": "text[]",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "recipient_count": {
+          "default": 1,
+          "format": "integer",
+          "type": "integer"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
           "type": "string"
@@ -5548,6 +8667,65 @@
         "resolved_by": {
           "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
           "format": "uuid",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "notification_deliveries": {
+      "required": [
+        "id",
+        "job_id",
+        "recipient_email",
+        "status",
+        "provider",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "job_id": {
+          "description": "Note:\nThis is a Foreign Key to `notification_jobs.id`.<fk table='notification_jobs' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "recipient_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "recipient_email": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "format": "text",
+          "type": "string"
+        },
+        "provider": {
+          "default": "brevo",
+          "format": "text",
+          "type": "string"
+        },
+        "provider_message_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "error_message": {
+          "format": "text",
+          "type": "string"
+        },
+        "sent_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
           "type": "string"
         }
       },
@@ -5791,6 +8969,45 @@
     },
     "rowFilter.the_well_session_attendance.marked_at": {
       "name": "marked_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.announcement_reactions": {
+      "name": "announcement_reactions",
+      "description": "announcement_reactions",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/announcement_reactions"
+      }
+    },
+    "rowFilter.announcement_reactions.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcement_reactions.announcement_id": {
+      "name": "announcement_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcement_reactions.user_id": {
+      "name": "user_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcement_reactions.emoji": {
+      "name": "emoji",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcement_reactions.created_at": {
+      "name": "created_at",
       "required": false,
       "in": "query",
       "type": "string"
@@ -6272,6 +9489,168 @@
       "in": "query",
       "type": "string"
     },
+    "body.ministry_rotations": {
+      "name": "ministry_rotations",
+      "description": "ministry_rotations",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/ministry_rotations"
+      }
+    },
+    "rowFilter.ministry_rotations.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.team_id": {
+      "name": "team_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.start_date": {
+      "name": "start_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.end_date": {
+      "name": "end_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.locked": {
+      "name": "locked",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.notes": {
+      "name": "notes",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_rotations.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.ministry_service_sessions": {
+      "name": "ministry_service_sessions",
+      "description": "ministry_service_sessions",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/ministry_service_sessions"
+      }
+    },
+    "rowFilter.ministry_service_sessions.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.team_id": {
+      "name": "team_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.service_date": {
+      "name": "service_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.title": {
+      "name": "title",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.service_type": {
+      "name": "service_type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.created_by": {
+      "name": "created_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.general_view": {
+      "name": "general_view",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.wins_testimonies": {
+      "name": "wins_testimonies",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.challenges": {
+      "name": "challenges",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.timely_actions": {
+      "name": "timely_actions",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_sessions.submitted_at": {
+      "name": "submitted_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.profiles": {
       "name": "profiles",
       "description": "profiles",
@@ -6341,6 +9720,117 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.profiles.preferred_language": {
+      "name": "preferred_language",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.ministry_teams": {
+      "name": "ministry_teams",
+      "description": "ministry_teams",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/ministry_teams"
+      }
+    },
+    "rowFilter.ministry_teams.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.name": {
+      "name": "name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.name_bg": {
+      "name": "name_bg",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.info": {
+      "name": "info",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.leader_id": {
+      "name": "leader_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.contact_name": {
+      "name": "contact_name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.contact_phone": {
+      "name": "contact_phone",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.call_time": {
+      "name": "call_time",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.service_type": {
+      "name": "service_type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.service_day": {
+      "name": "service_day",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.required_credits": {
+      "name": "required_credits",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.requirement_period_months": {
+      "name": "requirement_period_months",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.requirement_unit": {
+      "name": "requirement_unit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.active": {
+      "name": "active",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_teams.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.settings": {
       "name": "settings",
       "description": "settings",
@@ -6363,6 +9853,93 @@
       "type": "string"
     },
     "rowFilter.settings.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.notification_jobs": {
+      "name": "notification_jobs",
+      "description": "notification_jobs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/notification_jobs"
+      }
+    },
+    "rowFilter.notification_jobs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.type": {
+      "name": "type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.announcement_id": {
+      "name": "announcement_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.scheduled_for": {
+      "name": "scheduled_for",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.processed_at": {
+      "name": "processed_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.attempts": {
+      "name": "attempts",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.max_attempts": {
+      "name": "max_attempts",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.payload": {
+      "name": "payload",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.error_message": {
+      "name": "error_message",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.created_by": {
+      "name": "created_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_jobs.updated_at": {
       "name": "updated_at",
       "required": false,
       "in": "query",
@@ -6692,6 +10269,117 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.announcements.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcements.scheduled_at": {
+      "name": "scheduled_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcements.published_at": {
+      "name": "published_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcements.title_bg": {
+      "name": "title_bg",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.announcements.content_bg": {
+      "name": "content_bg",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.todo_items": {
+      "name": "todo_items",
+      "description": "todo_items",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/todo_items"
+      }
+    },
+    "rowFilter.todo_items.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.title": {
+      "name": "title",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.description": {
+      "name": "description",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.assigned_to": {
+      "name": "assigned_to",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.created_by": {
+      "name": "created_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.due_date": {
+      "name": "due_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.priority": {
+      "name": "priority",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.completed_at": {
+      "name": "completed_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_items.batch_id": {
+      "name": "batch_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.mentorship_logs": {
       "name": "mentorship_logs",
       "description": "mentorship_logs",
@@ -6767,6 +10455,63 @@
       "in": "query",
       "type": "string"
     },
+    "body.ministry_team_members": {
+      "name": "ministry_team_members",
+      "description": "ministry_team_members",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/ministry_team_members"
+      }
+    },
+    "rowFilter.ministry_team_members.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.team_id": {
+      "name": "team_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.user_id": {
+      "name": "user_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.role": {
+      "name": "role",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.can_submit_reports": {
+      "name": "can_submit_reports",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.active": {
+      "name": "active",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_team_members.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.attendance_settings": {
       "name": "attendance_settings",
       "description": "attendance_settings",
@@ -6814,6 +10559,255 @@
     },
     "rowFilter.attendance_settings.late_well_weight": {
       "name": "late_well_weight",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.present_credit": {
+      "name": "present_credit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.late_credit": {
+      "name": "late_credit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.absent_credit": {
+      "name": "absent_credit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.late_uses_global_credit": {
+      "name": "late_uses_global_credit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.class_required_percent": {
+      "name": "class_required_percent",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.class_included_weekdays": {
+      "name": "class_included_weekdays",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.class_sessions_per_day": {
+      "name": "class_sessions_per_day",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.class_joint_counts_once": {
+      "name": "class_joint_counts_once",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.the_well_enabled": {
+      "name": "the_well_enabled",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.the_well_weekday": {
+      "name": "the_well_weekday",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.the_well_fallback_enabled": {
+      "name": "the_well_fallback_enabled",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.the_well_fallback_percent": {
+      "name": "the_well_fallback_percent",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.activation_enabled": {
+      "name": "activation_enabled",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.activation_frequency": {
+      "name": "activation_frequency",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.activation_max_lost_credits": {
+      "name": "activation_max_lost_credits",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.activation_detection_rule": {
+      "name": "activation_detection_rule",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_enabled": {
+      "name": "ministry_enabled",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_sunday_required_credits": {
+      "name": "ministry_sunday_required_credits",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_sunday_period_months": {
+      "name": "ministry_sunday_period_months",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_first_year_rotation_months": {
+      "name": "ministry_first_year_rotation_months",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_second_year_rotation_months": {
+      "name": "ministry_second_year_rotation_months",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_team_leaders_can_mark": {
+      "name": "ministry_team_leaders_can_mark",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.ministry_admins_can_override_rotations": {
+      "name": "ministry_admins_can_override_rotations",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.status_on_track_threshold": {
+      "name": "status_on_track_threshold",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.status_at_risk_threshold": {
+      "name": "status_at_risk_threshold",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.status_failing_threshold": {
+      "name": "status_failing_threshold",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.show_classes_on_student_view": {
+      "name": "show_classes_on_student_view",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.show_the_well_on_student_view": {
+      "name": "show_the_well_on_student_view",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.show_activation_on_student_view": {
+      "name": "show_activation_on_student_view",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.show_ministry_on_student_view": {
+      "name": "show_ministry_on_student_view",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.show_fallback_scores": {
+      "name": "show_fallback_scores",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.remind_missing_class_attendance": {
+      "name": "remind_missing_class_attendance",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.remind_missing_well_attendance": {
+      "name": "remind_missing_well_attendance",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_settings.remind_missing_ministry_attendance": {
+      "name": "remind_missing_ministry_attendance",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.ministry_service_attendance": {
+      "name": "ministry_service_attendance",
+      "description": "ministry_service_attendance",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/ministry_service_attendance"
+      }
+    },
+    "rowFilter.ministry_service_attendance.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_attendance.session_id": {
+      "name": "session_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_attendance.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_attendance.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_attendance.marked_by": {
+      "name": "marked_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.ministry_service_attendance.marked_at": {
+      "name": "marked_at",
       "required": false,
       "in": "query",
       "type": "string"
@@ -6922,6 +10916,87 @@
     },
     "rowFilter.messages.created_at": {
       "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.todo_batches": {
+      "name": "todo_batches",
+      "description": "todo_batches",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/todo_batches"
+      }
+    },
+    "rowFilter.todo_batches.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.title": {
+      "name": "title",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.description": {
+      "name": "description",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.created_by": {
+      "name": "created_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.due_date": {
+      "name": "due_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.priority": {
+      "name": "priority",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.assignment_type": {
+      "name": "assignment_type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.target_label": {
+      "name": "target_label",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.target_ids": {
+      "name": "target_ids",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.recipient_count": {
+      "name": "recipient_count",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.todo_batches.updated_at": {
+      "name": "updated_at",
       "required": false,
       "in": "query",
       "type": "string"
@@ -7120,6 +11195,75 @@
     },
     "rowFilter.duty_transfer_requests.resolved_by": {
       "name": "resolved_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.notification_deliveries": {
+      "name": "notification_deliveries",
+      "description": "notification_deliveries",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/notification_deliveries"
+      }
+    },
+    "rowFilter.notification_deliveries.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.job_id": {
+      "name": "job_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.recipient_id": {
+      "name": "recipient_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.recipient_email": {
+      "name": "recipient_email",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.provider": {
+      "name": "provider",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.provider_message_id": {
+      "name": "provider_message_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.error_message": {
+      "name": "error_message",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.sent_at": {
+      "name": "sent_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.notification_deliveries.created_at": {
+      "name": "created_at",
       "required": false,
       "in": "query",
       "type": "string"

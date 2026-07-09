@@ -7,6 +7,7 @@ import type {
   User,
 } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface SubmissionDetailModalProps {
   isOpen: boolean;
@@ -22,11 +23,7 @@ interface SubmissionDetailModalProps {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateString);
 }
 
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {

@@ -18,7 +18,7 @@ import type {
 } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
-import { formatDueDate } from '../../../utils/dateUtils';
+import { formatDueDate, formatPlatformDate } from '../../../utils/dateUtils';
 import { CreateAssignmentModal } from '../../../components/modals/CreateAssignmentModal';
 import { GradeModal } from '../../../components/modals/GradeModal';
 import { SubmissionDetailModal } from '../../../components/modals/SubmissionDetailModal';
@@ -81,11 +81,7 @@ interface HomeworkTabProps {
 }
 
 function formatSubmittedDate(date: string): string {
-  return new Date(date).toLocaleDateString('en-US', {
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(date);
 }
 
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {

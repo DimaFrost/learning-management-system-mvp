@@ -15,6 +15,7 @@ import type { ClassNote, ClassFile, User, Course, Subject, Class } from '../../.
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { formatFileSize } from '../../../utils/formatFileSize';
+import { formatPlatformDate } from '../../../utils/dateUtils';
 
 interface MaterialsTabProps {
   classId: number;
@@ -47,11 +48,7 @@ interface MaterialsTabProps {
 }
 
 function formatDate(dateString: string): string {
-  return new Date(dateString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  return formatPlatformDate(dateString);
 }
 
 function getFileIcon(mimeType: string | null): LucideIcon {

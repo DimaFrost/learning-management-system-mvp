@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import type { Announcement, AnnouncementAttachment, Course, CourseStudent, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
+import { formatPlatformDateTime } from '../../utils/dateUtils';
 
 type PendingAttachment = {
   id: string;
@@ -34,6 +35,7 @@ type GoogleLinkType = 'google_doc' | 'google_sheet' | 'google_slide';
 type AudienceGroup = 'all' | 'staff' | 'students' | 'custom';
 type AudienceSubChoice = 'staff' | 'teachers' | 'first_year_students' | 'second_year_students';
 type DeliveryMode = 'now' | 'schedule' | 'draft';
+type ContentLanguage = 'en' | 'bg';
 
 const CUSTOM_USER_PREFIX = 'user:';
 
@@ -70,6 +72,8 @@ interface CreateAnnouncementModalProps {
   onSubmit: (data: {
     title: string;
     content: string;
+    titleBg?: string | null;
+    contentBg?: string | null;
     type: Announcement['type'];
     courseId: number | null;
     targetRoles: string[] | null;
@@ -235,6 +239,59 @@ function formatRoleLabel(role: string) {
     .join(' ');
 }
 
+function getInitials(name: string | null | undefined): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map(part => part[0]?.toUpperCase()).join('');
+}
+
+function UserAvatar({
+  user,
+  size = 'md',
+}: {
+  user: User;
+  size?: 'sm' | 'md';
+}) {
+  const sizeClass = size === 'sm' ? 'h-7 w-7 text-[10px]' : 'h-9 w-9 text-xs';
+
+  return (
+    <span className={`grid flex-shrink-0 place-items-center overflow-hidden rounded-full border border-white bg-[#f5f5f5] font-semibold text-[#525252] shadow-[0_0_0_1px_rgba(229,229,229,0.95)] ${sizeClass}`}>
+      {user.avatarUrl ? (
+        <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        getInitials(user.name)
+      )}
+    </span>
+  );
+}
+
+function UserAvatarStack({
+  users,
+  max = 5,
+}: {
+  users: User[];
+  max?: number;
+}) {
+  const visibleUsers = users.slice(0, max);
+  const extraCount = Math.max(0, users.length - visibleUsers.length);
+
+  if (users.length === 0) return null;
+
+  return (
+    <span className="flex items-center -space-x-2">
+      {visibleUsers.map(user => (
+        <UserAvatar key={user.id} user={user} size="sm" />
+      ))}
+      {extraCount > 0 && (
+        <span className="grid h-7 min-w-7 place-items-center rounded-full border border-white bg-[#171717] px-1.5 text-[10px] font-semibold text-white shadow-[0_0_0_1px_rgba(23,23,23,0.08)]">
+          +{extraCount}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function getRecipientIds({
   targetRoles,
   users,
@@ -294,6 +351,9 @@ export function CreateAnnouncementModal({
 }: CreateAnnouncementModalProps) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
+  const [titleBg, setTitleBg] = useState('');
+  const [contentBg, setContentBg] = useState('');
+  const [contentLanguage, setContentLanguage] = useState<ContentLanguage>('en');
   const [allAudienceSelected, setAllAudienceSelected] = useState(true);
   const [staffAudienceSelected, setStaffAudienceSelected] = useState(false);
   const [studentAudienceSelected, setStudentAudienceSelected] = useState(false);
@@ -308,7 +368,7 @@ export function CreateAnnouncementModal({
   const [deliveryMode, setDeliveryMode] = useState<DeliveryMode>('now');
   const [scheduledAtLocal, setScheduledAtLocal] = useState('');
   const [notifyAudience, setNotifyAudience] = useState(false);
-  const [errors, setErrors] = useState<{ title?: string; content?: string; course?: string; link?: string; file?: string; schedule?: string }>({});
+  const [errors, setErrors] = useState<{ title?: string; content?: string; course?: string; link?: string; file?: string; schedule?: string; language?: string }>({});
   const [submitting, setSubmitting] = useState(false);
   const [pendingAttachments, setPendingAttachments] = useState<PendingAttachment[]>([]);
   const [linkFormOpen, setLinkFormOpen] = useState(false);
@@ -331,6 +391,9 @@ export function CreateAnnouncementModal({
     if (editingAnnouncement) {
       setTitle(editingAnnouncement.title);
       setContent(editingAnnouncement.content);
+      setTitleBg(editingAnnouncement.titleBg ?? '');
+      setContentBg(editingAnnouncement.contentBg ?? '');
+      setContentLanguage(editingAnnouncement.title || editingAnnouncement.content ? 'en' : 'bg');
       const nextAudience = getAudienceStateFromAnnouncement(editingAnnouncement, courses);
       if (isTeacherNotAdmin) {
         setAllAudienceSelected(false);
@@ -361,6 +424,9 @@ export function CreateAnnouncementModal({
     } else {
       setTitle('');
       setContent('');
+      setTitleBg('');
+      setContentBg('');
+      setContentLanguage('en');
       setAllAudienceSelected(!isTeacherNotAdmin);
       setStaffAudienceSelected(isTeacherNotAdmin);
       setStudentAudienceSelected(false);
@@ -414,7 +480,7 @@ export function CreateAnnouncementModal({
     deliveryMode === 'draft'
       ? 'Draft'
       : deliveryMode === 'schedule' && scheduledAtLocal
-        ? new Date(scheduledAtLocal).toLocaleString()
+        ? formatPlatformDateTime(scheduledAtLocal)
         : isEditingPublished
           ? notifyAudience ? 'Published + email update' : 'Published'
           : 'Publish now';
@@ -441,6 +507,10 @@ export function CreateAnnouncementModal({
     customPage * customPageSize,
     customPage * customPageSize + customPageSize
   );
+  const selectedCustomUsers = useMemo(() => {
+    const byId = new Map(users.map(user => [user.id, user]));
+    return customUserIds.map(id => byId.get(id)).filter((user): user is User => Boolean(user));
+  }, [customUserIds, users]);
 
   if (!isOpen) return null;
 
@@ -523,10 +593,24 @@ export function CreateAnnouncementModal({
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    const newErrors: { title?: string; content?: string; course?: string; schedule?: string } = {};
+    const newErrors: { title?: string; content?: string; course?: string; schedule?: string; language?: string } = {};
+    const hasEnglishTitle = title.trim().length > 0;
+    const hasEnglishContent = content.trim().length > 0;
+    const hasBulgarianTitle = titleBg.trim().length > 0;
+    const hasBulgarianContent = contentBg.trim().length > 0;
+    const englishComplete = hasEnglishTitle && hasEnglishContent;
+    const bulgarianComplete = hasBulgarianTitle && hasBulgarianContent;
 
-    if (!title.trim()) newErrors.title = 'Title is required';
-    if (!content.trim()) newErrors.content = 'Content is required';
+    if (!englishComplete && !bulgarianComplete) {
+      newErrors.language = 'Add a title and body in English, Bulgarian, or both.';
+    } else {
+      if ((hasEnglishTitle || hasEnglishContent) && !englishComplete) {
+        newErrors.language = 'English needs both a title and body, or leave both English fields empty.';
+      }
+      if ((hasBulgarianTitle || hasBulgarianContent) && !bulgarianComplete) {
+        newErrors.language = 'Bulgarian needs both a title and body, or leave both Bulgarian fields empty.';
+      }
+    }
     if (
       !effectiveAllAudienceSelected &&
       !effectiveStaffAudienceSelected &&
@@ -559,6 +643,8 @@ export function CreateAnnouncementModal({
       const newId = await onSubmit({
         title: title.trim(),
         content: content.trim(),
+        titleBg: titleBg.trim() || null,
+        contentBg: contentBg.trim() || null,
         type: 'post',
         courseId: null,
         targetRoles,
@@ -647,18 +733,36 @@ export function CreateAnnouncementModal({
         ? 'Save changes without sending a new email.'
         : 'Visible immediately and queued for email notification.',
       icon: Clock,
+      theme: {
+        selected: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] shadow-[0_0_0_1px_rgba(22,101,52,0.08)]',
+        idle: 'border-[#dcfce7] bg-white hover:border-[#bbf7d0] hover:bg-[#f0fdf4]',
+        icon: 'bg-[#dcfce7] text-[#16a34a] ring-[#bbf7d0]',
+        check: 'text-[#16a34a]',
+      },
     },
     {
       id: 'schedule' as const,
       label: 'Schedule',
       description: 'Publish and email at a future time.',
       icon: CalendarClock,
+      theme: {
+        selected: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] shadow-[0_0_0_1px_rgba(29,78,216,0.08)]',
+        idle: 'border-[#dbeafe] bg-white hover:border-[#bfdbfe] hover:bg-[#eff6ff]',
+        icon: 'bg-[#dbeafe] text-[#2563eb] ring-[#bfdbfe]',
+        check: 'text-[#2563eb]',
+      },
     },
     {
       id: 'draft' as const,
       label: 'Draft',
       description: 'Save privately without sending notifications.',
       icon: FileText,
+      theme: {
+        selected: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#6d28d9] shadow-[0_0_0_1px_rgba(109,40,217,0.08)]',
+        idle: 'border-[#ede9fe] bg-white hover:border-[#ddd6fe] hover:bg-[#f5f3ff]',
+        icon: 'bg-[#ede9fe] text-[#7c3aed] ring-[#ddd6fe]',
+        check: 'text-[#7c3aed]',
+      },
     },
   ];
 
@@ -740,35 +844,167 @@ export function CreateAnnouncementModal({
       <form onSubmit={handleSubmit} className="grid gap-5 xl:grid-cols-[1fr_360px]">
         <div className="space-y-5">
           <section className="tbo-panel p-5">
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="announcement-title" className="mb-1 block text-sm font-medium text-[#525252]">
-                  Title
-                </label>
-                <input
-                  id="announcement-title"
-                  type="text"
-                  value={title}
-                  onChange={e => setTitle(e.target.value)}
-                  className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                  placeholder="Announcement title"
-                />
-                {errors.title && <p className="mt-1 text-sm text-red-500">{errors.title}</p>}
+            <div className="space-y-5">
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <h3 className="text-sm font-semibold text-[#171717]">Content languages</h3>
+                  <p className="mt-0.5 text-xs text-[#737373]">English and Bulgarian are optional, but one complete language is required.</p>
+                </div>
+                <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
+                  EN / BG
+                </span>
               </div>
+              {errors.language && (
+                <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{errors.language}</p>
+              )}
+              <div className="inline-grid rounded-full border border-[#e5e5e5] bg-white p-1 sm:grid-cols-2">
+                {([
+                  {
+                    id: 'en',
+                    label: 'English',
+                    meta: 'Default',
+                    complete: title.trim().length > 0 && content.trim().length > 0,
+                  },
+                  {
+                    id: 'bg',
+                    label: 'Bulgarian',
+                    meta: 'Optional',
+                    complete: titleBg.trim().length > 0 && contentBg.trim().length > 0,
+                  },
+                ] as const).map(option => {
+                  const selected = contentLanguage === option.id;
+                  return (
+                    <button
+                      key={option.id}
+                      type="button"
+                      onClick={() => setContentLanguage(option.id)}
+                      className={`tbo-focus flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
+                        selected
+                          ? 'bg-[#171717] text-white'
+                          : 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                      }`}
+                    >
+                      <span>{option.label}</span>
+                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
+                        selected ? 'bg-white/15 text-white' : 'bg-[#f5f5f5] text-[#737373]'
+                      }`}>
+                        {option.meta}
+                      </span>
+                      {option.complete && (
+                        <span className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-[#86efac]' : 'bg-[#16a34a]'}`} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="space-y-4">
+                <div className={`${contentLanguage === 'en' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[#171717]">English</span>
+                    <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-[11px] font-semibold text-[#1d4ed8]">Default</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="announcement-title" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Title
+                      </label>
+                      <input
+                        id="announcement-title"
+                        type="text"
+                        value={title}
+                        onChange={e => setTitle(e.target.value)}
+                        className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
+                        placeholder="Announcement title"
+                      />
+                    </div>
 
-              <div>
-                <label htmlFor="announcement-content" className="mb-1 block text-sm font-medium text-[#525252]">
-                  Content
-                </label>
-                <textarea
-                  id="announcement-content"
-                  value={content}
-                  onChange={e => setContent(e.target.value)}
-                  rows={8}
-                  className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                  placeholder="Write your announcement..."
-                />
-                {errors.content && <p className="mt-1 text-sm text-red-500">{errors.content}</p>}
+                    <div>
+                      <label htmlFor="announcement-content" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Body
+                      </label>
+                      <textarea
+                        id="announcement-content"
+                        value={content}
+                        onChange={e => setContent(e.target.value)}
+                        rows={8}
+                        className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
+                        placeholder="Write your announcement..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className={`${contentLanguage === 'bg' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[#171717]">Bulgarian</span>
+                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">Optional</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="announcement-title-bg-clean" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Bulgarian title
+                      </label>
+                      <input
+                        id="announcement-title-bg-clean"
+                        type="text"
+                        value={titleBg}
+                        onChange={e => setTitleBg(e.target.value)}
+                        className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
+                        placeholder="Announcement title in Bulgarian"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="announcement-content-bg-clean" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Bulgarian body
+                      </label>
+                      <textarea
+                        id="announcement-content-bg-clean"
+                        value={contentBg}
+                        onChange={e => setContentBg(e.target.value)}
+                        rows={8}
+                        className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
+                        placeholder="Write your announcement in Bulgarian..."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="hidden">
+                  <div className="mb-3 flex items-center justify-between gap-2">
+                    <span className="text-sm font-semibold text-[#171717]">Bulgarian</span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">Optional</span>
+                  </div>
+                  <div className="space-y-3">
+                    <div>
+                      <label htmlFor="announcement-title-bg" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Заглавие
+                      </label>
+                      <input
+                        id="announcement-title-bg"
+                        type="text"
+                        value={titleBg}
+                        onChange={e => setTitleBg(e.target.value)}
+                        className="tbo-focus w-full rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
+                        placeholder="Заглавие на съобщението"
+                      />
+                    </div>
+
+                    <div>
+                      <label htmlFor="announcement-content-bg" className="mb-1 block text-sm font-medium text-[#525252]">
+                        Текст
+                      </label>
+                      <textarea
+                        id="announcement-content-bg"
+                        value={contentBg}
+                        onChange={e => setContentBg(e.target.value)}
+                        rows={8}
+                        className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
+                        placeholder="Напишете съобщението..."
+                      />
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </section>
@@ -793,16 +1029,14 @@ export function CreateAnnouncementModal({
                     type="button"
                     onClick={() => setDeliveryMode(option.id)}
                     className={`tbo-focus rounded-xl border p-4 text-left transition ${
-                      selected
-                        ? 'border-[#171717] bg-[#f5f5f5] shadow-[0_0_0_1px_rgba(23,23,23,0.08)]'
-                        : 'border-[#e5e5e5] bg-white hover:border-[#d4d4d4] hover:bg-[#fafafa]'
+                      selected ? option.theme.selected : option.theme.idle
                     }`}
                   >
                     <span className="mb-3 flex items-center justify-between gap-3">
-                      <span className="grid h-9 w-9 place-items-center rounded-lg bg-white text-[#171717] ring-1 ring-[#e5e5e5]">
+                      <span className={`grid h-9 w-9 place-items-center rounded-lg ring-1 ${option.theme.icon}`}>
                         <Icon className="h-4 w-4" />
                       </span>
-                      {selected && <CheckCircle2 className="h-4 w-4 text-[#171717]" />}
+                      {selected && <CheckCircle2 className={`h-4 w-4 ${option.theme.check}`} />}
                     </span>
                     <span className="block text-sm font-semibold text-[#171717]">{option.label}</span>
                     <span className="mt-1 block text-xs leading-5 text-[#737373]">{option.description}</span>
@@ -929,8 +1163,11 @@ export function CreateAnnouncementModal({
 
                 {effectiveCustomAudienceSelected && (
                   <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2">
-                    <span className="text-xs font-medium text-[#525252]">
-                      <span className="font-semibold text-[#171717]">{customUserIds.length}</span> custom recipient{customUserIds.length === 1 ? '' : 's'}
+                    <span className="flex min-w-0 items-center gap-2">
+                      <UserAvatarStack users={selectedCustomUsers} max={5} />
+                      <span className="text-xs font-medium text-[#525252]">
+                        <span className="font-semibold text-[#171717]">{customUserIds.length}</span> custom recipient{customUserIds.length === 1 ? '' : 's'}
+                      </span>
                     </span>
                     <button
                       type="button"
@@ -1310,9 +1547,12 @@ export function CreateAnnouncementModal({
                       }`}
                     >
                       <span className="flex items-start justify-between gap-3">
-                        <span className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-[#171717]">{user.name}</span>
-                          <span className="block truncate text-xs text-[#737373]">{user.email}</span>
+                        <span className="flex min-w-0 items-start gap-3">
+                          <UserAvatar user={user} />
+                          <span className="min-w-0">
+                            <span className="block truncate text-sm font-semibold text-[#171717]">{user.name}</span>
+                            <span className="block truncate text-xs text-[#737373]">{user.email}</span>
+                          </span>
                         </span>
                         {selected && <CheckCircle2 className="h-4 w-4 flex-shrink-0 text-[#2563eb]" />}
                       </span>
@@ -1345,8 +1585,11 @@ export function CreateAnnouncementModal({
             </div>
 
             <div className="flex flex-col gap-3 border-t border-[#f5f5f5] px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="text-sm text-[#737373]">
-                <span className="font-semibold text-[#171717]">{customUserIds.length}</span> selected
+              <div className="flex min-w-0 items-center gap-3 text-sm text-[#737373]">
+                <UserAvatarStack users={selectedCustomUsers} max={6} />
+                <span>
+                  <span className="font-semibold text-[#171717]">{customUserIds.length}</span> selected
+                </span>
               </div>
               <div className="flex items-center gap-2">
                 <button

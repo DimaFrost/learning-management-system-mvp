@@ -3,7 +3,7 @@
 # profiles
 
 
-Column count: 10
+Column count: 11
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ Column count: 10
 | last_name | string:text | yes | no | "" |  |
 | notification_preferences | unknown:jsonb | yes | no |  |  |
 | avatar_url | string:text | no | no |  |  |
+| preferred_language | string:text | yes | no | en |  |
 
 ## Raw Definition
 
@@ -31,7 +32,8 @@ Column count: 10
     "updated_at",
     "first_name",
     "last_name",
-    "notification_preferences"
+    "notification_preferences",
+    "preferred_language"
   ],
   "properties": {
     "id": {
@@ -78,6 +80,11 @@ Column count: 10
       "format": "jsonb"
     },
     "avatar_url": {
+      "format": "text",
+      "type": "string"
+    },
+    "preferred_language": {
+      "default": "en",
       "format": "text",
       "type": "string"
     }

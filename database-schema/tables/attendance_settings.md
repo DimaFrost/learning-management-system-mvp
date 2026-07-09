@@ -3,7 +3,7 @@
 # attendance_settings
 
 
-Column count: 7
+Column count: 41
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -14,6 +14,40 @@ Column count: 7
 | the_well_required_per_month | integer:integer | yes | no | 2 |  |
 | sunday_required_per_month | integer:integer | yes | no | 2 |  |
 | late_well_weight | number:numeric | yes | no | 0.5 |  |
+| present_credit | number:numeric | yes | no | 1 |  |
+| late_credit | number:numeric | yes | no | 0.5 |  |
+| absent_credit | number:numeric | yes | no | 0 |  |
+| late_uses_global_credit | boolean:boolean | yes | no | true |  |
+| class_required_percent | number:numeric | yes | no | 0.8 |  |
+| class_included_weekdays | array:integer[] | yes | no |  |  |
+| class_sessions_per_day | integer:integer | yes | no | 2 |  |
+| class_joint_counts_once | boolean:boolean | yes | no | true |  |
+| the_well_enabled | boolean:boolean | yes | no | true |  |
+| the_well_weekday | integer:integer | yes | no | 3 |  |
+| the_well_fallback_enabled | boolean:boolean | yes | no | true |  |
+| the_well_fallback_percent | number:numeric | yes | no | 0.5 |  |
+| activation_enabled | boolean:boolean | yes | no | true |  |
+| activation_frequency | string:text | yes | no | monthly |  |
+| activation_max_lost_credits | number:numeric | yes | no | 1 |  |
+| activation_detection_rule | string:text | yes | no | saturday_both |  |
+| ministry_enabled | boolean:boolean | yes | no | true |  |
+| ministry_sunday_required_credits | number:numeric | yes | no | 2 |  |
+| ministry_sunday_period_months | integer:integer | yes | no | 1 |  |
+| ministry_first_year_rotation_months | integer:integer | yes | no | 2 |  |
+| ministry_second_year_rotation_months | integer:integer | yes | no | 4 |  |
+| ministry_team_leaders_can_mark | boolean:boolean | yes | no | true |  |
+| ministry_admins_can_override_rotations | boolean:boolean | yes | no | true |  |
+| status_on_track_threshold | number:numeric | yes | no | 0.9 |  |
+| status_at_risk_threshold | number:numeric | yes | no | 0.8 |  |
+| status_failing_threshold | number:numeric | yes | no | 0.8 |  |
+| show_classes_on_student_view | boolean:boolean | yes | no | true |  |
+| show_the_well_on_student_view | boolean:boolean | yes | no | true |  |
+| show_activation_on_student_view | boolean:boolean | yes | no | true |  |
+| show_ministry_on_student_view | boolean:boolean | yes | no | true |  |
+| show_fallback_scores | boolean:boolean | yes | no | true |  |
+| remind_missing_class_attendance | boolean:boolean | yes | no | true |  |
+| remind_missing_well_attendance | boolean:boolean | yes | no | true |  |
+| remind_missing_ministry_attendance | boolean:boolean | yes | no | true |  |
 
 ## Raw Definition
 
@@ -26,7 +60,41 @@ Column count: 7
     "graduation_threshold",
     "the_well_required_per_month",
     "sunday_required_per_month",
-    "late_well_weight"
+    "late_well_weight",
+    "present_credit",
+    "late_credit",
+    "absent_credit",
+    "late_uses_global_credit",
+    "class_required_percent",
+    "class_included_weekdays",
+    "class_sessions_per_day",
+    "class_joint_counts_once",
+    "the_well_enabled",
+    "the_well_weekday",
+    "the_well_fallback_enabled",
+    "the_well_fallback_percent",
+    "activation_enabled",
+    "activation_frequency",
+    "activation_max_lost_credits",
+    "activation_detection_rule",
+    "ministry_enabled",
+    "ministry_sunday_required_credits",
+    "ministry_sunday_period_months",
+    "ministry_first_year_rotation_months",
+    "ministry_second_year_rotation_months",
+    "ministry_team_leaders_can_mark",
+    "ministry_admins_can_override_rotations",
+    "status_on_track_threshold",
+    "status_at_risk_threshold",
+    "status_failing_threshold",
+    "show_classes_on_student_view",
+    "show_the_well_on_student_view",
+    "show_activation_on_student_view",
+    "show_ministry_on_student_view",
+    "show_fallback_scores",
+    "remind_missing_class_attendance",
+    "remind_missing_well_attendance",
+    "remind_missing_ministry_attendance"
   ],
   "properties": {
     "id": {
@@ -64,6 +132,178 @@ Column count: 7
       "default": 0.5,
       "format": "numeric",
       "type": "number"
+    },
+    "present_credit": {
+      "default": 1,
+      "format": "numeric",
+      "type": "number"
+    },
+    "late_credit": {
+      "default": 0.5,
+      "format": "numeric",
+      "type": "number"
+    },
+    "absent_credit": {
+      "default": 0,
+      "format": "numeric",
+      "type": "number"
+    },
+    "late_uses_global_credit": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "class_required_percent": {
+      "default": 0.8,
+      "format": "numeric",
+      "type": "number"
+    },
+    "class_included_weekdays": {
+      "format": "integer[]",
+      "items": {
+        "type": "integer"
+      },
+      "type": "array"
+    },
+    "class_sessions_per_day": {
+      "default": 2,
+      "format": "integer",
+      "type": "integer"
+    },
+    "class_joint_counts_once": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "the_well_enabled": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "the_well_weekday": {
+      "default": 3,
+      "format": "integer",
+      "type": "integer"
+    },
+    "the_well_fallback_enabled": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "the_well_fallback_percent": {
+      "default": 0.5,
+      "format": "numeric",
+      "type": "number"
+    },
+    "activation_enabled": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "activation_frequency": {
+      "default": "monthly",
+      "format": "text",
+      "type": "string"
+    },
+    "activation_max_lost_credits": {
+      "default": 1,
+      "format": "numeric",
+      "type": "number"
+    },
+    "activation_detection_rule": {
+      "default": "saturday_both",
+      "format": "text",
+      "type": "string"
+    },
+    "ministry_enabled": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "ministry_sunday_required_credits": {
+      "default": 2,
+      "format": "numeric",
+      "type": "number"
+    },
+    "ministry_sunday_period_months": {
+      "default": 1,
+      "format": "integer",
+      "type": "integer"
+    },
+    "ministry_first_year_rotation_months": {
+      "default": 2,
+      "format": "integer",
+      "type": "integer"
+    },
+    "ministry_second_year_rotation_months": {
+      "default": 4,
+      "format": "integer",
+      "type": "integer"
+    },
+    "ministry_team_leaders_can_mark": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "ministry_admins_can_override_rotations": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "status_on_track_threshold": {
+      "default": 0.9,
+      "format": "numeric",
+      "type": "number"
+    },
+    "status_at_risk_threshold": {
+      "default": 0.8,
+      "format": "numeric",
+      "type": "number"
+    },
+    "status_failing_threshold": {
+      "default": 0.8,
+      "format": "numeric",
+      "type": "number"
+    },
+    "show_classes_on_student_view": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "show_the_well_on_student_view": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "show_activation_on_student_view": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "show_ministry_on_student_view": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "show_fallback_scores": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "remind_missing_class_attendance": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "remind_missing_well_attendance": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
+    },
+    "remind_missing_ministry_attendance": {
+      "default": true,
+      "format": "boolean",
+      "type": "boolean"
     }
   },
   "type": "object"

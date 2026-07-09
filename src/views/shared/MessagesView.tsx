@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { Conversation, Message, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface MessagesViewProps {
   conversations: Conversation[];
@@ -41,14 +42,12 @@ function formatListTimestamp(dateString: string): string {
     return `${hours}h ago`;
   }
   if (startOfDate.getTime() === startOfYesterday.getTime()) return 'Yesterday';
-  if (diffMs < 7 * 86400000) {
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-  }
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (diffMs < 7 * 86400000) return formatPlatformDate(dateString);
+  return formatPlatformDate(dateString);
 }
 
 function formatBubbleTime(dateString: string): string {
-  return new Date(dateString).toLocaleTimeString('en-US', {
+  return new Date(dateString).toLocaleTimeString('en-GB', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,
@@ -66,15 +65,8 @@ function formatDateDivider(dateString: string): string {
   if (startOfDate.getTime() === startOfToday.getTime()) return 'Today';
   if (startOfDate.getTime() === startOfYesterday.getTime()) return 'Yesterday';
   const diffMs = startOfToday.getTime() - startOfDate.getTime();
-  if (diffMs < 7 * 86400000) {
-    return date.toLocaleDateString('en-US', { weekday: 'long' });
-  }
-  return date.toLocaleDateString('en-US', {
-    weekday: 'long',
-    month: 'long',
-    day: 'numeric',
-    year: 'numeric',
-  });
+  if (diffMs < 7 * 86400000) return formatPlatformDate(dateString);
+  return formatPlatformDate(dateString);
 }
 
 function getDateKey(dateString: string): string {

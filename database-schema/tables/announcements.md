@@ -3,7 +3,7 @@
 # announcements
 
 
-Column count: 11
+Column count: 16
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -18,6 +18,11 @@ Column count: 11
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
 | is_staff_only | boolean:boolean | yes | no | false |  |
+| status | string:text | yes | no | published |  |
+| scheduled_at | string:timestamp with time zone | no | no |  |  |
+| published_at | string:timestamp with time zone | no | no |  |  |
+| title_bg | string:text | no | no |  |  |
+| content_bg | string:text | no | no |  |  |
 
 ## Raw Definition
 
@@ -31,7 +36,8 @@ Column count: 11
     "is_pinned",
     "created_at",
     "updated_at",
-    "is_staff_only"
+    "is_staff_only",
+    "status"
   ],
   "properties": {
     "id": {
@@ -88,6 +94,27 @@ Column count: 11
       "default": false,
       "format": "boolean",
       "type": "boolean"
+    },
+    "status": {
+      "default": "published",
+      "format": "text",
+      "type": "string"
+    },
+    "scheduled_at": {
+      "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "published_at": {
+      "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "title_bg": {
+      "format": "text",
+      "type": "string"
+    },
+    "content_bg": {
+      "format": "text",
+      "type": "string"
     }
   },
   "type": "object"
