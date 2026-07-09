@@ -28,9 +28,9 @@ export const WORKSPACE_DEFAULT_VIEW: Record<WorkspaceId, string> = {
   administrator: 'dashboard',
   mentor: 'mentor-dashboard',
   team_leader: 'ministry-report',
-  teacher: 'my-classes',
-  translator: 'my-classes',
-  student: 'my-course',
+  teacher: 'dashboard',
+  translator: 'dashboard',
+  student: 'dashboard',
 };
 
 export function isWorkspaceId(value: string | null): value is WorkspaceId {

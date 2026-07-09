@@ -354,6 +354,7 @@ export function TodosView({
   };
 
   const handleToggle = async (todo: TodoItem) => {
+    if (todo.readOnly) return;
     setBusyTodoId(todo.id);
     try {
       await onToggleStatus(todo.id, todo.status !== 'completed');
@@ -363,6 +364,7 @@ export function TodosView({
   };
 
   const handleDelete = async (todo: TodoItem) => {
+    if (todo.readOnly) return;
     setBusyTodoId(todo.id);
     try {
       await onDelete(todo.id);
@@ -543,19 +545,29 @@ export function TodosView({
                             : 'border-[#e5e5e5] hover:border-[#d4d4d4] hover:bg-[#fafafa]'
                       }`}
                               >
-                                <button
-                                  type="button"
-                                  onClick={() => handleToggle(todo)}
-                                  disabled={busyTodoId === todo.id}
-                                  className={`tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border transition-colors ${
-                                    todo.status === 'completed'
-                                      ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]'
-                                      : 'border-[#d4d4d4] bg-white text-[#737373] hover:border-[#171717] hover:text-[#171717]'
-                                  }`}
-                                  aria-label={todo.status === 'completed' ? 'Mark open' : 'Mark completed'}
-                                >
-                                  {todo.status === 'completed' ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
-                                </button>
+                                {todo.readOnly ? (
+                                  <span
+                                    className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-[#e9d5ff] bg-[#f3e8ff] text-[#7c3aed]"
+                                    aria-label="Scheduled assignment"
+                                    title="Scheduled assignment"
+                                  >
+                                    <Calendar className="h-4 w-4" />
+                                  </span>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleToggle(todo)}
+                                    disabled={busyTodoId === todo.id}
+                                    className={`tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border transition-colors ${
+                                      todo.status === 'completed'
+                                        ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]'
+                                        : 'border-[#d4d4d4] bg-white text-[#737373] hover:border-[#171717] hover:text-[#171717]'
+                                    }`}
+                                    aria-label={todo.status === 'completed' ? 'Mark open' : 'Mark completed'}
+                                  >
+                                    {todo.status === 'completed' ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
+                                  </button>
+                                )}
                                 <div className="min-w-0 flex-1">
                                   <div className="flex min-w-0 items-center gap-2">
                                     <p className={`truncate text-sm font-semibold ${todo.status === 'completed' ? 'text-[#737373] line-through' : 'text-[#171717]'}`}>
@@ -564,6 +576,11 @@ export function TodosView({
                                     {todo.priority === 'priority' && (
                                       <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-medium text-[#c2410c]">
                                         Priority
+                                      </span>
+                                    )}
+                                    {todo.readOnly && (
+                                      <span className="rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">
+                                        Scheduled
                                       </span>
                                     )}
                                   </div>
@@ -591,15 +608,17 @@ export function TodosView({
                                     <p className="truncate text-xs font-semibold text-[#171717]">{todo.assignedToName ?? 'Unknown'}</p>
                                   </div>
                                 </div>
-                                <button
-                                  type="button"
-                                  onClick={() => handleDelete(todo)}
-                                  disabled={busyTodoId === todo.id}
-                                  className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626] sm:opacity-0 sm:group-hover:opacity-100"
-                                  aria-label="Delete to-do"
-                                >
-                                  <Trash2 className="h-4 w-4" />
-                                </button>
+                                {!todo.readOnly && (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDelete(todo)}
+                                    disabled={busyTodoId === todo.id}
+                                    className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626] sm:opacity-0 sm:group-hover:opacity-100"
+                                    aria-label="Delete to-do"
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </button>
+                                )}
                               </article>
                             );
                           })}

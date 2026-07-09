@@ -3,13 +3,14 @@
 # profiles
 
 
-Column count: 11
+Column count: 12
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | id | string:uuid | yes | no |  | Note:<br>This is a Primary Key.<pk/> |
 | name | string:text | yes | no |  |  |
 | email | string:text | yes | no |  |  |
+| phone | string:text | no | no |  |  |
 | roles | array:text[] | yes | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
@@ -46,6 +47,10 @@ Column count: 11
       "type": "string"
     },
     "email": {
+      "format": "text",
+      "type": "string"
+    },
+    "phone": {
       "format": "text",
       "type": "string"
     },

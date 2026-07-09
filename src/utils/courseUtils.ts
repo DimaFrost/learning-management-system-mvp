@@ -77,6 +77,12 @@ export function getAcademicYearLabel(startDate: string, endDate: string): string
   return `${start}-${end}`;
 }
 
+export function getCourseSchoolYearLine(course: Course): string {
+  const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+  const academicYear = getAcademicYearLabel(course.startDate, course.endDate).replace('-', '–');
+  return `${academicYear} · ${courseTypeLabel} · Class of ${course.graduationYear}`;
+}
+
 export function buildAcademicYearsFromCourses(courses: Course[]): AcademicYearEntry[] {
   const yearMap = new Map<string, { firstYearId?: number; secondYearId?: number }>();
   for (const course of courses) {

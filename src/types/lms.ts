@@ -11,6 +11,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   roles: UserRole[];
   firstName: string;
   lastName: string;
@@ -174,6 +175,7 @@ export interface TodoItem {
   completedAt: string | null;
   createdAt: string;
   updatedAt: string;
+  readOnly?: boolean;
 }
 
 export interface TodoAssignmentCategory {
@@ -353,6 +355,28 @@ export interface DutyScheduleEntry {
   status: 'active' | 'transferred';
 }
 
+export interface PrayerScheduleEntry {
+  id: number;
+  weekStart: string;
+  weekEnd: string;
+  tuesdayStudentId: string | null;
+  tuesdayStudentName: string | null;
+  thursdayStudentId: string | null;
+  thursdayStudentName: string | null;
+}
+
+export interface PrayerScheduleGenerateOptions {
+  includeFirstYear: boolean;
+  includeSecondYear: boolean;
+}
+
+export interface WellScheduleEntry {
+  id: number;
+  courseId: number;
+  weekStart: string;
+  wellDate: string;
+}
+
 export interface DutyTransferRequest {
   id: number;
   dutyScheduleId: number;
@@ -423,6 +447,7 @@ export interface MinistryTeamMember {
   userId: string;
   userName: string;
   userEmail: string | null;
+  userPhone?: string | null;
   userAvatarUrl: string | null;
   role: MinistryTeamMemberRole;
   canSubmitReports: boolean;
@@ -440,8 +465,6 @@ export interface MinistryTeam {
   leaderName: string | null;
   members: MinistryTeamMember[];
   memberIds?: string[];
-  contactName: string | null;
-  contactPhone: string | null;
   callTime: string | null;
   serviceType: MinistryServiceType;
   serviceDay: number | null;

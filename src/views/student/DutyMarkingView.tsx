@@ -15,6 +15,7 @@ import type {
   TheWellSessionRecord,
   DutyScheduleEntry,
   Subject,
+  WellScheduleEntry,
 } from '../../types/lms';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
 import { sortByFirstName, getWellDateForWeek, isActivationSaturdayClass } from '../../utils/attendanceUtils';
@@ -28,6 +29,7 @@ interface DutyMarkingViewProps {
   users: User[];
   classAttendance: ClassAttendanceRecord[];
   theWellSessionAttendance: TheWellSessionRecord[];
+  wellSchedule: WellScheduleEntry[];
   onMarkClassAttendance: (
     classId: number,
     records: Array<{ studentId: string; status: AttendanceStatus }>
@@ -164,6 +166,7 @@ export function DutyMarkingView({
   users,
   classAttendance,
   theWellSessionAttendance,
+  wellSchedule,
   onMarkClassAttendance,
   onMarkWellSessionAttendance,
   onRequestTransfer,
@@ -223,12 +226,15 @@ export function DutyMarkingView({
       });
   }, [dutyCourse, selectedDuty]);
 
-  const showWell = useMemo(
-    () =>
-      classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 2)
-      && classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 4),
-    [classesThisWeek]
-  );
+  const showWell = useMemo(() => {
+    if (!selectedDuty || !dutyCourse) return false;
+    const courseWellEntries = wellSchedule.filter(entry => entry.courseId === dutyCourse.id);
+    if (courseWellEntries.length > 0) {
+      return courseWellEntries.some(entry => entry.weekStart === selectedDuty.weekStart);
+    }
+    return classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 2)
+      && classesThisWeek.some(c => getDayOfWeek(c.cls.date) === 4);
+  }, [classesThisWeek, dutyCourse, selectedDuty, wellSchedule]);
 
   const dutyTimeline = useMemo(
     () => selectedDuty

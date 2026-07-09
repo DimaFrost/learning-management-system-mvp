@@ -14,6 +14,7 @@ function mapProfileToUser(row: {
   id: string;
   name: string;
   email: string;
+  phone?: string | null;
   roles: string[];
   first_name?: string | null;
   last_name?: string | null;
@@ -25,6 +26,7 @@ function mapProfileToUser(row: {
     id: row.id,
     name: row.name,
     email: row.email,
+    phone: row.phone ?? null,
     roles: row.roles as UserRole[],
     firstName: row.first_name ?? '',
     lastName: row.last_name ?? '',
@@ -119,6 +121,7 @@ export function useUsers() {
         .update({
           name: updates.name,
           email: updates.email,
+          ...(updates.phone !== undefined && { phone: updates.phone }),
           roles: updates.roles,
           ...(updates.preferredLanguage !== undefined && { preferred_language: updates.preferredLanguage }),
           ...(updates.firstName !== undefined && { first_name: updates.firstName }),

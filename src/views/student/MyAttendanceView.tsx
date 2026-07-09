@@ -1,188 +1,152 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
+import {
+  Activity,
+  Calendar,
+  CheckCircle2,
+  ClipboardList,
+  ShieldCheck,
+  Users,
+} from 'lucide-react';
 import type {
-  User,
+  AttendanceGateSummary,
   Course,
   CourseStudent,
-  AttendanceSettings,
-  ClassAttendanceRecord,
-  TheWellAttendanceRecord,
-  SundayAttendanceRecord,
-  Class,
+  StudentAttendanceSummary,
+  User,
 } from '../../types/lms';
-import { getCourseDisplayName as defaultGetCourseDisplayName } from '../../utils/courseUtils';
-import {
-  calculateAllowedAbsences,
-  calculateClassScore,
-  calculateSaturdayScore,
-  calculateTheWellScore,
-  calculateSundayScore,
-  calculateOverallScore,
-  formatPercent,
-} from '../../utils/attendanceUtils';
-import { ResponsiveTable } from '../../components/ui/ResponsiveTable';
+import { formatPercent } from '../../utils/attendanceUtils';
+import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
 
 interface MyAttendanceViewProps {
   currentUser: User;
   courses: Course[];
   courseStudents: CourseStudent[];
-  classAttendance: ClassAttendanceRecord[];
-  theWellAttendance: TheWellAttendanceRecord[];
-  sundayAttendance: SundayAttendanceRecord[];
-  settings: AttendanceSettings;
-  getCourseDisplayName?: (course: Course) => string;
+  getCourseSummaries: (courseId: number) => StudentAttendanceSummary[];
   loading?: boolean;
 }
 
-type MonthKey = string;
-
-type MonthEntry = {
-  year: number;
-  month: number;
-  key: MonthKey;
+const STATUS_CLASS = {
+  passing: 'bg-[#dcfce7] text-[#166534]',
+  at_risk: 'bg-[#fff7ed] text-[#c2410c]',
+  failing: 'bg-[#fee2e2] text-[#b91c1c]',
 };
 
-function monthKey(year: number, month: number): MonthKey {
-  return `${year}-${month}`;
-}
+const STATUS_LABEL = {
+  passing: 'Passing',
+  at_risk: 'At risk',
+  failing: 'Failing',
+};
 
-function getYearMonthFromDate(dateStr: string): { year: number; month: number } {
-  const d = new Date(dateStr);
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
-}
+const GATE_ICONS = {
+  classes: Calendar,
+  the_well: Activity,
+  ministry: Users,
+  activation: ShieldCheck,
+} as const;
 
-function buildMonthColumns(
-  course: Course,
-  studentId: string,
-  classAttendance: ClassAttendanceRecord[],
-  theWellAttendance: TheWellAttendanceRecord[],
-  sundayAttendance: SundayAttendanceRecord[]
-): MonthEntry[] {
-  const monthSet = new Map<MonthKey, { year: number; month: number }>();
-  const { regular, saturdays } = getCourseClasses(course);
-
-  for (const cls of [...regular, ...saturdays]) {
-    const { year, month } = getYearMonthFromDate(cls.date);
-    const key = monthKey(year, month);
-    monthSet.set(key, { year, month });
-  }
-
-  for (const r of theWellAttendance) {
-    if (r.studentId === studentId && r.courseId === course.id) {
-      const key = monthKey(r.year, r.month);
-      monthSet.set(key, { year: r.year, month: r.month });
-    }
-  }
-
-  for (const r of sundayAttendance) {
-    if (r.studentId === studentId && r.courseId === course.id) {
-      const key = monthKey(r.year, r.month);
-      monthSet.set(key, { year: r.year, month: r.month });
-    }
-  }
-
-  return Array.from(monthSet.values())
-    .sort((a, b) => a.year !== b.year ? a.year - b.year : a.month - b.month)
-    .map(({ year, month }) => ({
-      year,
-      month,
-      key: monthKey(year, month),
-    }));
-}
-
-function getCourseClasses(course: Course): { regular: Class[]; saturdays: Class[] } {
-  const all = course.subjects.flatMap(s => s.classes).filter(c => c.date);
-  return {
-    regular: all.filter(c => c.hour !== 'both'),
-    saturdays: all.filter(c => c.hour === 'both'),
-  };
-}
-
-function countAbsencesAndLate(
-  classIds: number[],
-  studentId: string,
-  records: ClassAttendanceRecord[]
-): number {
-  return records.filter(
-    r => r.studentId === studentId
-      && classIds.includes(r.classId)
-      && (r.status === 'absent' || r.status === 'late')
-  ).length;
-}
-
-function absenceCellClass(count: number, allowed: number): string {
-  if (count > allowed) return 'bg-red-50 text-red-700 font-medium';
-  if (allowed > 0 && count >= allowed) return 'bg-amber-50 text-amber-700 font-medium';
-  if (allowed > 1 && count >= allowed - 1) return 'bg-amber-50 text-amber-700 font-medium';
-  return 'bg-green-50 text-green-700 font-medium';
-}
-
-function attendanceCellClass(count: number, required: number): string {
-  if (count >= required) return 'bg-green-50 text-green-700 font-medium';
-  if (required > 1 && count === required - 1) return 'bg-amber-50 text-amber-700 font-medium';
-  if (count === 1 && required > 1) return 'bg-amber-50 text-amber-700 font-medium';
-  return 'bg-red-50 text-red-700 font-medium';
-}
-
-function overallStatusLabel(
-  overallScore: number,
-  graduationThreshold: number
-): { label: string; className: string; cardClass: string } {
-  if (overallScore >= graduationThreshold) {
-    return {
-      label: 'On Track ✓',
-      className: 'text-green-700',
-      cardClass: 'bg-green-50 border-green-200',
-    };
-  }
-  if (overallScore >= graduationThreshold - 0.1) {
-    return {
-      label: 'At Risk ⚠️',
-      className: 'text-amber-700',
-      cardClass: 'bg-amber-50 border-amber-200',
-    };
-  }
-  return {
-    label: 'Failing ✗',
-    className: 'text-red-700',
-    cardClass: 'bg-red-50 border-red-200',
-  };
-}
-
-function SectionHeaderRow({ label, colSpan }: { label: string; colSpan: number }) {
+function SectionCard({
+  children,
+  className = '',
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
   return (
-    <tr className="bg-amber-100">
-      <td
-        colSpan={colSpan}
-        className="px-2 sm:px-4 py-2 text-xs font-bold text-amber-900 uppercase tracking-wider"
-      >
-        {label}
-      </td>
-    </tr>
+    <section className={`rounded-xl border border-[#e5e5e5] bg-white ${className}`}>
+      {children}
+    </section>
   );
 }
 
-function DataRow({
-  label,
-  total,
-  cellClass,
-  valueFormat,
+function ScoreBar({ score }: { score: number }) {
+  const percent = Math.max(0, Math.min(100, Math.round(score * 100)));
+  const color = percent >= 80 ? 'bg-[#16a34a]' : percent >= 65 ? 'bg-[#ea580c]' : 'bg-[#dc2626]';
+  return (
+    <div className="min-w-[104px]">
+      <span className="text-sm font-semibold text-[#171717]">{percent}%</span>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f5f5f5]">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${percent}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function GateCard({
+  gate,
+  children,
 }: {
-  label: string;
-  total: number | string;
-  cellClass?: string;
-  valueFormat?: (value: number) => string;
+  gate: AttendanceGateSummary;
+  children?: React.ReactNode;
 }) {
-  const displayTotal = typeof total === 'number' && valueFormat ? valueFormat(total) : total;
+  const Icon = GATE_ICONS[gate.key];
 
   return (
-    <tr className="border-b border-gray-100">
-      <td className="px-2 sm:px-4 py-2 text-sm font-medium text-gray-700 whitespace-nowrap">
-        {label}
-      </td>
-      <td className={`px-2 sm:px-4 py-2 text-sm text-center font-semibold text-gray-900 whitespace-nowrap ${cellClass ?? ''}`}>
-        {displayTotal}
-      </td>
-    </tr>
+    <SectionCard className="p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-[#f5f5f5] text-[#525252]">
+            <Icon className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#171717]">{gate.label}</p>
+            <p className="mt-1 text-xs text-[#737373]">{gate.detail}</p>
+            {gate.fallbackDetail && (
+              <p className="mt-1 text-xs text-[#a3a3a3]">{gate.fallbackDetail}</p>
+            )}
+          </div>
+        </div>
+        <span className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CLASS[gate.status]}`}>
+          {STATUS_LABEL[gate.status]}
+        </span>
+      </div>
+
+      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+        <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Credits</p>
+          <p className="mt-1 text-lg font-semibold text-[#171717]">
+            {gate.earnedCredits.toFixed(1)}
+            <span className="text-sm font-medium text-[#737373]"> / {gate.requiredCredits.toFixed(1)}</span>
+          </p>
+        </div>
+        <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Score</p>
+          <div className="mt-1">
+            <ScoreBar score={gate.score} />
+          </div>
+        </div>
+      </div>
+
+      {children ? <div className="mt-4 border-t border-[#e5e5e5] pt-4">{children}</div> : null}
+    </SectionCard>
+  );
+}
+
+function StatPill({
+  label,
+  value,
+  detail,
+  icon: Icon,
+  accent,
+}: {
+  label: string;
+  value: string | number;
+  detail: string;
+  icon: typeof Activity;
+  accent: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+      <div className="flex items-center justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
+          <p className="mt-1 text-2xl font-semibold leading-none text-[#171717]">{value}</p>
+          <p className="mt-1 text-xs text-[#737373]">{detail}</p>
+        </div>
+        <span className={`grid h-10 w-10 place-items-center rounded-xl ${accent}`}>
+          <Icon className="h-5 w-5" />
+        </span>
+      </div>
+    </div>
   );
 }
 
@@ -190,247 +154,224 @@ export function MyAttendanceView({
   currentUser,
   courses,
   courseStudents,
-  classAttendance,
-  theWellAttendance,
-  sundayAttendance,
-  settings,
-  getCourseDisplayName = defaultGetCourseDisplayName,
+  getCourseSummaries,
   loading,
 }: MyAttendanceViewProps) {
-  const myCourses = useMemo(() => {
-    const enrolledIds = courseStudents
-      .filter(cs => cs.studentId === currentUser.id)
-      .map(cs => cs.courseId);
-    return courses.filter(c => enrolledIds.includes(c.id));
-  }, [courseStudents, currentUser.id, courses]);
-
-  const [selectedCourseId, setSelectedCourseId] = useState(
-    () => myCourses[0]?.id ?? 0
+  const { myCourses, selectedCourse, setSelectedCourseId } = useStudentCourseSelection(
+    currentUser.id,
+    courses,
+    courseStudents
   );
 
-  const selectedCourse = myCourses.find(c => c.id === selectedCourseId) ?? myCourses[0];
-
-  const tableData = useMemo(() => {
+  const summary = useMemo(() => {
     if (!selectedCourse) return null;
+    return getCourseSummaries(selectedCourse.id).find(item => item.studentId === currentUser.id) ?? null;
+  }, [currentUser.id, getCourseSummaries, selectedCourse]);
 
-    const months = buildMonthColumns(
-      selectedCourse,
-      currentUser.id,
-      classAttendance,
-      theWellAttendance,
-      sundayAttendance
-    );
-
-    const { regular, saturdays } = getCourseClasses(selectedCourse);
-
-    const myClassAtt = classAttendance.filter(
-      a => a.studentId === currentUser.id
-        && regular.some(c => c.id === a.classId)
-    );
-    const mySatAtt = classAttendance.filter(
-      a => a.studentId === currentUser.id
-        && saturdays.some(c => c.id === a.classId)
-    );
-    const myWell = theWellAttendance.filter(
-      a => a.studentId === currentUser.id && a.courseId === selectedCourse.id
-    );
-    const mySunday = sundayAttendance.filter(
-      a => a.studentId === currentUser.id && a.courseId === selectedCourse.id
-    );
-
-    const classScore = calculateClassScore(myClassAtt, regular.length, settings);
-    const satScore = calculateSaturdayScore(mySatAtt, saturdays.length, settings);
-    const totalWellScore = calculateTheWellScore(myWell, settings);
-    const sunScore = calculateSundayScore(mySunday, settings);
-    const overallScore = calculateOverallScore(classScore, satScore, totalWellScore, sunScore);
-
-    const totalClassAbsencesLate = countAbsencesAndLate(
-      regular.map(c => c.id),
-      currentUser.id,
-      classAttendance
-    );
-    const totalClassAllowed = calculateAllowedAbsences(regular.length, settings);
-    const totalSatAbsencesLate = countAbsencesAndLate(
-      saturdays.map(c => c.id),
-      currentUser.id,
-      classAttendance
-    );
-    const totalSatAllowed = calculateAllowedAbsences(saturdays.length, settings);
-    const totalWellAttendance = myWell.reduce(
-      (sum, r) => sum + r.timesAttended + r.timesLate * settings.lateWellWeight,
-      0
-    );
-    const totalWellReq = settings.theWellRequiredPerMonth * months.length;
-    const totalSundayAtt = mySunday.reduce((sum, r) => sum + r.timesServed, 0);
-    const totalSundayReq = settings.sundayRequiredPerMonth * months.length;
-
-    return {
-      monthCount: months.length,
-      totalClassAbsencesLate,
-      totalClassAllowed,
-      totalSatAbsencesLate,
-      totalSatAllowed,
-      totalWellAttendance,
-      totalWellReq,
-      totalWellScore,
-      totalSundayAtt,
-      totalSundayReq,
-      overallScore,
-    };
-  }, [
-    selectedCourse,
-    currentUser.id,
-    classAttendance,
-    theWellAttendance,
-    sundayAttendance,
-    settings,
-  ]);
+  const passingGates = summary?.gates.filter(gate => gate.status === 'passing').length ?? 0;
+  const gateCount = summary?.gates.length ?? 0;
 
   if (myCourses.length === 0) {
     return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">No course enrollment found.</p>
+      <div className="grid place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-6 py-16 text-center">
+        <p className="text-sm font-medium text-[#171717]">No active course enrollment found.</p>
+        <p className="mt-1 text-sm text-[#737373]">Attendance will appear here once you are enrolled.</p>
       </div>
     );
   }
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <h2 className="text-2xl font-bold text-gray-900">My Attendance</h2>
-        <p className="text-sm text-gray-500">Loading attendance…</p>
+      <div className="space-y-5">
+        <MyAttendancePageHeader
+          title="Attendance overall"
+          course={selectedCourse}
+          courses={myCourses}
+          onSelect={setSelectedCourseId}
+        />
+        <SectionCard className="p-8 text-center text-sm text-[#737373]">Loading attendance…</SectionCard>
       </div>
     );
   }
 
-  if (!selectedCourse || !tableData) {
-    return null;
+  if (!selectedCourse || !summary) {
+    return (
+      <div className="space-y-5">
+        <MyAttendancePageHeader
+          title="Attendance overall"
+          course={selectedCourse}
+          courses={myCourses}
+          onSelect={setSelectedCourseId}
+        />
+        <SectionCard className="p-8 text-center text-sm text-[#737373]">
+          No attendance records yet for this course.
+        </SectionCard>
+      </div>
+    );
   }
 
-  const status = overallStatusLabel(tableData.overallScore, settings.graduationThreshold);
-  const colSpan = 2;
+  const classesGate = summary.gates.find(gate => gate.key === 'classes');
+  const wellGate = summary.gates.find(gate => gate.key === 'the_well');
+  const ministryGate = summary.gates.find(gate => gate.key === 'ministry');
+  const activationGate = summary.gates.find(gate => gate.key === 'activation');
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center sm:justify-between gap-3 sm:gap-4">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900">My Attendance</h2>
-        {myCourses.length > 1 && (
-          <select
-            value={selectedCourse.id}
-            onChange={e => setSelectedCourseId(Number(e.target.value))}
-            className="w-full sm:w-auto px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-amber-500 focus:border-amber-500"
-            aria-label="Select course"
-          >
-            {myCourses.map(course => (
-              <option key={course.id} value={course.id}>
-                {getCourseDisplayName(course)}
-              </option>
-            ))}
-          </select>
+    <div className="space-y-5">
+      <MyAttendancePageHeader
+        title="Attendance overall"
+        course={selectedCourse}
+        courses={myCourses}
+        onSelect={setSelectedCourseId}
+      />
+
+      <SectionCard className="overflow-hidden">
+        <div className="grid gap-px bg-[#e5e5e5] lg:grid-cols-[1fr_auto]">
+          <div className="bg-white p-5">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Overall result</p>
+            <div className="mt-3 flex flex-wrap items-end gap-4">
+              <p className="text-4xl font-semibold leading-none text-[#171717]">
+                {formatPercent(summary.overallScore)}
+              </p>
+              <span
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
+                  summary.meetsGraduationThreshold
+                    ? 'bg-[#dcfce7] text-[#166534]'
+                    : 'bg-[#fee2e2] text-[#b91c1c]'
+                }`}
+              >
+                {summary.meetsGraduationThreshold ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <ClipboardList className="h-4 w-4" />
+                )}
+                {summary.meetsGraduationThreshold ? 'Meets all gates' : 'Needs review'}
+              </span>
+            </div>
+            <p className="mt-3 max-w-2xl text-sm text-[#525252]">
+              You must pass every gate to meet graduation attendance requirements.
+              {passingGates < gateCount
+                ? ` ${gateCount - passingGates} gate${gateCount - passingGates === 1 ? '' : 's'} still need attention.`
+                : ' All tracked gates are currently passing.'}
+            </p>
+          </div>
+          <div className="flex items-center justify-center bg-white p-5 lg:min-w-[220px]">
+            <div
+              className="grid h-28 w-28 place-items-center rounded-full"
+              style={{
+                background: `conic-gradient(${
+                  summary.meetsGraduationThreshold ? '#16a34a' : '#ea580c'
+                } ${Math.round(summary.overallScore * 100) * 3.6}deg, #f5f5f5 0deg)`,
+              }}
+            >
+              <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
+                <span className="text-lg font-semibold text-[#171717]">{passingGates}/{gateCount}</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#737373]">gates</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </SectionCard>
+
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <StatPill
+          label="Classes"
+          value={formatPercent(summary.classAttendanceScore)}
+          detail={`${summary.classesPresent} present · ${summary.classesAbsent} absent`}
+          icon={Calendar}
+          accent="bg-[#dbeaff] text-[#2563eb]"
+        />
+        <StatPill
+          label="The Well"
+          value={formatPercent(summary.theWellScore)}
+          detail={`${summary.theWellMonthsTracked} month${summary.theWellMonthsTracked === 1 ? '' : 's'} tracked`}
+          icon={Activity}
+          accent="bg-[#dcfce7] text-[#16a34a]"
+        />
+        <StatPill
+          label="Ministry"
+          value={formatPercent(summary.ministryScore)}
+          detail={ministryGate?.detail ?? 'Service credits'}
+          icon={Users}
+          accent="bg-[#f3e8ff] text-[#7c3aed]"
+        />
+        <StatPill
+          label="Activation"
+          value={formatPercent(summary.saturdayAttendanceScore)}
+          detail={`${summary.saturdaysPresent + summary.saturdaysLate + summary.saturdaysAbsent} sessions tracked`}
+          icon={ShieldCheck}
+          accent="bg-[#fff7ed] text-[#ea580c]"
+        />
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        {classesGate && (
+          <GateCard gate={classesGate}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                ['Planned', summary.totalClasses],
+                ['Present', summary.classesPresent],
+                ['Late', summary.classesLate],
+                ['Absent', summary.classesAbsent],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#737373]">{label}</p>
+                  <p className="mt-1 text-lg font-semibold text-[#171717]">{value}</p>
+                </div>
+              ))}
+            </div>
+          </GateCard>
+        )}
+
+        {wellGate && (
+          <GateCard gate={wellGate}>
+            <p className="text-sm text-[#525252]">
+              Monthly Well attendance is tracked across {summary.theWellMonthsTracked} month
+              {summary.theWellMonthsTracked === 1 ? '' : 's'} for this course.
+            </p>
+          </GateCard>
+        )}
+
+        {ministryGate && (
+          <GateCard gate={ministryGate}>
+            <p className="text-sm text-[#525252]">
+              Ministry credit is based on your team rotation and marked service attendance.
+            </p>
+          </GateCard>
+        )}
+
+        {activationGate && (
+          <GateCard gate={activationGate}>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {[
+                ['Planned', summary.totalSaturdays],
+                ['Present', summary.saturdaysPresent],
+                ['Late', summary.saturdaysLate],
+                ['Absent', summary.saturdaysAbsent],
+              ].map(([label, value]) => (
+                <div key={label} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
+                  <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#737373]">{label}</p>
+                  <p className="mt-1 text-lg font-semibold text-[#171717]">{value}</p>
+                </div>
+              ))}
+            </div>
+          </GateCard>
         )}
       </div>
 
-      {myCourses.length === 1 && (
-        <p className="text-sm text-gray-600">{getCourseDisplayName(selectedCourse)}</p>
-      )}
-
-      <div className="flex flex-col lg:flex-row lg:items-start gap-6">
-        <div className="flex-1 min-w-0">
-          <ResponsiveTable scrollHint={false}>
-            <div className="bg-white rounded-lg shadow border border-gray-200 overflow-x-auto">
-              <table className="min-w-full text-sm">
-                <thead>
-                  <tr className="border-b border-gray-200 bg-gray-50">
-                    <th className="px-2 sm:px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50">
-                      Category
-                    </th>
-                    <th className="px-2 sm:px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider whitespace-nowrap">
-                      Total
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                <SectionHeaderRow label="Sessions" colSpan={colSpan} />
-                <DataRow
-                  label="Absences + Late"
-                  total={tableData.totalClassAbsencesLate}
-                  cellClass={absenceCellClass(
-                    tableData.totalClassAbsencesLate,
-                    tableData.totalClassAllowed
-                  )}
-                />
-                <DataRow
-                  label="Allowed"
-                  total={tableData.totalClassAllowed}
-                />
-
-                <SectionHeaderRow label="The Well" colSpan={colSpan} />
-                <DataRow
-                  label="Attendance"
-                  total={tableData.totalWellAttendance}
-                  cellClass={attendanceCellClass(
-                    tableData.totalWellAttendance,
-                    tableData.totalWellReq
-                  )}
-                />
-                <DataRow
-                  label="Required"
-                  total={tableData.totalWellReq}
-                />
-
-                <SectionHeaderRow label="Activation Saturday" colSpan={colSpan} />
-                <DataRow
-                  label="Absences + Late"
-                  total={tableData.totalSatAbsencesLate}
-                  cellClass={absenceCellClass(
-                    tableData.totalSatAbsencesLate,
-                    tableData.totalSatAllowed
-                  )}
-                />
-                <DataRow
-                  label="Allowed"
-                  total={tableData.totalSatAllowed}
-                />
-
-                <SectionHeaderRow label="Sunday" colSpan={colSpan} />
-                <DataRow
-                  label="Attendance"
-                  total={tableData.totalSundayAtt}
-                  cellClass={attendanceCellClass(
-                    tableData.totalSundayAtt,
-                    tableData.totalSundayReq
-                  )}
-                />
-                <DataRow
-                  label="Required"
-                  total={tableData.totalSundayReq}
-                />
-              </tbody>
-            </table>
-
-            {tableData.monthCount === 0 && (
-              <p className="px-4 py-8 text-center text-gray-500">
-                No attendance data recorded yet.
+      {summary.sundayMonthsTracked > 0 && (
+        <SectionCard className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#171717]">Sunday ministry attendance</p>
+              <p className="mt-1 text-sm text-[#737373]">
+                Tracked separately across {summary.sundayMonthsTracked} month
+                {summary.sundayMonthsTracked === 1 ? '' : 's'}.
               </p>
-            )}
             </div>
-          </ResponsiveTable>
-        </div>
-
-        <div className={`rounded-lg border p-6 shrink-0 w-full lg:w-72 xl:w-80 ${status.cardClass}`}>
-          <p className="text-sm font-medium text-gray-600 mb-1">Overall Attendance</p>
-          <p className="text-4xl font-bold text-gray-900 mb-2">
-            {formatPercent(tableData.overallScore)}
-          </p>
-          <p className={`text-lg font-semibold mb-3 ${status.className}`}>
-            {status.label}
-          </p>
-          <p className="text-sm text-gray-700">
-            You need {Math.round(settings.graduationThreshold * 100)}% to graduate.
-            Your current score is {formatPercent(tableData.overallScore)}.
-          </p>
-        </div>
-      </div>
+            <ScoreBar score={summary.sundayScore} />
+          </div>
+        </SectionCard>
+      )}
     </div>
   );
 }

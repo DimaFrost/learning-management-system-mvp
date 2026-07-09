@@ -4,6 +4,9 @@ import type {
   AttendanceSettings,
   AttendanceStatus,
   DutyScheduleEntry,
+  PrayerScheduleEntry,
+  PrayerScheduleGenerateOptions,
+  WellScheduleEntry,
   DutyTransferRequest,
   ClassAttendanceRecord,
   TheWellAttendanceRecord,
@@ -26,6 +29,9 @@ import {
   dateToString,
   getCurrentWeekStart,
   generateDutyRotation,
+  generatePrayerSchedule,
+  getSchoolYearWeeks,
+  getWellDateForWeek,
   getWeeksBetween,
   calculateClassScore,
   calculateSaturdayScore,
@@ -37,6 +43,7 @@ import {
   getYearMonthFromWeekStart,
   isActivationSaturdayClass,
 } from '../utils/attendanceUtils';
+import { isCourseActive } from '../utils/courseUtils';
 
 type SupabaseProfileJoin =
   | { id: string; name: string; email?: string | null; avatar_url?: string | null }
@@ -182,6 +189,8 @@ export function useAttendance(
 ) {
   const [settings, setSettings] = useState<AttendanceSettings>(DEFAULT_ATTENDANCE_SETTINGS);
   const [dutySchedule, setDutySchedule] = useState<DutyScheduleEntry[]>([]);
+  const [prayerSchedule, setPrayerSchedule] = useState<PrayerScheduleEntry[]>([]);
+  const [wellSchedule, setWellSchedule] = useState<WellScheduleEntry[]>([]);
   const [transferRequests, setTransferRequests] =
     useState<DutyTransferRequest[]>([]);
   const [classAttendance, setClassAttendance] =
@@ -206,7 +215,7 @@ export function useAttendance(
     setLoading(true);
     setError(null);
     try {
-      const [settingsRes, dutyRes, transferRes,
+      const [settingsRes, dutyRes, prayerRes, wellScheduleRes, transferRes,
         classAttRes, wellRes, wellSessionRes, sundayRes,
         ministryTeamsRes, ministryMembersRes, ministryRotationsRes, ministrySessionsRes, ministryAttendanceRes] = await Promise.all([
         supabase.from('attendance_settings').select('*').single(),
@@ -214,6 +223,12 @@ export function useAttendance(
           id, course_id, student_id, week_start, week_end, status,
           student:profiles!student_id(id, name)
         `).order('week_start', { ascending: true }),
+        supabase.from('prayer_schedule').select(`
+          id, week_start, week_end, tuesday_student_id, thursday_student_id
+        `).order('week_start', { ascending: true }),
+        supabase.from('well_schedule').select(`
+          id, course_id, week_start, well_date
+        `).order('well_date', { ascending: true }),
         supabase.from('duty_transfer_requests').select(`
           id, duty_schedule_id, from_student_id, to_student_id,
           course_id, week_start, reason, status, requested_at,
@@ -229,14 +244,14 @@ export function useAttendance(
         supabase.from('the_well_session_attendance').select('*'),
         supabase.from('sunday_attendance').select('*'),
         supabase.from('ministry_teams').select(`
-          id, name, name_bg, info, leader_id, contact_name, contact_phone,
+          id, name, name_bg, info, leader_id,
           call_time, service_type, service_day, required_credits,
           requirement_period_months, requirement_unit, active, created_at, updated_at,
           leader:profiles!leader_id(id, name)
         `).order('name', { ascending: true }),
         supabase.from('ministry_team_members').select(`
           id, team_id, user_id, role, can_submit_reports, active, created_at, updated_at,
-          user:profiles!user_id(id, name, email, avatar_url)
+          user:profiles!user_id(id, name, email, phone, avatar_url)
         `).order('created_at', { ascending: true }),
         supabase.from('ministry_rotations').select(`
           id, course_id, student_id, team_id, start_date, end_date,
@@ -257,6 +272,8 @@ export function useAttendance(
         throw settingsRes.error;
       }
       if (dutyRes.error) throw dutyRes.error;
+      if (prayerRes.error && prayerRes.error.code !== '42P01') throw prayerRes.error;
+      if (wellScheduleRes.error && wellScheduleRes.error.code !== '42P01') throw wellScheduleRes.error;
       if (transferRes.error) throw transferRes.error;
       if (classAttRes.error) throw classAttRes.error;
       if (wellRes.error) throw wellRes.error;
@@ -288,6 +305,27 @@ export function useAttendance(
         weekStart: row.week_start,
         weekEnd: row.week_end,
         status: row.status,
+      })));
+
+      setPrayerSchedule((prayerRes.error?.code === '42P01' ? [] : prayerRes.data ?? []).map(row => {
+        const tuesdayStudent = users.find(user => user.id === row.tuesday_student_id);
+        const thursdayStudent = users.find(user => user.id === row.thursday_student_id);
+        return {
+          id: row.id,
+          weekStart: row.week_start,
+          weekEnd: row.week_end,
+          tuesdayStudentId: row.tuesday_student_id,
+          tuesdayStudentName: tuesdayStudent?.name ?? null,
+          thursdayStudentId: row.thursday_student_id,
+          thursdayStudentName: thursdayStudent?.name ?? null,
+        };
+      }));
+
+      setWellSchedule((wellScheduleRes.error?.code === '42P01' ? [] : wellScheduleRes.data ?? []).map(row => ({
+        id: row.id,
+        courseId: row.course_id,
+        weekStart: row.week_start,
+        wellDate: row.well_date,
       })));
 
       setTransferRequests((transferRes.data ?? []).map(row => ({
@@ -363,6 +401,7 @@ export function useAttendance(
             userId: row.user_id,
             userName: user?.name ?? 'Unknown user',
             userEmail: user?.email ?? null,
+            userPhone: user?.phone ?? null,
             userAvatarUrl: user?.avatar_url ?? null,
             role: row.role,
             canSubmitReports: row.can_submit_reports,
@@ -384,8 +423,6 @@ export function useAttendance(
               leaderId: row.leader_id,
               leaderName: reportMembers.map(member => member.userName).join(', ') || profileName(row.leader),
               members,
-              contactName: row.contact_name,
-              contactPhone: row.contact_phone,
               callTime: row.call_time,
               serviceType: row.service_type,
               serviceDay: row.service_day,
@@ -447,7 +484,7 @@ export function useAttendance(
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [users]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
@@ -455,6 +492,16 @@ export function useAttendance(
   // DERIVED: CURRENT DUTY (this week)
   // ============================================
   const currentWeekStart = getCurrentWeekStart();
+
+  // Re-map prayer names when users load after schedule rows.
+  useEffect(() => {
+    setPrayerSchedule(prev => prev.map(entry => ({
+      ...entry,
+      tuesdayStudentName: users.find(user => user.id === entry.tuesdayStudentId)?.name ?? entry.tuesdayStudentName,
+      thursdayStudentName: users.find(user => user.id === entry.thursdayStudentId)?.name ?? entry.thursdayStudentName,
+    })));
+  }, [users]);
+
   const currentDuty = dutySchedule.filter(
     d => d.weekStart === currentWeekStart && d.status === 'active'
   );
@@ -519,6 +566,96 @@ export function useAttendance(
     const { error: updateError } = await supabase
       .from('duty_schedule')
       .update({ student_id: newStudentId })
+      .eq('id', entryId);
+    if (updateError) throw updateError;
+    await fetchAll();
+  };
+
+  const generatePrayerScheduleForSchoolYear = async (
+    options: PrayerScheduleGenerateOptions
+  ): Promise<void> => {
+    if (!options.includeFirstYear && !options.includeSecondYear) return;
+
+    const selectedCourses = courses.filter(course => {
+      if (!isCourseActive(course)) return false;
+      if (course.courseType === 'first_year') return options.includeFirstYear;
+      if (course.courseType === 'second_year') return options.includeSecondYear;
+      return false;
+    });
+    const weeks = getSchoolYearWeeks(selectedCourses);
+    if (weeks.length === 0) return;
+
+    const selectedCourseIds = new Set(selectedCourses.map(course => course.id));
+    const enrolledStudentIds = new Set<string>();
+    for (const enrollment of courseStudents) {
+      if (selectedCourseIds.has(enrollment.courseId)) {
+        enrolledStudentIds.add(enrollment.studentId);
+      }
+    }
+
+    const students = sortByFirstName(
+      users.filter(user => enrolledStudentIds.has(user.id) && user.roles.includes('student'))
+    );
+    if (students.length === 0) return;
+
+    const studentIds = students.map(student => student.id);
+    const thursdayOffset = studentIds.length > 1 ? 1 : 0;
+    const rotation = generatePrayerSchedule(studentIds, weeks, 0, thursdayOffset);
+
+    const rows = rotation.map(row => ({
+      week_start: row.weekStart,
+      week_end: dateToString(getWeekEnd(new Date(row.weekStart))),
+      tuesday_student_id: row.tuesdayStudentId,
+      thursday_student_id: row.thursdayStudentId,
+    }));
+
+    const { error: deleteError } = await supabase.from('prayer_schedule').delete().gte('id', 0);
+    if (deleteError) throw deleteError;
+
+    for (let i = 0; i < rows.length; i += 50) {
+      const { error: insertError } = await supabase.from('prayer_schedule').insert(rows.slice(i, i + 50));
+      if (insertError) throw insertError;
+    }
+
+    await fetchAll();
+  };
+
+  const generateWellScheduleForCourse = async (courseId: number): Promise<void> => {
+    const course = courses.find(item => item.id === courseId);
+    if (!course || !isCourseActive(course)) return;
+
+    const weeks = getWeeksBetween(course.startDate, course.endDate);
+    const rows = weeks.map(weekStart => ({
+      course_id: courseId,
+      week_start: weekStart,
+      well_date: getWellDateForWeek(weekStart),
+    }));
+
+    const { error: deleteError } = await supabase
+      .from('well_schedule')
+      .delete()
+      .eq('course_id', courseId);
+    if (deleteError) throw deleteError;
+
+    for (let i = 0; i < rows.length; i += 50) {
+      const { error: insertError } = await supabase.from('well_schedule').insert(rows.slice(i, i + 50));
+      if (insertError) throw insertError;
+    }
+
+    await fetchAll();
+  };
+
+  const updatePrayerAssignment = async (
+    entryId: number,
+    updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }
+  ): Promise<void> => {
+    const payload: Record<string, string | null> = {};
+    if (updates.tuesdayStudentId !== undefined) payload.tuesday_student_id = updates.tuesdayStudentId;
+    if (updates.thursdayStudentId !== undefined) payload.thursday_student_id = updates.thursdayStudentId;
+
+    const { error: updateError } = await supabase
+      .from('prayer_schedule')
+      .update(payload)
       .eq('id', entryId);
     if (updateError) throw updateError;
     await fetchAll();
@@ -722,8 +859,6 @@ export function useAttendance(
       name_bg: input.nameBg ?? null,
       info: input.info ?? null,
       leader_id: primaryLeaderId,
-      contact_name: input.contactName ?? null,
-      contact_phone: input.contactPhone ?? null,
       call_time: input.callTime ?? null,
       service_type: input.serviceType ?? 'sunday',
       service_day: input.serviceDay ?? (input.serviceType === 'non_sunday' ? null : 0),
@@ -1114,13 +1249,15 @@ export function useAttendance(
     ministryAttendance, ministryTeams, settings]);
 
   return {
-    settings, dutySchedule, transferRequests,
+    settings, dutySchedule, prayerSchedule, wellSchedule, transferRequests,
     classAttendance, theWellAttendance, theWellSessionAttendance, sundayAttendance,
     ministryTeams, ministryRotations, ministrySessions, ministryAttendance,
     loading, error,
     currentDuty, myCurrentDuty, isOnDuty,
     pendingTransferRequests,
     generateDutyScheduleForCourse, updateDutyAssignment,
+    generatePrayerScheduleForSchoolYear, updatePrayerAssignment,
+    generateWellScheduleForCourse,
     requestDutyTransfer, resolveTransferRequest,
     markClassAttendance, markWellSessionAttendance,
     upsertTheWellAttendance: upsertTheWellAttendanceWithRefetch,

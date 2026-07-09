@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import type { EditingItem, User, UserRole } from './types/lms';
-import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions } from './utils/courseUtils';
+import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions, getTodayDateString } from './utils/courseUtils';
+import { getUserAccessStatus } from './utils/userManagementUtils';
+import { buildScheduleTodosForStudent } from './utils/scheduleTodos';
 import { checkDoubleBooking } from './utils/scheduling';
 import { useConfirmation } from './hooks/useConfirmation';
 import { useNavigation } from './hooks/useNavigation';
@@ -117,7 +119,31 @@ export function AuthenticatedApp({
     announcement => announcement.status === 'draft' &&
       (announcement.authorId === effectiveUser.id || effectiveUser.roles.includes('administrator'))
   ).length;
-  const todoTodayCount = todos.todosToday.length;
+  const pendingUserCount = useMemo(
+    () => users.filter(user => getUserAccessStatus(user) === 'pending').length,
+    [users]
+  );
+  const scheduleTodos = useMemo(
+    () => (
+      effectiveUser.roles.includes('student')
+        ? buildScheduleTodosForStudent(
+          effectiveUser,
+          attendance.dutySchedule,
+          attendance.prayerSchedule
+        )
+        : []
+    ),
+    [attendance.dutySchedule, attendance.prayerSchedule, effectiveUser]
+  );
+  const displayTodos = useMemo(
+    () => [...scheduleTodos, ...todos.todos],
+    [scheduleTodos, todos.todos]
+  );
+  const displayTodosToday = useMemo(() => {
+    const today = getTodayDateString();
+    return displayTodos.filter(todo => todo.status === 'open' && todo.dueDate <= today);
+  }, [displayTodos]);
+  const todoTodayCount = displayTodosToday.length;
   const nextScheduledDuty = attendance.dutySchedule
     .filter(
       d => d.studentId === effectiveUser.id
@@ -267,6 +293,7 @@ export function AuthenticatedApp({
           totalUnread={totalUnread}
           announcementDraftCount={announcementDraftCount}
           todoTodayCount={todoTodayCount}
+          pendingUserCount={pendingUserCount}
           isOnDuty={effectiveIsOnDuty}
           activeWorkspace={selectedWorkspace}
           mode={sidebarMode}
@@ -326,8 +353,8 @@ export function AuthenticatedApp({
               addAttachment={addAttachment}
               deleteAttachment={deleteAttachment}
               toggleReaction={toggleReaction}
-              todos={todos.todos}
-              todosToday={todos.todosToday}
+              todos={displayTodos}
+              todosToday={displayTodosToday}
               todosLoading={todos.loading}
               todosError={todos.error}
               todoAssignableUsers={todos.assignableUsers}

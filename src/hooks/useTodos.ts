@@ -379,7 +379,7 @@ export function useTodos(
 
   const todayKey = getTodayKey();
   const todosToday = useMemo(
-    () => todos.filter(todo => todo.status === 'open' && todo.dueDate === todayKey),
+    () => todos.filter(todo => todo.status === 'open' && todo.dueDate <= todayKey),
     [todos, todayKey]
   );
   const openCount = useMemo(

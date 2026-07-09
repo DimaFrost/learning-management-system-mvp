@@ -3,7 +3,6 @@ import {
   MessageSquare,
   Clock,
   GraduationCap,
-  Phone,
   Users,
   Edit3,
 } from 'lucide-react';
@@ -145,35 +144,23 @@ export function MentorDashboard({
         </div>
       </div>
 
-      {/* Current Cadence Requirements */}
+      {/* In-person meeting expectations */}
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Current Cadence Requirements</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex items-center gap-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="w-12 h-12 bg-blue-500 rounded-lg flex items-center justify-center">
-              <Phone className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h4 className="font-medium text-blue-900">Digital Check-ins</h4>
-              <p className="text-sm text-blue-700">
-                Expected: Every {cadenceSettings.digital.expectedDays} days |
-                Warning: {cadenceSettings.digital.warningDays}+ days |
-                Critical: {cadenceSettings.digital.criticalDays}+ days
-              </p>
-            </div>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">In-Person Meeting Expectations</h3>
+        <p className="text-sm text-gray-600 mb-4">
+          Follow-up status is based on face-to-face meetings. Digital check-ins are optional and do not affect at-risk flags.
+        </p>
+        <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg max-w-xl">
+          <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
+            <Users className="w-6 h-6 text-white" />
           </div>
-          <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-            <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-              <Users className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h4 className="font-medium text-green-900">In-Person Check-ins</h4>
-              <p className="text-sm text-green-700">
-                Expected: Every {cadenceSettings.inPerson.expectedDays} days |
-                Warning: {cadenceSettings.inPerson.warningDays}+ days |
-                Critical: {cadenceSettings.inPerson.criticalDays}+ days
-              </p>
-            </div>
+          <div>
+            <h4 className="font-medium text-green-900">In-Person Meetings</h4>
+            <p className="text-sm text-green-700">
+              Expected: Every {cadenceSettings.inPerson.expectedDays} days |
+              Warning: {cadenceSettings.inPerson.warningDays}+ days |
+              Critical: {cadenceSettings.inPerson.criticalDays}+ days
+            </p>
           </div>
         </div>
       </div>

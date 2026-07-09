@@ -907,8 +907,11 @@ export function AdminDashboard({
   const openTodos = todos.filter(todo => todo.status === 'open');
   const todoPreview = [...todosToday]
     .sort((a, b) => {
+      const aOverdue = a.dueDate < todayKey;
+      const bOverdue = b.dueDate < todayKey;
+      if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
       if (a.priority !== b.priority) return a.priority === 'priority' ? -1 : 1;
-      return a.createdAt.localeCompare(b.createdAt);
+      return a.dueDate.localeCompare(b.dueDate);
     })
     .slice(0, 2);
   const currentDutyRows = attendance.dutySchedule.filter(
@@ -997,7 +1000,7 @@ export function AdminDashboard({
       progressValue: mentorCoverage,
       progressLabel: `${mentorCoverage}% student coverage`,
       actionLabel: 'Open mentorship',
-      view: 'mentorship',
+      view: 'mentorship-overview',
       tone: 'green',
     },
     {
@@ -1265,36 +1268,45 @@ export function AdminDashboard({
                         <CheckCircle2 className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[#171717]">No to-dos due today</p>
+                        <p className="text-xs font-semibold text-[#171717]">All caught up for today</p>
                         <p className="text-[11px] text-[#15803d]">Open the board to plan ahead.</p>
                       </div>
                     </button>
                   ) : (
-                    todoPreview.map(todo => (
+                    todoPreview.map(todo => {
+                      const overdue = todo.dueDate < todayKey;
+                      return (
                       <button
                         key={todo.id}
                         type="button"
                         onClick={() => onNavigate('todos')}
                         className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
-                          todo.priority === 'priority'
+                          overdue
                             ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
-                            : 'border-[#bfdbfe] hover:bg-[#eff6ff]'
+                            : todo.priority === 'priority'
+                              ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
+                              : 'border-[#bfdbfe] hover:bg-[#eff6ff]'
                         }`}
                         title={todo.title}
                       >
                         <span className={`grid h-5 w-5 flex-shrink-0 place-items-center rounded-full ${
-                          todo.priority === 'priority'
-                            ? 'bg-[#fff7ed] text-[#ea580c]'
-                            : 'bg-[#eff6ff] text-[#2563eb]'
+                          overdue
+                            ? 'bg-[#fff7ed] text-[#c2410c]'
+                            : todo.priority === 'priority'
+                              ? 'bg-[#fff7ed] text-[#ea580c]'
+                              : 'bg-[#eff6ff] text-[#2563eb]'
                         }`}>
-                          {todo.priority === 'priority' ? <Sparkles className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3" />}
+                          {overdue ? <TrendingDown className="h-3 w-3" /> : todo.priority === 'priority' ? <Sparkles className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3" />}
                         </span>
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-[#171717]">{todo.title}</p>
-                          <p className="truncate text-[11px] text-[#737373]">{todo.assignedToName ?? 'Unassigned'}</p>
+                          <p className="truncate text-[11px] text-[#737373]">
+                            {overdue ? 'Overdue' : todo.assignedToName ?? 'Unassigned'}
+                          </p>
                         </div>
                       </button>
-                    ))
+                    );
+                    })
                   )}
                 </div>
               </div>
@@ -1689,7 +1701,7 @@ export function AdminDashboard({
         <SectionCard
           title="Mentorship Follow-Up"
           subtitle="Cadence and student care signals"
-          action={<GhostButton onClick={() => onNavigate('mentorship-management')}>Mentor Ops</GhostButton>}
+          action={<GhostButton onClick={() => onNavigate('mentorship-follow-up')}>Follow-up</GhostButton>}
         >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-[#e5e5e5] p-3">

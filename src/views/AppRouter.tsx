@@ -19,14 +19,17 @@ import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
 import { MyCourseView } from './student/MyCourseView';
+import { StudentDashboard } from './student/StudentDashboard';
 import { MyAttendanceView } from './student/MyAttendanceView';
+import { MyAttendanceBreakdownView } from './student/MyAttendanceBreakdownView';
+import { MyMinistryInfoView } from './student/MyMinistryInfoView';
 import { DutyMarkingView } from './student/DutyMarkingView';
 import { MyClassesView } from './teacher/MyClassesView';
+import { StaffDashboard } from './shared/StaffDashboard';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { CurriculumView } from './admin/CurriculumView';
-import { UsersView } from './admin/UsersView';
-import { MentorshipView } from './admin/MentorshipView';
-import { MentorshipManagement } from './admin/MentorshipManagement';
+import { UsersHubView } from './admin/users/UsersHubView';
+import { MentorshipHubView } from './admin/MentorshipHubView';
 import { AttendanceView } from './admin/AttendanceView';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { MinistryReportView } from './teamLeader/MinistryReportView';
@@ -360,20 +363,93 @@ export function AppRouter({
     );
   }
 
-  if (activeView === 'my-attendance') {
+  if (activeView === 'my-attendance' || activeView === 'my-attendance-overview') {
     return (
       <MyAttendanceView
         currentUser={currentUser}
         courses={courses}
         courseStudents={courseStudents}
+        getCourseSummaries={attendance.getCourseSummaries}
+        loading={attendance.loading}
+      />
+    );
+  }
+
+  if (activeView === 'my-attendance-breakdown') {
+    return (
+      <MyAttendanceBreakdownView
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
         classAttendance={attendance.classAttendance}
-        theWellAttendance={attendance.theWellAttendance}
-        sundayAttendance={attendance.sundayAttendance}
-        settings={attendance.settings}
+        theWellSessionAttendance={attendance.theWellSessionAttendance}
+        wellSchedule={attendance.wellSchedule}
+        ministryRotations={attendance.ministryRotations}
+        ministrySessions={attendance.ministrySessions}
+        ministryAttendance={attendance.ministryAttendance}
+        ministryTeams={attendance.ministryTeams}
+        loading={attendance.loading}
+      />
+    );
+  }
+
+  if (activeView === 'my-attendance-ministry') {
+    return (
+      <MyMinistryInfoView
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        ministryTeams={attendance.ministryTeams}
+        ministryRotations={attendance.ministryRotations}
         getCourseDisplayName={getCourseDisplayName}
         loading={attendance.loading}
       />
     );
+  }
+
+  if (hasRole('student') && activeWorkspace === 'student') {
+    if (activeView === 'my-course') {
+      return (
+        <MyCourseView
+          currentUser={currentUser}
+          courseStudents={courseStudents}
+          courses={courses}
+          mentorshipLogs={mentorshipLogs}
+          getUserById={getUserById}
+          getCourseDisplayName={getCourseDisplayName}
+          onOpenClass={openClassDetail}
+        />
+      );
+    }
+
+    if (activeView === 'dashboard') {
+      return (
+        <StudentDashboard
+          currentUser={currentUser}
+          courses={courses}
+          courseStudents={courseStudents}
+          mentorshipLogs={mentorshipLogs}
+          announcements={announcements}
+          conversations={conversations}
+          todos={todos}
+          todosToday={todosToday}
+          todosLoading={todosLoading}
+          users={users}
+          prayerSchedule={attendance.prayerSchedule}
+          dutySchedule={attendance.dutySchedule}
+          effectiveCurrentDuties={effectiveCurrentDuties}
+          nextScheduledDuty={nextScheduledDuty}
+          getUserById={getUserById}
+          getCourseDisplayName={getCourseDisplayName}
+          getCourseSummaries={attendance.getCourseSummaries}
+          classAttendance={attendance.classAttendance}
+          theWellSessionAttendance={attendance.theWellSessionAttendance}
+          wellSchedule={attendance.wellSchedule}
+          onNavigate={setActiveView}
+          onOpenClass={openClassDetail}
+        />
+      );
+    }
   }
 
   if (activeView === 'on-duty') {
@@ -387,6 +463,7 @@ export function AppRouter({
           users={users}
           classAttendance={attendance.classAttendance}
           theWellSessionAttendance={attendance.theWellSessionAttendance}
+          wellSchedule={attendance.wellSchedule}
           onMarkClassAttendance={attendance.markClassAttendance}
           onMarkWellSessionAttendance={attendance.markWellSessionAttendance}
           onRequestTransfer={attendance.requestDutyTransfer}
@@ -410,7 +487,7 @@ export function AppRouter({
     );
   }
 
-  if (hasRole('administrator')) {
+  if (hasRole('administrator') && activeWorkspace !== 'student') {
     switch (activeView) {
       case 'curriculum':
         return (
@@ -452,41 +529,64 @@ export function AppRouter({
           />
         );
       case 'users':
+      case 'users-directory':
+      case 'users-pending':
+      case 'users-enrollments':
+      case 'users-staff':
         return (
-          <UsersView
+          <UsersHubView
+            activeSection={
+              activeView === 'users-pending'
+                ? 'pending'
+                : activeView === 'users-enrollments'
+                  ? 'enrollments'
+                  : activeView === 'users-staff'
+                    ? 'staff'
+                    : 'directory'
+            }
+            onNavigate={setActiveView}
             users={users}
             courses={courses}
             courseStudents={courseStudents}
+            ministryTeams={attendance.ministryTeams}
+            ministryRotations={attendance.ministryRotations}
+            getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onEditUser={(user?) => setEditingItem({ type: 'user', data: user ?? null })}
             onDeleteUser={deleteUser}
           />
         );
       case 'mentorship':
+      case 'mentorship-overview':
+      case 'mentorship-assignments':
+      case 'mentorship-follow-up':
+      case 'mentorship-cadence':
+      case 'mentorship-check-in-rules':
+      case 'mentorship-management':
         return (
-          <MentorshipView
+          <MentorshipHubView
+            activeSection={
+              activeView === 'mentorship-assignments'
+                ? 'assignments'
+                : activeView === 'mentorship-follow-up' || activeView === 'mentorship-management'
+                  ? 'follow-up'
+                  : activeView === 'mentorship-check-in-rules' || activeView === 'mentorship-cadence'
+                    ? 'check-in-rules'
+                    : 'overview'
+            }
             users={users}
             courseStudents={courseStudents}
             courses={courses}
             mentorshipLogs={mentorshipLogs}
+            cadenceSettings={cadenceSettings}
+            setCadenceSettings={setCadenceSettings}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onAssignMentor={async (studentId, courseId, mentorId) => {
               assignUserToCourse(studentId, courseId, mentorId);
             }}
             onOpenCheckin={openCheckin}
-          />
-        );
-      case 'mentorship-management':
-        return (
-          <MentorshipManagement
-            users={users}
-            courseStudents={courseStudents}
-            cadenceSettings={cadenceSettings}
-            setCadenceSettings={setCadenceSettings}
-            mentorshipLogs={mentorshipLogs}
-            getUserById={getUserById}
-            onOpenCheckin={(studentId) => setEditingItem({ type: 'log', studentId })}
+            onNavigate={setActiveView}
           />
         );
       case 'attendance':
@@ -496,6 +596,7 @@ export function AppRouter({
       case 'attendance-ministry':
       case 'attendance-activation':
       case 'attendance-duty':
+      case 'attendance-prayer':
       case 'attendance-settings':
         return (
           <AttendanceView
@@ -510,6 +611,8 @@ export function AppRouter({
                       ? 'activation'
                 : activeView === 'attendance-duty'
                   ? 'duty'
+                  : activeView === 'attendance-prayer'
+                    ? 'prayer'
                   : activeView === 'attendance-settings'
                     ? 'settings'
                     : 'overview'
@@ -519,6 +622,8 @@ export function AppRouter({
             users={users}
             settings={attendance.settings}
             dutySchedule={attendance.dutySchedule}
+            prayerSchedule={attendance.prayerSchedule}
+            wellSchedule={attendance.wellSchedule}
             pendingTransferRequests={attendance.pendingTransferRequests}
             classAttendance={attendance.classAttendance}
             theWellAttendance={attendance.theWellAttendance}
@@ -532,6 +637,9 @@ export function AppRouter({
             getCourseSummaries={attendance.getCourseSummaries}
             generateDutyScheduleForCourse={attendance.generateDutyScheduleForCourse}
             updateDutyAssignment={attendance.updateDutyAssignment}
+            generatePrayerScheduleForSchoolYear={attendance.generatePrayerScheduleForSchoolYear}
+            generateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
+            updatePrayerAssignment={attendance.updatePrayerAssignment}
             resolveTransferRequest={attendance.resolveTransferRequest}
             upsertSundayAttendance={attendance.upsertSundayAttendance}
             updateSettings={attendance.updateSettings}
@@ -601,6 +709,37 @@ export function AppRouter({
     }
   }
 
+  if (
+    (hasRole('teacher') && activeWorkspace === 'teacher') ||
+    (hasRole('translator') && activeWorkspace === 'translator')
+  ) {
+    switch (activeView) {
+      case 'my-classes':
+        return (
+          <MyClassesView
+            currentUser={currentUser}
+            courses={courses}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            onOpenClass={openClassDetail}
+          />
+        );
+      case 'dashboard':
+      default:
+        return (
+          <StaffDashboard
+            currentUser={currentUser}
+            courses={courses}
+            users={users}
+            staffWorkspace={activeWorkspace as 'teacher' | 'translator'}
+            getCourseDisplayName={getCourseDisplayName}
+            onNavigate={setActiveView}
+            onOpenClass={openClassDetail}
+          />
+        );
+    }
+  }
+
   if (hasRole('teacher') || hasRole('translator')) {
     switch (activeView) {
       case 'my-classes':
@@ -616,10 +755,38 @@ export function AppRouter({
     }
   }
 
-  if (hasRole('student')) {
+  if (hasRole('student') && activeWorkspace === 'student') {
+    return (
+      <StudentDashboard
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        mentorshipLogs={mentorshipLogs}
+        announcements={announcements}
+        conversations={conversations}
+        todos={todos}
+        todosToday={todosToday}
+        todosLoading={todosLoading}
+        users={users}
+        prayerSchedule={attendance.prayerSchedule}
+        dutySchedule={attendance.dutySchedule}
+        effectiveCurrentDuties={effectiveCurrentDuties}
+        nextScheduledDuty={nextScheduledDuty}
+        getUserById={getUserById}
+        getCourseDisplayName={getCourseDisplayName}
+        getCourseSummaries={attendance.getCourseSummaries}
+        classAttendance={attendance.classAttendance}
+        theWellSessionAttendance={attendance.theWellSessionAttendance}
+        wellSchedule={attendance.wellSchedule}
+        onNavigate={setActiveView}
+        onOpenClass={openClassDetail}
+      />
+    );
+  }
+
+  if (hasRole('student') && !hasRole('administrator')) {
     switch (activeView) {
       case 'my-course':
-      default:
         return (
           <MyCourseView
             currentUser={currentUser}
@@ -631,10 +798,38 @@ export function AppRouter({
             onOpenClass={openClassDetail}
           />
         );
+      case 'dashboard':
+      default:
+        return (
+          <StudentDashboard
+            currentUser={currentUser}
+            courses={courses}
+            courseStudents={courseStudents}
+            mentorshipLogs={mentorshipLogs}
+            announcements={announcements}
+            conversations={conversations}
+            todos={todos}
+            todosToday={todosToday}
+            todosLoading={todosLoading}
+            users={users}
+            prayerSchedule={attendance.prayerSchedule}
+            dutySchedule={attendance.dutySchedule}
+            effectiveCurrentDuties={effectiveCurrentDuties}
+            nextScheduledDuty={nextScheduledDuty}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            getCourseSummaries={attendance.getCourseSummaries}
+            classAttendance={attendance.classAttendance}
+            theWellSessionAttendance={attendance.theWellSessionAttendance}
+            wellSchedule={attendance.wellSchedule}
+            onNavigate={setActiveView}
+            onOpenClass={openClassDetail}
+          />
+        );
     }
   }
 
-  if (hasRole('administrator')) {
+  if (hasRole('administrator') && activeWorkspace !== 'student') {
     return (
       <AdminDashboard
         courses={courses}

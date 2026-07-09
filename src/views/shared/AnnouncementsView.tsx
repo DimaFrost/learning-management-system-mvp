@@ -26,6 +26,10 @@ import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncem
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatFileSize } from '../../utils/formatFileSize';
+import { canPreviewInApp, resolveAnnouncementPreview } from '../../utils/filePreview';
+import { FilePreviewModal } from '../../components/modals/FilePreviewModal';
+import type { FilePreviewItem } from '../../utils/filePreview';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -181,8 +185,6 @@ function getAudienceBadgeLabel(announcement: Announcement): string | null {
   return null;
 }
 
-import { formatFileSize } from '../../utils/formatFileSize';
-
 function getAttachmentOpenUrl(attachment: AnnouncementAttachment): string | null {
   if (attachment.attachmentType === 'file') {
     return attachment.publicUrl;
@@ -251,6 +253,7 @@ interface AnnouncementAttachmentsRowProps {
   currentUser: User;
   isAdmin: boolean;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
+  onPreviewAttachment: (item: FilePreviewItem) => void;
 }
 
 function AnnouncementAttachmentsRow({
@@ -258,6 +261,7 @@ function AnnouncementAttachmentsRow({
   currentUser,
   isAdmin,
   onDeleteAttachment,
+  onPreviewAttachment,
 }: AnnouncementAttachmentsRowProps) {
   if (attachments.length === 0) return null;
 
@@ -265,6 +269,8 @@ function AnnouncementAttachmentsRow({
     <div className="mb-4 flex flex-wrap gap-2">
       {attachments.map(attachment => {
         const openUrl = getAttachmentOpenUrl(attachment);
+        const preview = resolveAnnouncementPreview(attachment);
+        const canPreview = canPreviewInApp(attachment);
         const canDelete = isAdmin || attachment.uploaderId === currentUser.id;
         const meta =
           attachment.attachmentType === 'file' && attachment.fileSize != null
@@ -290,15 +296,26 @@ function AnnouncementAttachmentsRow({
             className="group inline-flex max-w-full items-center gap-2 rounded-full border border-[#e5e5e5] bg-white px-2 py-1.5 shadow-[0_1px_1px_rgba(0,0,0,0.03)] transition-colors hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:max-w-[280px]"
           >
             {openUrl ? (
-              <a
-                href={openUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex min-w-0 items-center gap-2"
-                title={getAttachmentLabel(attachment)}
-              >
-                {chipContent}
-              </a>
+              canPreview && preview ? (
+                <button
+                  type="button"
+                  onClick={() => onPreviewAttachment(preview)}
+                  className="tbo-focus inline-flex min-w-0 items-center gap-2 text-left"
+                  title={`Preview ${getAttachmentLabel(attachment)}`}
+                >
+                  {chipContent}
+                </button>
+              ) : (
+                <a
+                  href={openUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex min-w-0 items-center gap-2"
+                  title={getAttachmentLabel(attachment)}
+                >
+                  {chipContent}
+                </a>
+              )
             ) : (
               <span className="inline-flex min-w-0 items-center gap-2" title={getAttachmentLabel(attachment)}>
                 {chipContent}
@@ -339,6 +356,7 @@ interface AnnouncementCardProps {
   onAddComment: (announcementId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => void;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
+  onPreviewAttachment: (item: FilePreviewItem) => void;
 }
 
 function AnnouncementCard({
@@ -359,6 +377,7 @@ function AnnouncementCard({
   onAddComment,
   onDeleteComment,
   onDeleteAttachment,
+  onPreviewAttachment,
 }: AnnouncementCardProps) {
   const { language, t } = useLanguage();
   const typeBadge = TYPE_BADGE[announcement.type];
@@ -536,6 +555,7 @@ function AnnouncementCard({
               currentUser={currentUser}
               isAdmin={isAdmin}
               onDeleteAttachment={onDeleteAttachment}
+              onPreviewAttachment={onPreviewAttachment}
             />
           </div>
         )}
@@ -695,6 +715,7 @@ export function AnnouncementsView({
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
   const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
+  const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
 
   const isAdmin = hasRole(currentUser, 'administrator');
   const canCreateAnnouncement =
@@ -783,12 +804,14 @@ export function AnnouncementsView({
       onAddComment={onAddComment}
       onDeleteComment={onDeleteComment}
       onDeleteAttachment={onDeleteAttachment}
+      onPreviewAttachment={setPreviewItem}
     />
   );
 
   if (modalOpen) {
     return (
-      <CreateAnnouncementModal
+      <>
+        <CreateAnnouncementModal
         isOpen={modalOpen}
         editingAnnouncement={editingAnnouncement}
         announcementId={liveEditingAnnouncement?.id ?? null}
@@ -807,7 +830,9 @@ export function AnnouncementsView({
           }
           return await onAdd(data);
         }}
-      />
+        />
+        <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
+      </>
     );
   }
 
@@ -885,6 +910,7 @@ export function AnnouncementsView({
         </div>
       )}
 
+      <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }

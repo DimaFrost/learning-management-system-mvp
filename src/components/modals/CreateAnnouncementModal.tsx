@@ -5,6 +5,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  Eye,
   FileText,
   Globe2,
   Image,
@@ -22,6 +23,9 @@ import {
 import type { Announcement, AnnouncementAttachment, Course, CourseStudent, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { formatPlatformDateTime } from '../../utils/dateUtils';
+import { canPreviewInApp, canPreviewLocalFile, resolveAnnouncementPreview, resolveLocalFilePreview } from '../../utils/filePreview';
+import type { FilePreviewItem } from '../../utils/filePreview';
+import { FilePreviewModal } from './FilePreviewModal';
 
 type PendingAttachment = {
   id: string;
@@ -378,6 +382,7 @@ export function CreateAnnouncementModal({
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [fileTitle, setFileTitle] = useState('');
   const [attaching, setAttaching] = useState(false);
+  const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isEditing = editingAnnouncement !== null;
@@ -821,6 +826,7 @@ export function CreateAnnouncementModal({
   };
 
   return (
+    <>
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -1318,8 +1324,21 @@ export function CreateAnnouncementModal({
                         <span className="block text-xs text-[#737373]">{getAttachmentTypeLabel(attachment.attachmentType, undefined, attachment.mimeType)}</span>
                       </span>
                       <span className="flex items-center gap-1">
+                        {url && canPreviewInApp(attachment) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const preview = resolveAnnouncementPreview(attachment);
+                              if (preview) setPreviewItem(preview);
+                            }}
+                            className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                            aria-label="Preview attachment"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                         {url && (
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]" aria-label="Open attachment">
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]" aria-label="Open attachment in new tab">
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         )}
@@ -1341,9 +1360,25 @@ export function CreateAnnouncementModal({
                         <span className="block truncate font-medium text-[#171717]">{getAttachmentLabel(pending)}</span>
                         <span className="block text-xs text-[#737373]">{getAttachmentTypeLabel(pending.attachmentType, pending.file)}</span>
                       </span>
-                      <button type="button" onClick={() => removePending(pending.id)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label="Remove pending attachment">
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      <span className="flex items-center gap-1">
+                        {pending.file && canPreviewLocalFile(pending.file) && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!pending.file) return;
+                              const preview = resolveLocalFilePreview(pending.file, getAttachmentLabel(pending));
+                              if (preview) setPreviewItem(preview);
+                            }}
+                            className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                            aria-label="Preview attachment"
+                          >
+                            <Eye className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        <button type="button" onClick={() => removePending(pending.id)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label="Remove pending attachment">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </span>
                     </div>
                   );
                 })}
@@ -1624,5 +1659,7 @@ export function CreateAnnouncementModal({
         </div>
       )}
     </div>
+    <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
+    </>
   );
 }

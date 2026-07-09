@@ -8,6 +8,7 @@ import {
   ClipboardList,
   ArrowUpDown,
   BarChart3,
+  HeartHandshake,
   Pencil,
   Plus,
   Search,
@@ -25,6 +26,9 @@ import type {
   CourseStudent,
   DutyScheduleEntry,
   DutyTransferRequest,
+  PrayerScheduleEntry,
+  PrayerScheduleGenerateOptions,
+  WellScheduleEntry,
   MinistryRotation,
   MinistryServiceAttendanceRecord,
   MinistryServiceSession,
@@ -46,9 +50,12 @@ import {
   getCurrentWeekStart,
   isActivationSaturdayClass,
   sortByFirstName,
+  getTuesdayDateForWeek,
+  getThursdayDateForWeek,
+  getSchoolYearWeeks,
 } from '../../utils/attendanceUtils';
 
-type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'settings';
+type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
 type MinistrySortKey =
   | 'student'
   | 'course'
@@ -60,6 +67,9 @@ type MinistrySortKey =
   | 'absent'
   | 'health'
   | 'lastService';
+type WellSortKey = 'student' | 'monthsTracked' | 'score';
+type ClassesSortKey = 'student' | 'present' | 'late' | 'absent' | 'score';
+type ActivationSortKey = 'student' | 'present' | 'late' | 'absent' | 'score';
 type SortDirection = 'asc' | 'desc';
 type RotationDateMode = 'month' | 'date';
 type MinistryHealthStatus = 'all' | 'passing' | 'at_risk' | 'failing' | 'unassigned';
@@ -105,6 +115,8 @@ export interface AttendanceViewProps {
   users: User[];
   settings: AttendanceSettings;
   dutySchedule: DutyScheduleEntry[];
+  prayerSchedule: PrayerScheduleEntry[];
+  wellSchedule: WellScheduleEntry[];
   pendingTransferRequests: DutyTransferRequest[];
   classAttendance: ClassAttendanceRecord[];
   theWellAttendance: TheWellAttendanceRecord[];
@@ -118,6 +130,9 @@ export interface AttendanceViewProps {
   getCourseSummaries: (courseId: number) => StudentAttendanceSummary[];
   generateDutyScheduleForCourse: (courseId: number, startFromStudentIndex?: number) => Promise<void>;
   updateDutyAssignment: (entryId: number, newStudentId: string) => Promise<void>;
+  generatePrayerScheduleForSchoolYear: (options: PrayerScheduleGenerateOptions) => Promise<void>;
+  generateWellScheduleForCourse: (courseId: number) => Promise<void>;
+  updatePrayerAssignment: (entryId: number, updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }) => Promise<void>;
   resolveTransferRequest: (requestId: number, approved: boolean) => Promise<void>;
   upsertSundayAttendance: (studentId: string, courseId: number, year: number, month: number, timesServed: number) => Promise<void>;
   updateSettings: (newSettings: Partial<AttendanceSettings>) => Promise<void>;
@@ -260,6 +275,18 @@ function toPercent(value: number): number {
 function getEnrolledStudents(courseId: number, courseStudents: CourseStudent[], users: User[]): User[] {
   const enrolledIds = new Set(courseStudents.filter(cs => cs.courseId === courseId).map(cs => cs.studentId));
   return sortByFirstName(users.filter(user => enrolledIds.has(user.id)));
+}
+
+function getPrayerEligibleStudents(courses: Course[], courseStudents: CourseStudent[], users: User[]): User[] {
+  const activeCourseIds = new Set(courses.filter(course => course.status === 'active').map(course => course.id));
+  const studentIds = new Set(
+    courseStudents
+      .filter(enrollment => activeCourseIds.has(enrollment.courseId))
+      .map(enrollment => enrollment.studentId)
+  );
+  return sortByFirstName(
+    users.filter(user => studentIds.has(user.id) && user.roles.includes('student'))
+  );
 }
 
 function creditForStatus(status: AttendanceStatus): number {
@@ -469,6 +496,245 @@ function EditDutyWeekModal({
   );
 }
 
+function EditPrayerWeekModal({
+  row,
+  students,
+  onClose,
+  onSave,
+}: {
+  row: PrayerScheduleEntry;
+  students: User[];
+  onClose: () => void;
+  onSave: (entryId: number, updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }) => Promise<void>;
+}) {
+  const [tuesdayStudentId, setTuesdayStudentId] = useState(row.tuesdayStudentId ?? '');
+  const [thursdayStudentId, setThursdayStudentId] = useState(row.thursdayStudentId ?? '');
+  const [saving, setSaving] = useState(false);
+
+  const handleSave = async () => {
+    setSaving(true);
+    try {
+      await onSave(row.id, {
+        tuesdayStudentId: tuesdayStudentId || null,
+        thursdayStudentId: thursdayStudentId || null,
+      });
+      onClose();
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Prayer schedule</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">Edit prayer leaders</h3>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mb-5 rounded-lg bg-[#f5f5f5] px-3 py-2 text-sm text-[#525252]">
+          {formatWeekDate(row.weekStart)} - {formatWeekDate(row.weekEnd)}
+        </p>
+
+        <div className="space-y-4">
+          <div className="rounded-xl border border-[#e5e5e5] p-4">
+            <label htmlFor="edit-tuesday-prayer-student" className="mb-2 block text-sm font-medium text-[#171717]">
+              Tuesday prayer · {formatCompactWeekDate(getTuesdayDateForWeek(row.weekStart))}
+            </label>
+            <select
+              id="edit-tuesday-prayer-student"
+              value={tuesdayStudentId}
+              onChange={event => setTuesdayStudentId(event.target.value)}
+              className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
+            >
+              <option value="">Unassigned</option>
+              {students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
+            </select>
+          </div>
+
+          <div className="rounded-xl border border-[#e5e5e5] p-4">
+            <label htmlFor="edit-thursday-prayer-student" className="mb-2 block text-sm font-medium text-[#171717]">
+              Thursday prayer · {formatCompactWeekDate(getThursdayDateForWeek(row.weekStart))}
+            </label>
+            <select
+              id="edit-thursday-prayer-student"
+              value={thursdayStudentId}
+              onChange={event => setThursdayStudentId(event.target.value)}
+              className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
+            >
+              <option value="">Unassigned</option>
+              {students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
+          <button type="button" onClick={handleSave} disabled={saving} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50">
+            {saving ? 'Saving...' : 'Save'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function GeneratePrayerScheduleModal({
+  activeCourses,
+  courseStudents,
+  users,
+  onClose,
+  onGenerate,
+}: {
+  activeCourses: Course[];
+  courseStudents: CourseStudent[];
+  users: User[];
+  onClose: () => void;
+  onGenerate: (options: PrayerScheduleGenerateOptions) => Promise<void>;
+}) {
+  const [includeFirstYear, setIncludeFirstYear] = useState(true);
+  const [includeSecondYear, setIncludeSecondYear] = useState(true);
+  const [generating, setGenerating] = useState(false);
+
+  const firstYearCourses = useMemo(
+    () => activeCourses.filter(course => course.courseType === 'first_year'),
+    [activeCourses]
+  );
+  const secondYearCourses = useMemo(
+    () => activeCourses.filter(course => course.courseType === 'second_year'),
+    [activeCourses]
+  );
+
+  const selectedCourses = useMemo(() => {
+    const picked: Course[] = [];
+    if (includeFirstYear) picked.push(...firstYearCourses);
+    if (includeSecondYear) picked.push(...secondYearCourses);
+    return picked;
+  }, [includeFirstYear, includeSecondYear, firstYearCourses, secondYearCourses]);
+
+  const selectedCourseIds = useMemo(
+    () => new Set(selectedCourses.map(course => course.id)),
+    [selectedCourses]
+  );
+
+  const studentCount = useMemo(() => {
+    const studentIds = new Set(
+      courseStudents
+        .filter(enrollment => selectedCourseIds.has(enrollment.courseId))
+        .map(enrollment => enrollment.studentId)
+    );
+    return users.filter(user => studentIds.has(user.id) && user.roles.includes('student')).length;
+  }, [courseStudents, selectedCourseIds, users]);
+
+  const weekCount = useMemo(() => getSchoolYearWeeks(selectedCourses).length, [selectedCourses]);
+  const canGenerate =
+    (includeFirstYear || includeSecondYear) &&
+    selectedCourses.length > 0 &&
+    studentCount > 0 &&
+    weekCount > 0;
+
+  const handleGenerate = async () => {
+    if (!canGenerate) return;
+    setGenerating(true);
+    try {
+      await onGenerate({ includeFirstYear, includeSecondYear });
+      onClose();
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/50 p-4 backdrop-blur-sm">
+      <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Prayer schedule</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">Generate school year</h3>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
+            <X className="h-5 w-5" />
+          </button>
+        </div>
+
+        <p className="mb-5 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-sm text-[#92400e]">
+          This replaces the entire prayer schedule. Choose which active courses to include before generating.
+        </p>
+
+        <div className="space-y-3">
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e5e5e5] p-4 hover:bg-[#fafafa]">
+            <input
+              type="checkbox"
+              checked={includeFirstYear}
+              onChange={event => setIncludeFirstYear(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-[#d4d4d4] text-[#7c3aed] focus:ring-[#7c3aed]"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-[#171717]">First year</span>
+              <span className="mt-1 block text-sm text-[#737373]">
+                {firstYearCourses.length > 0
+                  ? firstYearCourses.map(course => getCourseDisplayName(course)).join(', ')
+                  : 'No active first-year courses'}
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3 rounded-xl border border-[#e5e5e5] p-4 hover:bg-[#fafafa]">
+            <input
+              type="checkbox"
+              checked={includeSecondYear}
+              onChange={event => setIncludeSecondYear(event.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-[#d4d4d4] text-[#7c3aed] focus:ring-[#7c3aed]"
+            />
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold text-[#171717]">Second year</span>
+              <span className="mt-1 block text-sm text-[#737373]">
+                {secondYearCourses.length > 0
+                  ? secondYearCourses.map(course => getCourseDisplayName(course)).join(', ')
+                  : 'No active second-year courses'}
+              </span>
+            </span>
+          </label>
+        </div>
+
+        <div className="mt-5 grid gap-3 sm:grid-cols-2">
+          <div className="rounded-xl bg-[#f5f5f5] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Students</p>
+            <p className="mt-1 text-lg font-semibold text-[#171717]">{studentCount}</p>
+          </div>
+          <div className="rounded-xl bg-[#f5f5f5] px-4 py-3">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Weeks</p>
+            <p className="mt-1 text-lg font-semibold text-[#171717]">{weekCount}</p>
+          </div>
+        </div>
+
+        {!includeFirstYear && !includeSecondYear && (
+          <p className="mt-4 text-sm text-[#b91c1c]">Select at least one course type.</p>
+        )}
+
+        <div className="mt-6 flex justify-end gap-3">
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={handleGenerate}
+            disabled={!canGenerate || generating}
+            className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
+          >
+            {generating ? 'Generating...' : 'Generate schedule'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AttendanceView({
   activeSection = 'overview',
   courses,
@@ -476,6 +742,8 @@ export function AttendanceView({
   users,
   settings,
   dutySchedule,
+  prayerSchedule,
+  wellSchedule,
   pendingTransferRequests,
   classAttendance,
   theWellAttendance,
@@ -488,6 +756,9 @@ export function AttendanceView({
   getCourseSummaries,
   generateDutyScheduleForCourse,
   updateDutyAssignment,
+  generatePrayerScheduleForSchoolYear,
+  generateWellScheduleForCourse,
+  updatePrayerAssignment,
   resolveTransferRequest,
   updateSettings,
   upsertMinistryTeam,
@@ -540,14 +811,28 @@ export function AttendanceView({
   const [ministryServiceTypeFilter, setMinistryServiceTypeFilter] = useState('all');
   const [ministrySortKey, setMinistrySortKey] = useState<MinistrySortKey>('student');
   const [ministrySortDirection, setMinistrySortDirection] = useState<SortDirection>('asc');
+  const [wellSortKey, setWellSortKey] = useState<WellSortKey>('student');
+  const [wellSortDirection, setWellSortDirection] = useState<SortDirection>('asc');
+  const [classesSortKey, setClassesSortKey] = useState<ClassesSortKey>('student');
+  const [classesSortDirection, setClassesSortDirection] = useState<SortDirection>('asc');
+  const [activationSortKey, setActivationSortKey] = useState<ActivationSortKey>('student');
+  const [activationSortDirection, setActivationSortDirection] = useState<SortDirection>('asc');
   const [teamHealthOpen, setTeamHealthOpen] = useState(false);
   const [teamHealthMonth, setTeamHealthMonth] = useState(month);
   const [expandedHealthTeamId, setExpandedHealthTeamId] = useState<number | null>(null);
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [attendanceDrafts, setAttendanceDrafts] = useState<Record<number, Record<string, AttendanceStatus>>>({});
   const [editDutyWeekRow, setEditDutyWeekRow] = useState<DutyWeekRow | null>(null);
+  const [editPrayerWeekRow, setEditPrayerWeekRow] = useState<PrayerScheduleEntry | null>(null);
+  const [prayerGenerateModalOpen, setPrayerGenerateModalOpen] = useState(false);
   const dutyScheduleScrollRef = useRef<HTMLDivElement | null>(null);
+  const prayerScheduleScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDutyRowRef = useRef<HTMLDivElement | null>(null);
+  const currentPrayerRowRef = useRef<HTMLDivElement | null>(null);
+  const prayerEligibleStudents = useMemo(
+    () => getPrayerEligibleStudents(activeCourses, courseStudents, users),
+    [activeCourses, courseStudents, users]
+  );
 
   useEffect(() => setSettingsDraft(settings), [settings]);
 
@@ -582,6 +867,58 @@ export function AttendanceView({
     const query = search.trim().toLowerCase();
     return query ? summaries.filter(summary => summary.studentName.toLowerCase().includes(query)) : summaries;
   }, [summaries, search]);
+  const sortedWellSummaries = useMemo(() => {
+    const direction = wellSortDirection === 'asc' ? 1 : -1;
+    return [...filteredSummaries].sort((a, b) => {
+      const getValue = (summary: StudentAttendanceSummary): string | number => {
+        switch (wellSortKey) {
+          case 'student': return summary.studentName;
+          case 'monthsTracked': return summary.theWellMonthsTracked;
+          case 'score': return summary.theWellScore;
+        }
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      if (typeof valueA === 'number' && typeof valueB === 'number') return (valueA - valueB) * direction;
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredSummaries, wellSortDirection, wellSortKey]);
+  const sortedClassesSummaries = useMemo(() => {
+    const direction = classesSortDirection === 'asc' ? 1 : -1;
+    return [...filteredSummaries].sort((a, b) => {
+      const getValue = (summary: StudentAttendanceSummary): string | number => {
+        switch (classesSortKey) {
+          case 'student': return summary.studentName;
+          case 'present': return summary.classesPresent;
+          case 'late': return summary.classesLate;
+          case 'absent': return summary.classesAbsent;
+          case 'score': return summary.classAttendanceScore;
+        }
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      if (typeof valueA === 'number' && typeof valueB === 'number') return (valueA - valueB) * direction;
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredSummaries, classesSortDirection, classesSortKey]);
+  const sortedActivationSummaries = useMemo(() => {
+    const direction = activationSortDirection === 'asc' ? 1 : -1;
+    return [...filteredSummaries].sort((a, b) => {
+      const getValue = (summary: StudentAttendanceSummary): string | number => {
+        switch (activationSortKey) {
+          case 'student': return summary.studentName;
+          case 'present': return summary.saturdaysPresent;
+          case 'late': return summary.saturdaysLate;
+          case 'absent': return summary.saturdaysAbsent;
+          case 'score': return summary.saturdayAttendanceScore;
+        }
+      };
+      const valueA = getValue(a);
+      const valueB = getValue(b);
+      if (typeof valueA === 'number' && typeof valueB === 'number') return (valueA - valueB) * direction;
+      return String(valueA).localeCompare(String(valueB)) * direction;
+    });
+  }, [filteredSummaries, activationSortDirection, activationSortKey]);
   const enrolledStudents = useMemo(
     () => getEnrolledStudents(courseId, courseStudents, users),
     [courseId, courseStudents, users]
@@ -645,6 +982,28 @@ export function AttendanceView({
     }
     return stats;
   }, [currentWeekStart, dutyRows]);
+  const prayerRows = prayerSchedule;
+  const prayerLoadByStudent = useMemo(() => {
+    const today = new Date().toISOString().split('T')[0];
+    const stats = new Map<string, { served: number; total: number }>();
+
+    for (const entry of prayerRows) {
+      const slots = [
+        { studentId: entry.tuesdayStudentId, sessionDate: getTuesdayDateForWeek(entry.weekStart) },
+        { studentId: entry.thursdayStudentId, sessionDate: getThursdayDateForWeek(entry.weekStart) },
+      ];
+
+      for (const slot of slots) {
+        if (!slot.studentId) continue;
+        const current = stats.get(slot.studentId) ?? { served: 0, total: 0 };
+        current.total += 1;
+        if (slot.sessionDate < today) current.served += 1;
+        stats.set(slot.studentId, current);
+      }
+    }
+
+    return stats;
+  }, [prayerRows]);
   const activeSummaries = activeCourses.flatMap(course => getCourseSummaries(course.id));
   const passingCount = activeSummaries.filter(summary => summary.meetsGraduationThreshold).length;
   const averageOverall = activeSummaries.length
@@ -806,6 +1165,20 @@ export function AttendanceView({
     });
   }, [activeSection, currentWeekStart, dutyWeekRows]);
 
+  useEffect(() => {
+    if (activeSection !== 'prayer') return;
+    const scrollContainer = prayerScheduleScrollRef.current;
+    const currentRow = currentPrayerRowRef.current;
+    if (!scrollContainer || !currentRow) return;
+
+    requestAnimationFrame(() => {
+      scrollContainer.scrollTop = Math.max(
+        0,
+        currentRow.offsetTop - (scrollContainer.clientHeight / 2) + (currentRow.clientHeight / 2)
+      );
+    });
+  }, [activeSection, currentWeekStart, prayerRows]);
+
   const sectionMeta: Record<TabId, { title: string; eyebrow: string; description: string }> = {
     overview: {
       title: 'Overview',
@@ -836,6 +1209,11 @@ export function AttendanceView({
       title: 'On Duty Schedule',
       eyebrow: 'Attendance keepers',
       description: 'Class and The Well attendance keepers remain separate from ministry team leaders.',
+    },
+    prayer: {
+      title: 'Prayer Schedule',
+      eyebrow: 'Tuesday & Thursday prayer',
+      description: 'Assign students to lead prayer on Tuesday and Thursday. The two days can have different leaders.',
     },
     settings: {
       title: 'Settings',
@@ -1008,6 +1386,43 @@ export function AttendanceView({
     );
   };
 
+  const renderPrayerLeaderCell = (
+    studentId: string | null,
+    studentName: string | null,
+    dayLabel: string,
+    sessionDate: string
+  ) => {
+    if (!studentId || !studentName) {
+      return (
+        <div className="rounded-xl border border-dashed border-[#e5e5e5] bg-[#fafafa] px-3 py-3">
+          <p className="text-sm font-medium text-[#737373]">No {dayLabel.toLowerCase()} leader</p>
+          <p className="mt-1 text-xs text-[#a3a3a3]">{formatCompactWeekDate(sessionDate)}</p>
+        </div>
+      );
+    }
+
+    const prayerLoad = prayerLoadByStudent.get(studentId) ?? { served: 0, total: 0 };
+
+    return (
+      <div className="flex min-w-0 items-center gap-3 rounded-xl border border-[#e5e5e5] bg-white px-3 py-3">
+        <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-full border border-[#f3e8ff] bg-[#faf5ff] text-[11px] font-semibold text-[#7c3aed]">
+          {getInitials(studentName)}
+        </span>
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate font-medium text-[#171717]">{studentName}</p>
+            <span className="hidden rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed] sm:inline-flex">
+              {dayLabel}
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-[#737373]">
+            {prayerLoad.served} led / {prayerLoad.total} total scheduled
+          </p>
+        </div>
+      </div>
+    );
+  };
+
   const pageStats: Partial<Record<TabId, Array<{ label: string; value: string | number; detail: string; icon: typeof Activity; accent: string }>>> = {
     overview: [
       { label: 'Average', value: formatPercent(averageOverall), detail: `${activeSummaries.length} students`, icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
@@ -1044,6 +1459,32 @@ export function AttendanceView({
       { label: 'Transfers', value: pendingTransferRequests.length, detail: 'waiting for review', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
       { label: 'Scheduled weeks', value: new Set(dutyRows.map(row => row.weekStart)).size, detail: 'in active courses', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
       { label: 'Open slots', value: Math.max(0, unassignedKeeperSlots), detail: 'current week estimate', icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+    ],
+    prayer: [
+      {
+        label: 'This week',
+        value: (() => {
+          const row = prayerRows.find(entry => entry.weekStart === currentWeekStart);
+          if (!row) return 0;
+          return Number(Boolean(row.tuesdayStudentId)) + Number(Boolean(row.thursdayStudentId));
+        })(),
+        detail: 'Tuesday & Thursday leaders',
+        icon: HeartHandshake,
+        accent: 'bg-[#f3e8ff] text-[#7c3aed]',
+      },
+      { label: 'Scheduled weeks', value: prayerRows.length, detail: 'school year coverage', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Students used', value: prayerLoadByStudent.size, detail: 'assigned at least once', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      {
+        label: 'Open this week',
+        value: (() => {
+          const row = prayerRows.find(entry => entry.weekStart === currentWeekStart);
+          if (!row) return 2;
+          return Math.max(0, 2 - Number(Boolean(row.tuesdayStudentId)) - Number(Boolean(row.thursdayStudentId)));
+        })(),
+        detail: 'slots still empty',
+        icon: ClipboardList,
+        accent: 'bg-[#fff7ed] text-[#ea580c]',
+      },
     ],
   };
 
@@ -1106,7 +1547,6 @@ export function AttendanceView({
 
   const renderOverview = () => (
     <div className="space-y-4">
-      {renderCourseFilter()}
       <SectionCard className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
@@ -1169,137 +1609,265 @@ export function AttendanceView({
     </div>
   );
 
-  const renderClasses = () => (
-    <div className="space-y-4">
-      {renderCourseFilter()}
-      <SectionCard className="p-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold text-[#171717]">Class rule</p>
-            <p className="mt-1 text-sm text-[#737373]">Required attendance credit for weekly classes.</p>
-          </div>
-          <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[560px]">
-            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Required</p>
-              <p className="mt-1 text-xl font-semibold text-[#171717]">{percentInput(settings.classRequiredPercent)}%</p>
-            </div>
-            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Sessions</p>
-              <p className="mt-1 text-xl font-semibold text-[#171717]">{regularClasses.length}</p>
-              <p className="text-xs text-[#737373]">{settings.classSessionsPerDay} per day</p>
-            </div>
-            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Included</p>
-              <p className="mt-1 text-sm font-semibold text-[#171717]">{settings.classIncludedWeekdays.map(day => WEEKDAYS.find(item => item.value === day)?.label).join(', ')}</p>
-            </div>
-          </div>
-        </div>
-      </SectionCard>
-      <SectionCard className="overflow-hidden">
-        <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
-          <thead className="bg-[#f5f5f5]">
-            <tr>
-              {['Student', 'Present', 'Late', 'Absent', 'Score'].map(column => (
-                <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#e5e5e5]">
-            {filteredSummaries.map(summary => (
-              <tr key={summary.studentId}>
-                <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
-                <td className="px-4 py-3">{summary.classesPresent}</td>
-                <td className="px-4 py-3">{summary.classesLate}</td>
-                <td className="px-4 py-3">{summary.classesAbsent}</td>
-                <td className="px-4 py-3"><ScoreBar score={summary.classAttendanceScore} /></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </SectionCard>
-    </div>
-  );
+  const renderClasses = () => {
+    const sortHeader = (label: string, key: ClassesSortKey, title?: string) => (
+      <button
+        type="button"
+        title={title ?? label}
+        aria-label={`Sort by ${title ?? label}`}
+        onClick={() => {
+          if (classesSortKey === key) {
+            setClassesSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+          } else {
+            setClassesSortKey(key);
+            setClassesSortDirection('asc');
+          }
+        }}
+        className="inline-flex items-center justify-center gap-1 text-left"
+      >
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${classesSortKey === key ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
+      </button>
+    );
 
-  const renderWell = () => (
-    <div className="space-y-4">
-      {renderCourseFilter()}
-      <div className="grid gap-4 lg:grid-cols-3">
+    return (
+      <div className="space-y-4">
         <SectionCard className="p-4">
-          <p className="text-sm font-semibold text-[#171717]">Official monthly rule</p>
-          <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.theWellRequiredPerMonth}</p>
-          <p className="mt-1 text-sm text-[#737373]">credits per month</p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <p className="text-sm font-semibold text-[#171717]">Class rule</p>
+              <p className="mt-1 text-sm text-[#737373]">Required attendance credit for weekly classes.</p>
+            </div>
+            <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[560px]">
+              <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Required</p>
+                <p className="mt-1 text-xl font-semibold text-[#171717]">{percentInput(settings.classRequiredPercent)}%</p>
+              </div>
+              <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Sessions</p>
+                <p className="mt-1 text-xl font-semibold text-[#171717]">{regularClasses.length}</p>
+                <p className="text-xs text-[#737373]">{settings.classSessionsPerDay} per day</p>
+              </div>
+              <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Included</p>
+                <p className="mt-1 text-sm font-semibold text-[#171717]">{settings.classIncludedWeekdays.map(day => WEEKDAYS.find(item => item.value === day)?.label).join(', ')}</p>
+              </div>
+            </div>
+          </div>
         </SectionCard>
-        <SectionCard className="p-4">
-          <p className="text-sm font-semibold text-[#171717]">Fallback</p>
-          <p className="mt-2 text-3xl font-semibold text-[#171717]">{percentInput(settings.theWellFallbackPercent)}%</p>
-          <p className="mt-1 text-sm text-[#737373]">of yearly Well sessions</p>
-        </SectionCard>
-        <SectionCard className="p-4">
-          <p className="text-sm font-semibold text-[#171717]">Tracked months</p>
-          <p className="mt-2 text-3xl font-semibold text-[#171717]">{theWellAttendance.filter(item => item.courseId === courseId).length}</p>
-          <p className="mt-1 text-sm text-[#737373]">student-month records</p>
-        </SectionCard>
-      </div>
-      <SectionCard className="overflow-hidden">
-        <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
-          <thead className="bg-[#f5f5f5]">
-            <tr>
-              {['Student', 'Months', 'Well score', 'Gate detail'].map(column => (
-                <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#e5e5e5]">
-            {filteredSummaries.map(summary => {
-              const gate = summary.gates.find(item => item.key === 'the_well');
-              return (
-                <tr key={summary.studentId}>
-                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
-                  <td className="px-4 py-3">{summary.theWellMonthsTracked}</td>
-                  <td className="px-4 py-3"><ScoreBar score={summary.theWellScore} /></td>
-                  <td className="px-4 py-3 text-sm text-[#525252]">{gate?.detail}{gate?.fallbackDetail ? `; ${gate.fallbackDetail}` : ''}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </SectionCard>
-    </div>
-  );
-
-  const renderActivation = () => (
-    <div className="space-y-4">
-      {renderCourseFilter()}
-      <div className="grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-        <SectionCard className="p-4">
-          <p className="text-sm font-semibold text-[#171717]">Activation rule</p>
-          <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.activationMaxLostCredits}</p>
-          <p className="mt-1 text-sm text-[#737373]">maximum lost credits</p>
-          <p className="mt-4 text-sm text-[#525252]">{activationClasses.length} Activation Saturdays detected.</p>
-        </SectionCard>
+        {renderCourseFilter()}
         <SectionCard className="overflow-hidden">
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#f5f5f5]">
               <tr>
-                {['Date', 'Title', 'Attendance records'].map(column => (
-                  <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{column}</th>
-                ))}
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Present', 'present')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Late', 'late')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Absent', 'absent')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e5e5]">
-              {activationClasses.map(cls => (
-                <tr key={cls.id}>
-                  <td className="px-4 py-3 font-semibold text-[#171717]">{formatDate(cls.date)}</td>
-                  <td className="px-4 py-3">{cls.title || 'Activation Saturday'}</td>
-                  <td className="px-4 py-3">{classAttendance.filter(item => item.classId === cls.id).length}</td>
+              {sortedClassesSummaries.map(summary => (
+                <tr key={summary.studentId}>
+                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                  <td className="px-4 py-3">{summary.classesPresent}</td>
+                  <td className="px-4 py-3">{summary.classesLate}</td>
+                  <td className="px-4 py-3">{summary.classesAbsent}</td>
+                  <td className="px-4 py-3"><ScoreBar score={summary.classAttendanceScore} /></td>
                 </tr>
               ))}
+              {sortedClassesSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                </tr>
+              )}
             </tbody>
           </table>
         </SectionCard>
       </div>
-    </div>
-  );
+    );
+  };
+
+  const renderWell = () => {
+    const sortHeader = (label: string, key: WellSortKey, title?: string) => (
+      <button
+        type="button"
+        title={title ?? label}
+        aria-label={`Sort by ${title ?? label}`}
+        onClick={() => {
+          if (wellSortKey === key) {
+            setWellSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+          } else {
+            setWellSortKey(key);
+            setWellSortDirection('asc');
+          }
+        }}
+        className="inline-flex items-center justify-center gap-1 text-left"
+      >
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${wellSortKey === key ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
+      </button>
+    );
+
+    return (
+      <div className="space-y-4">
+        <SectionCard className="p-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="font-semibold text-[#171717]">Well schedule</h3>
+              <p className="text-sm text-[#737373]">
+                Populate every Wednesday in the school year so duty keepers can mark Well attendance.
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
+                {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+              </select>
+              <button type="button" onClick={() => generateWellScheduleForCourse(courseId)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
+                Populate Wednesdays
+              </button>
+            </div>
+          </div>
+          <p className="mt-3 text-sm text-[#525252]">
+            {wellSchedule.filter(item => item.courseId === courseId).length} Wednesday sessions scheduled for this course.
+          </p>
+        </SectionCard>
+
+        <div className="grid gap-4 lg:grid-cols-3">
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Official monthly rule</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.theWellRequiredPerMonth}</p>
+            <p className="mt-1 text-sm text-[#737373]">credits per month</p>
+          </SectionCard>
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Fallback</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{percentInput(settings.theWellFallbackPercent)}%</p>
+            <p className="mt-1 text-sm text-[#737373]">of yearly Well sessions</p>
+          </SectionCard>
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Tracked months</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{theWellAttendance.filter(item => item.courseId === courseId).length}</p>
+            <p className="mt-1 text-sm text-[#737373]">student-month records</p>
+          </SectionCard>
+        </div>
+        {renderCourseFilter()}
+        <SectionCard className="overflow-hidden">
+          <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+            <thead className="bg-[#f5f5f5]">
+              <tr>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Months tracked', 'monthsTracked')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Gate detail</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e5e5e5]">
+              {sortedWellSummaries.map(summary => {
+                const gate = summary.gates.find(item => item.key === 'the_well');
+                return (
+                  <tr key={summary.studentId}>
+                    <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                    <td className="px-4 py-3">
+                      <span className="font-medium text-[#171717]">{summary.theWellMonthsTracked}</span>
+                      <span className="ml-1 text-xs text-[#737373]">month(s) tracked</span>
+                    </td>
+                    <td className="px-4 py-3"><ScoreBar score={summary.theWellScore} /></td>
+                    <td className="px-4 py-3 text-sm text-[#525252]">{gate?.detail}{gate?.fallbackDetail ? `; ${gate.fallbackDetail}` : ''}</td>
+                  </tr>
+                );
+              })}
+              {sortedWellSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </SectionCard>
+      </div>
+    );
+  };
+
+  const renderActivation = () => {
+    const sortHeader = (label: string, key: ActivationSortKey, title?: string) => (
+      <button
+        type="button"
+        title={title ?? label}
+        aria-label={`Sort by ${title ?? label}`}
+        onClick={() => {
+          if (activationSortKey === key) {
+            setActivationSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+          } else {
+            setActivationSortKey(key);
+            setActivationSortDirection('asc');
+          }
+        }}
+        className="inline-flex items-center justify-center gap-1 text-left"
+      >
+        {label}
+        <ArrowUpDown className={`h-3 w-3 ${activationSortKey === key ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
+      </button>
+    );
+    const averageActivationScore = summaries.length
+      ? summaries.reduce((sum, summary) => sum + summary.saturdayAttendanceScore, 0) / summaries.length
+      : 1;
+    const overLimitCount = summaries.filter(summary =>
+      (summary.gates.find(gate => gate.key === 'activation')?.status ?? 'failing') === 'failing'
+    ).length;
+
+    return (
+      <div className="space-y-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Activation rule</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.activationMaxLostCredits}</p>
+            <p className="mt-1 text-sm text-[#737373]">maximum lost credits</p>
+          </SectionCard>
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Sessions</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{activationClasses.length}</p>
+            <p className="mt-1 text-sm text-[#737373]">Activation Saturdays detected</p>
+          </SectionCard>
+          <SectionCard className="p-4">
+            <p className="text-sm font-semibold text-[#171717]">Over limit</p>
+            <p className="mt-2 text-3xl font-semibold text-[#171717]">{overLimitCount}</p>
+            <p className="mt-1 text-sm text-[#737373]">{formatPercent(averageActivationScore)} average score</p>
+          </SectionCard>
+        </div>
+        {renderCourseFilter()}
+        <SectionCard className="overflow-hidden">
+          <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+            <thead className="bg-[#f5f5f5]">
+              <tr>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Present', 'present')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Late', 'late')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Absent', 'absent')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#e5e5e5]">
+              {sortedActivationSummaries.map(summary => (
+                <tr key={summary.studentId}>
+                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                  <td className="px-4 py-3">{summary.saturdaysPresent}</td>
+                  <td className="px-4 py-3">{summary.saturdaysLate}</td>
+                  <td className="px-4 py-3">{summary.saturdaysAbsent}</td>
+                  <td className="px-4 py-3"><ScoreBar score={summary.saturdayAttendanceScore} /></td>
+                </tr>
+              ))}
+              {sortedActivationSummaries.length === 0 && (
+                <tr>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </SectionCard>
+      </div>
+    );
+  };
 
   const renderMinistry = () => {
     const selectedSession = ministrySessions[0];
@@ -1898,6 +2466,95 @@ export function AttendanceView({
     </div>
   );
 
+  const renderPrayer = () => (
+    <div className="space-y-4">
+      <SectionCard className="p-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
+            <p className="text-sm text-[#737373]">
+              Build the school-year prayer rotation from enrolled students in the selected course types. Tuesday and Thursday use separate rotations.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setPrayerGenerateModalOpen(true)}
+            className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white"
+          >
+            Generate school year
+          </button>
+        </div>
+      </SectionCard>
+
+      <SectionCard className="overflow-hidden">
+        <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(240px,1fr)_minmax(240px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
+          <span>Week</span>
+          <span>Tuesday prayer</span>
+          <span>Thursday prayer</span>
+          <span />
+        </div>
+
+        <div ref={prayerScheduleScrollRef} className="tbo-scrollbar max-h-[520px] overflow-y-auto">
+          {prayerRows.map(row => {
+            const isCurrentWeek = row.weekStart === currentWeekStart;
+            const tuesdayDate = getTuesdayDateForWeek(row.weekStart);
+            const thursdayDate = getThursdayDateForWeek(row.weekStart);
+
+            return (
+              <div
+                key={row.id}
+                ref={isCurrentWeek ? currentPrayerRowRef : undefined}
+                className={`group grid gap-3 border-b border-[#e5e5e5] px-3 py-3 last:border-0 lg:grid-cols-[minmax(136px,0.62fr)_minmax(240px,1fr)_minmax(240px,1fr)_48px] lg:items-center ${
+                  isCurrentWeek ? 'bg-[#f3e8ff]/35' : 'bg-white'
+                }`}
+              >
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart)}</p>
+                    {isCurrentWeek && (
+                      <span className="rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">Live</span>
+                    )}
+                  </div>
+                  <p className="mt-1 text-xs text-[#737373]">
+                    {formatCompactWeekDate(row.weekStart)} - {formatCompactWeekDate(row.weekEnd)}
+                  </p>
+                </div>
+
+                <div className="space-y-1 lg:space-y-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Tuesday prayer</p>
+                  {renderPrayerLeaderCell(row.tuesdayStudentId, row.tuesdayStudentName, 'Tuesday', tuesdayDate)}
+                </div>
+
+                <div className="space-y-1 lg:space-y-0">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Thursday prayer</p>
+                  {renderPrayerLeaderCell(row.thursdayStudentId, row.thursdayStudentName, 'Thursday', thursdayDate)}
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => setEditPrayerWeekRow(row)}
+                    className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] opacity-100 transition hover:bg-[#f5f5f5] hover:text-[#171717] lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
+                    aria-label={`Edit prayer leaders for week of ${formatWeekDate(row.weekStart)}`}
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+
+          {prayerRows.length === 0 && (
+            <div className="px-4 py-10 text-center">
+              <p className="text-sm font-medium text-[#171717]">No prayer schedule yet.</p>
+              <p className="mt-1 text-sm text-[#737373]">Use Generate school year to create Tuesday and Thursday prayer slots.</p>
+            </div>
+          )}
+        </div>
+      </SectionCard>
+    </div>
+  );
+
   const renderSettings = () => (
     <div className="space-y-4">
       <SectionCard className="p-4">
@@ -2165,6 +2822,7 @@ export function AttendanceView({
         {renderPageStats()}
         {error && <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
       </SectionCard>
+      {activeSection === 'overview' && renderCourseFilter()}
 
       {activeSection === 'overview' && renderOverview()}
       {activeSection === 'classes' && renderClasses()}
@@ -2172,6 +2830,7 @@ export function AttendanceView({
       {activeSection === 'ministry' && renderMinistryTable()}
       {activeSection === 'activation' && renderActivation()}
       {activeSection === 'duty' && renderDuty()}
+      {activeSection === 'prayer' && renderPrayer()}
       {activeSection === 'settings' && renderSettings()}
       {editDutyWeekRow && (
         <EditDutyWeekModal
@@ -2180,6 +2839,23 @@ export function AttendanceView({
           users={users}
           onClose={() => setEditDutyWeekRow(null)}
           onSave={updateDutyAssignment}
+        />
+      )}
+      {editPrayerWeekRow && (
+        <EditPrayerWeekModal
+          row={editPrayerWeekRow}
+          students={prayerEligibleStudents}
+          onClose={() => setEditPrayerWeekRow(null)}
+          onSave={updatePrayerAssignment}
+        />
+      )}
+      {prayerGenerateModalOpen && (
+        <GeneratePrayerScheduleModal
+          activeCourses={activeCourses}
+          courseStudents={courseStudents}
+          users={users}
+          onClose={() => setPrayerGenerateModalOpen(false)}
+          onGenerate={generatePrayerScheduleForSchoolYear}
         />
       )}
       {renderRotationModal()}

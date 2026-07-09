@@ -25,6 +25,7 @@ import {
   Clock3,
   Activity,
   ShieldCheck,
+  HeartHandshake,
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -35,6 +36,7 @@ interface SidebarProps {
   totalUnread: number;
   announcementDraftCount: number;
   todoTodayCount: number;
+  pendingUserCount?: number;
   isOnDuty: boolean;
   activeWorkspace: WorkspaceId | null;
   mode: 'locked' | 'collapsed';
@@ -67,6 +69,7 @@ export function Sidebar({
   totalUnread,
   announcementDraftCount,
   todoTodayCount,
+  pendingUserCount = 0,
   isOnDuty,
   activeWorkspace,
   mode,
@@ -136,6 +139,14 @@ export function Sidebar({
       workspaces: ['administrator'],
     },
     {
+      id: 'attendance-prayer',
+      label: 'Prayer Schedule',
+      description: 'Tuesday & Thursday prayer',
+      icon: HeartHandshake,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
       id: 'attendance-settings',
       label: t('sidebar.settings'),
       description: 'Rules and weights',
@@ -145,18 +156,123 @@ export function Sidebar({
     },
   ];
 
+  const myAttendanceItems: NavItem[] = [
+    {
+      id: 'my-attendance-overview',
+      label: 'Attendance overall',
+      description: 'Graduation gates & scores',
+      icon: BarChart2,
+      roles: ['student'],
+      workspaces: ['student'],
+    },
+    {
+      id: 'my-attendance-breakdown',
+      label: 'Session history',
+      description: 'Dates, status & views',
+      icon: Calendar,
+      roles: ['student'],
+      workspaces: ['student'],
+    },
+    {
+      id: 'my-attendance-ministry',
+      label: 'Ministry',
+      description: 'Team leaders & contacts',
+      icon: HeartHandshake,
+      roles: ['student'],
+      workspaces: ['student'],
+    },
+  ];
+
+  const usersItems: NavItem[] = [
+    {
+      id: 'users-directory',
+      label: 'Directory',
+      description: 'Search & manage all users',
+      icon: Users,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+      badge: pendingUserCount > 0 ? (pendingUserCount > 9 ? '9+' : String(pendingUserCount)) : undefined,
+    },
+    {
+      id: 'users-pending',
+      label: 'Pending access',
+      description: 'Awaiting role assignment',
+      icon: Clock3,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+      badge: pendingUserCount > 0 ? (pendingUserCount > 9 ? '9+' : String(pendingUserCount)) : undefined,
+      tone: pendingUserCount > 0 ? 'alert' : 'default',
+    },
+    {
+      id: 'users-enrollments',
+      label: 'Enrollments',
+      description: 'Student × course × mentor',
+      icon: GraduationCap,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'users-staff',
+      label: 'Staff roster',
+      description: 'Teachers, mentors & leaders',
+      icon: UserCheck,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+  ];
+
+  const mentorshipItems: NavItem[] = [
+    {
+      id: 'mentorship-overview',
+      label: 'Overview',
+      description: 'Health & coverage',
+      icon: Activity,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'mentorship-assignments',
+      label: 'Assignments',
+      description: 'Student-mentor pairs',
+      icon: UserCheck,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'mentorship-follow-up',
+      label: 'Follow-up',
+      description: 'Risk monitoring',
+      icon: TrendingUp,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'mentorship-check-in-rules',
+      label: 'Check-in rules',
+      description: 'In-person meeting expectations',
+      icon: Settings,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+  ];
+
   const sections: NavSection[] = [
     {
-      label: t('sidebar.school'),
+      label: '',
       items: [
         {
           id: 'dashboard',
           label: t('sidebar.dashboard'),
           description: t('sidebar.dashboard.desc'),
           icon: LayoutDashboard,
-          roles: ['administrator'],
-          workspaces: ['administrator'],
+          roles: ['administrator', 'student', 'teacher', 'translator'],
+          workspaces: ['administrator', 'student', 'teacher', 'translator'],
         },
+      ],
+    },
+    {
+      label: t('sidebar.school'),
+      items: [
         {
           id: 'announcements',
           label: t('sidebar.announcements'),
@@ -196,12 +312,13 @@ export function Sidebar({
           workspaces: ['administrator'],
         },
         {
-          id: 'users',
+          id: 'users-directory',
           label: t('sidebar.users'),
           description: t('sidebar.users.desc'),
           icon: Users,
           roles: ['administrator'],
           workspaces: ['administrator'],
+          badge: pendingUserCount > 0 ? (pendingUserCount > 9 ? '9+' : String(pendingUserCount)) : undefined,
         },
         {
           id: 'attendance-overview',
@@ -212,18 +329,10 @@ export function Sidebar({
           workspaces: ['administrator'],
         },
         {
-          id: 'mentorship',
+          id: 'mentorship-overview',
           label: t('sidebar.mentorship'),
           description: t('sidebar.mentorship.desc'),
           icon: UserCheck,
-          roles: ['administrator'],
-          workspaces: ['administrator'],
-        },
-        {
-          id: 'mentorship-management',
-          label: t('sidebar.mentorOps'),
-          description: t('sidebar.mentorOps.desc'),
-          icon: TrendingUp,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
@@ -283,11 +392,12 @@ export function Sidebar({
           shared: true,
         },
         {
-          id: 'my-attendance',
+          id: 'my-attendance-overview',
           label: t('sidebar.myAttendance'),
           description: t('sidebar.myAttendance.desc'),
           icon: BarChart2,
-          shared: true,
+          roles: ['student'],
+          workspaces: ['student'],
         },
       ],
     },
@@ -319,9 +429,69 @@ export function Sidebar({
 
     return hasPermission && fitsWorkspace;
   });
+  const visibleMentorshipItems = mentorshipItems.filter(item => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+
+    return hasPermission && fitsWorkspace;
+  });
+  const visibleMyAttendanceItems = myAttendanceItems.filter(item => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+
+    return hasPermission && fitsWorkspace;
+  });
+  const visibleUsersItems = usersItems.filter(item => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+
+    return hasPermission && fitsWorkspace;
+  });
   const inAttendanceModule =
     activeView === 'attendance' ||
     activeView.startsWith('attendance-');
+  const inMyAttendanceModule =
+    activeView === 'my-attendance' ||
+    activeView.startsWith('my-attendance-');
+  const inMentorshipModule =
+    activeView === 'mentorship' ||
+    activeView === 'mentorship-management' ||
+    activeView.startsWith('mentorship-');
+  const inUsersModule =
+    activeView === 'users' ||
+    activeView.startsWith('users-');
+  const inSubmodule = inAttendanceModule || inMentorshipModule || inMyAttendanceModule || inUsersModule;
+  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
+  const submoduleLabel = inAttendanceModule
+    ? t('sidebar.attendance')
+    : inMentorshipModule
+      ? t('sidebar.mentorship')
+      : inMyAttendanceModule
+        ? t('sidebar.myAttendance')
+        : inUsersModule
+          ? t('sidebar.users')
+          : workspaceLabel;
+  const submoduleDesc = inAttendanceModule
+    ? t('sidebar.attendance.desc')
+    : inMentorshipModule
+      ? t('sidebar.mentorship.desc')
+      : inMyAttendanceModule
+        ? t('sidebar.myAttendance.desc')
+        : inUsersModule
+          ? t('sidebar.users.desc')
+          : 'Live school data';
 
   const handleNavigate = (viewId: string) => {
     onNavigate(viewId);
@@ -329,11 +499,16 @@ export function Sidebar({
   };
 
   const toggleTitle = mode === 'locked' ? 'Collapse sidebar' : 'Expand sidebar';
-  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
 
   const renderItem = (item: NavItem, forceExpanded: boolean) => {
     const expanded = forceExpanded || isExpanded;
-    const active = activeView === item.id || (item.id === 'attendance-overview' && activeView === 'attendance');
+    const active =
+      activeView === item.id ||
+      (item.id === 'attendance-overview' && activeView === 'attendance') ||
+      (item.id === 'my-attendance-overview' && (activeView === 'my-attendance' || activeView === 'my-attendance-overview')) ||
+      (item.id === 'users-directory' && (activeView === 'users' || activeView === 'users-directory')) ||
+      (item.id === 'mentorship-overview' &&
+        (activeView === 'mentorship' || activeView === 'mentorship-management'));
     const alert = item.tone === 'alert';
     const Icon = item.icon;
 
@@ -412,7 +587,28 @@ export function Sidebar({
             items: visibleAttendanceItems.filter(item => !attendanceGroupIds.has(item.id)),
           },
         ].filter(section => section.items.length > 0)
-      : visibleSections;
+      : inMentorshipModule && visibleMentorshipItems.length > 0
+        ? [
+            {
+              label: 'Mentorship',
+              items: visibleMentorshipItems,
+            },
+          ]
+        : inMyAttendanceModule && visibleMyAttendanceItems.length > 0
+          ? [
+              {
+                label: 'My Attendance',
+                items: visibleMyAttendanceItems,
+              },
+            ]
+          : inUsersModule && visibleUsersItems.length > 0
+            ? [
+                {
+                  label: 'Users',
+                  items: visibleUsersItems,
+                },
+              ]
+            : visibleSections;
 
     return (
       <>
@@ -441,10 +637,10 @@ export function Sidebar({
               {expanded && (
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold uppercase tracking-[0.18em] text-[#737373]">
-                    {inAttendanceModule ? t('sidebar.module') : t('sidebar.workspace')}
+                    {inSubmodule ? t('sidebar.module') : t('sidebar.workspace')}
                   </p>
                   <p className="truncate text-sm font-semibold text-[#171717]">
-                    {inAttendanceModule ? t('sidebar.attendance') : workspaceLabel}
+                    {inSubmodule ? submoduleLabel : workspaceLabel}
                   </p>
                 </div>
               )}
@@ -465,7 +661,7 @@ export function Sidebar({
         </div>
 
         <nav className="flex-1 overflow-y-auto py-3">
-          {inAttendanceModule && (
+          {inSubmodule && (
             <button
               type="button"
               onClick={() => handleNavigate('dashboard')}
@@ -487,12 +683,12 @@ export function Sidebar({
           )}
 
           {navSections.map(section => (
-            <div key={section.label} className="mb-4 last:mb-0">
-              {expanded && (
+            <div key={section.label || 'top'} className="mb-4 last:mb-0">
+              {expanded && section.label ? (
                 <p className="mb-1 px-5 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#a3a3a3]">
                   {section.label}
                 </p>
-              )}
+              ) : null}
               <div className="space-y-1">
                 {section.items.map(item => renderItem(item, forceExpanded))}
               </div>
@@ -515,14 +711,14 @@ export function Sidebar({
             <div className="mx-2 mt-2 rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] p-3">
               <div className="flex items-center gap-2">
                 <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2563eb]">
-                  {inAttendanceModule ? <Clock3 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  {inSubmodule ? <Clock3 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-[#171717]">
-                    {inAttendanceModule ? `${t('sidebar.attendance')} ${t('sidebar.module').toLowerCase()}` : `${workspaceLabel} view`}
+                  {inSubmodule ? `${submoduleLabel} ${t('sidebar.module').toLowerCase()}` : `${workspaceLabel} view`}
                   </p>
                   <p className="truncate text-[11px] text-[#737373]">
-                    {inAttendanceModule ? t('sidebar.attendance.desc') : 'Live school data'}
+                    {inSubmodule ? submoduleDesc : 'Live school data'}
                   </p>
                 </div>
               </div>

@@ -3,7 +3,7 @@
 # ministry_teams
 
 
-Column count: 16
+Column count: 14
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -12,8 +12,6 @@ Column count: 16
 | name_bg | string:text | no | no |  |  |
 | info | string:text | no | no |  |  |
 | leader_id | string:uuid | no | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
-| contact_name | string:text | no | no |  |  |
-| contact_phone | string:text | no | no |  |  |
 | call_time | string:text | no | no |  |  |
 | service_type | string:text | yes | no | sunday |  |
 | service_day | integer:integer | no | no |  |  |
@@ -60,14 +58,6 @@ Column count: 16
     "leader_id": {
       "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
       "format": "uuid",
-      "type": "string"
-    },
-    "contact_name": {
-      "format": "text",
-      "type": "string"
-    },
-    "contact_phone": {
-      "format": "text",
       "type": "string"
     },
     "call_time": {

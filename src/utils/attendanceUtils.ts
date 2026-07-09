@@ -80,6 +80,45 @@ export function generateDutyRotation(
   }));
 }
 
+export function getTuesdayDateForWeek(weekStart: string): string {
+  const d = new Date(`${weekStart}T00:00:00`);
+  d.setDate(d.getDate() + 1);
+  return dateToString(d);
+}
+
+export function getThursdayDateForWeek(weekStart: string): string {
+  const d = new Date(`${weekStart}T00:00:00`);
+  d.setDate(d.getDate() + 3);
+  return dateToString(d);
+}
+
+export function generatePrayerSchedule(
+  studentIds: string[],
+  weekStarts: string[],
+  tuesdayStartIndex: number = 0,
+  thursdayStartIndex: number = 0
+): Array<{ weekStart: string; tuesdayStudentId: string; thursdayStudentId: string }> {
+  if (studentIds.length === 0 || weekStarts.length === 0) return [];
+
+  const tuesdayRotation = generateDutyRotation(studentIds, weekStarts, tuesdayStartIndex);
+  const thursdayRotation = generateDutyRotation(studentIds, weekStarts, thursdayStartIndex);
+
+  return weekStarts.map((weekStart, index) => ({
+    weekStart,
+    tuesdayStudentId: tuesdayRotation[index]?.studentId ?? studentIds[0],
+    thursdayStudentId: thursdayRotation[index]?.studentId ?? studentIds[0],
+  }));
+}
+
+export function getSchoolYearWeeks(courses: Array<{ status: string; startDate: string; endDate: string }>): string[] {
+  const weekSet = new Set<string>();
+  for (const course of courses) {
+    if (course.status !== 'active') continue;
+    getWeeksBetween(course.startDate, course.endDate).forEach(week => weekSet.add(week));
+  }
+  return Array.from(weekSet).sort();
+}
+
 // Get all week start dates (Mondays) between two dates
 export function getWeeksBetween(startDate: string, endDate: string): string[] {
   const weeks: string[] = [];
@@ -141,7 +180,7 @@ export function calculateTheWellScore(
   records: TheWellAttendanceRecord[],
   settings: AttendanceSettings
 ): number {
-  if (records.length === 0) return 1;
+  if (records.length === 0) return 0;
   const scores = records.map((r) => {
     const effective = r.timesAttended +
       (r.timesLate * settings.lateCredit);
