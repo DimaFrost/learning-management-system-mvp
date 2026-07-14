@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   ArrowUpDown,
   Clock3,
@@ -6,6 +6,7 @@ import {
   Pencil,
   Plus,
   Trash2,
+  X,
   UserCheck,
   UserCog,
   Users,
@@ -28,6 +29,7 @@ import {
 import { FilterChip, SearchField } from '../mentorshipShared';
 import {
   AccessBadge,
+  ActiveYearGroupBadge,
   RoleBadges,
   SectionCard,
   StatPill,
@@ -60,12 +62,12 @@ const sectionMeta: Record<UsersSection, { title: string; eyebrow: string; descri
   pending: {
     title: 'Pending access',
     eyebrow: 'Awaiting roles',
-    description: 'Google sign-ups that still need roles and course assignment.',
+    description: 'Google sign-ups that still need roles and year group assignment.',
   },
   enrollments: {
     title: 'Enrollments',
     eyebrow: 'Student × course',
-    description: 'Active student enrollments with mentor assignment per course.',
+    description: 'Active student enrollments with mentor assignment per year group.',
   },
   staff: {
     title: 'Staff roster',
@@ -100,6 +102,195 @@ function SortHeader({
   );
 }
 
+type ContributionTone = 'neutral' | 'blue' | 'green' | 'orange' | 'violet';
+
+function getContributionBadges(row: UserDirectoryRow): Array<{ label: string; tone: ContributionTone }> {
+  const badges: Array<{ label: string; tone: ContributionTone }> = [];
+  if (row.teachingCount > 0 || row.user.roles.includes('teacher')) badges.push({ label: 'Teaching', tone: 'blue' });
+  if (row.user.roles.includes('translator')) badges.push({ label: 'Translating', tone: 'violet' });
+  if (row.menteeCount > 0 || row.user.roles.includes('mentor')) badges.push({ label: 'Mentoring', tone: 'green' });
+  if (row.user.roles.includes('team_leader')) badges.push({ label: 'Leading', tone: 'orange' });
+  if (row.ministryTeams.length > 0) badges.push({ label: 'Serving', tone: 'orange' });
+  return badges;
+}
+
+function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
+  const badges = getContributionBadges(row);
+  const toneClasses: Record<ContributionTone, string> = {
+    neutral: 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]',
+    blue: 'border-[#bfdbfe] bg-white text-[#2563eb]',
+    green: 'border-[#bbf7d0] bg-white text-[#15803d]',
+    orange: 'border-[#fed7aa] bg-white text-[#c2410c]',
+    violet: 'border-[#ddd6fe] bg-white text-[#6d28d9]',
+  };
+
+  if (badges.length === 0) {
+    return <span className="inline-flex text-sm font-medium text-[#a3a3a3]">&mdash;</span>;
+  }
+
+  return (
+    <div className="flex max-w-[18rem] flex-wrap gap-1">
+      {badges.slice(0, 3).map(badge => (
+        <span key={badge.label} className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${toneClasses[badge.tone]}`}>
+          {badge.label}
+        </span>
+      ))}
+      {badges.length > 3 && (
+        <span className="inline-flex items-center rounded-full bg-[#f5f5f5] px-2 py-1 text-[11px] font-semibold leading-none text-[#525252]">
+          +{badges.length - 3}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function DetailLine({ label, value }: { label: string; value: ReactNode }) {
+  return (
+    <div className="rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
+      <div className="mt-1 text-sm font-medium text-[#171717]">{value}</div>
+    </div>
+  );
+}
+
+function ContributionDetailCard({
+  label,
+  detail,
+  tone = 'neutral',
+}: {
+  label: string;
+  detail: ReactNode;
+  tone?: ContributionTone;
+}) {
+  const toneClasses: Record<ContributionTone, string> = {
+    neutral: 'border-[#e5e5e5] bg-white',
+    blue: 'border-[#bfdbfe] bg-[#eff6ff]',
+    green: 'border-[#bbf7d0] bg-[#f0fdf4]',
+    orange: 'border-[#fed7aa] bg-[#fff7ed]',
+    violet: 'border-[#ddd6fe] bg-[#f5f3ff]',
+  };
+
+  return (
+    <div className={`rounded-xl border px-3 py-2.5 ${toneClasses[tone]}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#525252]">{label}</p>
+      <div className="mt-1 text-sm text-[#171717]">{detail}</div>
+    </div>
+  );
+}
+
+function UserDetailModal({
+  row,
+  getCourseDisplayName,
+  onClose,
+  onEditUser,
+  onDeleteUser,
+}: {
+  row: UserDirectoryRow;
+  getCourseDisplayName: (course: Course) => string;
+  onClose: () => void;
+  onEditUser: (user?: User) => void;
+  onDeleteUser: (id: string) => void;
+}) {
+  const user = row.user;
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close user details" />
+      <section role="dialog" aria-modal="true" aria-labelledby="user-detail-title" className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-2xl sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <UserAvatar user={user} />
+            <div className="min-w-0">
+              <h3 id="user-detail-title" className="truncate text-lg font-semibold text-[#171717]">{user.name}</h3>
+              <p className="truncate text-sm text-[#737373]">{user.email}</p>
+            </div>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label="Close">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="tbo-scrollbar max-h-[68vh] space-y-5 overflow-y-auto p-5">
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Responsibilities</p>
+            <ResponsibilitiesBadges row={row} />
+          </div>
+
+          <div className="grid gap-2 sm:grid-cols-2">
+            {row.user.roles.includes('team_leader') && (
+              <ContributionDetailCard
+                label="Leading"
+                tone="orange"
+                detail={row.ministryTeams.length > 0 ? `Leads ${row.ministryTeams.join(', ')}` : 'Team leader with no active team assignment yet.'}
+              />
+            )}
+            {(row.teachingCount > 0 || row.user.roles.includes('teacher')) && (
+              <ContributionDetailCard
+                label="Teaching"
+                tone="blue"
+                detail={`${row.teachingCount} assigned class ${row.teachingCount === 1 ? 'session' : 'sessions'}`}
+              />
+            )}
+            {(row.translatingCount > 0 || row.user.roles.includes('translator')) && (
+              <ContributionDetailCard
+                label="Translating"
+                tone="violet"
+                detail={`${row.translatingCount} assigned translation ${row.translatingCount === 1 ? 'session' : 'sessions'}`}
+              />
+            )}
+            {(row.menteeCount > 0 || row.user.roles.includes('mentor')) && (
+              <ContributionDetailCard
+                label="Mentoring"
+                tone="green"
+                detail={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : 'No active mentees assigned yet.'}
+              />
+            )}
+            {row.mentorNames.length > 0 && (
+              <ContributionDetailCard
+                label="Mentee"
+                tone="green"
+                detail={`Mentored by ${row.mentorNames.join(', ')}`}
+              />
+            )}
+            {row.ministryTeams.length > 0 && (
+              <ContributionDetailCard
+                label="Serving"
+                tone="orange"
+                detail={row.ministryTeams.join(', ')}
+              />
+            )}
+            {getContributionBadges(row).length === 0 && (
+              <ContributionDetailCard label="No responsibilities" detail="No active responsibility has been assigned yet." />
+            )}
+          </div>
+
+          <div className="grid gap-3 sm:grid-cols-2">
+            <DetailLine label="Access" value={<AccessBadge status={row.access} />} />
+            <DetailLine label="Phone" value={user.phone || <span className="text-[#737373]">Not added</span>} />
+            <DetailLine label="Language" value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
+            <DetailLine label="Roles" value={<RoleBadges roles={row.realRoles} yearGroups={row.courses} />} />
+            <DetailLine label="Year groups" value={row.courses.length > 0 ? (
+              <div className="flex flex-wrap gap-1">{row.courses.map(course => <ActiveYearGroupBadge key={course.id} course={course} />)}</div>
+            ) : <span className="text-[#737373]">None</span>} />
+            <DetailLine label="Mentor" value={row.mentorNames.length > 0 ? row.mentorNames.join(', ') : <span className="text-[#737373]">Not assigned</span>} />
+            <DetailLine label="Mentees" value={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : <span className="text-[#737373]">None</span>} />
+            <DetailLine label="Ministry" value={row.ministryTeams.length > 0 ? row.ministryTeams.join(', ') : <span className="text-[#737373]">None</span>} />
+            <DetailLine label="Staff load" value={`${row.teachingCount} teaching / ${row.translatingCount} translating / ${row.menteeCount} mentees`} />
+          </div>
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-[#e5e5e5] px-5 py-4 sm:flex-row sm:justify-end">
+          <button type="button" onClick={() => { onDeleteUser(user.id); onClose(); }} className="rounded-lg border border-[#fecaca] px-4 py-2 text-sm font-semibold text-[#b91c1c] hover:bg-[#fef2f2]">
+            Delete
+          </button>
+          <button type="button" onClick={() => { onEditUser(user); onClose(); }} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a0a0a]">
+            Edit user
+          </button>
+        </div>
+      </section>
+    </div>
+  );
+}
+
 function UserActions({
   user,
   onEditUser,
@@ -115,7 +306,10 @@ function UserActions({
     <div className="flex flex-wrap items-center gap-2">
       <button
         type="button"
-        onClick={() => onEditUser(user)}
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onEditUser(user);
+        }}
         className={`rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
           emphasizeAssign
             ? 'bg-[#171717] text-white hover:bg-[#404040]'
@@ -126,7 +320,10 @@ function UserActions({
       </button>
       <button
         type="button"
-        onClick={() => onDeleteUser(user.id)}
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onDeleteUser(user.id);
+        }}
         className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#b91c1c] hover:bg-[#fef2f2]"
       >
         Remove
@@ -153,7 +350,10 @@ function DirectoryRowActions({
     <div className="inline-flex items-center justify-end gap-1.5">
       <button
         type="button"
-        onClick={() => onEditUser(user)}
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onEditUser(user);
+        }}
         className={`tbo-focus inline-flex h-8 items-center gap-1.5 rounded-lg border px-2.5 text-xs font-semibold transition-colors sm:h-9 sm:px-3 sm:text-sm ${
           isPending
             ? 'border-[#171717] bg-[#171717] text-white hover:bg-[#404040]'
@@ -167,7 +367,10 @@ function DirectoryRowActions({
       </button>
       <button
         type="button"
-        onClick={() => onDeleteUser(user.id)}
+        onClick={(event: MouseEvent<HTMLButtonElement>) => {
+          event.stopPropagation();
+          onDeleteUser(user.id);
+        }}
         className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fecaca] bg-white text-[#b91c1c] transition-colors hover:border-[#f87171] hover:bg-[#fef2f2] hover:text-[#991b1b] sm:h-9 sm:w-9"
         aria-label={`Remove ${user.name}`}
         title="Remove user"
@@ -198,6 +401,7 @@ function DirectoryPanel({
   const [mentorFilter, setMentorFilter] = useState<DirectoryMentorFilter>('all');
   const [sortKey, setSortKey] = useState<DirectorySortKey>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [selectedRow, setSelectedRow] = useState<UserDirectoryRow | null>(null);
 
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
 
@@ -240,16 +444,16 @@ function DirectoryPanel({
           <SearchField
             value={search}
             onChange={setSearch}
-            placeholder="Search name, email, phone, role, course…"
+            placeholder="Search name, email, phone, role, year group..."
           />
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[#737373]">Course</span>
+            <span className="mb-1 block text-xs font-medium text-[#737373]">Year Group</span>
             <select
               value={courseId === 'all' ? 'all' : String(courseId)}
               onChange={event => setCourseId(event.target.value === 'all' ? 'all' : Number(event.target.value))}
               className="h-10 w-full min-w-[10rem] rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm text-[#171717] focus:border-[#171717] focus:outline-none focus:ring-2 focus:ring-[#171717]/10"
             >
-              <option value="all">All courses</option>
+              <option value="all">All year groups</option>
               {activeCourses.map(course => (
                 <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
               ))}
@@ -279,7 +483,11 @@ function DirectoryPanel({
                 <th className="px-4 py-3 text-left">
                   <SortHeader label="Roles" active={sortKey === 'roles'} direction={sortDirection} onClick={() => toggleSort('roles')} />
                 </th>
-                <th className="px-4 py-3 text-left">Courses / ministry</th>
+                <th className="px-4 py-3 text-left">
+                  <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                    Responsibilities
+                  </span>
+                </th>
                 <th className="px-4 py-3 text-left">
                   <SortHeader label="Access" active={sortKey === 'access'} direction={sortDirection} onClick={() => toggleSort('access')} />
                 </th>
@@ -295,7 +503,19 @@ function DirectoryPanel({
                 </tr>
               ) : (
                 filteredRows.map(row => (
-                  <tr key={row.user.id} className="group hover:bg-[#fafafa]">
+                  <tr
+                    key={row.user.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedRow(row)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter' || event.key === ' ') {
+                        event.preventDefault();
+                        setSelectedRow(row);
+                      }
+                    }}
+                    className="group cursor-pointer outline-none transition-colors hover:bg-[#fafafa] focus-visible:bg-[#fafafa] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-[#171717]/15"
+                  >
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
                         <UserAvatar user={row.user} size="sm" />
@@ -309,29 +529,10 @@ function DirectoryPanel({
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <RoleBadges roles={row.realRoles} />
+                      <RoleBadges roles={row.realRoles} yearGroups={row.courses} />
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <div className="flex flex-wrap gap-1">
-                        {row.courses.length === 0 && row.ministryTeams.length === 0 && (
-                          <span className="text-xs italic text-[#737373]">—</span>
-                        )}
-                        {row.courses.map(course => (
-                          <span key={course.id} className="inline-flex rounded-full bg-[#eff6ff] px-2 py-0.5 text-[11px] font-medium text-[#1d4ed8]">
-                            {getCourseDisplayName(course)}
-                          </span>
-                        ))}
-                        {row.mentorNames.length > 0 && (
-                          <span className="inline-flex rounded-full bg-[#f0fdf4] px-2 py-0.5 text-[11px] font-medium text-[#15803d]">
-                            Mentor: {row.mentorNames.join(', ')}
-                          </span>
-                        )}
-                        {row.ministryTeams.map(team => (
-                          <span key={team} className="inline-flex rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">
-                            {team}
-                          </span>
-                        ))}
-                      </div>
+                      <ResponsibilitiesBadges row={row} />
                     </td>
                     <td className="px-4 py-3 align-top">
                       <AccessBadge status={row.access} />
@@ -351,6 +552,16 @@ function DirectoryPanel({
           </table>
         </div>
       </SectionCard>
+
+      {selectedRow && (
+        <UserDetailModal
+          row={selectedRow}
+          getCourseDisplayName={getCourseDisplayName}
+          onClose={() => setSelectedRow(null)}
+          onEditUser={onEditUser}
+          onDeleteUser={onDeleteUser}
+        />
+      )}
     </div>
   );
 }
@@ -376,7 +587,7 @@ function PendingPanel({
               {pendingRows.length} {pendingRows.length === 1 ? 'person' : 'people'} signed in with Google and still need roles.
             </p>
             <p className="mt-1 text-sm text-[#b45309]">
-              Open each account, assign roles, and enroll students in a course before they can use the app.
+              Open each account, assign roles, and enroll students in a year group before they can use the app.
             </p>
           </div>
         </div>
@@ -447,22 +658,22 @@ function EnrollmentsPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatPill label="Active enrollments" value={enrollmentRows.length} detail="Student × course pairs" />
+        <StatPill label="Active enrollments" value={enrollmentRows.length} detail="Student x year group pairs" />
         <StatPill label="Without mentor" value={withoutMentor} detail="Needs assignment" />
         <StatPill label="Showing" value={filtered.length} detail="After filters" />
       </div>
 
       <SectionCard className="p-4">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <SearchField value={search} onChange={setSearch} placeholder="Search student, mentor, or course…" />
+          <SearchField value={search} onChange={setSearch} placeholder="Search student, mentor, or year group..." />
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[#737373]">Course</span>
+            <span className="mb-1 block text-xs font-medium text-[#737373]">Year Group</span>
             <select
               value={courseId === 'all' ? 'all' : String(courseId)}
               onChange={event => setCourseId(event.target.value === 'all' ? 'all' : Number(event.target.value))}
               className="h-10 w-full min-w-[10rem] rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
             >
-              <option value="all">All courses</option>
+              <option value="all">All year groups</option>
               {courseOptions.map(course => (
                 <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
               ))}
@@ -477,7 +688,7 @@ function EnrollmentsPanel({
             <thead className="border-b border-[#e5e5e5] bg-[#fafafa]">
               <tr>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Student</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Course</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Year Group</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Mentor</th>
                 <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Enrolled</th>
                 <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Actions</th>
@@ -500,7 +711,7 @@ function EnrollmentsPanel({
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3">{getCourseDisplayName(row.course)}</td>
+                    <td className="px-4 py-3"><ActiveYearGroupBadge course={row.course} /></td>
                     <td className="px-4 py-3">
                       {row.mentor ? (
                         <div className="flex items-center gap-2">

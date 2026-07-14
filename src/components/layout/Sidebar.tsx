@@ -156,6 +156,42 @@ export function Sidebar({
     },
   ];
 
+  const curriculumItems: NavItem[] = [
+    {
+      id: 'curriculum-overview',
+      label: 'Overview',
+      description: 'Year groups and subjects',
+      icon: BookOpen,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'curriculum-date-view',
+      label: 'Date View',
+      description: 'Sessions by date',
+      icon: Calendar,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'curriculum-planning',
+      label: 'Planning',
+      description: 'Classes and Activation',
+      icon: Calendar,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'curriculum-archived',
+      label: 'Archived',
+      description: 'Inactive year groups',
+      icon: Clock3,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+  ];
+
+
   const myAttendanceItems: NavItem[] = [
     {
       id: 'my-attendance-overview',
@@ -304,7 +340,7 @@ export function Sidebar({
       label: t('sidebar.operations'),
       items: [
         {
-          id: 'curriculum',
+          id: 'curriculum-overview',
           label: t('sidebar.curriculum'),
           description: t('sidebar.curriculum.desc'),
           icon: BookOpen,
@@ -429,6 +465,16 @@ export function Sidebar({
 
     return hasPermission && fitsWorkspace;
   });
+  const visibleCurriculumItems = curriculumItems.filter(item => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+
+    return hasPermission && fitsWorkspace;
+  });
   const visibleMentorshipItems = mentorshipItems.filter(item => {
     const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
     const fitsWorkspace =
@@ -462,6 +508,9 @@ export function Sidebar({
   const inAttendanceModule =
     activeView === 'attendance' ||
     activeView.startsWith('attendance-');
+  const inCurriculumModule =
+    activeView === 'curriculum' ||
+    activeView.startsWith('curriculum-');
   const inMyAttendanceModule =
     activeView === 'my-attendance' ||
     activeView.startsWith('my-attendance-');
@@ -472,26 +521,30 @@ export function Sidebar({
   const inUsersModule =
     activeView === 'users' ||
     activeView.startsWith('users-');
-  const inSubmodule = inAttendanceModule || inMentorshipModule || inMyAttendanceModule || inUsersModule;
+  const inSubmodule = inAttendanceModule || inCurriculumModule || inMentorshipModule || inMyAttendanceModule || inUsersModule;
   const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
   const submoduleLabel = inAttendanceModule
     ? t('sidebar.attendance')
-    : inMentorshipModule
-      ? t('sidebar.mentorship')
-      : inMyAttendanceModule
-        ? t('sidebar.myAttendance')
-        : inUsersModule
-          ? t('sidebar.users')
-          : workspaceLabel;
+    : inCurriculumModule
+      ? t('sidebar.curriculum')
+      : inMentorshipModule
+        ? t('sidebar.mentorship')
+        : inMyAttendanceModule
+          ? t('sidebar.myAttendance')
+          : inUsersModule
+            ? t('sidebar.users')
+            : workspaceLabel;
   const submoduleDesc = inAttendanceModule
     ? t('sidebar.attendance.desc')
-    : inMentorshipModule
-      ? t('sidebar.mentorship.desc')
-      : inMyAttendanceModule
-        ? t('sidebar.myAttendance.desc')
-        : inUsersModule
-          ? t('sidebar.users.desc')
-          : 'Live school data';
+    : inCurriculumModule
+      ? t('sidebar.curriculum.desc')
+      : inMentorshipModule
+        ? t('sidebar.mentorship.desc')
+        : inMyAttendanceModule
+          ? t('sidebar.myAttendance.desc')
+          : inUsersModule
+            ? t('sidebar.users.desc')
+            : 'Live school data';
 
   const handleNavigate = (viewId: string) => {
     onNavigate(viewId);
@@ -504,6 +557,7 @@ export function Sidebar({
     const expanded = forceExpanded || isExpanded;
     const active =
       activeView === item.id ||
+      (item.id === 'curriculum-overview' && activeView === 'curriculum') ||
       (item.id === 'attendance-overview' && activeView === 'attendance') ||
       (item.id === 'my-attendance-overview' && (activeView === 'my-attendance' || activeView === 'my-attendance-overview')) ||
       (item.id === 'users-directory' && (activeView === 'users' || activeView === 'users-directory')) ||
@@ -587,6 +641,13 @@ export function Sidebar({
             items: visibleAttendanceItems.filter(item => !attendanceGroupIds.has(item.id)),
           },
         ].filter(section => section.items.length > 0)
+      : inCurriculumModule && visibleCurriculumItems.length > 0
+        ? [
+            {
+              label: 'Curriculum',
+              items: visibleCurriculumItems,
+            },
+          ]
       : inMentorshipModule && visibleMentorshipItems.length > 0
         ? [
             {

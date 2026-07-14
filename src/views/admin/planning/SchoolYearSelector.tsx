@@ -6,6 +6,7 @@ export interface SchoolYearSelectorProps {
   selectedLabel: string | null;
   onSelectYear: (label: string, fyId?: number, syId?: number) => void;
   onCreateYear: (startYear: number) => Promise<void>;
+  hideLabel?: boolean;
 }
 
 function getMissingCourseLabel(
@@ -35,6 +36,7 @@ export function SchoolYearSelector({
   selectedLabel,
   onSelectYear,
   onCreateYear,
+  hideLabel = false,
 }: SchoolYearSelectorProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
@@ -97,10 +99,12 @@ export function SchoolYearSelector({
 
   return (
     <div ref={containerRef} className="relative z-30 w-full max-w-xs">
-      <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
-        <Calendar className="w-4 h-4 text-amber-600" />
-        School Year
-      </label>
+      {!hideLabel && (
+        <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
+          <Calendar className="w-4 h-4 text-amber-600" />
+          School Year
+        </label>
+      )}
 
       <button
         type="button"

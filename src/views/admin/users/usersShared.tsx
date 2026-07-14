@@ -1,4 +1,5 @@
-import type { User, UserRole } from '../../../types/lms';
+import { BookOpen, GraduationCap, HeartHandshake, Languages, Shield, UserCheck, Users } from 'lucide-react';
+import type { Course, User, UserRole } from '../../../types/lms';
 import { formatRoleLabel } from '../../../utils/userManagementUtils';
 
 export function getInitials(name: string): string {
@@ -44,30 +45,95 @@ export function UserAvatar({
   );
 }
 
-const ROLE_TONES: Record<string, string> = {
-  administrator: 'bg-[#f3e8ff] text-[#7c3aed]',
-  teacher: 'bg-[#dbeaff] text-[#2563eb]',
-  translator: 'bg-[#ecfeff] text-[#0891b2]',
-  mentor: 'bg-[#dcfce7] text-[#16a34a]',
-  team_leader: 'bg-[#fff7ed] text-[#ea580c]',
-  student: 'bg-[#f5f5f5] text-[#525252]',
+const ROLE_META: Record<string, { icon: typeof Shield; className: string }> = {
+  administrator: {
+    icon: Shield,
+    className: 'border-[#c4b5fd] bg-white text-[#6d28d9]',
+  },
+  teacher: {
+    icon: BookOpen,
+    className: 'border-[#93c5fd] bg-white text-[#2563eb]',
+  },
+  translator: {
+    icon: Languages,
+    className: 'border-[#67e8f9] bg-white text-[#0e7490]',
+  },
+  mentor: {
+    icon: HeartHandshake,
+    className: 'border-[#86efac] bg-white text-[#15803d]',
+  },
+  team_leader: {
+    icon: UserCheck,
+    className: 'border-[#fed7aa] bg-white text-[#ea580c]',
+  },
+  student: {
+    icon: GraduationCap,
+    className: 'border-[#d4d4d4] bg-white text-[#525252]',
+  },
 };
 
-export function RoleBadges({ roles }: { roles: UserRole[] }) {
+export function ActiveYearGroupBadge({ course }: { course: Course }) {
+  const isSecond = course.courseType === 'second_year';
+  const label = isSecond ? 'Second Year' : 'First Year';
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
+        isSecond
+          ? 'border-[#a3a3a3] bg-[#e5e5e5] text-[#262626]'
+          : 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]'
+      }`}
+      title={`${label} ${course.graduationYear}`}
+      aria-label={`${label} ${course.graduationYear}`}
+    >
+      <span className="font-serif">{isSecond ? 'II' : 'I'}</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function RoleChip({ role }: { role: UserRole }) {
+  const meta = ROLE_META[role] ?? {
+    icon: Users,
+    className: 'border-[#d4d4d4] bg-white text-[#525252]',
+  };
+  const Icon = meta.icon;
+  return (
+    <span className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${meta.className}`}>
+      <Icon className="h-3.5 w-3.5" />
+      {formatRoleLabel(role)}
+    </span>
+  );
+}
+
+export function RoleBadges({ roles, yearGroups = [] }: { roles: UserRole[]; yearGroups?: Course[] }) {
   if (roles.length === 0) {
     return <span className="text-xs italic text-[#737373]">No roles</span>;
   }
 
+  const studentYearGroups = roles.includes('student') ? yearGroups : [];
+  const nonStudentRoles = roles.filter(role => role !== 'student');
+  const renderedItems = [
+    ...studentYearGroups.map(course => ({ type: 'year' as const, key: `year-${course.id}`, course })),
+    ...nonStudentRoles.map(role => ({ type: 'role' as const, key: role, role })),
+    ...(roles.includes('student') && studentYearGroups.length === 0
+      ? [{ type: 'role' as const, key: 'student', role: 'student' as UserRole }]
+      : []),
+  ];
+  const visibleItems = renderedItems.slice(0, 2);
+  const hiddenCount = Math.max(renderedItems.length - visibleItems.length, 0);
+
   return (
     <div className="flex flex-wrap gap-1">
-      {roles.map(role => (
-        <span
-          key={role}
-          className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-semibold capitalize ${ROLE_TONES[role] ?? 'bg-[#f5f5f5] text-[#525252]'}`}
-        >
-          {formatRoleLabel(role)}
-        </span>
+      {visibleItems.map(item => (
+        item.type === 'year'
+          ? <ActiveYearGroupBadge key={item.key} course={item.course} />
+          : <RoleChip key={item.key} role={item.role} />
       ))}
+      {hiddenCount > 0 && (
+        <span className="inline-flex items-center rounded-full bg-[#f5f5f5] px-2 py-1 text-[11px] font-semibold leading-none text-[#525252]">
+          +{hiddenCount}
+        </span>
+      )}
     </div>
   );
 }

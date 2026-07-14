@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Loader2 } from 'lucide-react';
-import type { Course, User } from '../../types/lms';
+import { CalendarDays, Loader2, Trash2 } from 'lucide-react';
+import type { Course, User, WellScheduleEntry } from '../../types/lms';
 import { useSchoolYearPlanning } from '../../hooks/useSchoolYearPlanning';
 import { findAcademicYearEntry } from '../../utils/courseUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
 import { SchoolYearSelector } from './planning/SchoolYearSelector';
 import { SubjectLibraryPanel } from './planning/SubjectLibraryPanel';
 import { PlanningCalendarGrid } from './planning/PlanningCalendarGrid';
@@ -15,6 +16,9 @@ interface CurriculumPlanningViewProps {
   users: User[];
   onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
+  wellSchedule: WellScheduleEntry[];
+  onGenerateWellScheduleForCourse: (courseId: number) => Promise<void>;
+  onRemoveWellScheduleDate: (wellDate: string, courseIds?: number[]) => Promise<void>;
 }
 
 export function CurriculumPlanningView({
@@ -22,6 +26,9 @@ export function CurriculumPlanningView({
   users,
   onAddCourse,
   onRefetchCourses,
+  wellSchedule,
+  onGenerateWellScheduleForCourse,
+  onRemoveWellScheduleDate,
 }: CurriculumPlanningViewProps) {
   const {
     rows,
@@ -51,6 +58,8 @@ export function CurriculumPlanningView({
   } = useSchoolYearPlanning(courses);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
+  const [wellBusy, setWellBusy] = useState(false);
+  const [planningTab, setPlanningTab] = useState<'schoolYear' | 'well'>('schoolYear');
 
   useEffect(() => {
     if (!successMessage) return;
@@ -119,28 +128,62 @@ export function CurriculumPlanningView({
     setSubjectModalOpen(true);
   }, []);
 
+  const selectedWellCourseIds = React.useMemo(
+    () => [firstYearCourseId, secondYearCourseId].filter((id): id is number => typeof id === 'number'),
+    [firstYearCourseId, secondYearCourseId]
+  );
+  const selectedWellEntries = wellSchedule
+    .filter(entry => selectedWellCourseIds.includes(entry.courseId))
+    .sort((a, b) => a.wellDate.localeCompare(b.wellDate));
+  const wellDates = Array.from(new Set(selectedWellEntries.map(entry => entry.wellDate)));
+
+  const handleGenerateWell = useCallback(async () => {
+    if (selectedWellCourseIds.length === 0) return;
+    setWellBusy(true);
+    try {
+      for (const id of selectedWellCourseIds) {
+        await onGenerateWellScheduleForCourse(id);
+      }
+      setSuccessMessage(`Prepared ${selectedWellCourseIds.length === 2 ? 'both year groups' : 'the selected year group'} for The Well.`);
+    } finally {
+      setWellBusy(false);
+    }
+  }, [onGenerateWellScheduleForCourse, selectedWellCourseIds]);
+
+  const handleRemoveWellDate = useCallback(async (wellDate: string) => {
+    setWellBusy(true);
+    try {
+      await onRemoveWellScheduleDate(wellDate, selectedWellCourseIds);
+      setSuccessMessage(`Removed The Well on ${formatPlatformDate(wellDate)}.`);
+    } finally {
+      setWellBusy(false);
+    }
+  }, [onRemoveWellScheduleDate, selectedWellCourseIds]);
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3 min-w-0">
-          <h3 className="text-xl font-bold text-gray-900">School Year Planning</h3>
-          <SchoolYearSelector
-            academicYears={academicYears}
-            selectedLabel={activeYearLabel}
-            onSelectYear={handleSelectYear}
-            onCreateYear={handleCreateYear}
-          />
+          <h3 className="text-xl font-bold text-gray-900">Planning</h3>
           {isDirty && (
             <p className="text-sm text-amber-700 font-medium">● Unsaved changes</p>
           )}
         </div>
 
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex w-full flex-col gap-2 flex-shrink-0 lg:w-auto lg:flex-row lg:items-center">
+          <span className="whitespace-nowrap text-sm font-semibold text-[#171717]">School Year</span>
+          <SchoolYearSelector
+            academicYears={academicYears}
+            selectedLabel={activeYearLabel}
+            onSelectYear={handleSelectYear}
+            onCreateYear={handleCreateYear}
+            hideLabel
+          />
           <button
             type="button"
             onClick={handleDiscard}
             disabled={!isDirty}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="h-10 whitespace-nowrap rounded-lg border border-[#d4d4d4] bg-white px-4 text-sm font-medium text-[#525252] shadow-[0_1px_0_rgba(0,0,0,0.03)] hover:border-[#a3a3a3] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Discard Changes
           </button>
@@ -148,7 +191,7 @@ export function CurriculumPlanningView({
             type="button"
             onClick={handleUpdate}
             disabled={!activeYearLabel || committing}
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="inline-flex h-10 items-center justify-center gap-2 px-4 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {committing && <Loader2 className="w-4 h-4 animate-spin" />}
             Update
@@ -168,6 +211,26 @@ export function CurriculumPlanningView({
         </div>
       )}
 
+      <div className="inline-flex rounded-xl border border-[#e5e5e5] bg-white p-1">
+        {[
+          { id: 'schoolYear' as const, label: 'School Year' },
+          { id: 'well' as const, label: 'The Well' },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setPlanningTab(tab.id)}
+            className={`rounded-lg px-3 py-1.5 text-sm font-semibold transition ${
+              planningTab === tab.id
+                ? 'bg-[#171717] text-white'
+                : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
       {!activeYearLabel ? (
         <div className="flex items-center justify-center py-16 text-gray-500 text-sm">
           Select a school year above to start planning, or create a new one.
@@ -186,23 +249,75 @@ export function CurriculumPlanningView({
                 <Loader2 className="w-6 h-6 animate-spin text-amber-600" />
               </div>
             )}
-            <PlanningCalendarGrid
-              rows={rows}
-              users={users}
-              onUpdateRowDate={updateRowDate}
-              onUpdateSlot={updateSlot}
-              onAddRow={addRow}
-              onRemoveRow={removeRow}
-              onMoveSessionBlock={moveSessionBlock}
-              onSwapSlot={swapSlot}
-              onAddSubject={handleAddSubject}
-              addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
-              onAddActivationSaturday={addActivationSaturday}
-              breaks={breaks}
-              onAddBreak={addBreak}
-              onUpdateBreak={updateBreak}
-              onRemoveBreak={removeBreak}
-            />
+            {planningTab === 'schoolYear' && (
+              <PlanningCalendarGrid
+                rows={rows}
+                users={users}
+                onUpdateRowDate={updateRowDate}
+                onUpdateSlot={updateSlot}
+                onAddRow={addRow}
+                onRemoveRow={removeRow}
+                onMoveSessionBlock={moveSessionBlock}
+                onSwapSlot={swapSlot}
+                onAddSubject={handleAddSubject}
+                addSubjectDisabled={firstYearCourseId == null && secondYearCourseId == null}
+                onAddActivationSaturday={addActivationSaturday}
+                breaks={breaks}
+                onAddBreak={addBreak}
+                onUpdateBreak={updateBreak}
+                onRemoveBreak={removeBreak}
+              />
+            )}
+            {planningTab === 'well' && (
+            <section className="rounded-xl border border-[#e5e5e5] bg-white p-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <CalendarDays className="h-5 w-5 text-[#16a34a]" />
+                    <h4 className="font-semibold text-[#171717]">The Well</h4>
+                  </div>
+                  <p className="mt-1 text-sm text-[#737373]">
+                    Add the shared Wednesday Well sessions for this school year. Remove a date when the school will not meet.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={handleGenerateWell}
+                  disabled={wellBusy || selectedWellCourseIds.length === 0}
+                  className="inline-flex h-10 items-center justify-center rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {wellBusy ? 'Working...' : 'Auto-fill Wednesdays'}
+                </button>
+              </div>
+              <div className="mt-4 max-h-56 overflow-y-auto rounded-lg border border-[#eeeeee]">
+                {wellDates.length > 0 ? (
+                  <div className="divide-y divide-[#eeeeee]">
+                    {wellDates.map(date => (
+                      <div key={date} className="flex items-center justify-between gap-3 px-3 py-2">
+                        <div>
+                          <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(date)}</p>
+                          <p className="text-xs text-[#737373]">Shared Well session</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveWellDate(date)}
+                          disabled={wellBusy}
+                          className="grid h-8 w-8 place-items-center rounded-lg text-[#b91c1c] hover:bg-[#fef2f2] disabled:opacity-50"
+                          aria-label={`Remove The Well on ${formatPlatformDate(date)}`}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="px-3 py-6 text-center text-sm text-[#737373]">
+                    No Well sessions have been added for this school year yet.
+                  </div>
+                )}
+              </div>
+            </section>
+            )}
           </div>
         </div>
       )}

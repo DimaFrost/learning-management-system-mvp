@@ -26,6 +26,7 @@ export type UserDirectoryRow = {
   realRoles: UserRole[];
   courses: Course[];
   mentorNames: string[];
+  menteeNames: string[];
   ministryTeams: string[];
   hasMentor: boolean;
   teachingCount: number;
@@ -114,7 +115,7 @@ export function buildUserDirectoryRows({
     );
     const enrolledCourses = enrollments
       .map(enrollment => courses.find(course => course.id === enrollment.courseId))
-      .filter((course): course is Course => !!course);
+      .filter((course): course is Course => !!course && isCourseActive(course));
     const mentorNames = Array.from(new Set(
       enrollments
         .map(enrollment => getUserById(enrollment.mentorId)?.name)
@@ -124,6 +125,12 @@ export function buildUserDirectoryRows({
     const menteeCount = courseStudents.filter(
       enrollment => enrollment.mentorId === user.id && enrollment.status === 'active'
     ).length;
+    const menteeNames = Array.from(new Set(
+      courseStudents
+        .filter(enrollment => enrollment.mentorId === user.id && enrollment.status === 'active')
+        .map(enrollment => getUserById(enrollment.studentId)?.name)
+        .filter((name): name is string => !!name)
+    ));
 
     return {
       user,
@@ -131,6 +138,7 @@ export function buildUserDirectoryRows({
       realRoles,
       courses: enrolledCourses,
       mentorNames,
+      menteeNames,
       ministryTeams: getMinistryTeamNames(user.id, ministryRotations, ministryTeams),
       hasMentor: enrollments.length > 0 && enrollments.every(enrollment => !!enrollment.mentorId),
       teachingCount,
@@ -235,7 +243,7 @@ export function buildEnrollmentRows({
     .map(enrollment => {
       const student = users.find(user => user.id === enrollment.studentId);
       const course = courses.find(item => item.id === enrollment.courseId);
-      if (!student || !course) return null;
+      if (!student || !course || !isCourseActive(course)) return null;
       return {
         id: `${enrollment.courseId}-${enrollment.studentId}`,
         student,

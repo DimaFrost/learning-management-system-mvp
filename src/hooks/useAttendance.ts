@@ -645,6 +645,22 @@ export function useAttendance(
     await fetchAll();
   };
 
+  const removeWellScheduleDate = async (wellDate: string, courseIds?: number[]): Promise<void> => {
+    let query = supabase
+      .from('well_schedule')
+      .delete()
+      .eq('well_date', wellDate);
+
+    if (courseIds && courseIds.length > 0) {
+      query = query.in('course_id', courseIds);
+    }
+
+    const { error: deleteError } = await query;
+    if (deleteError) throw deleteError;
+
+    await fetchAll();
+  };
+
   const updatePrayerAssignment = async (
     entryId: number,
     updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }
@@ -771,9 +787,14 @@ export function useAttendance(
       .upsert(sessionRows, { onConflict: 'student_id,course_id,week_start' });
     if (sessionError) throw sessionError;
 
+    const changedStudentIds = new Set(records.map(r => r.studentId));
     const mergedSessions = [
       ...theWellSessionAttendance.filter(
-        s => !(s.courseId === courseId && s.weekStart === weekStart)
+        s => !(
+          s.courseId === courseId &&
+          s.weekStart === weekStart &&
+          changedStudentIds.has(s.studentId)
+        )
       ),
       ...records.map(r => ({
         id: 0,
@@ -854,7 +875,6 @@ export function useAttendance(
     const memberIds = input.memberIds ?? input.members?.map(member => member.userId) ?? [];
     const primaryLeaderId = memberIds[0] ?? input.leaderId ?? null;
     const row = {
-      id: input.id,
       name: input.name,
       name_bg: input.nameBg ?? null,
       info: input.info ?? null,
@@ -869,12 +889,19 @@ export function useAttendance(
       updated_at: new Date().toISOString(),
     };
 
-    const { data: teamRow, error: upsertError } = await supabase
-      .from('ministry_teams')
-      .upsert(row)
-      .select('id')
-      .single();
-    if (upsertError) throw upsertError;
+    const { data: teamRow, error: teamError } = input.id
+      ? await supabase
+          .from('ministry_teams')
+          .update(row)
+          .eq('id', input.id)
+          .select('id')
+          .single()
+      : await supabase
+          .from('ministry_teams')
+          .insert(row)
+          .select('id')
+          .single();
+    if (teamError) throw teamError;
 
     const teamId = teamRow?.id ?? input.id;
     if (teamId && input.memberIds) {
@@ -1257,7 +1284,7 @@ export function useAttendance(
     pendingTransferRequests,
     generateDutyScheduleForCourse, updateDutyAssignment,
     generatePrayerScheduleForSchoolYear, updatePrayerAssignment,
-    generateWellScheduleForCourse,
+    generateWellScheduleForCourse, removeWellScheduleDate,
     requestDutyTransfer, resolveTransferRequest,
     markClassAttendance, markWellSessionAttendance,
     upsertTheWellAttendance: upsertTheWellAttendanceWithRefetch,

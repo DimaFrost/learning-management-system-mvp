@@ -1,4 +1,5 @@
 import type {
+  Course,
   DutyScheduleEntry,
   PrayerScheduleEntry,
   TodoItem,
@@ -65,6 +66,7 @@ export function buildScheduleTodosForStudent(
   user: User,
   dutySchedule: DutyScheduleEntry[],
   prayerSchedule: PrayerScheduleEntry[],
+  courses: Course[] = [],
   today: string = getTodayDateString(),
   horizonDays: number = SCHEDULE_HORIZON_DAYS
 ): TodoItem[] {
@@ -119,6 +121,26 @@ export function buildScheduleTodosForStudent(
             `You are scheduled to lead prayer on ${formatPlatformDate(eventDate)}.`,
             eventDate,
             isThisWeek ? 'priority' : 'none'
+          )
+        );
+      }
+    }
+  }
+
+  for (const course of courses) {
+    for (const subject of course.subjects) {
+      for (const cls of subject.classes) {
+        if (cls.teacherId !== user.id) continue;
+        if (!cls.date || cls.date < today || cls.date > horizon) continue;
+
+        todos.push(
+          buildBaseScheduleTodo(
+            user,
+            `teaching:${cls.id}:${cls.date}`,
+            'You are teaching',
+            `${subject.title} is scheduled for ${formatPlatformDate(cls.date)}.`,
+            cls.date,
+            cls.date <= addDaysToDateKey(today, 7) ? 'priority' : 'none'
           )
         );
       }

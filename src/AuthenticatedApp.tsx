@@ -124,16 +124,13 @@ export function AuthenticatedApp({
     [users]
   );
   const scheduleTodos = useMemo(
-    () => (
-      effectiveUser.roles.includes('student')
-        ? buildScheduleTodosForStudent(
-          effectiveUser,
-          attendance.dutySchedule,
-          attendance.prayerSchedule
-        )
-        : []
+    () => buildScheduleTodosForStudent(
+      effectiveUser,
+      attendance.dutySchedule,
+      attendance.prayerSchedule,
+      courses
     ),
-    [attendance.dutySchedule, attendance.prayerSchedule, effectiveUser]
+    [attendance.dutySchedule, attendance.prayerSchedule, courses, effectiveUser]
   );
   const displayTodos = useMemo(
     () => [...scheduleTodos, ...todos.todos],

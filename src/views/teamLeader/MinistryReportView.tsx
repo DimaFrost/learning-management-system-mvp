@@ -185,9 +185,6 @@ export function MinistryReportView({
     return (
       <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6">
         <h2 className="text-2xl font-semibold text-[#171717]">Ministry report</h2>
-        <p className="mt-2 max-w-2xl text-sm leading-6 text-[#525252]">
-          You have the team leader workspace, but no ministry team is assigned to your profile yet. An administrator can assign you from Attendance / Ministry / Teams.
-        </p>
       </div>
     );
   }

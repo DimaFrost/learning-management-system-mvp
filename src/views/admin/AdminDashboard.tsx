@@ -57,6 +57,7 @@ interface AdminDashboardProps {
   activeWorkspace: WorkspaceId | null;
   getCourseDisplayName: (course: Course) => string;
   onNavigate: (view: string) => void;
+  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
 type HomeworkOps = {
@@ -85,6 +86,9 @@ type UpcomingItem = {
   speaker?: UpcomingPerson;
   translator?: UpcomingPerson;
   jointKey?: string;
+  classId: number;
+  subjectId: number;
+  courseId: number;
 };
 
 type UpcomingDateGroup = {
@@ -102,6 +106,9 @@ type MonthCalendarEvent = {
   type: 'session' | 'activation';
   yearLabel: string;
   tone: 'blue' | 'orange';
+  classId?: number;
+  subjectId?: number;
+  courseId?: number;
 };
 
 type UpcomingPerson = {
@@ -127,6 +134,7 @@ type MetricInsight = {
   value: number | string;
   detail: string;
   description: string;
+  notes?: string[];
   progressValue: number;
   progressLabel: string;
   actionLabel: string;
@@ -253,6 +261,41 @@ function isSaturdayDate(date: string) {
 
 function getCourseYearLabel(course: Course) {
   return course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+}
+
+function getYearRomanLabel(label: string) {
+  if (label.includes('First & Second')) return 'I+II';
+  if (label.includes('Second')) return 'II';
+  return 'I';
+}
+
+function YearRomanBadge({
+  label,
+  tone = 'neutral',
+  compact = false,
+}: {
+  label: string;
+  tone?: 'neutral' | 'blue' | 'orange';
+  compact?: boolean;
+}) {
+  const isSecond = label.includes('Second') && !label.includes('First & Second');
+  const toneClass = tone === 'orange'
+    ? 'border-[#d4d4d4] bg-[linear-gradient(135deg,#fafafa_0%,#fafafa_46%,#737373_46%,#737373_54%,#e5e5e5_54%,#e5e5e5_100%)] text-[#171717]'
+    : isSecond
+      ? 'border-[#a3a3a3] bg-[#e5e5e5] text-[#262626]'
+      : 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]';
+  return (
+    <span
+      className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border leading-none ${toneClass} ${
+        compact ? 'h-6 px-1.5 text-[11px]' : 'h-7 px-2 text-sm'
+      }`}
+      title={label}
+      aria-label={label}
+    >
+      <span className="font-serif font-semibold">{getYearRomanLabel(label)}</span>
+      <span className="font-sans font-semibold">{label.includes('First & Second') ? 'Years' : label}</span>
+    </span>
+  );
 }
 
 function getScopedCourses(
@@ -618,6 +661,7 @@ export function AdminDashboard({
   activeWorkspace,
   getCourseDisplayName,
   onNavigate,
+  onOpenClass,
 }: AdminDashboardProps) {
   const [homeworkOps, setHomeworkOps] = useState<HomeworkOps>({
     assignments: 0,
@@ -829,6 +873,9 @@ export function AdminDashboard({
             tone: 'blue',
             speaker: jointCandidate.speaker,
             translator: jointCandidate.translator,
+            classId: cls.id,
+            subjectId: subject.id,
+            courseId: course.id,
             jointKey: cls.hour === 'both' && isSaturdayDate(cls.date)
               ? getActivationJointKey(jointCandidate)
               : undefined,
@@ -846,6 +893,9 @@ export function AdminDashboard({
           type: 'activation' as const,
           yearLabel: 'First & Second Years',
           tone: 'orange' as const,
+          classId: item.classId,
+          subjectId: item.subjectId,
+          courseId: item.courseId,
         })),
         ...group.years.flatMap(yearGroup =>
           yearGroup.items.map(item => ({
@@ -854,6 +904,9 @@ export function AdminDashboard({
             type: 'session' as const,
             yearLabel: yearGroup.yearLabel,
             tone: item.tone,
+            classId: item.classId,
+            subjectId: item.subjectId,
+            courseId: item.courseId,
           }))
         ),
       ];
@@ -891,6 +944,38 @@ export function AdminDashboard({
       .filter(cls => !cls.materialsFolderId || !cls.homeworkFolderId).length;
     return count + courseGap + subjectGaps + classGaps;
   }, 0);
+  const yearGroupHealthGaps = [
+    ...activeCourses
+      .filter(course => course.subjects.length === 0)
+      .map(course => `${getCourseDisplayName(course)} has no subjects yet.`),
+    ...activeCourses.flatMap(course =>
+      course.subjects
+        .filter(subject => subject.classes.length === 0)
+        .map(subject => `${getCourseDisplayName(course)} / ${subject.title} has no sessions.`)
+    ),
+    ...activeCourses.flatMap(course =>
+      course.subjects.flatMap(subject =>
+        subject.classes
+          .filter(cls => !cls.teacherId || !cls.translatorId)
+          .map(cls => `${getCourseDisplayName(course)} / ${subject.title}: ${!cls.teacherId && !cls.translatorId ? 'teacher and translator missing' : !cls.teacherId ? 'teacher missing' : 'translator missing'}.`)
+      )
+    ),
+    ...activeCourses
+      .filter(course => !course.driveFolderId)
+      .map(course => `${getCourseDisplayName(course)} is missing its Drive folder.`),
+    ...activeCourses.flatMap(course =>
+      course.subjects
+        .filter(subject => !subject.driveFolderId)
+        .map(subject => `${getCourseDisplayName(course)} / ${subject.title} is missing its subject Drive folder.`)
+    ),
+    ...activeCourses.flatMap(course =>
+      course.subjects.flatMap(subject =>
+        subject.classes
+          .filter(cls => !cls.materialsFolderId || !cls.homeworkFolderId)
+          .map(cls => `${getCourseDisplayName(course)} / ${subject.title}: class folders incomplete.`)
+      )
+    ),
+  ].slice(0, 8);
 
   const attendanceSummaries = activeCourses.flatMap(course =>
     attendance.getCourseSummaries(course.id).map(summary => ({
@@ -971,12 +1056,13 @@ export function AdminDashboard({
   const schoolPulse = clampPercent(100 - Math.min(signalCount * 8, 70));
   const metricInsights: MetricInsight[] = [
     {
-      title: 'Course Health',
+      title: 'Year Group Health',
       value: activeCourses.length,
       detail: `${staffingGaps} staffing gaps`,
-      description: 'Shows how many active courses are running and how complete their setup is. The progress bar combines course, subject, class, staffing, and Drive folder readiness.',
+      description: 'Shows how many active year groups are running and how complete their setup is. The progress bar combines year group, subject, class, staffing, and Drive folder readiness.',
+      notes: yearGroupHealthGaps.length > 0 ? yearGroupHealthGaps : ['Everything counted in this readiness score is complete.'],
       progressValue: courseReadiness,
-      progressLabel: `${courseReadiness}% course readiness`,
+      progressLabel: `${courseReadiness}% year group readiness`,
       actionLabel: 'Open curriculum',
       view: 'curriculum',
       tone: 'blue',
@@ -1108,6 +1194,12 @@ export function AdminDashboard({
 
   const closeCalendarModal = () => {
     setSelectedCalendarDate(null);
+  };
+
+  const openCalendarEvent = (event: MonthCalendarEvent) => {
+    if (!event.classId || !event.subjectId || !event.courseId) return;
+    closeCalendarModal();
+    onOpenClass(event.classId, event.subjectId, event.courseId);
   };
 
   const closeMetricInsight = () => {
@@ -1335,7 +1427,7 @@ export function AdminDashboard({
                     >
                       <CompactAvatar name={keeper.name} avatarUrl={keeper.avatarUrl} />
                       <div className="min-w-0">
-                        <p className="truncate text-[11px] font-medium text-[#737373]">{keeper.label}</p>
+                        <YearRomanBadge label={keeper.label} compact />
                         <p className={`truncate text-sm font-semibold ${keeper.assigned ? 'text-[#171717]' : 'text-[#737373]'}`}>
                           {keeper.name}
                         </p>
@@ -1351,7 +1443,7 @@ export function AdminDashboard({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric
-          label="Course Health"
+          label="Year Group Health"
           value={activeCourses.length}
           detail={`${staffingGaps} staffing gaps`}
           progress={courseReadiness}
@@ -1436,9 +1528,7 @@ export function AdminDashboard({
                       {group.jointItems.map(item => (
                         <div key={item.id} className="col-span-full self-start overflow-hidden rounded-lg bg-[#fff7ed] ring-1 ring-[#fed7aa] lg:col-span-2">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#9a3412]">
-                              First & Second Years
-                            </p>
+                            <YearRomanBadge label="First & Second Years" tone="orange" compact />
                             <span className="text-[11px] text-[#c2410c]">Joint</span>
                           </div>
                           <div className="bg-white">
@@ -1465,9 +1555,7 @@ export function AdminDashboard({
                       {group.years.map(yearGroup => (
                         <div key={`${group.date}-${yearGroup.yearLabel}`} className="self-start overflow-hidden rounded-lg bg-[#fafafa] ring-1 ring-[#eeeeee]">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                              {yearGroup.yearLabel}
-                            </p>
+                            <YearRomanBadge label={yearGroup.yearLabel} compact />
                             <span className="text-[11px] text-[#a3a3a3]">{yearGroup.items.length}</span>
                           </div>
                           <div className="divide-y divide-[#eeeeee] bg-white">
@@ -1608,7 +1696,7 @@ export function AdminDashboard({
       </div>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SectionCard title="Course Health" subtitle="Setup">
+        <SectionCard title="Year Group Health" subtitle="Setup">
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl bg-[#f5f5f5] p-3">
@@ -1812,6 +1900,21 @@ export function AdminDashboard({
                 <p className="mt-2 text-sm font-medium text-[#525252]">{selectedMetricInsight.detail}</p>
               </div>
               <p className="text-sm leading-6 text-[#525252]">{selectedMetricInsight.description}</p>
+              {selectedMetricInsight.notes && selectedMetricInsight.notes.length > 0 && (
+                <div className="rounded-xl border border-[#e5e5e5] bg-white p-3">
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                    What is holding this back
+                  </p>
+                  <ul className="space-y-1.5 text-sm text-[#525252]">
+                    {selectedMetricInsight.notes.map(note => (
+                      <li key={note} className="flex gap-2">
+                        <span className="mt-2 h-1.5 w-1.5 flex-shrink-0 rounded-full bg-[#d97757]" />
+                        <span>{note}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               <div>
                 <div className="mb-1.5 flex items-center justify-between gap-3">
                   <span className="text-xs font-medium text-[#525252]">{selectedMetricInsight.progressLabel}</span>
@@ -1880,9 +1983,12 @@ export function AdminDashboard({
                 </div>
               ) : (
                 selectedCalendarEvents.map(event => (
-                  <div
+                  <button
+                    type="button"
                     key={event.id}
-                    className="grid gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 sm:grid-cols-[36px_1fr] sm:items-center"
+                    onClick={() => openCalendarEvent(event)}
+                    className="tbo-focus grid w-full gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-left transition hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:grid-cols-[36px_1fr_auto] sm:items-center"
+                    aria-label={`Open ${event.title}`}
                   >
                     <span className={`grid h-9 w-9 place-items-center rounded-lg ${toneClasses[event.tone]}`}>
                       {event.type === 'activation' ? (
@@ -1894,15 +2000,14 @@ export function AdminDashboard({
                     <div className="min-w-0">
                       <div className="flex flex-wrap items-center gap-2">
                         <p className="truncate text-sm font-semibold text-[#171717]">{event.title}</p>
-                        <span className={`tbo-pill ${event.type === 'activation' ? 'bg-[#fff7ed] text-[#ea580c]' : 'bg-[#dbeaff] text-[#2563eb]'}`}>
-                          {event.yearLabel}
-                        </span>
+                        <YearRomanBadge label={event.yearLabel} tone={event.type === 'activation' ? 'orange' : 'blue'} compact />
                       </div>
                       <p className="mt-1 text-xs text-[#737373]">
                         {event.type === 'activation' ? 'Activation Saturday' : 'Session'}
                       </p>
                     </div>
-                  </div>
+                    <ArrowUpRight className="hidden h-4 w-4 text-[#a3a3a3] sm:block" />
+                  </button>
                 ))
               )}
             </div>

@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
+import { isCourseActive } from '../../utils/courseUtils';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -31,7 +32,12 @@ export function MentorDashboard({
   onOpenCheckin,
 }: MentorDashboardProps) {
   const getMyStudents = () => {
-    const mentorEnrollments = courseStudents.filter(cs => cs.mentorId === currentUser.id);
+    const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
+    const mentorEnrollments = courseStudents.filter(cs =>
+      cs.mentorId === currentUser.id &&
+      cs.status === 'active' &&
+      activeCourseIds.has(cs.courseId)
+    );
 
     const studentMap = new Map<string, {
       studentId: string;

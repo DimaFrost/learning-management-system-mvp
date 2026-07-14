@@ -5,6 +5,7 @@ import { EditCourseForm } from './EditCourseForm';
 import { EditSubjectForm } from './EditSubjectForm';
 import { EditClassForm } from './EditClassForm';
 import { EditUserForm } from './EditUserForm';
+import { hasActiveCourseOfType } from '../../../utils/courseUtils';
 
 export interface FormData {
   [key: string]: any;
@@ -94,7 +95,7 @@ export function EditModal({
 
     // Validation
     if (!formData.courseType && editingItem && editingItem.type === 'course') {
-      newErrors.courseType = 'Course Type is required';
+      newErrors.courseType = 'Year Group Type is required';
     }
     if (!formData.graduationYear && editingItem && editingItem.type === 'course') {
       newErrors.graduationYear = 'Year of Graduation is required';
@@ -108,11 +109,15 @@ export function EditModal({
     if (editingItem && editingItem.type === 'course' && formData.courseType && formData.graduationYear) {
       const excludeCourseId = editingItem.data ? (editingItem.data as Course).id : undefined;
       const isDuplicate = checkCourseUniqueness(formData.courseType, formData.graduationYear, courses, excludeCourseId);
+      const activeTypeExists = hasActiveCourseOfType(formData.courseType, courses, excludeCourseId);
       
       if (isDuplicate) {
         const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
         newErrors.courseType = `${courseTypeLabel} ${formData.graduationYear} already exists`;
         newErrors.graduationYear = `${courseTypeLabel} ${formData.graduationYear} already exists`;
+      } else if (activeTypeExists) {
+        const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
+        newErrors.courseType = `Archive the active ${courseTypeLabel} year group before creating another one.`;
       }
     }
     if (!formData.name && editingItem && editingItem.type === 'user') {
@@ -267,7 +272,7 @@ export function EditModal({
   const getModalTitle = () => {
     const action = editingItem.data ? 'Edit' : 'Add';
     switch (editingItem.type) {
-      case 'course': return `${action} Course`;
+      case 'course': return `${action} Year Group`;
       case 'subject': return `${action} Subject`;
       case 'class': return `${action} Session`;
       case 'user': return `${action} User`;

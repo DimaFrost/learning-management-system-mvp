@@ -1,6 +1,6 @@
 import type { Course, CourseStudent, EditingItem, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
-import { getCourseDisplayName, getCourseOptions } from '../../../utils/courseUtils';
+import { getCourseDisplayName, getCourseOptions, isCourseActive } from '../../../utils/courseUtils';
 
 interface EditUserFormProps {
   formData: FormData;
@@ -15,6 +15,15 @@ interface EditUserFormProps {
   removeUserFromCourse: (userId: string, courseId: number, users: User[], courses: Course[]) => void;
 }
 
+const roleLabels: Record<string, string> = {
+  administrator: 'Administrator',
+  teacher: 'Teacher',
+  translator: 'Translator',
+  mentor: 'Mentor',
+  team_leader: 'Team Leader',
+  student: 'Student',
+};
+
 export function EditUserForm({
   formData,
   errors,
@@ -27,6 +36,8 @@ export function EditUserForm({
   assignUserToCourse,
   removeUserFromCourse,
 }: EditUserFormProps) {
+  const activeCourseOptions = getCourseOptions(courses.filter(isCourseActive));
+
   return (
     <>
       <div>
@@ -69,22 +80,26 @@ export function EditUserForm({
                 }}
                 className="mr-2"
               />
-              <span className="text-sm text-gray-700 capitalize">{role}</span>
+              <span className="text-sm text-gray-700">{roleLabels[role] ?? role.replace(/_/g, ' ')}</span>
             </label>
           ))}
         </div>
       </div>
       
-      {/* Course Assignment Section - Only show for existing users */}
+      {/* Year group assignment section - Only show for existing users */}
       {editingItem.data && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Course Assignment</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">Year Group Assignment</label>
           <div className="space-y-3">
-            {/* Current Course Assignments */}
+            {/* Current year group assignments */}
             <div>
               <h4 className="text-sm font-medium text-gray-600 mb-2">Current Assignments</h4>
               {courseStudents
-                .filter(cs => cs.studentId === (editingItem.data as User).id)
+                .filter(cs => {
+                  if (cs.studentId !== (editingItem.data as User).id || cs.status !== 'active') return false;
+                  const course = courses.find(c => c.id === cs.courseId);
+                  return !!course && isCourseActive(course);
+                })
                 .map(cs => {
                   const course = courses.find(c => c.id === cs.courseId);
                   const mentor = getUserById(cs.mentorId);
@@ -93,7 +108,7 @@ export function EditUserForm({
                       <div className="flex items-center justify-between">
                         <div className="flex-1">
                           <p className="text-sm font-medium text-gray-900">
-                            {course ? getCourseDisplayName(course) : 'Unknown Course'}
+                            {course ? getCourseDisplayName(course) : 'Unknown Year Group'}
                           </p>
                           <p className="text-xs text-gray-600">
                             Mentor: {mentor?.name || 'Not assigned'} • Enrolled: {cs.enrollmentDate}
@@ -109,22 +124,26 @@ export function EditUserForm({
                     </div>
                   );
                 })}
-              {courseStudents.filter(cs => cs.studentId === (editingItem.data as User).id).length === 0 && (
-                <p className="text-sm text-gray-500 italic">No course assignments</p>
+              {courseStudents.filter(cs => {
+                if (cs.studentId !== (editingItem.data as User).id || cs.status !== 'active') return false;
+                const course = courses.find(c => c.id === cs.courseId);
+                return !!course && isCourseActive(course);
+              }).length === 0 && (
+                <p className="text-sm text-gray-500 italic">No year group assignments</p>
               )}
             </div>
             
-            {/* Add New Course Assignment */}
+            {/* Add new year group assignment */}
             <div>
-              <h4 className="text-sm font-medium text-gray-600 mb-2">Assign to Course</h4>
+              <h4 className="text-sm font-medium text-gray-600 mb-2">Assign to Year Group</h4>
               <div className="flex space-x-2">
                 <select
                   value={formData.assignedCourseId || ''}
                   onChange={(e) => onChange('assignedCourseId', parseInt(e.target.value))}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Select a course</option>
-                  {getCourseOptions(courses).map(course => (
+                  <option value="">Select a year group</option>
+                  {activeCourseOptions.map(course => (
                     <option key={course.id} value={course.id}>
                       {course.displayName}
                     </option>

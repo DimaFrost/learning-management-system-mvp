@@ -490,10 +490,21 @@ export function AppRouter({
   if (hasRole('administrator') && activeWorkspace !== 'student') {
     switch (activeView) {
       case 'curriculum':
+      case 'curriculum-overview':
+      case 'curriculum-date-view':
+      case 'curriculum-archived':
+      case 'curriculum-planning':
         return (
           <CurriculumView
-            activeCurriculumTab={activeCurriculumTab}
-            onCurriculumTabChange={onCurriculumTabChange}
+            activeCurriculumSection={
+              activeView === 'curriculum-date-view'
+                ? 'date-view'
+                : activeView === 'curriculum-archived'
+                  ? 'archived'
+                    : activeView === 'curriculum-planning'
+                      ? 'planning'
+                      : 'overview'
+            }
             courses={courses}
             users={users}
             currentUser={currentUser}
@@ -526,6 +537,9 @@ export function AppRouter({
             onDeleteClass={deleteClass}
             onReactivate={(courseId) => updateCourse(courseId, { status: 'active' })}
             onOpenClass={openClassDetail}
+            wellSchedule={attendance.wellSchedule}
+            onGenerateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
+            onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
           />
         );
       case 'users':
@@ -666,6 +680,7 @@ export function AppRouter({
             activeWorkspace={activeWorkspace}
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
+            onOpenClass={openClassDetail}
           />
         );
     }
@@ -846,6 +861,7 @@ export function AppRouter({
         activeWorkspace={activeWorkspace}
         getCourseDisplayName={getCourseDisplayName}
         onNavigate={setActiveView}
+        onOpenClass={openClassDetail}
       />
     );
   }

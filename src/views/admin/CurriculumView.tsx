@@ -1,15 +1,13 @@
 import { Plus } from 'lucide-react';
-import type { Course, User, Subject, Class } from '../../types/lms';
+import type { Course, User, Subject, Class, WellScheduleEntry } from '../../types/lms';
 import { PageHeader } from '../../components/ui/PageHeader';
-import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
 import { CurriculumArchiveView } from './CurriculumArchiveView';
 import { CurriculumPlanningView } from './CurriculumPlanningView';
 
 interface CurriculumViewProps {
-  activeCurriculumTab: string;
-  onCurriculumTabChange: (tab: string) => void;
+  activeCurriculumSection: 'overview' | 'date-view' | 'archived' | 'planning';
   courses: Course[];
   users: User[];
   currentUser: User;
@@ -32,11 +30,13 @@ interface CurriculumViewProps {
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
   onReactivate: (courseId: number) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
+  wellSchedule: WellScheduleEntry[];
+  onGenerateWellScheduleForCourse: (courseId: number) => Promise<void>;
+  onRemoveWellScheduleDate: (wellDate: string, courseIds?: number[]) => Promise<void>;
 }
 
 export function CurriculumView({
-  activeCurriculumTab,
-  onCurriculumTabChange,
+  activeCurriculumSection,
   courses,
   users,
   currentUser,
@@ -59,14 +59,10 @@ export function CurriculumView({
   onDeleteClass,
   onReactivate,
   onOpenClass,
+  wellSchedule,
+  onGenerateWellScheduleForCourse,
+  onRemoveWellScheduleDate,
 }: CurriculumViewProps) {
-  const curriculumTabs = [
-    { id: 'overview', label: 'Overview' },
-    { id: 'date-view', label: 'Date View' },
-    { id: 'archived', label: 'Archived' },
-    { id: 'planning', label: 'Planning' },
-  ];
-
   return (
     <div className="space-y-6">
       <PageHeader
@@ -74,22 +70,15 @@ export function CurriculumView({
         action={
           <button
             onClick={() => onEditCourse()}
-            className="w-full sm:w-auto bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center justify-center space-x-2"
+            className="tbo-focus inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040] sm:w-auto"
           >
             <Plus className="w-4 h-4" />
-            <span>Add Course</span>
+            <span>Add Year Group</span>
           </button>
         }
       />
 
-      <ScrollableTabs
-        tabs={curriculumTabs}
-        activeTab={activeCurriculumTab}
-        onTabChange={onCurriculumTabChange}
-        ariaLabel="Curriculum tabs"
-      />
-
-      {activeCurriculumTab === 'overview' && (
+      {activeCurriculumSection === 'overview' && (
         <CurriculumOverview
           courses={courses}
           currentUser={currentUser}
@@ -109,7 +98,7 @@ export function CurriculumView({
           onOpenClass={onOpenClass}
         />
       )}
-      {activeCurriculumTab === 'date-view' && (
+      {activeCurriculumSection === 'date-view' && (
         <CurriculumDateView
           courses={courses}
           currentUser={currentUser}
@@ -121,7 +110,7 @@ export function CurriculumView({
           onOpenClass={onOpenClass}
         />
       )}
-      {activeCurriculumTab === 'archived' && (
+      {activeCurriculumSection === 'archived' && (
         <CurriculumArchiveView
           courses={courses}
           users={users}
@@ -130,12 +119,15 @@ export function CurriculumView({
           onReactivate={onReactivate}
         />
       )}
-      {activeCurriculumTab === 'planning' && (
+      {activeCurriculumSection === 'planning' && (
         <CurriculumPlanningView
           courses={courses}
           users={users}
           onAddCourse={onAddCourse}
           onRefetchCourses={onRefetchCourses}
+          wellSchedule={wellSchedule}
+          onGenerateWellScheduleForCourse={onGenerateWellScheduleForCourse}
+          onRemoveWellScheduleDate={onRemoveWellScheduleDate}
         />
       )}
     </div>

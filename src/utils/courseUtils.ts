@@ -129,7 +129,7 @@ export function userTeachesInCourse(
 
 export const getCourseDisplayName = (course: Course): string => {
   const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-  return `${courseTypeLabel} ${course.graduationYear}`;
+  return `${courseTypeLabel} Group ${course.graduationYear}`;
 };
 
 export const checkCourseUniqueness = (courseType: string, graduationYear: number, courses: Course[], excludeCourseId?: number): boolean => {
@@ -137,6 +137,14 @@ export const checkCourseUniqueness = (courseType: string, graduationYear: number
     course.id !== excludeCourseId && 
     course.courseType === courseType && 
     course.graduationYear === graduationYear
+  );
+};
+
+export const hasActiveCourseOfType = (courseType: string, courses: Course[], excludeCourseId?: number): boolean => {
+  return courses.some(course =>
+    course.id !== excludeCourseId &&
+    course.courseType === courseType &&
+    isCourseActive(course)
   );
 };
 

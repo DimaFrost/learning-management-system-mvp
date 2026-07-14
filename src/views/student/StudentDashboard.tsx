@@ -287,8 +287,8 @@ export function StudentDashboard({
   );
 
   const studentScheduleTodos = useMemo(
-    () => buildScheduleTodosForStudent(currentUser, dutySchedule, prayerSchedule),
-    [currentUser, dutySchedule, prayerSchedule]
+    () => buildScheduleTodosForStudent(currentUser, dutySchedule, prayerSchedule, courses),
+    [currentUser, dutySchedule, prayerSchedule, courses]
   );
 
   const dashboardOpenTodos = useMemo(() => {

@@ -1,5 +1,18 @@
 import React, { useMemo, useState, useEffect, useRef, useCallback } from 'react';
-import { GripVertical, MoveVertical, Trash2, Plus, AlertTriangle, CalendarPlus, CalendarRange } from 'lucide-react';
+import {
+  AlertTriangle,
+  CalendarPlus,
+  CalendarRange,
+  CheckCircle2,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  GripVertical,
+  MoveVertical,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react';
 import type {
   PlanningRow,
   PlanningSlot,
@@ -18,6 +31,8 @@ type BreakResult = { ok: true } | { ok: false; error: string };
 type CalendarEntry =
   | { kind: 'row'; row: PlanningRow }
   | { kind: 'break'; break: PlanningBreak };
+
+type PlannerMode = 'plan' | 'edit';
 
 interface DragState {
   courseSide: CourseSide;
@@ -156,6 +171,143 @@ function formatDisplayDate(dateStr: string): string {
   return formatPlatformDate(dateStr);
 }
 
+function weekStartKey(dateStr: string): string {
+  if (!dateStr) return 'unscheduled';
+  const date = new Date(`${dateStr}T00:00:00`);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const datePart = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${datePart}`;
+}
+
+function todayDateKey(): string {
+  const date = new Date();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const datePart = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${datePart}`;
+}
+
+function getEntryDate(entry: CalendarEntry): string {
+  return entry.kind === 'row' ? entry.row.date : entry.break.startDate;
+}
+
+function groupEntriesByWeek(entries: CalendarEntry[]): Array<{ weekStart: string; entries: CalendarEntry[] }> {
+  const groups: Array<{ weekStart: string; entries: CalendarEntry[] }> = [];
+  for (const entry of entries) {
+    const key = weekStartKey(getEntryDate(entry));
+    const latest = groups[groups.length - 1];
+    if (latest?.weekStart === key) {
+      latest.entries.push(entry);
+    } else {
+      groups.push({ weekStart: key, entries: [entry] });
+    }
+  }
+  return groups;
+}
+
+function getSlotIssues(
+  slot: PlanningSlot,
+  teacherConflict: boolean,
+  translatorConflict: boolean
+): string[] {
+  const issues: string[] = [];
+  const hasSubject = !!slot.subjectTitle.trim();
+  if (hasSubject && !slot.teacherId) issues.push('Missing teacher');
+  if (hasSubject && !slot.translatorId) issues.push('Missing translator');
+  if (teacherConflict) issues.push('Teacher conflict');
+  if (translatorConflict) issues.push('Translator conflict');
+  if (slot.subjectId === null && hasSubject) issues.push('New subject');
+  return issues;
+}
+
+function getRowSlots(row: PlanningRow): PlanningSlot[] {
+  return row.isSaturday
+    ? [row.jointSlot]
+    : [
+        row.firstHourFirstYear,
+        row.secondHourFirstYear,
+        row.firstHourSecondYear,
+        row.secondHourSecondYear,
+      ];
+}
+
+function getWeekSummary(group: { entries: CalendarEntry[] }, users: User[]) {
+  let sessionCount = 0;
+  let missingTeacherCount = 0;
+  let missingTranslatorCount = 0;
+  let newSubjectCount = 0;
+  const teacherIds = new Set<string>();
+
+  for (const entry of group.entries) {
+    if (entry.kind !== 'row') continue;
+    for (const slot of getRowSlots(entry.row)) {
+      const hasSubject = !!slot.subjectTitle.trim();
+      if (!hasSubject) continue;
+      sessionCount++;
+      if (slot.teacherId) teacherIds.add(slot.teacherId);
+      if (!slot.teacherId) missingTeacherCount++;
+      if (!slot.translatorId) missingTranslatorCount++;
+      if (slot.subjectId === null) newSubjectCount++;
+    }
+  }
+
+  const teacherCount = [...teacherIds].filter(id => users.some(u => u.id === id)).length;
+  return {
+    sessionCount,
+    teacherCount,
+    missingTeacherCount,
+    missingTranslatorCount,
+    newSubjectCount,
+    hasIssues: missingTeacherCount > 0 || missingTranslatorCount > 0 || newSubjectCount > 0,
+  };
+}
+
+function isWeekComplete(group: { entries: CalendarEntry[] }, users: User[]): boolean {
+  const summary = getWeekSummary(group, users);
+  return summary.sessionCount > 0 && !summary.hasIssues;
+}
+
+function getStaffName(users: User[], userId: string | null): string {
+  if (!userId) return 'Vacant';
+  return users.find(u => u.id === userId)?.name ?? 'Unknown';
+}
+
+function getStaffUser(users: User[], userId: string | null): User | null {
+  if (!userId) return null;
+  return users.find(u => u.id === userId) ?? null;
+}
+
+function getInitials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  return parts.slice(0, 2).map(part => part[0]?.toUpperCase()).join('');
+}
+
+function PlannerStaffAvatar({
+  user,
+  role,
+}: {
+  user: User | null;
+  role: string;
+}) {
+  if (!user) return null;
+  const name = user.name;
+  return (
+    <span
+      className="inline-flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[8px] font-semibold text-[#57534e] ring-1 ring-[#d8cdbb]"
+      title={`${role}: ${name}`}
+    >
+      {user.avatarUrl ? (
+        <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        getInitials(name)
+      )}
+    </span>
+  );
+}
+
 function collectSubjectTitles(rows: PlanningRow[], side: CourseSide): string[] {
   const titles = new Set<string>();
   for (const row of rows) {
@@ -237,7 +389,7 @@ function DateCell({ row, rowSpan, inBreak = false, onUpdateRowDate }: DateCellPr
   return (
     <td
       rowSpan={rowSpan}
-      className={`border border-gray-200 px-1.5 py-2 align-top w-[108px] min-w-[108px] max-w-[108px] ${STICKY_DATE}`}
+      className={`border-b border-r border-gray-200 px-2 py-2 align-top w-[108px] min-w-[108px] max-w-[108px] ${STICKY_DATE}`}
     >
       <input
         type="date"
@@ -271,7 +423,7 @@ function DayCell({ row, rowSpan }: DayCellProps) {
   return (
     <td
       rowSpan={rowSpan}
-      className={`border border-gray-200 px-1 py-2 align-top w-[52px] min-w-[52px] max-w-[52px] ${STICKY_DAY}`}
+      className={`border-b border-r border-gray-200 px-2 py-2 align-top w-[52px] min-w-[52px] max-w-[52px] ${STICKY_DAY}`}
     >
       {row.date ? (
         <div>
@@ -317,7 +469,7 @@ function RemoveCell({ row, rowSpan, onRemoveRow }: RemoveCellProps) {
   return (
     <td
       rowSpan={rowSpan}
-      className="border border-gray-200 px-2 py-2 align-top text-center"
+      className="border-b border-gray-200 px-2 py-2 align-top text-center"
     >
       <button
         type="button"
@@ -342,6 +494,11 @@ interface SlotHourFieldsProps {
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
   dragState: DragState | null;
   onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
+  selectedBlockKey: string | null;
+  toolbarBlockKey: string | null;
+  onSelectBlock: (key: string) => void;
+  onShowToolbar: (key: string) => void;
+  plannerMode: PlannerMode;
 }
 
 function SlotHourFields({
@@ -355,6 +512,11 @@ function SlotHourFields({
   onUpdateSlot,
   dragState,
   onBeginDrag,
+  selectedBlockKey,
+  toolbarBlockKey,
+  onSelectBlock,
+  onShowToolbar,
+  plannerMode,
 }: SlotHourFieldsProps) {
   const filled = !!slot.subjectTitle.trim();
   const teachers = users.filter(u => hasRole(u, 'teacher'));
@@ -362,16 +524,24 @@ function SlotHourFields({
   const datalistId = `subjects-${side}`;
   const tint = sideTint(side);
   const emptyCell = filled ? '' : 'border-dashed border-gray-300';
-  const isFirstHour = slotKey === 'firstHourFirstYear' || slotKey === 'firstHourSecondYear';
   const firstHourKey = firstHourKeyForSide(side);
   const secondHourKey = secondHourKeyForSide(side);
   const firstHourSlot = row[firstHourKey];
   const secondHourSlot = row[secondHourKey];
+  const teacherUser = getStaffUser(users, slot.teacherId);
+  const translatorUser = getStaffUser(users, slot.translatorId);
   const dayBlockDraggable = !!(
     firstHourSlot.subjectTitle.trim() || secondHourSlot.subjectTitle.trim()
   );
   const isDragging = dragState !== null;
   const highlight = cellHighlightClass(dragState, row.rowId, slotKey);
+  const dayBlockKey = `${row.rowId}:${side}`;
+  const cellKey = `${dayBlockKey}:${slotKey}`;
+  const selected = selectedBlockKey?.startsWith(`${dayBlockKey}:`) ?? false;
+  const selectedCell = selectedBlockKey === cellKey;
+  const toolbarOpen = toolbarBlockKey === cellKey;
+  const isEditing = plannerMode === 'edit' || selectedCell;
+  const issues = getSlotIssues(slot, teacherConflict, translatorConflict);
 
   const dropAttrs = {
     'data-drop-row-id': row.rowId,
@@ -379,93 +549,150 @@ function SlotHourFields({
     'data-drop-hour-slot-key': slotKey,
   };
 
-  const cellBase = `border border-gray-200 px-2 py-2 align-top ${tint} ${emptyCell}${highlight}`;
+  const cellBase = `border-b border-r border-gray-200 px-2 py-2 align-top ${tint} ${emptyCell}${highlight}`;
 
   return (
     <>
-      <td className={`${cellBase} min-w-[100px] relative`} {...dropAttrs}>
-        {isFirstHour && dayBlockDraggable && (
-          <span
-            onMouseDown={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              const firstPreview = slotPreview(firstHourSlot, users);
-              const secondPreview = slotPreview(secondHourSlot, users);
-              onBeginDrag(
-                {
-                  courseSide: side,
-                  sourceRowId: row.rowId,
-                  sourceHourSlotKey: firstHourKey,
-                  blockSize: 2,
-                  preview: {
-                    ...firstPreview,
-                    secondSubjectTitle: secondPreview.subjectTitle,
-                    secondTeacherName: secondPreview.teacherName,
-                    secondTranslatorName: secondPreview.translatorName,
-                  },
-                },
-                e.clientX,
-                e.clientY
-              );
-            }}
-            title="Drag to move both sessions of this day"
-            className={`absolute left-0 top-1 bottom-1 w-5 flex items-center justify-center text-gray-500 hover:text-amber-700 ${
-              isDragging ? 'cursor-grabbing' : 'cursor-grab'
-            }`}
-            aria-label="Drag to move both sessions of this day"
-          >
-            <span className="absolute left-1 top-1 bottom-1 w-0.5 rounded-full bg-gray-300" aria-hidden />
-            <MoveVertical className="w-4 h-4 relative z-10" />
-          </span>
+      <td
+        className={`${cellBase} min-w-[100px] relative transition ${selected ? 'ring-2 ring-inset ring-[#171717]/15' : ''}`}
+        onClick={() => onSelectBlock(cellKey)}
+        {...dropAttrs}
+      >
+        {toolbarOpen && (dayBlockDraggable || filled) && (
+          <div className="absolute right-2 top-2 z-30 flex items-center gap-1 rounded-lg border border-[#ded7cd] bg-white/95 p-1 shadow-[0_10px_24px_rgba(40,31,23,0.16)] backdrop-blur">
+            {dayBlockDraggable && (
+              <button
+                type="button"
+                onMouseDown={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const firstPreview = slotPreview(firstHourSlot, users);
+                  const secondPreview = slotPreview(secondHourSlot, users);
+                  onBeginDrag(
+                    {
+                      courseSide: side,
+                      sourceRowId: row.rowId,
+                      sourceHourSlotKey: firstHourKey,
+                      blockSize: 2,
+                      preview: {
+                        ...firstPreview,
+                        secondSubjectTitle: secondPreview.subjectTitle,
+                        secondTeacherName: secondPreview.teacherName,
+                        secondTranslatorName: secondPreview.translatorName,
+                      },
+                    },
+                    e.clientX,
+                    e.clientY
+                  );
+                }}
+                title="Move both sessions"
+                className={`inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-semibold text-[#9f5f26] transition hover:bg-[#fff4e5] ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
+                aria-label="Drag to move both sessions of this day"
+              >
+                <MoveVertical className="h-3.5 w-3.5" />
+                Day
+              </button>
+            )}
+            {filled && (
+              <button
+                type="button"
+                onMouseDown={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onBeginDrag(
+                    {
+                      courseSide: side,
+                      sourceRowId: row.rowId,
+                      sourceHourSlotKey: slotKey as SlotLocation['hourSlotKey'],
+                      blockSize: 1,
+                      preview: slotPreview(slot, users),
+                    },
+                    e.clientX,
+                    e.clientY
+                  );
+                }}
+                title="Move this session"
+                className={`inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-semibold text-[#5f5750] transition hover:bg-[#f4f1ec] ${
+                  isDragging ? 'cursor-grabbing' : 'cursor-grab'
+                }`}
+                aria-label="Drag to reorder this session"
+              >
+                <GripVertical className="h-3.5 w-3.5" />
+                Session
+              </button>
+            )}
+          </div>
         )}
-        {filled && (
-          <span
-            onMouseDown={e => {
-              e.preventDefault();
-              e.stopPropagation();
-              onBeginDrag(
-                {
-                  courseSide: side,
-                  sourceRowId: row.rowId,
-                  sourceHourSlotKey: slotKey as SlotLocation['hourSlotKey'],
-                  blockSize: 1,
-                  preview: slotPreview(slot, users),
-                },
-                e.clientX,
-                e.clientY
-              );
-            }}
-            className={`absolute top-1.5 right-1.5 ${
-              isDragging ? 'cursor-grabbing' : 'cursor-grab'
-            }`}
-            aria-label="Drag to reorder this session"
-          >
-            <GripVertical className="w-3.5 h-3.5 text-gray-400" />
-          </span>
+        {isEditing ? (
+          <div className="flex items-center gap-1 min-w-0 pr-4">
+            <input
+              type="text"
+              list={datalistId}
+              value={slot.subjectTitle}
+              onChange={e =>
+                onUpdateSlot(row.rowId, slotKey, {
+                  subjectTitle: e.target.value,
+                  subjectId: null,
+                })
+              }
+              placeholder="Type or select subject..."
+              className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
+            />
+            {slot.subjectId === null && slot.subjectTitle.trim() && (
+              <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
+                new
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="group/card min-h-[26px] rounded-lg border border-transparent px-2 py-1 transition hover:border-[#ded7cd] hover:bg-white/80">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className={`truncate text-xs font-semibold ${filled ? 'text-[#24211e]' : 'text-[#a8a29e]'}`}>
+                  {filled ? slot.subjectTitle : 'Empty session'}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-1">
+                {issues.length > 0 && (
+                  <span
+                    title={issues.join(', ')}
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-amber-100 text-amber-700 ring-1 ring-amber-200"
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                  </span>
+                )}
+                {(dayBlockDraggable || filled) && (
+                  <button
+                    type="button"
+                    onClick={e => {
+                      e.stopPropagation();
+                      onShowToolbar(cellKey);
+                    }}
+                    className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[#a8a29e] opacity-0 transition hover:bg-[#f4f1ec] hover:text-[#57534e] group-hover/card:opacity-100"
+                    aria-label="Show move tools"
+                    title="Move tools"
+                  >
+                    <MoveVertical className="h-3.5 w-3.5" />
+                  </button>
+                )}
+                <Pencil className="h-3.5 w-3.5 text-[#a8a29e] opacity-0 transition group-hover/card:opacity-100" />
+              </div>
+            </div>
+          </div>
         )}
-        <div className={`flex items-center gap-1 min-w-0 pr-4 ${isFirstHour && dayBlockDraggable ? 'pl-5' : ''}`}>
-          <input
-            type="text"
-            list={datalistId}
-            value={slot.subjectTitle}
-            onChange={e =>
-              onUpdateSlot(row.rowId, slotKey, {
-                subjectTitle: e.target.value,
-                subjectId: null,
-              })
-            }
-            placeholder="Type or select subject..."
-            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
-          />
-          {slot.subjectId === null && slot.subjectTitle.trim() && (
-            <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
-              (new)
-            </span>
+        {dragState?.isValidTarget &&
+          dragState.hoverTargetKey ===
+            (dragState.blockSize === 2 ? row.rowId : `${row.rowId}:${slotKey}`) && (
+            <div className="pointer-events-none absolute inset-1 z-20 flex items-center justify-center rounded-lg border border-dashed border-amber-400 bg-amber-50/90 text-[11px] font-semibold text-amber-800">
+              Drop here
+            </div>
           )}
-        </div>
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dropAttrs}>
+      <td className={`${cellBase} min-w-[88px] ${selected ? 'ring-2 ring-inset ring-[#171717]/15' : ''}`} onClick={() => onSelectBlock(cellKey)} {...dropAttrs}>
+        {isEditing ? (
         <div className="flex items-center gap-1">
           <select
             value={slot.teacherId ?? ''}
@@ -491,9 +718,16 @@ function SlotHourFields({
             </span>
           )}
         </div>
+        ) : (
+          <span className={`flex min-w-0 items-center gap-1.5 text-xs ${slot.teacherId ? 'text-[#44403c]' : 'text-[#a8a29e]'}`}>
+            <PlannerStaffAvatar user={teacherUser} role="Teacher" />
+            <span className="truncate">{getStaffName(users, slot.teacherId)}</span>
+          </span>
+        )}
       </td>
 
-      <td className={`${cellBase} min-w-[88px]`} {...dropAttrs}>
+      <td className={`${cellBase} min-w-[88px] ${selected ? 'ring-2 ring-inset ring-[#171717]/15' : ''}`} onClick={() => onSelectBlock(cellKey)} {...dropAttrs}>
+        {isEditing ? (
         <div className="flex items-center gap-1">
           <select
             value={slot.translatorId ?? ''}
@@ -519,6 +753,12 @@ function SlotHourFields({
             </span>
           )}
         </div>
+        ) : (
+          <span className={`flex min-w-0 items-center gap-1.5 text-xs ${slot.translatorId ? 'text-[#44403c]' : 'text-[#a8a29e]'}`}>
+            <PlannerStaffAvatar user={translatorUser} role="Translator" />
+            <span className="truncate">{getStaffName(users, slot.translatorId)}</span>
+          </span>
+        )}
       </td>
     </>
   );
@@ -587,51 +827,94 @@ function PlanningActionToolbar({
   onAddBreak,
   onManageBreaks,
 }: PlanningActionToolbarProps) {
+  const [addMenuOpen, setAddMenuOpen] = useState(false);
+  const addMenuRef = useRef<HTMLDivElement | null>(null);
+
+  const handleMenuAction = (action: () => void) => {
+    action();
+    setAddMenuOpen(false);
+  };
+
+  useEffect(() => {
+    if (!addMenuOpen) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (addMenuRef.current?.contains(target)) return;
+      setAddMenuOpen(false);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [addMenuOpen]);
+
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button
-        type="button"
-        onClick={onAddRow}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-      >
-        <Plus className="w-4 h-4" />
-        Add Date
-      </button>
-
-      <button
-        type="button"
-        onClick={onAddSubject}
-        disabled={addSubjectDisabled}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        <Plus className="w-4 h-4" />
-        Add Subject
-      </button>
-
-      <button
-        type="button"
-        onClick={onAddActivationSaturday}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-      >
-        <CalendarPlus className="w-4 h-4" />
-        Add Activation Saturday
-      </button>
-
-      <button
-        type="button"
-        onClick={onAddBreak}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
-      >
-        <CalendarRange className="w-4 h-4" />
-        Add A Break
-      </button>
-
+      <div ref={addMenuRef} className="relative">
+        <button
+          type="button"
+          onClick={() => setAddMenuOpen(open => !open)}
+          className="inline-flex items-center gap-2 rounded-xl bg-[#24211e] px-3.5 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-[#3a342f]"
+          aria-expanded={addMenuOpen}
+          aria-haspopup="menu"
+        >
+          <Plus className="h-4 w-4" />
+          Add
+          <ChevronDown className="h-3.5 w-3.5" />
+        </button>
+        {addMenuOpen && (
+          <div
+            role="menu"
+            className="absolute left-0 top-full z-40 mt-2 w-60 overflow-hidden rounded-xl border border-[#ded7cd] bg-white p-1.5 shadow-[0_16px_42px_rgba(40,31,23,0.16)]"
+          >
+            <button
+              type="button"
+              onClick={() => handleMenuAction(onAddRow)}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#44403c] transition hover:bg-[#f7f1e8]"
+              role="menuitem"
+            >
+              <CalendarPlus className="h-4 w-4 text-[#9f5f26]" />
+              Date
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMenuAction(onAddSubject)}
+              disabled={addSubjectDisabled}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#44403c] transition hover:bg-[#f7f1e8] disabled:cursor-not-allowed disabled:opacity-50"
+              role="menuitem"
+            >
+              <Plus className="h-4 w-4 text-[#9f5f26]" />
+              Subject
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMenuAction(onAddActivationSaturday)}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#44403c] transition hover:bg-[#f7f1e8]"
+              role="menuitem"
+            >
+              <CalendarPlus className="h-4 w-4 text-[#9f5f26]" />
+              Activation Saturday
+            </button>
+            <button
+              type="button"
+              onClick={() => handleMenuAction(onAddBreak)}
+              className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-[#44403c] transition hover:bg-[#f7f1e8]"
+              role="menuitem"
+            >
+              <CalendarRange className="h-4 w-4 text-[#9f5f26]" />
+              Break
+            </button>
+          </div>
+        )}
+      </div>
       <button
         type="button"
         onClick={onManageBreaks}
-        className="inline-flex items-center gap-2 px-4 py-2 text-sm font-medium text-amber-700 border border-amber-300 rounded-lg hover:bg-amber-50 transition-colors"
+        className="inline-flex items-center gap-2 rounded-xl border border-[#ded7cd] bg-white px-3 py-2 text-sm font-semibold text-[#6f6256] transition hover:bg-[#f7f1e8]"
       >
-        Manage Breaks
+        <CalendarRange className="h-4 w-4" />
+        Breaks
       </button>
     </div>
   );
@@ -645,6 +928,11 @@ interface WeekdayDateRowsProps {
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
   dragState: DragState | null;
   onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
+  selectedBlockKey: string | null;
+  toolbarBlockKey: string | null;
+  onSelectBlock: (key: string) => void;
+  onShowToolbar: (key: string) => void;
+  plannerMode: PlannerMode;
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
 
@@ -656,6 +944,11 @@ function WeekdayDateRows({
   onUpdateSlot,
   dragState,
   onBeginDrag,
+  selectedBlockKey,
+  toolbarBlockKey,
+  onSelectBlock,
+  onShowToolbar,
+  plannerMode,
   onRemoveRow,
 }: WeekdayDateRowsProps) {
   const conflicts = getHourStaffConflicts(row);
@@ -682,6 +975,11 @@ function WeekdayDateRows({
           onUpdateSlot={onUpdateSlot}
           dragState={dragState}
           onBeginDrag={onBeginDrag}
+          selectedBlockKey={selectedBlockKey}
+          toolbarBlockKey={toolbarBlockKey}
+          onSelectBlock={onSelectBlock}
+          onShowToolbar={onShowToolbar}
+          plannerMode={plannerMode}
         />
         <SlotHourFields
           row={row}
@@ -700,6 +998,11 @@ function WeekdayDateRows({
           onUpdateSlot={onUpdateSlot}
           dragState={dragState}
           onBeginDrag={onBeginDrag}
+          selectedBlockKey={selectedBlockKey}
+          toolbarBlockKey={toolbarBlockKey}
+          onSelectBlock={onSelectBlock}
+          onShowToolbar={onShowToolbar}
+          plannerMode={plannerMode}
         />
         <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
       </tr>
@@ -721,6 +1024,11 @@ function WeekdayDateRows({
           onUpdateSlot={onUpdateSlot}
           dragState={dragState}
           onBeginDrag={onBeginDrag}
+          selectedBlockKey={selectedBlockKey}
+          toolbarBlockKey={toolbarBlockKey}
+          onSelectBlock={onSelectBlock}
+          onShowToolbar={onShowToolbar}
+          plannerMode={plannerMode}
         />
         <SlotHourFields
           row={row}
@@ -739,6 +1047,11 @@ function WeekdayDateRows({
           onUpdateSlot={onUpdateSlot}
           dragState={dragState}
           onBeginDrag={onBeginDrag}
+          selectedBlockKey={selectedBlockKey}
+          toolbarBlockKey={toolbarBlockKey}
+          onSelectBlock={onSelectBlock}
+          onShowToolbar={onShowToolbar}
+          plannerMode={plannerMode}
         />
       </tr>
     </>
@@ -764,7 +1077,7 @@ function JointSlotFields({
   const teachers = users.filter(u => hasRole(u, 'teacher'));
   const translators = users.filter(u => hasRole(u, 'translator'));
   const emptyCell = filled ? '' : 'border-dashed border-gray-300';
-  const cellBase = `border border-gray-200 px-2 py-2 align-top bg-amber-50/60 ${emptyCell}`;
+  const cellBase = `border-b border-r border-gray-200 px-2 py-2 align-top bg-amber-50/60 ${emptyCell}`;
   const staffConflict =
     slot.teacherId !== null && slot.teacherId === slot.translatorId;
 
@@ -894,6 +1207,9 @@ interface SaturdayDateRowProps {
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
   onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
+  selectedBlockKey: string | null;
+  onSelectBlock: (key: string) => void;
+  plannerMode: PlannerMode;
 }
 
 function SaturdayDateRow({
@@ -904,7 +1220,72 @@ function SaturdayDateRow({
   onUpdateSlot,
   onSwapSlot,
   onRemoveRow,
+  selectedBlockKey,
+  onSelectBlock,
+  plannerMode,
 }: SaturdayDateRowProps) {
+  const slot = row.jointSlot;
+  const activationKey = `${row.rowId}:activation`;
+  const isEditing = plannerMode === 'edit' || selectedBlockKey === activationKey;
+  const subject = slot.subjectTitle.trim() || 'Activation Saturday';
+  const teacherUser = getStaffUser(users, slot.teacherId);
+  const translatorUser = getStaffUser(users, slot.translatorId);
+  const teacher = getStaffName(users, slot.teacherId);
+  const translator = getStaffName(users, slot.translatorId);
+
+  if (isEditing) {
+    return (
+      <tr className="hover:bg-amber-50/40">
+        <DateCell row={row} inBreak={inBreak} onUpdateRowDate={onUpdateRowDate} />
+        <DayCell row={row} />
+        <JointSlotFields
+          row={row}
+          users={users}
+          onUpdateSlot={onUpdateSlot}
+          onSwapSlot={onSwapSlot}
+        />
+        <RemoveCell row={row} onRemoveRow={onRemoveRow} />
+      </tr>
+    );
+  }
+
+  if (plannerMode === 'plan') {
+    return (
+      <tr className="hover:bg-amber-50/40">
+        <DateCell row={row} inBreak={inBreak} onUpdateRowDate={onUpdateRowDate} />
+        <DayCell row={row} />
+        <td
+          colSpan={6}
+          onClick={() => onSelectBlock(activationKey)}
+          className="cursor-pointer border-b border-r border-gray-200 bg-amber-50/70 px-3 py-2 align-middle transition hover:bg-amber-50"
+        >
+          <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-2">
+              <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
+                Activation Saturday
+              </span>
+              <span className="truncate text-xs font-semibold text-[#24211e]">
+                {subject}
+              </span>
+            </div>
+            <div className="flex min-w-0 items-center gap-2 text-xs text-[#78716c]">
+              <span className="flex min-w-0 items-center gap-1.5">
+                <PlannerStaffAvatar user={teacherUser} role="Teacher" />
+                <span className="truncate">Teacher: {teacher}</span>
+              </span>
+              <span className="h-1 w-1 rounded-full bg-[#d6cfc5]" />
+              <span className="flex min-w-0 items-center gap-1.5">
+                <PlannerStaffAvatar user={translatorUser} role="Translator" />
+                <span className="truncate">Translator: {translator}</span>
+              </span>
+            </div>
+          </div>
+        </td>
+        <RemoveCell row={row} onRemoveRow={onRemoveRow} />
+      </tr>
+    );
+  }
+
   return (
     <>
       <tr className="hover:bg-gray-50/30">
@@ -912,9 +1293,9 @@ function SaturdayDateRow({
         <DayCell row={row} rowSpan={2} />
         <td
           colSpan={6}
-          className="border border-gray-200 px-2 py-1.5 align-middle bg-amber-50/60 text-center"
+          className="border-b border-r border-gray-200 px-2 py-2 align-middle bg-amber-50 text-center"
         >
-          <span className="text-xs font-semibold text-amber-800">Activation Saturday</span>
+          <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Activation Saturday</span>
         </td>
         <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
       </tr>
@@ -938,6 +1319,11 @@ interface PlanningRowCellsProps {
   onUpdateSlot: PlanningCalendarGridProps['onUpdateSlot'];
   dragState: DragState | null;
   onBeginDrag: (params: BeginDragParams, clientX: number, clientY: number) => void;
+  selectedBlockKey: string | null;
+  toolbarBlockKey: string | null;
+  onSelectBlock: (key: string) => void;
+  onShowToolbar: (key: string) => void;
+  plannerMode: PlannerMode;
   onSwapSlot: PlanningCalendarGridProps['onSwapSlot'];
   onRemoveRow: PlanningCalendarGridProps['onRemoveRow'];
 }
@@ -980,6 +1366,12 @@ export function PlanningCalendarGrid({
   const [manageBreaksOpen, setManageBreaksOpen] = useState(false);
 
   const [dragState, setDragState] = useState<DragState | null>(null);
+  const [selectedBlockKey, setSelectedBlockKey] = useState<string | null>(null);
+  const [toolbarBlockKey, setToolbarBlockKey] = useState<string | null>(null);
+  const [plannerMode, setPlannerMode] = useState<PlannerMode>('plan');
+  const [collapsedWeeks, setCollapsedWeeks] = useState<Set<string>>(() => new Set());
+  const planningTableRef = useRef<HTMLDivElement | null>(null);
+  const weekStripRef = useRef<HTMLDivElement | null>(null);
   const dragStateRef = useRef<DragState | null>(null);
   dragStateRef.current = dragState;
   const dragHoverRef = useRef<Pick<DragState, 'hoverTargetKey' | 'isValidTarget'>>({
@@ -1002,6 +1394,21 @@ export function PlanningCalendarGrid({
   );
 
   const isDragging = dragState !== null;
+
+  useEffect(() => {
+    if (!selectedBlockKey && !toolbarBlockKey) return;
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target;
+      if (!(target instanceof Node)) return;
+      if (planningTableRef.current?.contains(target)) return;
+      setSelectedBlockKey(null);
+      setToolbarBlockKey(null);
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [selectedBlockKey, toolbarBlockKey]);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -1188,6 +1595,60 @@ export function PlanningCalendarGrid({
     () => mergeScheduledWithBreaks(scheduled, breaks),
     [scheduled, breaks]
   );
+  const weekGroups = useMemo(
+    () => groupEntriesByWeek(calendarEntries),
+    [calendarEntries]
+  );
+  const currentWeekStart = weekStartKey(todayDateKey());
+  const weekSummaries = useMemo(
+    () =>
+      new Map(
+        weekGroups.map(group => [
+          group.weekStart,
+          getWeekSummary(group, users),
+        ])
+      ),
+    [weekGroups, users]
+  );
+  const completedWeekKeys = useMemo(
+    () => new Set(weekGroups.filter(group => isWeekComplete(group, users)).map(group => group.weekStart)),
+    [weekGroups, users]
+  );
+  useEffect(() => {
+    setCollapsedWeeks(previous => {
+      const next = new Set([...previous].filter(key => weekGroups.some(group => group.weekStart === key)));
+      for (const key of completedWeekKeys) {
+        if (!previous.has(key)) next.add(key);
+      }
+      return next;
+    });
+  }, [completedWeekKeys, weekGroups]);
+
+  const toggleWeek = (weekStart: string) => {
+    setCollapsedWeeks(previous => {
+      const next = new Set(previous);
+      if (next.has(weekStart)) {
+        next.delete(weekStart);
+      } else {
+        next.add(weekStart);
+      }
+      return next;
+    });
+  };
+
+  const jumpToWeek = (weekStart: string) => {
+    document.getElementById(`planning-week-${weekStart}`)?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    });
+  };
+
+  const scrollWeekStrip = (direction: -1 | 1) => {
+    weekStripRef.current?.scrollBy({
+      left: direction * 180,
+      behavior: 'smooth',
+    });
+  };
   const subjectTitlesFirstYear = useMemo(
     () => collectSubjectTitles(rows, 'firstYear'),
     [rows]
@@ -1203,6 +1664,14 @@ export function PlanningCalendarGrid({
     onUpdateSlot,
     dragState,
     onBeginDrag: beginDrag,
+    selectedBlockKey,
+    toolbarBlockKey,
+    onSelectBlock: (key: string) => {
+      setSelectedBlockKey(key);
+      setToolbarBlockKey(null);
+    },
+    onShowToolbar: setToolbarBlockKey,
+    plannerMode,
     onSwapSlot,
     onRemoveRow,
   };
@@ -1218,58 +1687,149 @@ export function PlanningCalendarGrid({
 
   return (
     <div className="space-y-3">
-      <PlanningActionToolbar {...toolbarProps} />
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#e5e5e5] bg-[#fbfaf7] px-3 py-2">
+        <PlanningActionToolbar {...toolbarProps} />
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#78716c]">
+            Weeks
+          </span>
+          {weekGroups.length > 8 && (
+            <button
+              type="button"
+              onClick={() => scrollWeekStrip(-1)}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-[#6f6256] transition hover:bg-[#f7f1e8]"
+              aria-label="Previous weeks"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          )}
+          <div
+            ref={weekStripRef}
+            className="flex min-w-0 max-w-[42vw] flex-1 items-center gap-2 overflow-x-auto scroll-smooth pr-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          >
+            {weekGroups.map((group, index) => {
+              const summary = weekSummaries.get(group.weekStart);
+              const isCurrentWeek = group.weekStart === currentWeekStart;
+              return (
+                <button
+                  key={group.weekStart}
+                  type="button"
+                  onClick={() => jumpToWeek(group.weekStart)}
+                  className={`shrink-0 rounded-full border px-2.5 py-1 text-xs font-semibold transition ${
+                    isCurrentWeek
+                      ? 'border-[#24211e] bg-[#24211e] text-white shadow-sm'
+                      : summary?.hasIssues
+                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      : 'border-[#ded7cd] bg-white text-[#57534e] hover:border-[#c8bfb3]'
+                  }`}
+                  title={
+                    isCurrentWeek
+                      ? 'Current week'
+                      : collapsedWeeks.has(group.weekStart)
+                      ? 'Week is collapsed'
+                      : 'Jump to week'
+                  }
+                >
+                  W{index + 1}
+                  {isCurrentWeek && (
+                    <span className="ml-1 rounded-full bg-white/15 px-1 text-[10px] font-bold">
+                      Now
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          {weekGroups.length > 8 && (
+            <button
+              type="button"
+              onClick={() => scrollWeekStrip(1)}
+              className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-[#6f6256] transition hover:bg-[#f7f1e8]"
+              aria-label="Next weeks"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <div className="inline-flex rounded-xl border border-[#ded7cd] bg-white p-1">
+          {(['plan', 'edit'] as PlannerMode[]).map(mode => (
+            <button
+              key={mode}
+              type="button"
+              onClick={() => {
+                setPlannerMode(mode);
+                if (mode === 'plan') {
+                  setSelectedBlockKey(null);
+                  setToolbarBlockKey(null);
+                }
+              }}
+              className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold capitalize transition ${
+                plannerMode === mode
+                  ? 'bg-[#24211e] text-white shadow-sm'
+                  : 'text-[#78716c] hover:bg-[#f4f1ec]'
+              }`}
+            >
+              {mode === 'plan' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
+              {mode}
+            </button>
+          ))}
+        </div>
+      </div>
       <p className="text-xs text-gray-500 lg:hidden">Swipe horizontally to see the full calendar →</p>
-      <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
-        <table className="min-w-[980px] w-full text-sm border-collapse">
-          <thead>
+      <div
+        ref={planningTableRef}
+        className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.04)]"
+      >
+      <div className="overflow-x-auto">
+        <table className="min-w-[1180px] w-full border-separate border-spacing-0 text-sm">
+          <thead className="bg-[#fafafa]">
             <tr>
               <th
                 rowSpan={2}
-                className={`border border-gray-200 px-1.5 py-2 text-left font-semibold text-gray-800 w-[108px] min-w-[108px] max-w-[108px] ${STICKY_DATE_HEAD}`}
+                className={`border-b border-r border-gray-200 px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 w-[108px] min-w-[108px] max-w-[108px] ${STICKY_DATE_HEAD}`}
               >
                 Date
               </th>
               <th
                 rowSpan={2}
-                className={`border border-gray-200 px-1 py-2 text-left font-semibold text-gray-800 w-[52px] min-w-[52px] max-w-[52px] ${STICKY_DAY_HEAD}`}
+                className={`border-b border-r border-gray-200 px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 w-[52px] min-w-[52px] max-w-[52px] ${STICKY_DAY_HEAD}`}
               >
                 Day
               </th>
               <th
                 colSpan={3}
-                className="border border-gray-200 px-2 py-2 text-center font-semibold bg-blue-100 text-blue-900"
+                className="border-b border-r border-gray-200 bg-blue-50 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-900"
               >
                 FIRST YEAR
               </th>
               <th
                 colSpan={3}
-                className="border border-gray-200 px-2 py-2 text-center font-semibold bg-emerald-100 text-emerald-900"
+                className="border-b border-r border-gray-200 bg-emerald-50 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900"
               >
                 SECOND YEAR
               </th>
               <th
                 rowSpan={2}
-                className="border border-gray-200 px-2 py-2 text-center font-semibold text-gray-800 w-12"
+                className="border-b border-gray-200 px-2 py-3 text-center font-semibold text-gray-800 w-12"
               />
             </tr>
             <tr className="bg-gray-50">
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-blue-50/50">
+              <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Session
               </th>
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-blue-50/50">
+              <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Teacher
               </th>
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-blue-50/50">
+              <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Translator
               </th>
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-emerald-50/50">
+              <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Session
               </th>
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-emerald-50/50">
+              <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Teacher
               </th>
-              <th className="border border-gray-200 px-2 py-1.5 font-medium text-gray-700 bg-emerald-50/50">
+              <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
                 Translator
               </th>
             </tr>
@@ -1285,23 +1845,70 @@ export function PlanningCalendarGrid({
                 </td>
               </tr>
             )}
-            {calendarEntries.map(entry =>
-              entry.kind === 'break' ? (
-                <BreakBannerRow
-                  key={entry.break.breakId}
-                  breakItem={entry.break}
-                  onEdit={() => openEditBreakForm(entry.break)}
-                  onDelete={() => onRemoveBreak(entry.break.breakId)}
-                />
-              ) : (
-                <PlanningRowCells
-                  key={entry.row.rowId}
-                  row={entry.row}
-                  inBreak={isDateInBreak(entry.row.date, breaks)}
-                  {...rowProps}
-                />
-              )
-            )}
+            {weekGroups.map((group, groupIndex) => {
+              const summary = weekSummaries.get(group.weekStart);
+              const collapsed = collapsedWeeks.has(group.weekStart);
+              return (
+                <React.Fragment key={group.weekStart}>
+                  <tr id={`planning-week-${group.weekStart}`}>
+                    <td colSpan={9} className="border-y border-[#d8cdbb] bg-[#f7f1e8] px-3 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)]">
+                      <div className="flex flex-wrap items-center justify-between gap-3">
+                        <button
+                          type="button"
+                          onClick={() => toggleWeek(group.weekStart)}
+                          className="inline-flex items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#171717] ring-1 ring-[#e5e5e5] transition hover:bg-[#f4f1ec]"
+                        >
+                          {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                          Week {groupIndex + 1}
+                        </button>
+                        <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#737373]">
+                          <span className="font-semibold text-[#6f6256]">Starts {formatDisplayDate(group.weekStart)}</span>
+                          {(summary?.missingTeacherCount ?? 0) > 0 && (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-amber-200">
+                              {summary?.missingTeacherCount} missing teacher
+                            </span>
+                          )}
+                          {(summary?.missingTranslatorCount ?? 0) > 0 && (
+                            <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-amber-200">
+                              {summary?.missingTranslatorCount} missing translator
+                            </span>
+                          )}
+                          {(summary?.newSubjectCount ?? 0) > 0 && (
+                            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-800 ring-1 ring-blue-200">
+                              {summary?.newSubjectCount} new subject
+                            </span>
+                          )}
+                          {summary && !summary.hasIssues && summary.sessionCount > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800 ring-1 ring-emerald-200">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Clear
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                  {!collapsed &&
+                    group.entries.map(entry =>
+                      entry.kind === 'break' ? (
+                        <BreakBannerRow
+                          key={entry.break.breakId}
+                          breakItem={entry.break}
+                          onEdit={() => openEditBreakForm(entry.break)}
+                          onDelete={() => onRemoveBreak(entry.break.breakId)}
+                        />
+                      ) : (
+                        <PlanningRowCells
+                          key={entry.row.rowId}
+                          row={entry.row}
+                          inBreak={isDateInBreak(entry.row.date, breaks)}
+                          {...rowProps}
+                        />
+                      )
+                    )}
+                </React.Fragment>
+              );
+            })}
             {unscheduled.length > 0 && (
               <>
                 <tr>
@@ -1325,6 +1932,7 @@ export function PlanningCalendarGrid({
           </tbody>
         </table>
       </div>
+      </div>
 
       <datalist id="subjects-firstYear">
         {subjectTitlesFirstYear.map(title => (
@@ -1336,8 +1944,6 @@ export function PlanningCalendarGrid({
           <option key={title} value={title} />
         ))}
       </datalist>
-
-      <PlanningActionToolbar {...toolbarProps} />
 
       {breakFormOpen && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">

@@ -54,6 +54,7 @@ import {
   getThursdayDateForWeek,
   getSchoolYearWeeks,
 } from '../../utils/attendanceUtils';
+import { ActiveYearGroupBadge } from './users/usersShared';
 
 type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
 type MinistrySortKey =
@@ -88,6 +89,10 @@ type MinistryStudentRow = {
   health: number;
   healthStatus: MinistryHealthStatus;
   lastService: string | null;
+};
+
+type StudentAttendanceSummaryRow = StudentAttendanceSummary & {
+  course: Course;
 };
 
 type MinistryTeamHealth = {
@@ -663,7 +668,7 @@ function GeneratePrayerScheduleModal({
         </div>
 
         <p className="mb-5 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-sm text-[#92400e]">
-          This replaces the entire prayer schedule. Choose which active courses to include before generating.
+          This replaces the entire prayer schedule. Choose which active year groups to include before generating.
         </p>
 
         <div className="space-y-3">
@@ -679,7 +684,7 @@ function GeneratePrayerScheduleModal({
               <span className="mt-1 block text-sm text-[#737373]">
                 {firstYearCourses.length > 0
                   ? firstYearCourses.map(course => getCourseDisplayName(course)).join(', ')
-                  : 'No active first-year courses'}
+                  : 'No active first-year groups'}
               </span>
             </span>
           </label>
@@ -696,7 +701,7 @@ function GeneratePrayerScheduleModal({
               <span className="mt-1 block text-sm text-[#737373]">
                 {secondYearCourses.length > 0
                   ? secondYearCourses.map(course => getCourseDisplayName(course)).join(', ')
-                  : 'No active second-year courses'}
+                  : 'No active second-year groups'}
               </span>
             </span>
           </label>
@@ -714,7 +719,7 @@ function GeneratePrayerScheduleModal({
         </div>
 
         {!includeFirstYear && !includeSecondYear && (
-          <p className="mt-4 text-sm text-[#b91c1c]">Select at least one course type.</p>
+          <p className="mt-4 text-sm text-[#b91c1c]">Select at least one year group type.</p>
         )}
 
         <div className="mt-6 flex justify-end gap-3">
@@ -770,6 +775,7 @@ export function AttendanceView({
   const courseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
   const defaultCourseId = courseOptions[0]?.id ?? 0;
   const [courseId, setCourseId] = useState(defaultCourseId);
+  const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<number[]>([]);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -788,6 +794,7 @@ export function AttendanceView({
     requirementPeriodMonths: 1,
     memberIds: [] as string[],
   });
+  const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [sessionDraft, setSessionDraft] = useState({
     teamId: 0,
     serviceDate: new Date().toISOString().slice(0, 10),
@@ -821,6 +828,8 @@ export function AttendanceView({
   const [teamHealthMonth, setTeamHealthMonth] = useState(month);
   const [expandedHealthTeamId, setExpandedHealthTeamId] = useState<number | null>(null);
   const [showTeamForm, setShowTeamForm] = useState(false);
+  const [savingTeam, setSavingTeam] = useState(false);
+  const [teamFeedback, setTeamFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
   const [attendanceDrafts, setAttendanceDrafts] = useState<Record<number, Record<string, AttendanceStatus>>>({});
   const [editDutyWeekRow, setEditDutyWeekRow] = useState<DutyWeekRow | null>(null);
   const [editPrayerWeekRow, setEditPrayerWeekRow] = useState<PrayerScheduleEntry | null>(null);
@@ -839,11 +848,17 @@ export function AttendanceView({
   useEffect(() => {
     if (courseOptions.length === 0) {
       setCourseId(0);
+      setSelectedYearGroupIds([]);
       return;
     }
     if (!courseOptions.some(option => option.id === courseId)) {
       setCourseId(defaultCourseId);
     }
+    setSelectedYearGroupIds(prev => {
+      const availableIds = courseOptions.map(option => option.id);
+      const kept = prev.filter(id => availableIds.includes(id));
+      return kept.length > 0 ? kept : availableIds;
+    });
   }, [courseId, courseOptions, defaultCourseId]);
 
   useEffect(() => {
@@ -859,9 +874,16 @@ export function AttendanceView({
   }, [ministryTeams]);
 
   const selectedCourse = courses.find(course => course.id === courseId);
-  const summaries = useMemo(
-    () => getCourseSummaries(courseId).sort((a, b) => a.studentName.localeCompare(b.studentName)),
-    [courseId, getCourseSummaries]
+  const selectedYearGroupIdSet = useMemo(() => new Set(selectedYearGroupIds), [selectedYearGroupIds]);
+  const selectedYearGroupCourses = useMemo(
+    () => activeCourses.filter(course => selectedYearGroupIdSet.has(course.id)),
+    [activeCourses, selectedYearGroupIdSet]
+  );
+  const summaries = useMemo<StudentAttendanceSummaryRow[]>(
+    () => selectedYearGroupCourses
+      .flatMap(course => getCourseSummaries(course.id).map(summary => ({ ...summary, course })))
+      .sort((a, b) => a.studentName.localeCompare(b.studentName)),
+    [getCourseSummaries, selectedYearGroupCourses]
   );
   const filteredSummaries = useMemo(() => {
     const query = search.trim().toLowerCase();
@@ -870,7 +892,7 @@ export function AttendanceView({
   const sortedWellSummaries = useMemo(() => {
     const direction = wellSortDirection === 'asc' ? 1 : -1;
     return [...filteredSummaries].sort((a, b) => {
-      const getValue = (summary: StudentAttendanceSummary): string | number => {
+          const getValue = (summary: StudentAttendanceSummaryRow): string | number => {
         switch (wellSortKey) {
           case 'student': return summary.studentName;
           case 'monthsTracked': return summary.theWellMonthsTracked;
@@ -886,7 +908,7 @@ export function AttendanceView({
   const sortedClassesSummaries = useMemo(() => {
     const direction = classesSortDirection === 'asc' ? 1 : -1;
     return [...filteredSummaries].sort((a, b) => {
-      const getValue = (summary: StudentAttendanceSummary): string | number => {
+      const getValue = (summary: StudentAttendanceSummaryRow): string | number => {
         switch (classesSortKey) {
           case 'student': return summary.studentName;
           case 'present': return summary.classesPresent;
@@ -904,7 +926,7 @@ export function AttendanceView({
   const sortedActivationSummaries = useMemo(() => {
     const direction = activationSortDirection === 'asc' ? 1 : -1;
     return [...filteredSummaries].sort((a, b) => {
-      const getValue = (summary: StudentAttendanceSummary): string | number => {
+      const getValue = (summary: StudentAttendanceSummaryRow): string | number => {
         switch (activationSortKey) {
           case 'student': return summary.studentName;
           case 'present': return summary.saturdaysPresent;
@@ -920,8 +942,16 @@ export function AttendanceView({
     });
   }, [filteredSummaries, activationSortDirection, activationSortKey]);
   const enrolledStudents = useMemo(
-    () => getEnrolledStudents(courseId, courseStudents, users),
-    [courseId, courseStudents, users]
+    () => {
+      const byId = new Map<string, User>();
+      for (const course of selectedYearGroupCourses) {
+        for (const student of getEnrolledStudents(course.id, courseStudents, users)) {
+          byId.set(student.id, student);
+        }
+      }
+      return Array.from(byId.values()).sort((a, b) => a.name.localeCompare(b.name, ['bg', 'en'], { sensitivity: 'base' }));
+    },
+    [courseStudents, selectedYearGroupCourses, users]
   );
   const activeStudents = users.filter(user => user.roles.includes('student'));
   const teamLeaders = users.filter(user => user.roles.some(role => ['administrator', 'team_leader'].includes(role)));
@@ -940,12 +970,12 @@ export function AttendanceView({
         : [...prev.memberIds, userId],
     }));
   };
-  const regularClasses = selectedCourse?.subjects.flatMap(subject =>
-    subject.classes.filter(cls => cls.date && !isActivationSaturdayClass(cls))
-  ) ?? [];
-  const activationClasses = selectedCourse?.subjects.flatMap(subject =>
-    subject.classes.filter(cls => cls.date && isActivationSaturdayClass(cls))
-  ) ?? [];
+  const regularClasses = selectedYearGroupCourses.flatMap(course =>
+    course.subjects.flatMap(subject => subject.classes.filter(cls => cls.date && !isActivationSaturdayClass(cls)))
+  );
+  const activationClasses = selectedYearGroupCourses.flatMap(course =>
+    course.subjects.flatMap(subject => subject.classes.filter(cls => cls.date && isActivationSaturdayClass(cls)))
+  );
   const currentWeekStart = getCurrentWeekStart();
   const dutyRows = dutySchedule
     .filter(entry => activeCourses.some(course => course.id === entry.courseId))
@@ -1233,20 +1263,73 @@ export function AttendanceView({
 
   const saveTeam = async () => {
     if (!teamDraft.name.trim()) return;
-    await upsertMinistryTeam({
-      name: teamDraft.name.trim(),
-      nameBg: teamDraft.nameBg.trim() || null,
-      serviceType: teamDraft.serviceType,
-      serviceDay: teamDraft.serviceType === 'sunday' ? 0 : null,
-      requiredCredits: teamDraft.requiredCredits,
-      requirementPeriodMonths: teamDraft.requirementPeriodMonths,
-      requirementUnit: 'month',
-      leaderId: teamDraft.memberIds[0] ?? null,
-      memberIds: teamDraft.memberIds,
-      active: true,
+    setSavingTeam(true);
+    setTeamFeedback(null);
+    const wasEditing = editingTeamId !== null;
+    try {
+      await upsertMinistryTeam({
+        id: editingTeamId ?? undefined,
+        name: teamDraft.name.trim(),
+        nameBg: teamDraft.nameBg.trim() || null,
+        serviceType: teamDraft.serviceType,
+        serviceDay: teamDraft.serviceType === 'sunday' ? 0 : null,
+        requiredCredits: teamDraft.requiredCredits,
+        requirementPeriodMonths: teamDraft.requirementPeriodMonths,
+        requirementUnit: 'month',
+        leaderId: teamDraft.memberIds[0] ?? null,
+        memberIds: teamDraft.memberIds,
+        active: true,
+      });
+      setEditingTeamId(null);
+      setTeamDraft(prev => ({ ...prev, name: '', nameBg: '', memberIds: [] }));
+      setShowTeamForm(false);
+      setTeamFeedback({
+        tone: 'success',
+        message: wasEditing ? 'Team updated.' : 'Team created.',
+      });
+    } catch (teamError) {
+      console.error('Failed to save ministry team', teamError);
+      setTeamFeedback({
+        tone: 'error',
+        message: 'Could not save team. Please try again.',
+      });
+    } finally {
+      setSavingTeam(false);
+    }
+  };
+
+  const resetTeamForm = () => {
+    setEditingTeamId(null);
+    setTeamDraft({
+      name: '',
+      nameBg: '',
+      serviceType: 'sunday',
+      requiredCredits: settings.ministrySundayRequiredCredits,
+      requirementPeriodMonths: 1,
+      memberIds: [],
     });
-    setTeamDraft(prev => ({ ...prev, name: '', nameBg: '', memberIds: [] }));
-    setShowTeamForm(false);
+  };
+
+  const openNewTeamForm = () => {
+    resetTeamForm();
+    setTeamFeedback(null);
+    setShowTeamForm(true);
+  };
+
+  const openEditTeamForm = (team: MinistryTeam) => {
+    setTeamFeedback(null);
+    setEditingTeamId(team.id);
+    setTeamDraft({
+      name: team.name,
+      nameBg: team.nameBg ?? '',
+      serviceType: team.serviceType,
+      requiredCredits: team.requiredCredits,
+      requirementPeriodMonths: team.requirementPeriodMonths,
+      memberIds: team.members
+        .filter(member => member.active)
+        .map(member => member.userId),
+    });
+    setShowTeamForm(true);
   };
 
   const renderTeamUserPicker = () => (
@@ -1356,7 +1439,7 @@ export function AttendanceView({
       return (
         <div className="rounded-xl border border-dashed border-[#e5e5e5] bg-[#fafafa] px-3 py-3">
           <p className="text-sm font-medium text-[#737373]">No {label.toLowerCase()} keeper</p>
-          <p className="mt-1 text-xs text-[#a3a3a3]">Generate this course schedule to fill the slot.</p>
+          <p className="mt-1 text-xs text-[#a3a3a3]">Generate this year group schedule to fill the slot.</p>
         </div>
       );
     }
@@ -1423,6 +1506,22 @@ export function AttendanceView({
     );
   };
 
+  const renderSummaryStudentCell = (summary: StudentAttendanceSummaryRow) => (
+    <div className="flex items-center gap-3">
+      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+        {getInitials(summary.studentName)}
+      </span>
+      <div className="min-w-0">
+        <p className="truncate font-semibold text-[#171717]">{summary.studentName}</p>
+        {selectedYearGroupCourses.length > 1 && (
+          <div className="mt-1">
+            <ActiveYearGroupBadge course={summary.course} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
   const pageStats: Partial<Record<TabId, Array<{ label: string; value: string | number; detail: string; icon: typeof Activity; accent: string }>>> = {
     overview: [
       { label: 'Average', value: formatPercent(averageOverall), detail: `${activeSummaries.length} students`, icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
@@ -1431,7 +1530,7 @@ export function AttendanceView({
       { label: 'Transfers', value: pendingTransferRequests.length, detail: 'pending duty requests', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
     ],
     classes: [
-      { label: 'Planned sessions', value: regularClasses.length, detail: selectedCourse ? getCourseDisplayName(selectedCourse) : 'selected course', icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: 'Planned sessions', value: regularClasses.length, detail: `${selectedYearGroupCourses.length} selected`, icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
       { label: 'Average score', value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.classAttendanceScore, 0) / summaries.length : 1), detail: 'class gate only', icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
       { label: 'Below rule', value: summaries.filter(summary => summary.classAttendanceScore < settings.classRequiredPercent).length, detail: `${percentInput(settings.classRequiredPercent)}% required`, icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
       { label: 'Missing records', value: missingClassRecords, detail: 'unmarked class slots', icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
@@ -1440,7 +1539,7 @@ export function AttendanceView({
       { label: 'Monthly credits', value: settings.theWellRequiredPerMonth, detail: `${formatMonthYear(month.year, month.month)} requirement`, icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
       { label: 'Meeting rule', value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'the_well')?.status ?? 'failing') === 'passing').length, detail: `${summaries.length} students`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
       { label: 'Fallback risk', value: summaries.filter(summary => summary.theWellScore < settings.theWellFallbackPercent).length, detail: `${percentInput(settings.theWellFallbackPercent)}% fallback`, icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Tracked records', value: theWellAttendance.filter(item => item.courseId === courseId).length, detail: 'student-month rows', icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: 'Tracked records', value: theWellAttendance.filter(item => selectedYearGroupIdSet.has(item.courseId)).length, detail: 'student-month rows', icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
     ],
     ministry: [
       { label: 'Teams', value: ministryTeams.length, detail: `${ministryTeams.filter(team => team.active).length} active`, icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
@@ -1457,7 +1556,7 @@ export function AttendanceView({
     duty: [
       { label: 'This week', value: currentWeekKeepers, detail: 'keepers assigned', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
       { label: 'Transfers', value: pendingTransferRequests.length, detail: 'waiting for review', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Scheduled weeks', value: new Set(dutyRows.map(row => row.weekStart)).size, detail: 'in active courses', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: 'Scheduled weeks', value: new Set(dutyRows.map(row => row.weekStart)).size, detail: 'in active year groups', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
       { label: 'Open slots', value: Math.max(0, unassignedKeeperSlots), detail: 'current week estimate', icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
     ],
     prayer: [
@@ -1516,18 +1615,42 @@ export function AttendanceView({
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
           {courseOptions.map(option => (
-            <button
-              key={option.id}
-              type="button"
-              onClick={() => setCourseId(option.id)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                courseId === option.id
-                  ? 'bg-[#171717] text-white'
-                  : 'border border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#f5f5f5]'
-              }`}
-            >
-              {option.displayName}
-            </button>
+            (() => {
+              const course = activeCourses.find(item => item.id === option.id);
+              const isActive = selectedYearGroupIds.includes(option.id);
+              const isSecond = course?.courseType === 'second_year';
+              const yearLabel = isSecond ? 'Second Year' : 'First Year';
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  onClick={() => setSelectedYearGroupIds(prev => {
+                    if (prev.includes(option.id)) {
+                      return prev.length > 1 ? prev.filter(id => id !== option.id) : prev;
+                    }
+                    return [...prev, option.id];
+                  })}
+                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold leading-none transition ${
+                    isActive
+                      ? isSecond
+                        ? 'border-[#737373] bg-[#d4d4d4] text-[#171717] shadow-[inset_3px_0_0_#525252]'
+                        : 'border-[#a3a3a3] bg-[#eeeeee] text-[#262626] shadow-[inset_3px_0_0_#a855f7]'
+                      : isSecond
+                        ? 'border-[#a3a3a3] bg-[#e5e5e5] text-[#262626] hover:border-[#737373] hover:bg-[#d4d4d4]'
+                        : 'border-[#d4d4d4] bg-[#fafafa] text-[#525252] hover:border-[#a3a3a3] hover:bg-[#eeeeee]'
+                  }`}
+                  aria-pressed={isActive}
+                >
+                  <span className={`h-2 w-2 rounded-full ${isActive ? (isSecond ? 'bg-[#525252]' : 'bg-[#a855f7]') : 'bg-transparent ring-1 ring-[#d4d4d4]'}`} />
+                  {course ? (
+                    <>
+                      <span className="font-serif">{isSecond ? 'II' : 'I'}</span>
+                      <span>{yearLabel}</span>
+                    </>
+                  ) : option.displayName}
+                </button>
+              );
+            })()
           ))}
         </div>
         <label className="relative block w-full sm:w-72">
@@ -1563,12 +1686,7 @@ export function AttendanceView({
               {filteredSummaries.map(summary => (
                 <tr key={summary.studentId} className="bg-white">
                   <td className="px-4 py-3">
-                    <div className="flex items-center gap-3">
-                      <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                        {getInitials(summary.studentName)}
-                      </span>
-                      <span className="font-semibold text-[#171717]">{summary.studentName}</span>
-                    </div>
+                    {renderSummaryStudentCell(summary)}
                   </td>
                   {(['classes', 'the_well', 'ministry', 'activation'] as const).map(key => {
                     const gate = summary.gates.find(item => item.key === key);
@@ -1670,7 +1788,7 @@ export function AttendanceView({
             <tbody className="divide-y divide-[#e5e5e5]">
               {sortedClassesSummaries.map(summary => (
                 <tr key={summary.studentId}>
-                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                  <td className="px-4 py-3">{renderSummaryStudentCell(summary)}</td>
                   <td className="px-4 py-3">{summary.classesPresent}</td>
                   <td className="px-4 py-3">{summary.classesLate}</td>
                   <td className="px-4 py-3">{summary.classesAbsent}</td>
@@ -1712,28 +1830,6 @@ export function AttendanceView({
 
     return (
       <div className="space-y-4">
-        <SectionCard className="p-4">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <h3 className="font-semibold text-[#171717]">Well schedule</h3>
-              <p className="text-sm text-[#737373]">
-                Populate every Wednesday in the school year so duty keepers can mark Well attendance.
-              </p>
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
-              </select>
-              <button type="button" onClick={() => generateWellScheduleForCourse(courseId)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-                Populate Wednesdays
-              </button>
-            </div>
-          </div>
-          <p className="mt-3 text-sm text-[#525252]">
-            {wellSchedule.filter(item => item.courseId === courseId).length} Wednesday sessions scheduled for this course.
-          </p>
-        </SectionCard>
-
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard className="p-4">
             <p className="text-sm font-semibold text-[#171717]">Official monthly rule</p>
@@ -1767,7 +1863,7 @@ export function AttendanceView({
                 const gate = summary.gates.find(item => item.key === 'the_well');
                 return (
                   <tr key={summary.studentId}>
-                    <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                    <td className="px-4 py-3">{renderSummaryStudentCell(summary)}</td>
                     <td className="px-4 py-3">
                       <span className="font-medium text-[#171717]">{summary.theWellMonthsTracked}</span>
                       <span className="ml-1 text-xs text-[#737373]">month(s) tracked</span>
@@ -1850,7 +1946,7 @@ export function AttendanceView({
             <tbody className="divide-y divide-[#e5e5e5]">
               {sortedActivationSummaries.map(summary => (
                 <tr key={summary.studentId}>
-                  <td className="px-4 py-3 font-semibold text-[#171717]">{summary.studentName}</td>
+                  <td className="px-4 py-3">{renderSummaryStudentCell(summary)}</td>
                   <td className="px-4 py-3">{summary.saturdaysPresent}</td>
                   <td className="px-4 py-3">{summary.saturdaysLate}</td>
                   <td className="px-4 py-3">{summary.saturdaysAbsent}</td>
@@ -1936,7 +2032,7 @@ export function AttendanceView({
             <h3 className="font-semibold text-[#171717]">Rotations</h3>
             <p className="text-sm text-[#737373]">Assign students to ministry teams for a date range.</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label="Course">
+              <Field label="Year Group">
                 <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
                 </select>
@@ -2093,7 +2189,7 @@ export function AttendanceView({
                 {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
             </Field>
-            <Field label="Course">
+            <Field label="Year Group">
               <select value={ministryCourseFilter} onChange={event => setMinistryCourseFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                 <option value="all">All years</option>
                 {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
@@ -2131,7 +2227,7 @@ export function AttendanceView({
               <thead className="bg-[#f5f5f5]">
                 <tr>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Course/Year', 'course')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Year Group', 'course')}</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Current Team', 'team')}</th>
                   <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Rotation Period</th>
                   <th className="w-28 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Credits', 'earnedCredits', 'Earned credits')}</th>
@@ -2155,7 +2251,7 @@ export function AttendanceView({
                           <span className="font-semibold text-[#171717]">{row.student.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[#525252]">{row.course ? getCourseDisplayName(row.course) : 'No course'}</td>
+                      <td className="px-4 py-3 text-[#525252]">{row.course ? <ActiveYearGroupBadge course={row.course} /> : 'No year group'}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.team ? 'bg-[#f0fdf4] text-[#166534]' : 'bg-[#f5f5f5] text-[#737373]'}`}>
                           {row.team?.name ?? 'Unassigned'}
@@ -2197,13 +2293,16 @@ export function AttendanceView({
           <SectionCard className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-[#171717]">{showTeamForm ? 'New team' : 'Teams'}</h3>
-                <p className="text-sm text-[#737373]">{showTeamForm ? 'Add a ministry team and its service requirement.' : 'Review ministry team requirements.'}</p>
+                <h3 className="font-semibold text-[#171717]">{showTeamForm ? (editingTeamId ? 'Edit team' : 'New team') : 'Teams'}</h3>
+                <p className="text-sm text-[#737373]">{showTeamForm ? 'Manage the team requirement and users who can submit reports.' : 'Review ministry team requirements.'}</p>
               </div>
               {showTeamForm ? (
                 <button
                   type="button"
-                  onClick={() => setShowTeamForm(false)}
+                  onClick={() => {
+                    resetTeamForm();
+                    setShowTeamForm(false);
+                  }}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                 >
                   <ChevronLeft className="h-4 w-4" /> Teams
@@ -2211,7 +2310,7 @@ export function AttendanceView({
               ) : (
                 <button
                   type="button"
-                  onClick={() => setShowTeamForm(true)}
+                  onClick={openNewTeamForm}
                   title="Add ministry team"
                   aria-label="Add ministry team"
                   className="grid h-9 w-9 place-items-center rounded-lg bg-[#171717] text-white shadow-sm hover:bg-[#262626]"
@@ -2220,6 +2319,16 @@ export function AttendanceView({
                 </button>
               )}
             </div>
+
+            {teamFeedback && (
+              <div className={`mt-3 rounded-xl border px-3 py-2 text-sm font-medium ${
+                teamFeedback.tone === 'success'
+                  ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534]'
+                  : 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]'
+              }`}>
+                {teamFeedback.message}
+              </div>
+            )}
 
             {showTeamForm ? (
               <>
@@ -2236,19 +2345,36 @@ export function AttendanceView({
                   <Field label="Period months"><NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} /></Field>
                   {renderTeamUserPicker()}
                 </div>
-                <button type="button" onClick={saveTeam} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-                  <Plus className="h-4 w-4" /> Save team
+                <button
+                  type="button"
+                  onClick={saveTeam}
+                  disabled={savingTeam || !teamDraft.name.trim()}
+                  className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {editingTeamId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                  {savingTeam ? 'Saving...' : 'Save team'}
                 </button>
               </>
             ) : (
               <div className="mt-4 grid max-h-56 gap-2 overflow-y-auto">
                 {ministryTeams.map(team => (
                   <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3">
-                    <div>
+                    <div className="min-w-0">
                       <p className="font-semibold text-[#171717]">{team.name}</p>
                       <p className="text-xs text-[#737373]">{team.serviceType === 'sunday' ? 'Sunday' : 'Non-Sunday'} - {team.requiredCredits} credit(s) / {team.requirementPeriodMonths} month(s)</p>
                     </div>
-                    <span className="max-w-[220px] truncate rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <span className="max-w-[220px] truncate rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
+                      <button
+                        type="button"
+                        onClick={() => openEditTeamForm(team)}
+                        className="grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                        aria-label={`Edit ${team.name}`}
+                        title="Edit team"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -2389,7 +2515,7 @@ export function AttendanceView({
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
-            <p className="text-sm text-[#737373]">Creates weekly attendance keeper rows for the selected course.</p>
+            <p className="text-sm text-[#737373]">Creates weekly attendance keeper rows for the selected year group.</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
@@ -2458,7 +2584,7 @@ export function AttendanceView({
           {dutyWeekRows.length === 0 && (
             <div className="px-4 py-10 text-center">
               <p className="text-sm font-medium text-[#171717]">No duty schedule yet.</p>
-              <p className="mt-1 text-sm text-[#737373]">Use Generate to create duty slots for an active course.</p>
+              <p className="mt-1 text-sm text-[#737373]">Use Generate to create duty slots for an active year group.</p>
             </div>
           )}
         </div>
@@ -2473,7 +2599,7 @@ export function AttendanceView({
           <div>
             <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
             <p className="text-sm text-[#737373]">
-              Build the school-year prayer rotation from enrolled students in the selected course types. Tuesday and Thursday use separate rotations.
+              Build the school-year prayer rotation from enrolled students in the selected year group types. Tuesday and Thursday use separate rotations.
             </p>
           </div>
           <button
@@ -2698,7 +2824,7 @@ export function AttendanceView({
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Course">
+              <Field label="Year Group">
                 <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
                 </select>
