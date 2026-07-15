@@ -1000,7 +1000,7 @@ export function AdminDashboard({
     })
     .slice(0, 2);
   const currentDutyRows = attendance.dutySchedule.filter(duty => {
-    if (duty.status !== 'active') return false;
+    if (duty.status !== 'active' && duty.status !== 'transferred') return false;
     const weekStart = duty.weekStart.slice(0, 10);
     const weekEnd = duty.weekEnd.slice(0, 10);
     return weekStart <= todayKey && weekEnd >= todayKey;
@@ -1021,6 +1021,7 @@ export function AdminDashboard({
       avatarUrl: user?.avatarUrl ?? null,
       courseName: course ? getCourseDisplayName(course) : 'No active course',
       assigned: Boolean(duty),
+      transferred: duty?.status === 'transferred',
     };
   });
   const studentsWithoutRecentMentorship = Array.from(activeStudentIds).filter(studentId => {
@@ -1157,7 +1158,7 @@ export function AdminDashboard({
       count: attendance.pendingTransferRequests.length,
       icon: ArrowLeftRight,
       tone: attendance.pendingTransferRequests.length > 0 ? 'blue' : 'green',
-      view: 'attendance',
+      view: 'attendance-duty',
       actionLabel: 'Review transfers',
     },
   ];
@@ -1419,13 +1420,18 @@ export function AdminDashboard({
               <div className="min-w-0 pt-2 lg:pl-3 lg:pt-0">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">On Duty</p>
-                  <span className={`tbo-pill ${
-                    attendance.pendingTransferRequests.length > 0
-                      ? 'bg-[#fff7ed] text-[#ea580c]'
-                      : 'bg-[#f5f5f5] text-[#525252]'
-                  }`}>
+                  <button
+                    type="button"
+                    onClick={() => onNavigate('attendance-duty')}
+                    className={`tbo-pill transition hover:shadow-sm ${
+                      attendance.pendingTransferRequests.length > 0
+                        ? 'bg-[#fff7ed] text-[#ea580c] hover:bg-[#ffedd5]'
+                        : 'bg-[#f5f5f5] text-[#525252] hover:bg-[#e5e5e5]'
+                    }`}
+                    title="Open duty transfers"
+                  >
                     {attendance.pendingTransferRequests.length} transfer{attendance.pendingTransferRequests.length === 1 ? '' : 's'}
-                  </span>
+                  </button>
                 </div>
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                   {weeklyDutyKeepers.map(keeper => (
@@ -1440,7 +1446,18 @@ export function AdminDashboard({
                     >
                       <CompactAvatar name={keeper.name} avatarUrl={keeper.avatarUrl} />
                       <div className="min-w-0">
-                        <YearRomanBadge label={keeper.label} compact />
+                        <div className="flex min-w-0 items-center gap-1.5">
+                          <YearRomanBadge label={keeper.label} compact />
+                          {keeper.transferred && (
+                            <span
+                              className="grid h-5 w-5 place-items-center rounded-full bg-[#fff7ed] text-[#ea580c]"
+                              title="Transferred duty"
+                              aria-label="Transferred duty"
+                            >
+                              <ArrowLeftRight className="h-3 w-3" />
+                            </span>
+                          )}
+                        </div>
                         <p className={`truncate text-sm font-semibold ${keeper.assigned ? 'text-[#171717]' : 'text-[#737373]'}`}>
                           {keeper.name}
                         </p>
