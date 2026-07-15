@@ -250,7 +250,7 @@ export function Header({
                         })()}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-medium">
-                        {formatRoleLabel(workspace)}
+                        {WORKSPACE_LABELS[workspace] ?? formatRoleLabel(workspace)}
                       </span>
                     </button>
                   );

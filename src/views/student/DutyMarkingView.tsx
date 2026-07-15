@@ -289,10 +289,7 @@ export function DutyMarkingView({
         )
         .map(enrollment => enrollment.studentId)
     );
-    const enrolledUsers = users.filter(user =>
-      enrolledIds.has(user.id) &&
-      user.roles.includes('student')
-    );
+    const enrolledUsers = users.filter(user => enrolledIds.has(user.id));
     return sortByFirstName(enrolledUsers);
   }, [courseStudents, dutyCourse, dutyYearCourseIds, selectedDuty, users]);
 

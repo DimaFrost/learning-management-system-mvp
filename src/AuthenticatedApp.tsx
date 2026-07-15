@@ -109,8 +109,10 @@ export function AuthenticatedApp({
   );
 
   const currentWeekStart = getCurrentWeekStart();
+  const todayKey = new Date().toISOString().split('T')[0];
   const effectiveCurrentDuties = attendance.dutySchedule.filter(
-    d => d.weekStart === currentWeekStart
+    d => d.weekStart <= todayKey
+      && d.weekEnd >= todayKey
       && d.status === 'active'
       && d.studentId === effectiveUser.id
   );
