@@ -28,6 +28,7 @@ interface HeaderProps {
   onSignOut: () => void;
   isDev: boolean;
   previewRoles: string[] | null;
+  isViewingAsUser?: boolean;
   activeWorkspace: WorkspaceId | null;
   availableWorkspaces: WorkspaceId[];
   onWorkspaceChange: (workspace: WorkspaceId) => void;
@@ -41,6 +42,7 @@ export function Header({
   onSignOut,
   isDev,
   previewRoles,
+  isViewingAsUser = false,
   activeWorkspace,
   availableWorkspaces,
   onWorkspaceChange,
@@ -129,7 +131,7 @@ export function Header({
               title="Role Preview (Dev)"
             >
               <Code2 className="w-4 h-4" />
-              {previewRoles !== null && (
+              {(previewRoles !== null || isViewingAsUser) && (
                 <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-[#ea580c]" />
               )}
             </button>
@@ -301,12 +303,14 @@ export function Header({
               title="Role Preview (Dev)"
             >
               <Code2 className="w-4 h-4" />
-              {previewRoles !== null && (
+              {(previewRoles !== null || isViewingAsUser) && (
                 <>
                   <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ea580c]" />
-                  <span className="text-xs font-medium text-[#c2410c]">
-                    {formatPreviewAbbrev(previewRoles)}
-                  </span>
+                  {previewRoles !== null && (
+                    <span className="text-xs font-medium text-[#c2410c]">
+                      {formatPreviewAbbrev(previewRoles)}
+                    </span>
+                  )}
                 </>
               )}
             </button>

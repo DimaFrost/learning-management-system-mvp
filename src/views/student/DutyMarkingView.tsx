@@ -284,12 +284,14 @@ export function DutyMarkingView({
       courseStudents
         .filter(enrollment =>
           dutyYearCourseIds.has(enrollment.courseId) &&
-          enrollment.status !== 'archived' &&
-          enrollment.status !== 'withdrawn'
+          enrollment.status === 'active'
         )
         .map(enrollment => enrollment.studentId)
     );
-    const enrolledUsers = users.filter(user => enrolledIds.has(user.id));
+    const enrolledUsers = users.filter(user =>
+      enrolledIds.has(user.id) &&
+      user.roles.includes('student')
+    );
     return sortByFirstName(enrolledUsers);
   }, [courseStudents, dutyCourse, dutyYearCourseIds, selectedDuty, users]);
 

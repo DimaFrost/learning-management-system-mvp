@@ -54,9 +54,7 @@ export function AuthenticatedApp({
     toggleCourseCollapse, toggleSubjectCollapse }
     = useCourses(showConfirmation);
   const [previewRoles, setPreviewRoles] = useState<string[] | null>(null);
-  const effectiveUser = previewRoles
-    ? { ...currentUser, roles: previewRoles as UserRole[] }
-    : currentUser;
+  const [previewUserId, setPreviewUserId] = useState<string | null>(null);
   const {
     activeView,
     setActiveView,
@@ -68,6 +66,11 @@ export function AuthenticatedApp({
     closeClassDetail,
   } = useNavigation();
   const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
+  const previewUser = previewUserId ? users.find(user => user.id === previewUserId) ?? null : null;
+  const effectiveBaseUser = previewUser ?? currentUser;
+  const effectiveUser = previewRoles
+    ? { ...effectiveBaseUser, roles: previewRoles as UserRole[] }
+    : effectiveBaseUser;
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
     assignUserToCourse, setUserActiveYearGroup, removeUserFromCourse, refetchEnrollments }
     = useEnrollments(showConfirmation, users, courses);
@@ -277,6 +280,7 @@ export function AuthenticatedApp({
         onSignOut={onSignOut}
         isDev={currentUser.roles.includes('dev')}
         previewRoles={previewRoles}
+        isViewingAsUser={Boolean(previewUser)}
         activeWorkspace={selectedWorkspace}
         availableWorkspaces={availableWorkspaces}
         onWorkspaceChange={handleWorkspaceChange}
@@ -284,6 +288,20 @@ export function AuthenticatedApp({
         onOpenDevPanel={() => setShowDevPanel(true)}
         onOpenMobileMenu={() => setMobileNavOpen(true)}
       />
+      {previewUser && (
+        <div className="flex items-center justify-center gap-3 border-b border-[#fed7aa] bg-[#fff7ed] px-4 py-2 text-sm text-[#9a3412]">
+          <span>
+            Viewing as <strong>{previewUser.name}</strong>. Database actions still run as {currentUser.name}.
+          </span>
+          <button
+            type="button"
+            onClick={() => setPreviewUserId(null)}
+            className="rounded-md border border-[#fed7aa] bg-white px-2 py-1 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5]"
+          >
+            Reset
+          </button>
+        </div>
+      )}
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
           activeView={activeView}
@@ -420,8 +438,11 @@ export function AuthenticatedApp({
       <DevRolePanel
         isOpen={showDevPanel}
         currentPreviewRoles={previewRoles}
+        currentPreviewUserId={previewUserId}
         realRoles={currentUser.roles}
+        users={users}
         onApply={(roles) => { setPreviewRoles(roles); setShowDevPanel(false); }}
+        onViewAsUser={(userId) => setPreviewUserId(userId)}
         onClose={() => setShowDevPanel(false)}
       />
     </div>
