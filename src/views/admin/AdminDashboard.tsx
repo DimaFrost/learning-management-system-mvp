@@ -1030,8 +1030,16 @@ export function AdminDashboard({
   const activeClassCount = activeCourses.flatMap(course =>
     course.subjects.flatMap(subject => subject.classes)
   ).length;
-  const readinessTotal = Math.max(activeCourses.length + activeSubjectCount + activeClassCount, 1);
-  const courseReadiness = clampPercent(((readinessTotal - staffingGaps - driveGaps) / readinessTotal) * 100);
+  const readinessChecks =
+    activeCourses.length +
+    activeSubjectCount +
+    activeClassCount +
+    activeCourses.length +
+    activeSubjectCount +
+    activeClassCount * 2;
+  const missingReadinessChecks = staffingGaps + driveGaps;
+  const readinessTotal = Math.max(readinessChecks, 1);
+  const courseReadiness = clampPercent(((readinessTotal - missingReadinessChecks) / readinessTotal) * 100);
   const mentorCoverage = clampPercent(
     activeStudents.length === 0
       ? 100
@@ -1721,6 +1729,40 @@ export function AdminDashboard({
               caption={`${courseReadiness}%`}
               tone={courseReadiness > 80 ? 'green' : 'blue'}
             />
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                  What is missing
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedMetricInsight(metricInsights[0])}
+                  className="text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8]"
+                >
+                  Details
+                </button>
+              </div>
+              {yearGroupHealthGaps.length === 0 ? (
+                <div className="flex items-center gap-2 rounded-lg bg-[#dcfce7] px-3 py-2 text-sm font-medium text-[#166534]">
+                  <CheckCircle2 className="h-4 w-4" />
+                  No setup blockers found.
+                </div>
+              ) : (
+                <ul className="space-y-1.5">
+                  {yearGroupHealthGaps.slice(0, 4).map(gap => (
+                    <li key={gap} className="flex items-start gap-2 text-xs leading-5 text-[#525252]">
+                      <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ea580c]" />
+                      <span>{gap}</span>
+                    </li>
+                  ))}
+                  {yearGroupHealthGaps.length > 4 && (
+                    <li className="text-xs font-medium text-[#737373]">
+                      +{yearGroupHealthGaps.length - 4} more setup items
+                    </li>
+                  )}
+                </ul>
+              )}
+            </div>
           </div>
         </SectionCard>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { CourseStudent, User, Course } from '../types/lms';
-import { getCourseDisplayName } from '../utils/courseUtils';
+import { getCourseDisplayName, isCourseActive } from '../utils/courseUtils';
 import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => void;
@@ -45,6 +45,10 @@ export function useEnrollments(
   }, [refetchEnrollments]);
 
   async function assignUserToCourse(userId: string, courseId: number, mentorId?: string | null): Promise<void> {
+    const existingEnrollment = courseStudents.find(
+      enrollment => enrollment.studentId === userId && enrollment.courseId === courseId
+    );
+
     const { error: upsertError } = await supabase
       .from('course_students')
       .upsert(
@@ -52,7 +56,7 @@ export function useEnrollments(
           student_id: userId,
           course_id: courseId,
           mentor_id: mentorId ?? null,
-          enrollment_date: new Date().toISOString().split('T')[0],
+          enrollment_date: existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0],
           status: 'active',
         },
         { onConflict: 'course_id,student_id' }
@@ -75,6 +79,54 @@ export function useEnrollments(
         courseName: getCourseDisplayName(enrolledCourse),
       }).catch(console.error);
     }
+  }
+
+  async function setUserActiveYearGroup(userId: string, courseId: number): Promise<void> {
+    const existingEnrollment = courseStudents.find(
+      enrollment => enrollment.studentId === userId && enrollment.courseId === courseId
+    );
+    const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
+    const otherActiveYearGroupIds = courseStudents
+      .filter(enrollment => (
+        enrollment.studentId === userId &&
+        enrollment.courseId !== courseId &&
+        enrollment.status === 'active' &&
+        activeCourseIds.has(enrollment.courseId)
+      ))
+      .map(enrollment => enrollment.courseId);
+
+    if (otherActiveYearGroupIds.length > 0) {
+      const { error: deactivateError } = await supabase
+        .from('course_students')
+        .update({ status: 'inactive' })
+        .eq('student_id', userId)
+        .in('course_id', otherActiveYearGroupIds);
+
+      if (deactivateError) {
+        console.error('setUserActiveYearGroup deactivate error:', deactivateError);
+        return;
+      }
+    }
+
+    const { error: upsertError } = await supabase
+      .from('course_students')
+      .upsert(
+        {
+          student_id: userId,
+          course_id: courseId,
+          mentor_id: existingEnrollment?.mentorId ?? null,
+          enrollment_date: existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0],
+          status: 'active',
+        },
+        { onConflict: 'course_id,student_id' }
+      );
+
+    if (upsertError) {
+      console.error('setUserActiveYearGroup upsert error:', upsertError);
+      return;
+    }
+
+    await refetchEnrollments();
   }
 
   function removeUserFromCourse(
@@ -114,6 +166,7 @@ export function useEnrollments(
     loading,
     error,
     assignUserToCourse,
+    setUserActiveYearGroup,
     removeUserFromCourse,
     refetchEnrollments,
   };

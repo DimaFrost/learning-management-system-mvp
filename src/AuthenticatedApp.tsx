@@ -69,7 +69,7 @@ export function AuthenticatedApp({
   } = useNavigation();
   const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
-    assignUserToCourse, removeUserFromCourse, refetchEnrollments }
+    assignUserToCourse, setUserActiveYearGroup, removeUserFromCourse, refetchEnrollments }
     = useEnrollments(showConfirmation, users, courses);
   const { mentorshipLogs, loading: logsLoading, error: logsError, addMentorshipLog, updateMentorshipLog }
     = useMentorshipLogs();
@@ -387,6 +387,7 @@ export function AuthenticatedApp({
         courses={courses}
         users={users}
         courseStudents={courseStudents}
+        ministryTeams={attendance.ministryTeams}
         onAddCourse={addCourse}
         onUpdateCourse={updateCourse}
         onAddSubject={addSubject}
@@ -396,7 +397,9 @@ export function AuthenticatedApp({
         onAddUser={addUser}
         onUpdateUser={updateUser}
         onAssignUserToCourse={assignUserToCourse}
+        onSetUserActiveYearGroup={setUserActiveYearGroup}
         onRemoveUserFromCourse={removeUserFromCourse}
+        onUpsertMinistryTeam={attendance.upsertMinistryTeam}
         checkCourseUniqueness={checkCourseUniqueness}
         checkDoubleBooking={checkDoubleBooking}
         getCourseOptions={getCourseOptions}

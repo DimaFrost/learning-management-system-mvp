@@ -2,9 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { WORKSPACE_LABELS } from '../../types/workspace';
-import { LogOut, Code2, Menu, Briefcase, Check, ChevronsUpDown, ChevronDown, Languages } from 'lucide-react';
+import { LogOut, Code2, Menu, Briefcase, Check, ChevronsUpDown, ChevronDown, Languages, Users } from 'lucide-react';
 import tboLogo from '../../assets/tbo-logo.svg';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
+import { ROLE_META } from '../../views/admin/users/usersShared';
+import { formatRoleLabel } from '../../utils/userManagementUtils';
 
 const ROLE_ABBREVS: Record<string, string> = {
   administrator: 'A',
@@ -55,6 +57,10 @@ export function Header({
   const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : 'Workspace';
   const canSwitchWorkspace = !!activeWorkspace && availableWorkspaces.length > 1;
   const roleButtonLabel = activeWorkspace ? workspaceLabel : 'No role';
+  const activeRoleMeta = activeWorkspace
+    ? ROLE_META[activeWorkspace] ?? { icon: Users, className: 'border-[#d4d4d4] bg-white text-[#525252]' }
+    : { icon: Users, className: 'border-[#d4d4d4] bg-[#fafafa] text-[#a3a3a3]' };
+  const ActiveRoleIcon = activeRoleMeta.icon;
 
   useEffect(() => {
     if (!workspaceMenuOpen) return;
@@ -201,18 +207,18 @@ export function Header({
                 }
               }}
               disabled={!canSwitchWorkspace}
-              className={`tbo-focus relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-medium ${
+              className={`tbo-focus relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold ${
                 activeWorkspace
                   ? canSwitchWorkspace
-                    ? 'border-[#e5e5e5] bg-white text-[#171717] hover:bg-[#f5f5f5]'
-                    : 'cursor-default border-[#e5e5e5] bg-white text-[#171717]'
-                  : 'cursor-default border-[#e5e5e5] bg-[#fafafa] text-[#a3a3a3]'
+                    ? `${activeRoleMeta.className} hover:bg-[#f5f5f5]`
+                    : `cursor-default ${activeRoleMeta.className}`
+                  : `cursor-default ${activeRoleMeta.className}`
               }`}
               title={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
               aria-label={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
               aria-expanded={canSwitchWorkspace ? workspaceMenuOpen : undefined}
             >
-              <Briefcase className={`h-4 w-4 ${activeWorkspace ? 'text-[#2563eb]' : 'text-[#a3a3a3]'}`} />
+              <ActiveRoleIcon className="h-4 w-4" />
               <span className="max-w-[120px] truncate">{roleButtonLabel}</span>
               {canSwitchWorkspace && <ChevronsUpDown className="h-3.5 w-3.5 text-[#737373]" />}
             </button>
@@ -235,11 +241,16 @@ export function Header({
                           : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
                       }`}
                     >
-                      <span className="flex h-6 w-6 items-center justify-center rounded-md bg-white text-[#2563eb] shadow-[inset_0_0_0_1px_rgba(229,229,229,0.9)]">
-                        {selected ? <Check className="h-3.5 w-3.5" /> : <Briefcase className="h-3.5 w-3.5" />}
+                      <span className={`flex h-6 w-6 items-center justify-center rounded-md border ${
+                        ROLE_META[workspace]?.className ?? 'border-[#d4d4d4] bg-white text-[#525252]'
+                      }`}>
+                        {selected ? <Check className="h-3.5 w-3.5" /> : (() => {
+                          const Icon = ROLE_META[workspace]?.icon ?? Users;
+                          return <Icon className="h-3.5 w-3.5" />;
+                        })()}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-medium">
-                        {WORKSPACE_LABELS[workspace]}
+                        {formatRoleLabel(workspace)}
                       </span>
                     </button>
                   );

@@ -204,9 +204,28 @@ function UserDetailModal({
               <p className="truncate text-sm text-[#737373]">{user.email}</p>
             </div>
           </div>
-          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label="Close">
-            <X className="h-4 w-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <button
+              type="button"
+              onClick={() => { onEditUser(user); onClose(); }}
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+            >
+              <Pencil className="h-4 w-4" />
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => { onDeleteUser(user.id); onClose(); }}
+              className="grid h-9 w-9 place-items-center rounded-lg border border-[#fecaca] text-[#b91c1c] hover:bg-[#fef2f2]"
+              aria-label="Delete user"
+              title="Delete user"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label="Close">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="tbo-scrollbar max-h-[68vh] space-y-5 overflow-y-auto p-5">
@@ -278,13 +297,8 @@ function UserDetailModal({
           </div>
         </div>
 
-        <div className="flex flex-col-reverse gap-2 border-t border-[#e5e5e5] px-5 py-4 sm:flex-row sm:justify-end">
-          <button type="button" onClick={() => { onDeleteUser(user.id); onClose(); }} className="rounded-lg border border-[#fecaca] px-4 py-2 text-sm font-semibold text-[#b91c1c] hover:bg-[#fef2f2]">
-            Delete
-          </button>
-          <button type="button" onClick={() => { onEditUser(user); onClose(); }} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a0a0a]">
-            Edit user
-          </button>
+        <div className="border-t border-[#e5e5e5] px-5 py-3 text-xs text-[#737373]">
+          Edit profile, roles, year groups, mentorship, and responsibility assignments from the edit view.
         </div>
       </section>
     </div>

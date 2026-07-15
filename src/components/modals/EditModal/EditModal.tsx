@@ -1,6 +1,6 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { X, Save } from 'lucide-react';
-import type { User, Class, Subject, Course, CourseStudent, EditingItem } from '../../../types/lms';
+import type { User, Class, Subject, Course, CourseStudent, EditingItem, MinistryTeam } from '../../../types/lms';
 import { EditCourseForm } from './EditCourseForm';
 import { EditSubjectForm } from './EditSubjectForm';
 import { EditClassForm } from './EditClassForm';
@@ -17,6 +17,7 @@ interface EditModalProps {
   courses: Course[];
   users: User[];
   courseStudents: CourseStudent[];
+  ministryTeams?: MinistryTeam[];
   onAddCourse: (data: Partial<Course>) => void;
   onUpdateCourse: (id: number, data: Partial<Course>) => void;
   onAddSubject: (courseId: number, data: Partial<Subject>) => void;
@@ -25,8 +26,10 @@ interface EditModalProps {
   onUpdateClass: (courseId: number, subjectId: number, classId: number, data: Partial<Class>) => void;
   onAddUser: (data: Partial<User>) => void;
   onUpdateUser: (id: string, data: Partial<User>) => void;
-  onAssignUserToCourse: (userId: string, courseId: number) => void;
+  onAssignUserToCourse: (userId: string, courseId: number, mentorId?: string | null) => void;
+  onSetUserActiveYearGroup?: (userId: string, courseId: number) => void | Promise<void>;
   onRemoveUserFromCourse: (userId: string, courseId: number, users: User[], courses: Course[]) => void;
+  onUpsertMinistryTeam?: (input: Partial<MinistryTeam> & { name: string }) => Promise<void>;
   checkCourseUniqueness: (courseType: string, graduationYear: number, courses: Course[], excludeCourseId?: number) => boolean;
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
   getCourseOptions: (courses: Course[]) => { id: number; displayName: string; courseType: string; graduationYear: number }[];
@@ -40,6 +43,7 @@ export function EditModal({
   courses,
   users,
   courseStudents,
+  ministryTeams = [],
   onAddCourse,
   onUpdateCourse,
   onAddSubject,
@@ -49,7 +53,9 @@ export function EditModal({
   onAddUser,
   onUpdateUser,
   onAssignUserToCourse,
+  onSetUserActiveYearGroup,
   onRemoveUserFromCourse,
+  onUpsertMinistryTeam,
   checkCourseUniqueness,
   checkDoubleBooking,
   getUserById,
@@ -268,6 +274,7 @@ export function EditModal({
   };
 
   if (!editingItem || editingItem.type === 'log') return null;
+  const isUserModal = editingItem.type === 'user';
 
   const getModalTitle = () => {
     const action = editingItem.data ? 'Edit' : 'Add';
@@ -316,9 +323,11 @@ export function EditModal({
             courseStudents={courseStudents}
             users={users}
             courses={courses}
+            ministryTeams={ministryTeams}
             getUserById={getUserById}
             assignUserToCourse={onAssignUserToCourse}
-            removeUserFromCourse={onRemoveUserFromCourse}
+            setUserActiveYearGroup={onSetUserActiveYearGroup}
+            upsertMinistryTeam={onUpsertMinistryTeam}
           />
         );
       default:
@@ -327,32 +336,40 @@ export function EditModal({
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4">
-      <div className="bg-white rounded-t-xl sm:rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">{getModalTitle()}</h3>
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <div className={`w-full max-h-[90vh] overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:rounded-2xl ${isUserModal ? 'sm:max-w-3xl' : 'sm:max-w-md'}`}>
+        <div className="flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+              {editingItem.data ? 'Editing' : 'Creating'}
+            </p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{getModalTitle()}</h3>
+          </div>
           <button 
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
+            aria-label="Close"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {getFormFields()}
+        <form onSubmit={handleSubmit} className="flex max-h-[calc(90vh-82px)] flex-col">
+          <div className="tbo-scrollbar flex-1 overflow-y-auto p-5">
+            {getFormFields()}
+          </div>
 
-          <div className="flex justify-end space-x-3 pt-4">
+          <div className="flex justify-end gap-3 border-t border-[#e5e5e5] bg-white px-5 py-4">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+              className="rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              className="flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#262626]"
             >
               <Save className="w-4 h-4" />
               <span>{editingItem.data ? 'Update' : 'Create'}</span>

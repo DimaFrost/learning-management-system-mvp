@@ -120,6 +120,20 @@ function countDraftStatuses(
   }, { present: 0, late: 0, absent: 0 });
 }
 
+function orderStudentsForMarking(
+  students: User[],
+  draft: Record<string, AttendanceStatus>
+): User[] {
+  const statusOrder: Record<AttendanceStatus, number> = { absent: 0, late: 1, present: 2 };
+  return [...students].sort((a, b) => {
+    const statusA = draft[a.id] ?? 'absent';
+    const statusB = draft[b.id] ?? 'absent';
+    const statusCompare = statusOrder[statusA] - statusOrder[statusB];
+    if (statusCompare !== 0) return statusCompare;
+    return a.name.localeCompare(b.name, ['bg', 'en'], { sensitivity: 'base' });
+  });
+}
+
 function getDayOfWeek(dateStr: string): number {
   return new Date(dateStr + 'T00:00:00').getDay();
 }
@@ -478,14 +492,7 @@ export function DutyMarkingView({
     namePrefix: string
   ) => {
     const counts = countDraftStatuses(draft, enrolledStudents);
-    const statusOrder: Record<AttendanceStatus, number> = { absent: 0, late: 1, present: 2 };
-    const orderedStudents = [...enrolledStudents].sort((a, b) => {
-      const statusA = draft[a.id] ?? 'absent';
-      const statusB = draft[b.id] ?? 'absent';
-      const statusCompare = statusOrder[statusA] - statusOrder[statusB];
-      if (statusCompare !== 0) return statusCompare;
-      return a.name.localeCompare(b.name, ['bg', 'en'], { sensitivity: 'base' });
-    });
+    const orderedStudents = orderStudentsForMarking(enrolledStudents, draft);
     return (
     <div className="overflow-x-auto">
       <table className="w-full text-sm">
@@ -498,7 +505,7 @@ export function DutyMarkingView({
           </tr>
         </thead>
         <tbody>
-          {enrolledStudents.map(student => (
+          {orderedStudents.map(student => (
             <tr key={student.id} className="border-b border-gray-100">
               <td className="py-2.5 pr-4 font-medium text-gray-900">
                 {student.name}
@@ -529,6 +536,7 @@ export function DutyMarkingView({
     onMarkAll: (status: AttendanceStatus) => void
   ) => {
     const counts = countDraftStatuses(draft, enrolledStudents);
+    const orderedStudents = orderStudentsForMarking(enrolledStudents, draft);
     return (
       <div className="space-y-4">
         <div className="flex flex-col gap-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 xl:flex-row xl:items-center xl:justify-between">

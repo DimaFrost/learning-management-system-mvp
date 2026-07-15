@@ -45,7 +45,7 @@ export function UserAvatar({
   );
 }
 
-const ROLE_META: Record<string, { icon: typeof Shield; className: string }> = {
+export const ROLE_META: Record<string, { icon: typeof Shield; className: string }> = {
   administrator: {
     icon: Shield,
     className: 'border-[#c4b5fd] bg-white text-[#6d28d9]',
@@ -91,7 +91,7 @@ export function ActiveYearGroupBadge({ course }: { course: Course }) {
   );
 }
 
-function RoleChip({ role }: { role: UserRole }) {
+export function RoleChip({ role }: { role: UserRole }) {
   const meta = ROLE_META[role] ?? {
     icon: Users,
     className: 'border-[#d4d4d4] bg-white text-[#525252]',
