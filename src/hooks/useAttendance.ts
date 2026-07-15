@@ -503,7 +503,7 @@ export function useAttendance(
   }, [users]);
 
   const currentDuty = dutySchedule.filter(
-    d => d.weekStart === currentWeekStart && d.status === 'active'
+    d => d.weekStart === currentWeekStart && (d.status === 'active' || d.status === 'transferred')
   );
 
   const myCurrentDuty = currentDuty.find(

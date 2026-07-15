@@ -113,7 +113,7 @@ export function AuthenticatedApp({
   const effectiveCurrentDuties = attendance.dutySchedule.filter(
     d => d.weekStart <= todayKey
       && d.weekEnd >= todayKey
-      && d.status === 'active'
+      && (d.status === 'active' || d.status === 'transferred')
       && d.studentId === effectiveUser.id
   );
   const effectiveIsOnDuty = effectiveCurrentDuties.length > 0;
