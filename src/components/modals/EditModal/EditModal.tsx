@@ -95,7 +95,7 @@ export function EditModal({
     setErrors({});
   }, [editingItem]);
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     const newErrors: {[key: string]: string | null} = {};
 
@@ -217,10 +217,46 @@ export function EditModal({
         }
       }
     } else if (editingItem && editingItem.type === 'user') {
+      const {
+        assignedYearGroupId,
+        assignedMenteeKeys,
+        ledTeamIds,
+        assignedCourseId,
+        assignedMenteeKey,
+        ...userFormData
+      } = formData;
       if (editingItem.data) {
-        onUpdateUser((editingItem.data as User).id, formData);
+        const userId = (editingItem.data as User).id;
+        onUpdateUser(userId, userFormData);
+        if (assignedYearGroupId && onSetUserActiveYearGroup) {
+          await onSetUserActiveYearGroup(userId, Number(assignedYearGroupId));
+        }
+        if (Array.isArray(assignedMenteeKeys)) {
+          await Promise.all(assignedMenteeKeys.map(async (key: string) => {
+            const [studentId, courseId] = String(key).split(':');
+            if (studentId && courseId) {
+              await onAssignUserToCourse(studentId, Number(courseId), userId);
+            }
+          }));
+        }
+        if (Array.isArray(ledTeamIds) && onUpsertMinistryTeam) {
+          await Promise.all(ministryTeams.map(async team => {
+            const currentMemberIds = team.members.filter(member => member.active).map(member => member.userId);
+            const shouldLead = ledTeamIds.includes(team.id);
+            const currentlyLeads = currentMemberIds.includes(userId);
+            if (shouldLead === currentlyLeads) return;
+            const nextMemberIds = shouldLead
+              ? [...currentMemberIds, userId]
+              : currentMemberIds.filter(id => id !== userId);
+            await onUpsertMinistryTeam({
+              ...team,
+              memberIds: nextMemberIds,
+              leaderId: nextMemberIds[0] ?? null,
+            });
+          }));
+        }
       } else {
-        onAddUser(formData);
+        onAddUser(userFormData);
       }
     }
 
@@ -325,9 +361,6 @@ export function EditModal({
             courses={courses}
             ministryTeams={ministryTeams}
             getUserById={getUserById}
-            assignUserToCourse={onAssignUserToCourse}
-            setUserActiveYearGroup={onSetUserActiveYearGroup}
-            upsertMinistryTeam={onUpsertMinistryTeam}
           />
         );
       default:

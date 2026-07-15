@@ -999,14 +999,19 @@ export function AdminDashboard({
       return a.dueDate.localeCompare(b.dueDate);
     })
     .slice(0, 2);
-  const currentDutyRows = attendance.dutySchedule.filter(
-    duty => duty.weekStart === currentWeekKey && duty.status === 'active'
-  );
+  const currentDutyRows = attendance.dutySchedule.filter(duty => {
+    if (duty.status !== 'active') return false;
+    const weekStart = duty.weekStart.slice(0, 10);
+    const weekEnd = duty.weekEnd.slice(0, 10);
+    return weekStart <= todayKey && weekEnd >= todayKey;
+  });
   const weeklyDutyKeepers = (['first_year', 'second_year'] as const).map(courseType => {
     const course = activeCourses.find(item => item.courseType === courseType);
-    const duty = course
-      ? currentDutyRows.find(item => item.courseId === course.id)
-      : undefined;
+    const duty = currentDutyRows.find(item => {
+      if (course && item.courseId === course.id) return true;
+      const dutyCourse = courses.find(courseItem => courseItem.id === item.courseId);
+      return dutyCourse?.courseType === courseType && dutyCourse.status === 'active';
+    });
     const user = duty ? users.find(item => item.id === duty.studentId) : undefined;
 
     return {

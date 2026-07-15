@@ -85,6 +85,7 @@ export function useEnrollments(
     const existingEnrollment = courseStudents.find(
       enrollment => enrollment.studentId === userId && enrollment.courseId === courseId
     );
+    const enrollmentDate = existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0];
     const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
     const otherActiveYearGroupIds = courseStudents
       .filter(enrollment => (
@@ -115,7 +116,7 @@ export function useEnrollments(
           student_id: userId,
           course_id: courseId,
           mentor_id: existingEnrollment?.mentorId ?? null,
-          enrollment_date: existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0],
+          enrollment_date: enrollmentDate,
           status: 'active',
         },
         { onConflict: 'course_id,student_id' }
@@ -126,7 +127,39 @@ export function useEnrollments(
       return;
     }
 
-    await refetchEnrollments();
+    setCourseStudents(prev => {
+      const targetExists = prev.some(enrollment => (
+        enrollment.studentId === userId && enrollment.courseId === courseId
+      ));
+      const updated = prev.map(enrollment => {
+        if (enrollment.studentId !== userId) return enrollment;
+        if (enrollment.courseId === courseId) {
+          return {
+            ...enrollment,
+            mentorId: existingEnrollment?.mentorId ?? null,
+            enrollmentDate,
+            status: 'active',
+          };
+        }
+        if (otherActiveYearGroupIds.includes(enrollment.courseId)) {
+          return { ...enrollment, status: 'inactive' };
+        }
+        return enrollment;
+      });
+
+      if (targetExists) return updated;
+
+      return [
+        ...updated,
+        {
+          studentId: userId,
+          courseId,
+          mentorId: null,
+          enrollmentDate,
+          status: 'active',
+        },
+      ];
+    });
   }
 
   function removeUserFromCourse(
