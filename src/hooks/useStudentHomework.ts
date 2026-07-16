@@ -37,7 +37,7 @@ function findClassInCourses(
   courses: Course[]
 ): { cls: Class; subject: Subject } | null {
   for (const course of courses) {
-    for (const subject of course.subjects) {
+    for (const subject of course.subjects.filter(item => item.courseId == null || item.courseId === course.id)) {
       const cls = subject.classes.find(c => c.id === classId);
       if (cls) return { cls, subject };
     }
@@ -55,7 +55,9 @@ export function useStudentHomework(
 
   const fetchStudentHomework = useCallback(async () => {
     const enrolledCourseIds = courseStudents
-      .filter(cs => cs.studentId === currentUser.id)
+      .filter(cs => cs.studentId === currentUser.id && cs.status === 'active')
+      .sort((a, b) => b.enrollmentDate.localeCompare(a.enrollmentDate))
+      .slice(0, 1)
       .map(cs => cs.courseId);
 
     if (enrolledCourseIds.length === 0) {

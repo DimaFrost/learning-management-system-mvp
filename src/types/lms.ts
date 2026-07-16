@@ -41,6 +41,7 @@ export interface Class {
 
 export interface Subject {
   id: number;
+  courseId?: number;
   title: string;
   description: string;
   startDate: string;
@@ -275,6 +276,73 @@ export interface HomeworkComment {
   authorName: string;
   content: string;
   createdAt: string;
+}
+
+export type BookReadingAssignmentStatus = 'draft' | 'assigned' | 'completed' | 'archived';
+export type BookReadingSubmissionStatus = 'not_started' | 'reading' | 'submitted' | 'returned' | 'completed';
+
+export interface Book {
+  id: number;
+  internalCode: string | null;
+  title: string;
+  subtitle: string | null;
+  authors: string[];
+  description: string | null;
+  publisher: string | null;
+  publishedDate: string | null;
+  pageCount: number | null;
+  isbn10: string | null;
+  isbn13: string | null;
+  coverUrl: string | null;
+  sourceProvider: string | null;
+  sourceId: string | null;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookReadingAssignment {
+  id: number;
+  bookId: number;
+  courseId: number;
+  assignedBy: string | null;
+  title: string;
+  instructions: string | null;
+  dueDate: string | null;
+  status: BookReadingAssignmentStatus;
+  createdAt: string;
+  updatedAt: string;
+  book: Book;
+}
+
+export interface BookReadingSubmission {
+  id: number;
+  assignmentId: number;
+  studentId: string;
+  status: BookReadingSubmissionStatus;
+  responseText: string | null;
+  responseUrl: string | null;
+  submittedAt: string | null;
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  reviewerNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface BookLookupResult {
+  title: string;
+  subtitle: string | null;
+  authors: string[];
+  description: string | null;
+  publisher: string | null;
+  publishedDate: string | null;
+  pageCount: number | null;
+  isbn10: string | null;
+  isbn13: string | null;
+  coverUrl: string | null;
+  sourceProvider: string;
+  sourceId: string | null;
 }
 
 export interface Message {

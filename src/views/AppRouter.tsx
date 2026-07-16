@@ -18,17 +18,21 @@ import type {
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
+import { useBooks } from '../hooks/useBooks';
 import { MyCourseView } from './student/MyCourseView';
 import { StudentDashboard } from './student/StudentDashboard';
 import { MyAttendanceView } from './student/MyAttendanceView';
 import { MyAttendanceBreakdownView } from './student/MyAttendanceBreakdownView';
 import { MyMinistryInfoView } from './student/MyMinistryInfoView';
+import { MyBooksView } from './student/MyBooksView';
 import { DutyMarkingView } from './student/DutyMarkingView';
 import { MyClassesView } from './teacher/MyClassesView';
 import { StaffDashboard } from './shared/StaffDashboard';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { CurriculumView } from './admin/CurriculumView';
+import { BooksView } from './admin/BooksView';
 import { UsersHubView } from './admin/users/UsersHubView';
+import { AdminStudentDashboard } from './admin/AdminStudentDashboard';
 import { MentorshipHubView } from './admin/MentorshipHubView';
 import { AttendanceView } from './admin/AttendanceView';
 import { MentorDashboard } from './mentor/MentorDashboard';
@@ -85,6 +89,8 @@ export interface AppRouterProps {
     excludeClassId?: number
   ) => { hasConflict: boolean; conflictingClasses: Class[] };
   setEditingItem: React.Dispatch<React.SetStateAction<EditingItem | null>>;
+  selectedAdminStudentId: string | null;
+  onOpenAdminStudentDashboard: (studentId: string) => void;
   setCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
   assignUserToCourse: (userId: string, courseId: number, mentorId?: string | null) => void;
   deleteCourse: (id: number) => void;
@@ -200,6 +206,8 @@ export function AppRouter({
   getCourseDisplayName,
   checkDoubleBooking,
   setEditingItem,
+  selectedAdminStudentId,
+  onOpenAdminStudentDashboard,
   setCourseStudents,
   assignUserToCourse,
   deleteCourse,
@@ -249,6 +257,7 @@ export function AppRouter({
   effectiveCurrentDuties,
   nextScheduledDuty,
 }: AppRouterProps) {
+  const books = useBooks(currentUser, courses, courseStudents);
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
 
@@ -407,6 +416,18 @@ export function AppRouter({
     );
   }
 
+  if (activeView === 'my-books') {
+    return (
+      <MyBooksView
+        assignments={books.myAssignments}
+        submissions={books.mySubmissions}
+        courses={courses}
+        loading={books.loading}
+        onSubmit={books.upsertMySubmission}
+      />
+    );
+  }
+
   if (hasRole('student') && activeWorkspace === 'student') {
     if (activeView === 'my-course') {
       return (
@@ -445,6 +466,9 @@ export function AppRouter({
           classAttendance={attendance.classAttendance}
           theWellSessionAttendance={attendance.theWellSessionAttendance}
           wellSchedule={attendance.wellSchedule}
+          bookAssignments={books.myAssignments}
+          bookSubmissions={books.mySubmissions}
+          booksLoading={books.loading}
           onNavigate={setActiveView}
           onOpenClass={openClassDetail}
         />
@@ -542,6 +566,23 @@ export function AppRouter({
             onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
           />
         );
+      case 'curriculum-books':
+        return (
+          <BooksView
+            assignments={books.assignments}
+            submissions={books.submissions}
+            courses={courses}
+            courseStudents={courseStudents}
+            users={users}
+            loading={books.loading}
+            error={books.error}
+            lookupBooks={books.lookupBooks}
+            uploadBookCover={books.uploadBookCover}
+            createReadingAssignment={books.createReadingAssignment}
+            updateReadingAssignment={books.updateReadingAssignment}
+            deleteReadingAssignment={books.deleteReadingAssignment}
+          />
+        );
       case 'users':
       case 'users-directory':
       case 'users-pending':
@@ -567,7 +608,27 @@ export function AppRouter({
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onEditUser={(user?) => setEditingItem({ type: 'user', data: user ?? null })}
+            onOpenStudentDashboard={onOpenAdminStudentDashboard}
             onDeleteUser={deleteUser}
+          />
+        );
+      case 'admin-student-dashboard':
+        return (
+          <AdminStudentDashboard
+            studentId={selectedAdminStudentId}
+            users={users}
+            courses={courses}
+            courseStudents={courseStudents}
+            mentorshipLogs={mentorshipLogs}
+            ministryTeams={attendance.ministryTeams}
+            ministryRotations={attendance.ministryRotations}
+            getUserById={getUserById}
+            getCourseSummaries={attendance.getCourseSummaries}
+            bookAssignments={books.assignments}
+            bookSubmissions={books.submissions}
+            onBack={() => setActiveView('users-directory')}
+            onEditUser={(user) => setEditingItem({ type: 'user', data: user })}
+            onNavigate={setActiveView}
           />
         );
       case 'mentorship':
@@ -793,6 +854,9 @@ export function AppRouter({
         classAttendance={attendance.classAttendance}
         theWellSessionAttendance={attendance.theWellSessionAttendance}
         wellSchedule={attendance.wellSchedule}
+        bookAssignments={books.myAssignments}
+        bookSubmissions={books.mySubmissions}
+        booksLoading={books.loading}
         onNavigate={setActiveView}
         onOpenClass={openClassDetail}
       />
@@ -811,6 +875,16 @@ export function AppRouter({
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onOpenClass={openClassDetail}
+          />
+        );
+      case 'my-books':
+        return (
+          <MyBooksView
+            assignments={books.myAssignments}
+            submissions={books.mySubmissions}
+            courses={courses}
+            loading={books.loading}
+            onSubmit={books.upsertMySubmission}
           />
         );
       case 'dashboard':
@@ -837,6 +911,9 @@ export function AppRouter({
             classAttendance={attendance.classAttendance}
             theWellSessionAttendance={attendance.theWellSessionAttendance}
             wellSchedule={attendance.wellSchedule}
+            bookAssignments={books.myAssignments}
+            bookSubmissions={books.mySubmissions}
+            booksLoading={books.loading}
             onNavigate={setActiveView}
             onOpenClass={openClassDetail}
           />

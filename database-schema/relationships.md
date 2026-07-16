@@ -13,6 +13,9 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | announcement_reactions | id |
 | announcements | id |
 | attendance_settings | id |
+| book_reading_assignments | id |
+| book_reading_submissions | id |
+| books | id |
 | class_attendance | id |
 | class_files | id |
 | class_notes | id |
@@ -33,6 +36,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | ministry_teams | id |
 | notification_deliveries | id |
 | notification_jobs | id |
+| prayer_schedule | id |
 | profiles | id |
 | settings | key |
 | subject_notes | id |
@@ -42,6 +46,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | the_well_session_attendance | id |
 | todo_batches | id |
 | todo_items | id |
+| well_schedule | id |
 
 ## Foreign Keys
 
@@ -55,6 +60,13 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | announcement_reactions.user_id | profiles.id |
 | announcements.author_id | profiles.id |
 | announcements.course_id | courses.id |
+| book_reading_assignments.assigned_by | profiles.id |
+| book_reading_assignments.book_id | books.id |
+| book_reading_assignments.course_id | courses.id |
+| book_reading_submissions.assignment_id | book_reading_assignments.id |
+| book_reading_submissions.reviewed_by | profiles.id |
+| book_reading_submissions.student_id | profiles.id |
+| books.created_by | profiles.id |
 | class_attendance.class_id | classes.id |
 | class_attendance.marked_by | profiles.id |
 | class_attendance.student_id | profiles.id |
@@ -101,6 +113,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | notification_deliveries.recipient_id | profiles.id |
 | notification_jobs.announcement_id | announcements.id |
 | notification_jobs.created_by | profiles.id |
+| prayer_schedule.thursday_student_id | profiles.id |
+| prayer_schedule.tuesday_student_id | profiles.id |
 | subject_notes.author_id | profiles.id |
 | subject_notes.subject_id | subjects.id |
 | subjects.course_id | courses.id |
@@ -115,3 +129,4 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | todo_items.assigned_to | profiles.id |
 | todo_items.batch_id | todo_batches.id |
 | todo_items.created_by | profiles.id |
+| well_schedule.course_id | courses.id |

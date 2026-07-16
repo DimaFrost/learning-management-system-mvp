@@ -18,7 +18,7 @@ interface MyCourseViewProps {
 
 function findClassNavIds(classId: number, courses: Course[]) {
   for (const course of courses) {
-    for (const subject of course.subjects) {
+    for (const subject of course.subjects.filter(item => item.courseId == null || item.courseId === course.id)) {
       if (subject.classes.some(c => c.id === classId)) {
         return { subjectId: subject.id, courseId: course.id };
       }
@@ -175,7 +175,7 @@ export function MyCourseView({
             <div className="space-y-4">
               <h3 className="text-xl font-semibold text-gray-900">Course Curriculum</h3>
 
-              {course.subjects?.map(subject => (
+              {course.subjects?.filter(subject => subject.courseId == null || subject.courseId === course.id).map(subject => (
                 <div key={subject.id} className="bg-white rounded-lg shadow border border-gray-200 p-6">
                   <h4 className="text-lg font-semibold text-gray-900 mb-2">{subject.title}</h4>
                   <p className="text-gray-600 mb-3">{subject.description}</p>

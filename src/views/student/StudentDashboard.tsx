@@ -16,6 +16,8 @@ import {
 } from 'lucide-react';
 import type {
   Announcement,
+  BookReadingAssignment,
+  BookReadingSubmission,
   ClassAttendanceRecord,
   Conversation,
   Course,
@@ -77,6 +79,9 @@ interface StudentDashboardProps {
   classAttendance: ClassAttendanceRecord[];
   theWellSessionAttendance: TheWellSessionRecord[];
   wellSchedule: WellScheduleEntry[];
+  bookAssignments: BookReadingAssignment[];
+  bookSubmissions: BookReadingSubmission[];
+  booksLoading: boolean;
   onNavigate: (view: string) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
@@ -96,7 +101,7 @@ type UpcomingSession = {
 
 function findClassNavIds(classId: number, courses: Course[]) {
   for (const course of courses) {
-    for (const subject of course.subjects) {
+    for (const subject of course.subjects.filter(item => item.courseId == null || item.courseId === course.id)) {
       if (subject.classes.some(cls => cls.id === classId)) {
         return { subjectId: subject.id, courseId: course.id };
       }
@@ -251,6 +256,9 @@ export function StudentDashboard({
   classAttendance,
   theWellSessionAttendance,
   wellSchedule,
+  bookAssignments,
+  bookSubmissions,
+  booksLoading,
   onNavigate,
   onOpenClass,
 }: StudentDashboardProps) {
@@ -315,6 +323,26 @@ export function StudentDashboard({
     item => item.status === 'not_started' || item.status === 'draft' || item.status === 'returned'
   );
 
+  const bookSubmissionByAssignment = useMemo(() => {
+    const rows = new Map<number, BookReadingSubmission>();
+    bookSubmissions.forEach(submission => rows.set(submission.assignmentId, submission));
+    return rows;
+  }, [bookSubmissions]);
+
+  const incompleteBooks = useMemo(
+    () =>
+      bookAssignments
+        .filter(assignment => assignment.status === 'assigned')
+        .filter(assignment => {
+          const status = bookSubmissionByAssignment.get(assignment.id)?.status ?? 'not_started';
+          return status !== 'submitted' && status !== 'completed';
+        })
+        .sort((a, b) => (a.dueDate ?? '9999-12-31').localeCompare(b.dueDate ?? '9999-12-31')),
+    [bookAssignments, bookSubmissionByAssignment]
+  );
+
+  const overdueBooks = incompleteBooks.filter(assignment => assignment.dueDate && assignment.dueDate < todayKey);
+
   const attentionCount =
     overdueHomework.length +
     todosToday.length +
@@ -336,7 +364,9 @@ export function StudentDashboard({
     const items: UpcomingSession[] = [];
 
     enrolledCourses.forEach(course => {
-      course.subjects.forEach(subject => {
+      course.subjects
+        .filter(subject => subject.courseId == null || subject.courseId === course.id)
+        .forEach(subject => {
         subject.classes.forEach(cls => {
           if (!cls.date) return;
           const scheduledDate = new Date(`${cls.date}T00:00:00`);
@@ -684,6 +714,7 @@ export function StudentDashboard({
             <div className="grid grid-cols-2 gap-2">
               {([
                 { label: 'My course', icon: GraduationCap, view: 'my-course', tone: 'blue' as const },
+                { label: 'Books', icon: BookOpen, view: 'my-books', tone: 'orange' as const, badge: incompleteBooks.length },
                 { label: 'Attendance', icon: BarChart3, view: 'my-attendance-overview', tone: 'green' as const },
                 { label: 'Messages', icon: MessageSquare, view: 'messages', tone: 'violet' as const, badge: totalUnread },
                 { label: 'Announcements', icon: Megaphone, view: 'announcements', tone: 'orange' as const, badge: pinnedAnnouncements.length },
@@ -716,6 +747,54 @@ export function StudentDashboard({
             )}
           </SectionCard>
       </div>
+
+      <SectionCard
+        title="Books"
+        subtitle="Reading assignments"
+        action={<GhostButton onClick={() => onNavigate('my-books')}>Open</GhostButton>}
+      >
+        {booksLoading ? (
+          <p className="text-sm text-[#737373]">Loading books...</p>
+        ) : incompleteBooks.length === 0 ? (
+          <div className="flex items-center gap-2 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-4 text-sm text-[#15803d]">
+            <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
+            No reading assignments need attention.
+          </div>
+        ) : (
+          <div className="grid gap-2 md:grid-cols-2">
+            {incompleteBooks.slice(0, 4).map(assignment => {
+              const submission = bookSubmissionByAssignment.get(assignment.id);
+              return (
+                <button
+                  key={assignment.id}
+                  type="button"
+                  onClick={() => onNavigate('my-books')}
+                  className="tbo-focus flex min-w-0 items-center gap-3 rounded-xl border border-[#e5e5e5] bg-white p-2.5 text-left hover:bg-[#fafafa]"
+                >
+                  <div className="grid h-14 w-10 flex-shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f5f5f5] text-[#a3a3a3]">
+                    {assignment.book.coverUrl ? (
+                      <img src={assignment.book.coverUrl} alt="" className="h-full w-full object-cover" />
+                    ) : (
+                      <BookOpen className="h-4 w-4" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-[#171717]">{assignment.book.title}</p>
+                    <p className="truncate text-xs text-[#737373]">{assignment.title}</p>
+                    <p className={`mt-1 text-xs ${assignment.dueDate && assignment.dueDate < todayKey ? 'text-[#c2410c]' : 'text-[#737373]'}`}>
+                      {assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date'}
+                      {submission?.status ? ` · ${submission.status.replace('_', ' ')}` : ''}
+                    </p>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
+        {overdueBooks.length > 0 && (
+          <p className="mt-3 text-xs font-medium text-[#c2410c]">{overdueBooks.length} overdue reading assignment{overdueBooks.length === 1 ? '' : 's'}.</p>
+        )}
+      </SectionCard>
     </div>
   );
 }

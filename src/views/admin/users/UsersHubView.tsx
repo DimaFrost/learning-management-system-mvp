@@ -1,6 +1,7 @@
 import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   ArrowUpDown,
+  ArrowUpRight,
   Clock3,
   GraduationCap,
   Pencil,
@@ -50,6 +51,7 @@ export interface UsersHubViewProps {
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   onEditUser: (user?: User) => void;
+  onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
 }
 
@@ -183,12 +185,14 @@ function UserDetailModal({
   getCourseDisplayName,
   onClose,
   onEditUser,
+  onOpenStudentDashboard,
   onDeleteUser,
 }: {
   row: UserDirectoryRow;
   getCourseDisplayName: (course: Course) => string;
   onClose: () => void;
   onEditUser: (user?: User) => void;
+  onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
 }) {
   const user = row.user;
@@ -205,6 +209,17 @@ function UserDetailModal({
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
+            {user.roles.includes('student') && onOpenStudentDashboard && (
+              <button
+                type="button"
+                aria-label="Open student dashboard"
+                title="Open student dashboard"
+                onClick={() => { onOpenStudentDashboard(user.id); onClose(); }}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d] hover:bg-[#dcfce7]"
+              >
+                <ArrowUpRight className="h-4 w-4" />
+              </button>
+            )}
             <button
               type="button"
               onClick={() => { onEditUser(user); onClose(); }}
@@ -400,12 +415,14 @@ function DirectoryPanel({
   courses,
   getCourseDisplayName,
   onEditUser,
+  onOpenStudentDashboard,
   onDeleteUser,
 }: {
   rows: UserDirectoryRow[];
   courses: Course[];
   getCourseDisplayName: (course: Course) => string;
   onEditUser: (user?: User) => void;
+  onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
 }) {
   const [search, setSearch] = useState('');
@@ -568,13 +585,14 @@ function DirectoryPanel({
       </SectionCard>
 
       {selectedRow && (
-        <UserDetailModal
-          row={selectedRow}
-          getCourseDisplayName={getCourseDisplayName}
-          onClose={() => setSelectedRow(null)}
-          onEditUser={onEditUser}
-          onDeleteUser={onDeleteUser}
-        />
+          <UserDetailModal
+            row={selectedRow}
+            getCourseDisplayName={getCourseDisplayName}
+            onClose={() => setSelectedRow(null)}
+            onEditUser={onEditUser}
+            onOpenStudentDashboard={onOpenStudentDashboard}
+            onDeleteUser={onDeleteUser}
+          />
       )}
     </div>
   );
@@ -885,6 +903,7 @@ export function UsersHubView({
   getUserById,
   getCourseDisplayName,
   onEditUser,
+  onOpenStudentDashboard,
   onDeleteUser,
 }: UsersHubViewProps) {
   const meta = sectionMeta[activeSection];
@@ -943,6 +962,7 @@ export function UsersHubView({
           courses={courses}
           getCourseDisplayName={getCourseDisplayName}
           onEditUser={onEditUser}
+          onOpenStudentDashboard={onOpenStudentDashboard}
           onDeleteUser={onDeleteUser}
         />
       )}

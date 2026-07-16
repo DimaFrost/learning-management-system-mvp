@@ -180,6 +180,34 @@ function dateKey(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
+function parseDateKey(value: string) {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
+function formatRelativeDueDate(dueDate: string, today: string) {
+  const due = parseDateKey(dueDate);
+  const base = parseDateKey(today);
+  const diffDays = Math.round((due.getTime() - base.getTime()) / DAY_MS);
+  const absDays = Math.abs(diffDays);
+
+  if (diffDays === 0) return 'Today';
+  if (diffDays === 1) return 'Tomorrow';
+  if (diffDays === -1) return 'Yesterday';
+
+  const formatUnit = (days: number) => {
+    if (days >= 14 && days % 7 === 0) {
+      const weeks = days / 7;
+      return `${weeks} week${weeks === 1 ? '' : 's'}`;
+    }
+    return `${days} day${days === 1 ? '' : 's'}`;
+  };
+
+  return diffDays > 0
+    ? `In ${formatUnit(diffDays)}`
+    : `${formatUnit(absDays)} overdue`;
+}
+
 function startOfMonth(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), 1);
 }
@@ -1381,6 +1409,7 @@ export function AdminDashboard({
                   ) : (
                     todoPreview.map(todo => {
                       const overdue = todo.dueDate < todayKey;
+                      const relativeDueDate = formatRelativeDueDate(todo.dueDate, todayKey);
                       return (
                       <button
                         key={todo.id}
@@ -1407,7 +1436,7 @@ export function AdminDashboard({
                         <div className="min-w-0">
                           <p className="truncate text-xs font-semibold text-[#171717]">{todo.title}</p>
                           <p className="truncate text-[11px] text-[#737373]">
-                            {overdue ? 'Overdue' : todo.assignedToName ?? 'Unassigned'}
+                            {relativeDueDate}{todo.assignedToName ? ` · ${todo.assignedToName}` : ''}
                           </p>
                         </div>
                       </button>

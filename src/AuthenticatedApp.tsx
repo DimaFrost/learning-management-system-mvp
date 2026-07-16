@@ -170,6 +170,7 @@ export function AuthenticatedApp({
     announcementsError;
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [selectedAdminStudentId, setSelectedAdminStudentId] = useState<string | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [sidebarMode, setSidebarMode] = useState<'locked' | 'collapsed'>(() => {
     const storedMode = localStorage.getItem('tbo-sidebar-mode');
@@ -348,6 +349,11 @@ export function AuthenticatedApp({
               getCourseDisplayName={getCourseDisplayName}
               checkDoubleBooking={checkDoubleBooking}
               setEditingItem={setEditingItem}
+              selectedAdminStudentId={selectedAdminStudentId}
+              onOpenAdminStudentDashboard={(studentId) => {
+                setSelectedAdminStudentId(studentId);
+                setActiveView('admin-student-dashboard');
+              }}
               deleteCourse={deleteCourse}
               deleteSubject={deleteSubject}
               deleteClass={deleteClass}

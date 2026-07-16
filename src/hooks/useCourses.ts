@@ -68,6 +68,7 @@ function mapClassRow(row: SupabaseClassRow): Class {
 function mapSubjectRow(row: SupabaseSubjectRow): Subject {
   return {
     id: row.id,
+    courseId: row.course_id,
     title: row.title,
     description: row.description,
     startDate: row.start_date,

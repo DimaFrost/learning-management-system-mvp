@@ -2,14 +2,14 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-09T13:07:45.547Z
+Generated at: 2026-07-16T14:00:01.988Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 34
+Exposed tables/views: 39
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -18,6 +18,9 @@ Exposed tables/views: 34
 | announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
 | announcements | 16 | [announcements](./tables/announcements.md) |
 | attendance_settings | 41 | [attendance_settings](./tables/attendance_settings.md) |
+| book_reading_assignments | 10 | [book_reading_assignments](./tables/book_reading_assignments.md) |
+| book_reading_submissions | 12 | [book_reading_submissions](./tables/book_reading_submissions.md) |
+| books | 17 | [books](./tables/books.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
 | class_files | 10 | [class_files](./tables/class_files.md) |
 | class_notes | 8 | [class_notes](./tables/class_notes.md) |
@@ -35,10 +38,11 @@ Exposed tables/views: 34
 | ministry_service_attendance | 6 | [ministry_service_attendance](./tables/ministry_service_attendance.md) |
 | ministry_service_sessions | 13 | [ministry_service_sessions](./tables/ministry_service_sessions.md) |
 | ministry_team_members | 8 | [ministry_team_members](./tables/ministry_team_members.md) |
-| ministry_teams | 16 | [ministry_teams](./tables/ministry_teams.md) |
+| ministry_teams | 14 | [ministry_teams](./tables/ministry_teams.md) |
 | notification_deliveries | 10 | [notification_deliveries](./tables/notification_deliveries.md) |
 | notification_jobs | 13 | [notification_jobs](./tables/notification_jobs.md) |
-| profiles | 11 | [profiles](./tables/profiles.md) |
+| prayer_schedule | 6 | [prayer_schedule](./tables/prayer_schedule.md) |
+| profiles | 12 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | subject_notes | 13 | [subject_notes](./tables/subject_notes.md) |
 | subjects | 9 | [subjects](./tables/subjects.md) |
@@ -47,6 +51,7 @@ Exposed tables/views: 34
 | the_well_session_attendance | 7 | [the_well_session_attendance](./tables/the_well_session_attendance.md) |
 | todo_batches | 12 | [todo_batches](./tables/todo_batches.md) |
 | todo_items | 12 | [todo_items](./tables/todo_items.md) |
+| well_schedule | 5 | [well_schedule](./tables/well_schedule.md) |
 
 ## Notes For AI
 

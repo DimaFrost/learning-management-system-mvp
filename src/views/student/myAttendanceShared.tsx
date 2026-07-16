@@ -10,7 +10,9 @@ export function useStudentCourseSelection(
   const myCourses = useMemo(() => {
     const enrolledIds = new Set(
       courseStudents
-        .filter(enrollment => enrollment.studentId === currentUserId)
+        .filter(enrollment => enrollment.studentId === currentUserId && enrollment.status === 'active')
+        .sort((a, b) => b.enrollmentDate.localeCompare(a.enrollmentDate))
+        .slice(0, 1)
         .map(enrollment => enrollment.courseId)
     );
     return courses.filter(course => enrolledIds.has(course.id) && isCourseActive(course));
