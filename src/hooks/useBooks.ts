@@ -7,6 +7,7 @@ import type {
   BookReadingAssignment,
   BookReadingAssignmentStatus,
   BookReadingSubmission,
+  BookReadingSubmissionComment,
   BookReadingSubmissionStatus,
   Course,
   CourseStudent,
@@ -42,6 +43,7 @@ type AssignmentRow = {
   title: string;
   instructions: string | null;
   due_date: string | null;
+  max_points: number | null;
   status: BookReadingAssignmentStatus;
   created_at: string;
   updated_at: string;
@@ -56,11 +58,25 @@ type SubmissionRow = {
   response_text: string | null;
   response_url: string | null;
   submitted_at: string | null;
+  points: number | null;
+  grade_comment: string | null;
+  graded_at: string | null;
+  graded_by: string | null;
   reviewed_at: string | null;
   reviewed_by: string | null;
   reviewer_note: string | null;
   created_at: string;
   updated_at: string;
+  comments?: SubmissionCommentRow[] | null;
+};
+
+type SubmissionCommentRow = {
+  id: number;
+  submission_id: number;
+  author_id: string;
+  content: string;
+  created_at: string;
+  author?: { id: string; name: string | null } | null;
 };
 
 export type BookDraft = Partial<Omit<Book, 'id' | 'createdAt' | 'updatedAt'>> & {
@@ -73,6 +89,7 @@ export type ReadingAssignmentDraft = {
   title: string;
   instructions?: string | null;
   dueDate?: string | null;
+  maxPoints?: number | null;
   status: BookReadingAssignmentStatus;
 };
 
@@ -114,6 +131,7 @@ function mapAssignment(row: AssignmentRow): BookReadingAssignment | null {
     title: row.title,
     instructions: row.instructions,
     dueDate: row.due_date,
+    maxPoints: row.max_points,
     status: row.status,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -130,11 +148,27 @@ function mapSubmission(row: SubmissionRow): BookReadingSubmission {
     responseText: row.response_text,
     responseUrl: row.response_url,
     submittedAt: row.submitted_at,
+    points: row.points,
+    gradeComment: row.grade_comment,
+    gradedAt: row.graded_at,
+    gradedBy: row.graded_by,
     reviewedAt: row.reviewed_at,
     reviewedBy: row.reviewed_by,
     reviewerNote: row.reviewer_note,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
+    comments: (row.comments ?? []).map(mapSubmissionComment),
+  };
+}
+
+function mapSubmissionComment(row: SubmissionCommentRow): BookReadingSubmissionComment {
+  return {
+    id: row.id,
+    submissionId: row.submission_id,
+    authorId: row.author?.id ?? row.author_id,
+    authorName: row.author?.name ?? 'Unknown',
+    content: row.content,
+    createdAt: row.created_at,
   };
 }
 
@@ -291,7 +325,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       const { data: assignmentRows, error: assignmentError } = await supabase
         .from('book_reading_assignments')
         .select(`
-          id, book_id, course_id, assigned_by, title, instructions, due_date, status, created_at, updated_at,
+          id, book_id, course_id, assigned_by, title, instructions, due_date, max_points, status, created_at, updated_at,
           book:books (
             id, internal_code, title, subtitle, authors, description, publisher, published_date,
             page_count, isbn_10, isbn_13, cover_url, source_provider, source_id,
@@ -304,7 +338,13 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
 
       const { data: submissionRows, error: submissionError } = await supabase
         .from('book_reading_submissions')
-        .select('*')
+        .select(`
+          *,
+          comments:book_reading_submission_comments (
+            id, submission_id, author_id, content, created_at,
+            author:profiles!author_id(id, name)
+          )
+        `)
         .order('updated_at', { ascending: false });
 
       if (submissionError) throw submissionError;
@@ -377,8 +417,40 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
         title: draft.title || draft.book.title,
         instructions: draft.instructions ?? null,
         due_date: draft.dueDate || null,
+        max_points: draft.maxPoints ?? null,
         status: draft.status,
       });
+
+    if (assignmentError) throw assignmentError;
+    await refetchBooks();
+  }, [currentUser.id, refetchBooks]);
+
+  const createReadingAssignments = useCallback(async (
+    draft: Omit<ReadingAssignmentDraft, 'courseId'> & { courseIds: number[] }
+  ) => {
+    if (!draft.book.title.trim()) throw new Error('Book title is required');
+    if (draft.courseIds.length === 0) throw new Error('Select at least one year group');
+
+    const { data: bookRow, error: bookError } = await supabase
+      .from('books')
+      .insert(bookToRow(draft.book, currentUser.id))
+      .select('*')
+      .single();
+
+    if (bookError) throw bookError;
+
+    const { error: assignmentError } = await supabase
+      .from('book_reading_assignments')
+      .insert(draft.courseIds.map(courseId => ({
+        book_id: bookRow.id,
+        course_id: courseId,
+        assigned_by: currentUser.id,
+        title: draft.title || draft.book.title,
+        instructions: draft.instructions ?? null,
+        due_date: draft.dueDate || null,
+        max_points: draft.maxPoints ?? null,
+        status: draft.status,
+      })));
 
     if (assignmentError) throw assignmentError;
     await refetchBooks();
@@ -404,6 +476,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       title: string;
       instructions: string | null;
       dueDate: string | null;
+      maxPoints: number | null;
       status: BookReadingAssignmentStatus;
     }>
   ) => {
@@ -413,6 +486,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
         ...(updates.title !== undefined && { title: updates.title }),
         ...(updates.instructions !== undefined && { instructions: updates.instructions }),
         ...(updates.dueDate !== undefined && { due_date: updates.dueDate }),
+        ...(updates.maxPoints !== undefined && { max_points: updates.maxPoints }),
         ...(updates.status !== undefined && { status: updates.status }),
         updated_at: new Date().toISOString(),
       })
@@ -455,6 +529,56 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
     await refetchBooks();
   }, [currentUser.id, refetchBooks]);
 
+  const gradeReadingSubmission = useCallback(async (
+    submissionId: number,
+    input: {
+      points?: number | null;
+      gradeComment?: string | null;
+      status: Extract<BookReadingSubmissionStatus, 'returned' | 'completed'>;
+    }
+  ) => {
+    const { error: updateError } = await supabase
+      .from('book_reading_submissions')
+      .update({
+        status: input.status,
+        points: input.points ?? null,
+        grade_comment: input.gradeComment ?? null,
+        graded_at: new Date().toISOString(),
+        graded_by: currentUser.id,
+        reviewed_at: new Date().toISOString(),
+        reviewed_by: currentUser.id,
+        reviewer_note: input.gradeComment ?? null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', submissionId);
+
+    if (updateError) throw updateError;
+    await refetchBooks();
+  }, [currentUser.id, refetchBooks]);
+
+  const addReadingSubmissionComment = useCallback(async (submissionId: number, content: string) => {
+    const trimmed = content.trim();
+    if (!trimmed) return;
+    const { error: insertError } = await supabase
+      .from('book_reading_submission_comments')
+      .insert({
+        submission_id: submissionId,
+        author_id: currentUser.id,
+        content: trimmed,
+      });
+    if (insertError) throw insertError;
+    await refetchBooks();
+  }, [currentUser.id, refetchBooks]);
+
+  const deleteReadingSubmissionComment = useCallback(async (commentId: number) => {
+    const { error: deleteError } = await supabase
+      .from('book_reading_submission_comments')
+      .delete()
+      .eq('id', commentId);
+    if (deleteError) throw deleteError;
+    await refetchBooks();
+  }, [refetchBooks]);
+
   return {
     assignments,
     myAssignments,
@@ -465,9 +589,13 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
     lookupBooks,
     uploadBookCover,
     createReadingAssignment,
+    createReadingAssignments,
     updateReadingAssignment,
     deleteReadingAssignment,
     upsertMySubmission,
+    gradeReadingSubmission,
+    addReadingSubmissionComment,
+    deleteReadingSubmissionComment,
     refetchBooks,
   };
 }

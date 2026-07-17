@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Calendar, CheckCircle2, ExternalLink } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle2, ExternalLink, Loader2 } from 'lucide-react';
 import type {
   BookReadingAssignment,
   BookReadingSubmission,
@@ -113,8 +113,30 @@ export function MyBooksView({ assignments, submissions, courses, loading, onSubm
 
                 <div className="border-t border-[#eeeeee] bg-[#fafafa] p-4">
                   <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => save(assignment, 'reading')} className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
-                      Mark reading
+                    <button
+                      type="button"
+                      onClick={() => save(assignment, 'reading')}
+                      disabled={status === 'reading' || status === 'submitted' || status === 'completed' || savingId === assignment.id}
+                      className={`inline-flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-semibold ${
+                        status === 'reading'
+                          ? 'border-[#bfdbfe] bg-[#dbeafe] text-[#1d4ed8]'
+                          : status === 'submitted' || status === 'completed'
+                            ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]'
+                            : 'border-[#dbeafe] bg-white text-[#1d4ed8] hover:bg-[#eff6ff]'
+                      } disabled:cursor-default`}
+                    >
+                      {savingId === assignment.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : status === 'reading' || status === 'submitted' || status === 'completed' ? (
+                        <CheckCircle2 className="h-3.5 w-3.5" />
+                      ) : null}
+                      {savingId === assignment.id
+                        ? 'Saving...'
+                        : status === 'reading'
+                          ? 'Reading'
+                          : status === 'submitted' || status === 'completed'
+                            ? 'Started'
+                            : 'Mark reading'}
                     </button>
                     <button type="button" onClick={() => setOpenAssignmentId(expanded ? null : assignment.id)} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
                       Submit work

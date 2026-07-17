@@ -108,7 +108,7 @@ export interface Announcement {
   authorAvatarUrl?: string | null; // populated from join with profiles
   courseId: number | null; // null = school-wide
   targetRoles: string[] | null;
-  status: 'draft' | 'scheduled' | 'published' | 'archived';
+  status: 'draft' | 'scheduled' | 'pending_review' | 'published' | 'archived';
   scheduledAt: string | null;
   publishedAt: string | null;
   isPinned: boolean;
@@ -133,7 +133,7 @@ export interface AnnouncementAttachment {
   id: number;
   announcementId: number;
   uploaderId: string;
-  attachmentType: 'file' | 'google_doc' | 'google_sheet' | 'google_slide';
+  attachmentType: 'file' | 'google_doc' | 'google_sheet' | 'google_slide' | 'link';
   fileName: string | null;
   storagePath: string | null;
   publicUrl: string | null;
@@ -151,6 +151,20 @@ export interface AnnouncementComment {
   authorName: string; // populated from join
   content: string;
   createdAt: string;
+}
+
+export type StreamPermission = 'students_post_comment' | 'students_comment' | 'staff_only';
+export type StreamEmailNotificationMode = 'all_posts' | 'staff_and_pinned' | 'pinned_only' | 'none';
+
+export interface StreamCourseSetting {
+  courseId: number;
+  permission: StreamPermission;
+  requireStudentPostApproval: boolean;
+  allowStudentAttachments: boolean;
+  emailNotifications: StreamEmailNotificationMode;
+  pinnedPostLimit: number;
+  updatedBy: string | null;
+  updatedAt: string;
 }
 
 export type TodoPriority = 'none' | 'priority';
@@ -309,6 +323,7 @@ export interface BookReadingAssignment {
   title: string;
   instructions: string | null;
   dueDate: string | null;
+  maxPoints: number | null;
   status: BookReadingAssignmentStatus;
   createdAt: string;
   updatedAt: string;
@@ -323,11 +338,25 @@ export interface BookReadingSubmission {
   responseText: string | null;
   responseUrl: string | null;
   submittedAt: string | null;
+  points: number | null;
+  gradeComment: string | null;
+  gradedAt: string | null;
+  gradedBy: string | null;
   reviewedAt: string | null;
   reviewedBy: string | null;
   reviewerNote: string | null;
   createdAt: string;
   updatedAt: string;
+  comments?: BookReadingSubmissionComment[];
+}
+
+export interface BookReadingSubmissionComment {
+  id: number;
+  submissionId: number;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
 }
 
 export interface BookLookupResult {

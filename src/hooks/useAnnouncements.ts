@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Announcement, AnnouncementComment, AnnouncementAttachment, AnnouncementReaction, User, CourseStudent, Course } from '../types/lms';
 import { uploadFileToStorage } from '../utils/storageOperations';
-import { userTeachesInCourse } from '../utils/courseUtils';
 
 type ShowConfirmation = (
   title: string,
@@ -162,20 +161,63 @@ async function syncAnnouncementNotificationJob({
   authorId,
   status,
   scheduledAt,
+  courseId,
+  isPinned,
 }: {
   announcementId: number;
   authorId: string;
   status: Announcement['status'];
   scheduledAt: string | null;
+  courseId: number | null;
+  isPinned: boolean;
 }) {
-  if (status === 'draft' || status === 'archived') {
+  const cancelNotificationJob = async () => {
     await supabase
       .from('notification_jobs')
       .update({ status: 'canceled' })
       .eq('type', 'announcement_email')
       .eq('announcement_id', announcementId)
       .in('status', ['pending', 'failed']);
+  };
+
+  if (status === 'draft' || status === 'archived' || status === 'pending_review') {
+    await cancelNotificationJob();
     return;
+  }
+
+  if (courseId !== null) {
+    const { data: setting } = await supabase
+      .from('stream_course_settings')
+      .select('email_notifications')
+      .eq('course_id', courseId)
+      .maybeSingle();
+
+    const emailMode = setting?.email_notifications ?? 'staff_and_pinned';
+    const author = allAnnouncementAuthorsCache.get(authorId);
+    let authorRoles = author;
+
+    if (!authorRoles) {
+      const { data: authorProfile } = await supabase
+        .from('profiles')
+        .select('roles')
+        .eq('id', authorId)
+        .maybeSingle();
+      authorRoles = Array.isArray(authorProfile?.roles) ? authorProfile.roles : [];
+      allAnnouncementAuthorsCache.set(authorId, authorRoles);
+    }
+
+    const isStaffAuthor = authorRoles.some(role =>
+      ['administrator', 'teacher', 'mentor', 'team_leader'].includes(role)
+    );
+    const shouldNotify =
+      emailMode === 'all_posts' ||
+      (emailMode === 'staff_and_pinned' && (isStaffAuthor || isPinned)) ||
+      (emailMode === 'pinned_only' && isPinned);
+
+    if (!shouldNotify) {
+      await cancelNotificationJob();
+      return;
+    }
   }
 
   await supabase.from('notification_jobs').upsert(
@@ -196,15 +238,44 @@ async function syncAnnouncementNotificationJob({
   );
 }
 
+const allAnnouncementAuthorsCache = new Map<string, string[]>();
+
 const CUSTOM_USER_PREFIX = 'user:';
 
 function getRealRoles(user: User) {
   return user.roles.filter(role => role !== 'dev');
 }
 
-function isStaffUser(user: User) {
+function isStaffAudienceUser(user: User) {
   const realRoles = getRealRoles(user);
-  return realRoles.length > 0 && !realRoles.every(role => role === 'student');
+  return realRoles.some(role =>
+    ['administrator', 'teacher', 'mentor', 'team_leader'].includes(role)
+  );
+}
+
+function userTeachesCourse(userId: string, courseId: number, courses: Course[]) {
+  return courses.some(course =>
+    course.id === courseId &&
+    course.subjects.some(subject =>
+      subject.classes.some(cls => cls.teacherId === userId)
+    )
+  );
+}
+
+function userMentorsInCourse(userId: string, courseId: number, courseStudents: CourseStudent[]) {
+  return courseStudents.some(enrollment =>
+    enrollment.courseId === courseId &&
+    enrollment.mentorId === userId &&
+    enrollment.status === 'active'
+  );
+}
+
+function getActiveCourseIdsByType(courseType: Course['courseType'], courses: Course[]) {
+  return new Set(
+    courses
+      .filter(course => course.courseType === courseType && course.status === 'active')
+      .map(course => course.id)
+  );
 }
 
 function userMatchesAudienceTokens(
@@ -214,8 +285,9 @@ function userMatchesAudienceTokens(
   courses: Course[]
 ) {
   if (tokens.some(token => token === `${CUSTOM_USER_PREFIX}${user.id}`)) return true;
-  if (tokens.includes('audience:staff') && isStaffUser(user)) return true;
+  if (tokens.includes('audience:staff') && isStaffAudienceUser(user)) return true;
   if (tokens.includes('role:teacher') && user.roles.includes('teacher')) return true;
+  if (tokens.includes('role:translator') && user.roles.includes('translator')) return true;
 
   const activeCourseIds = new Set(
     courseStudents
@@ -223,18 +295,17 @@ function userMatchesAudienceTokens(
       .map(enrollment => enrollment.courseId)
   );
 
-  if (
-    tokens.includes('course:first_year') &&
-    courses.some(course => course.courseType === 'first_year' && activeCourseIds.has(course.id))
-  ) {
-    return true;
-  }
+  const courseAudienceChecks: Array<{ token: string; courseType: Course['courseType'] }> = [
+    { token: 'course:first_year', courseType: 'first_year' },
+    { token: 'course:second_year', courseType: 'second_year' },
+  ];
 
-  if (
-    tokens.includes('course:second_year') &&
-    courses.some(course => course.courseType === 'second_year' && activeCourseIds.has(course.id))
-  ) {
-    return true;
+  for (const check of courseAudienceChecks) {
+    if (!tokens.includes(check.token)) continue;
+    const courseIds = getActiveCourseIdsByType(check.courseType, courses);
+    if ([...courseIds].some(courseId => activeCourseIds.has(courseId))) return true;
+    if ([...courseIds].some(courseId => userTeachesCourse(user.id, courseId, courses))) return true;
+    if ([...courseIds].some(courseId => userMentorsInCourse(user.id, courseId, courseStudents))) return true;
   }
 
   return false;
@@ -260,6 +331,14 @@ function filterAnnouncementsForUser(
       if (canManageAnnouncements && (isAuthor || filterUser.roles.includes('administrator'))) return true;
       return Boolean(announcement.scheduledAt && new Date(announcement.scheduledAt).getTime() <= now);
     }
+    if (announcement.status === 'pending_review') {
+      if (isAuthor || filterUser.roles.includes('administrator')) return true;
+      return Boolean(
+        announcement.courseId !== null &&
+        filterUser.roles.includes('teacher') &&
+        userTeachesCourse(filterUser.id, announcement.courseId, courses)
+      );
+    }
     if (announcement.status === 'archived') {
       return filterUser.roles.includes('administrator');
     }
@@ -283,7 +362,9 @@ function filterAnnouncementsForUser(
             cs => cs.studentId === filterUser.id && cs.courseId === announcement.courseId
           ) ||
           (announcement.courseId !== null &&
-            userTeachesInCourse(filterUser.id, announcement.courseId, courses))
+            userTeachesCourse(filterUser.id, announcement.courseId, courses)) ||
+          (announcement.courseId !== null &&
+            userMentorsInCourse(filterUser.id, announcement.courseId, courseStudents))
         );
       }
     );
@@ -429,6 +510,8 @@ export function useAnnouncements(
           authorId: fetchUser.id,
           status,
           scheduledAt,
+          courseId: data.courseId,
+          isPinned: data.isPinned,
         });
 
         await refetchAnnouncements();
@@ -482,11 +565,15 @@ export function useAnnouncements(
           shouldNotifyPublishedEdit;
 
         if (effectiveStatus && shouldSyncNotificationJob) {
+          const effectiveCourseId = announcementUpdates.courseId ?? previousAnnouncement?.courseId ?? null;
+          const effectivePinned = announcementUpdates.isPinned ?? previousAnnouncement?.isPinned ?? false;
           await syncAnnouncementNotificationJob({
             announcementId: id,
             authorId: fetchUser.id,
             status: effectiveStatus,
             scheduledAt: announcementUpdates.scheduledAt ?? previousAnnouncement?.scheduledAt ?? null,
+            courseId: effectiveCourseId,
+            isPinned: effectivePinned,
           });
         }
 
@@ -527,6 +614,8 @@ export function useAnnouncements(
               authorId: fetchUser.id,
               status: 'archived',
               scheduledAt: null,
+              courseId: announcement.courseId,
+              isPinned: false,
             });
 
             await refetchAnnouncements();
@@ -598,12 +687,57 @@ export function useAnnouncements(
     async (id: number, currentPinned: boolean) => {
       setError(null);
       try {
+        const announcement = allAnnouncements.find(item => item.id === id);
+        if (!announcement) return;
+        const nextPinned = !currentPinned;
+
+        if (nextPinned && announcement.courseId !== null) {
+          const { data: setting } = await supabase
+            .from('stream_course_settings')
+            .select('pinned_post_limit')
+            .eq('course_id', announcement.courseId)
+            .maybeSingle();
+          const pinnedLimit = Math.max(Number(setting?.pinned_post_limit ?? 3), 0);
+          if (pinnedLimit <= 0) {
+            setError('Pinned posts are disabled for this year group');
+            return;
+          }
+
+          const pinnedInCourse = allAnnouncements
+            .filter(item =>
+              item.id !== id &&
+              item.courseId === announcement.courseId &&
+              item.isPinned &&
+              item.status !== 'archived'
+            )
+            .sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+
+          const pinsToRelease = Math.max(pinnedInCourse.length - pinnedLimit + 1, 0);
+          if (pinsToRelease > 0) {
+            const idsToRelease = pinnedInCourse.slice(0, pinsToRelease).map(item => item.id);
+            const { error: unpinError } = await supabase
+              .from('announcements')
+              .update({ is_pinned: false, updated_at: new Date().toISOString() })
+              .in('id', idsToRelease);
+            if (unpinError) throw unpinError;
+          }
+        }
+
         const { error: updateError } = await supabase
           .from('announcements')
-          .update({ is_pinned: !currentPinned })
+          .update({ is_pinned: nextPinned, updated_at: new Date().toISOString() })
           .eq('id', id);
 
         if (updateError) throw updateError;
+
+        await syncAnnouncementNotificationJob({
+          announcementId: id,
+          authorId: announcement.authorId ?? fetchUser.id,
+          status: announcement.status,
+          scheduledAt: announcement.scheduledAt,
+          courseId: announcement.courseId,
+          isPinned: nextPinned,
+        });
 
         await refetchAnnouncements();
       } catch (err) {
@@ -611,7 +745,7 @@ export function useAnnouncements(
         console.error(err);
       }
     },
-    [refetchAnnouncements]
+    [allAnnouncements, fetchUser.id, refetchAnnouncements]
   );
 
   const addComment = useCallback(

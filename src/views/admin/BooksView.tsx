@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Calendar, CheckCircle2, ImagePlus, Library, Loader2, Plus, Search, X } from 'lucide-react';
+import { BookOpen, Calendar, CheckCircle2, ExternalLink, ImagePlus, Library, Loader2, Plus, Search, Star, X } from 'lucide-react';
 import type {
   BookLookupResult,
   BookReadingAssignment,
@@ -23,6 +23,7 @@ type BooksViewProps = {
   lookupBooks: (query: string, mode: 'isbn' | 'search') => Promise<BookLookupResult[]>;
   uploadBookCover: (file: File) => Promise<string>;
   createReadingAssignment: (draft: ReadingAssignmentDraft) => Promise<void>;
+  createReadingAssignments: (draft: Omit<ReadingAssignmentDraft, 'courseId'> & { courseIds: number[] }) => Promise<void>;
   updateReadingAssignment: (assignmentId: number, updates: Partial<{
     title: string;
     instructions: string | null;
@@ -30,6 +31,10 @@ type BooksViewProps = {
     status: BookReadingAssignment['status'];
   }>) => Promise<void>;
   deleteReadingAssignment: (assignmentId: number) => Promise<void>;
+  gradeReadingSubmission: (
+    submissionId: number,
+    input: { points?: number | null; gradeComment?: string | null; status: 'returned' | 'completed' }
+  ) => Promise<void>;
 };
 
 const emptyBook: BookDraft = {
@@ -59,6 +64,233 @@ function getCompletionStats(assignmentId: number, courseId: number, submissions:
   return { total, complete };
 }
 
+function getAssignmentStudents(assignment: BookReadingAssignment, users: User[], courseStudents: CourseStudent[]) {
+  const ids = new Set(
+    courseStudents
+      .filter(enrollment => enrollment.courseId === assignment.courseId && enrollment.status === 'active')
+      .map(enrollment => enrollment.studentId)
+  );
+  return users
+    .filter(user => ids.has(user.id) && user.roles.includes('student'))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export function ReviewReadingModal({
+  assignment,
+  submissions,
+  users,
+  courseStudents,
+  onClose,
+  onGrade,
+}: {
+  assignment: BookReadingAssignment;
+  submissions: BookReadingSubmission[];
+  users: User[];
+  courseStudents: CourseStudent[];
+  onClose: () => void;
+  onGrade: BooksViewProps['gradeReadingSubmission'];
+}) {
+  const [activeSubmission, setActiveSubmission] = useState<BookReadingSubmission | null>(null);
+  const [points, setPoints] = useState('');
+  const [comment, setComment] = useState('');
+  const [saving, setSaving] = useState(false);
+  const students = getAssignmentStudents(assignment, users, courseStudents);
+  const submissionByStudent = new Map(
+    submissions
+      .filter(submission => submission.assignmentId === assignment.id)
+      .map(submission => [submission.studentId, submission])
+  );
+
+  const openSubmission = (submission: BookReadingSubmission) => {
+    setActiveSubmission(submission);
+    setPoints(submission.points == null ? '' : String(submission.points));
+    setComment(submission.gradeComment ?? submission.reviewerNote ?? '');
+  };
+
+  const saveGrade = async (status: 'returned' | 'completed') => {
+    if (!activeSubmission) return;
+    const numericPoints = points.trim() ? Number(points) : null;
+    if (assignment.maxPoints !== null && numericPoints !== null && (numericPoints < 0 || numericPoints > assignment.maxPoints)) {
+      return;
+    }
+    setSaving(true);
+    try {
+      await onGrade(activeSubmission.id, {
+        points: assignment.maxPoints === null ? null : numericPoints,
+        gradeComment: comment.trim() || null,
+        status,
+      });
+      setActiveSubmission(null);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close review" />
+      <section className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-2xl sm:max-w-5xl sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Reading review</p>
+            <h3 className="mt-1 text-xl font-semibold text-[#171717]">{assignment.title}</h3>
+            <p className="mt-1 text-sm text-[#737373]">
+              {assignment.maxPoints === null ? 'Completion review' : `${assignment.maxPoints} possible points`}
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]">
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <div className="grid max-h-[78vh] min-h-[520px] grid-cols-1 overflow-hidden lg:grid-cols-[1fr_360px]">
+          <div className="tbo-scrollbar overflow-y-auto p-4">
+            <div className="overflow-hidden rounded-2xl border border-[#e5e5e5]">
+              <table className="min-w-full text-sm">
+                <thead className="bg-[#fafafa]">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Person</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Status</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Grade</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Review</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#eeeeee]">
+                  {students.map(student => {
+                    const submission = submissionByStudent.get(student.id);
+                    const status = submission?.status?.replace('_', ' ') ?? 'not started';
+                    return (
+                      <tr key={student.id} className="hover:bg-[#fafafa]">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-2">
+                            <UserAvatar user={student} size="sm" />
+                            <div>
+                              <p className="font-semibold text-[#171717]">{student.name}</p>
+                              <p className="text-xs text-[#737373]">{student.email}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 capitalize text-[#525252]">{status}</td>
+                        <td className="px-4 py-3">
+                          {submission?.gradedAt ? (
+                            <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857]">
+                              {assignment.maxPoints === null ? 'Reviewed' : `${submission.points ?? 0}/${assignment.maxPoints}`}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-[#a3a3a3]">-</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {submission ? (
+                            <button
+                              type="button"
+                              onClick={() => openSubmission(submission)}
+                              className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
+                            >
+                              Review
+                            </button>
+                          ) : (
+                            <span className="text-xs text-[#a3a3a3]">No submission</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <aside className="border-t border-[#e5e5e5] bg-[#fafafa] p-4 lg:border-l lg:border-t-0">
+            {!activeSubmission ? (
+              <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-6 text-center">
+                <div>
+                  <Star className="mx-auto h-8 w-8 text-[#a3a3a3]" />
+                  <p className="mt-3 text-sm font-semibold text-[#171717]">Select a submission</p>
+                  <p className="mt-1 text-sm text-[#737373]">Review the response, return it, or mark it complete.</p>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
+                  <p className="text-sm font-semibold text-[#171717]">
+                    {users.find(user => user.id === activeSubmission.studentId)?.name ?? 'Student response'}
+                  </p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
+                    {activeSubmission.responseText || 'No written response.'}
+                  </p>
+                  {activeSubmission.responseUrl && (
+                    <a href={activeSubmission.responseUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
+                      Open link <ExternalLink className="h-3 w-3" />
+                    </a>
+                  )}
+                </div>
+                {assignment.maxPoints !== null && (
+                  <label className="block">
+                    <span className="mb-1 block text-xs font-semibold text-[#737373]">Points</span>
+                    <input
+                      type="number"
+                      min="0"
+                      max={assignment.maxPoints}
+                      value={points}
+                      onChange={event => setPoints(event.target.value)}
+                      className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+                      placeholder={`0-${assignment.maxPoints}`}
+                    />
+                    {points.trim() && (Number(points) < 0 || Number(points) > assignment.maxPoints) && (
+                      <p className="mt-1 text-xs font-medium text-[#b91c1c]">Points must be between 0 and {assignment.maxPoints}.</p>
+                    )}
+                  </label>
+                )}
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">Feedback</span>
+                  <textarea
+                    value={comment}
+                    onChange={event => setComment(event.target.value)}
+                    className="min-h-28 w-full rounded-lg border border-[#d4d4d4] bg-white p-3 text-sm"
+                    placeholder="Optional feedback for the student"
+                  />
+                </label>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <button type="button" disabled={saving} onClick={() => void saveGrade('returned')} className="h-10 rounded-xl border border-[#fed7aa] bg-white px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#fff7ed] disabled:opacity-50">
+                    Return
+                  </button>
+                  <button type="button" disabled={saving} onClick={() => void saveGrade('completed')} className="h-10 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#404040] disabled:opacity-50">
+                    {saving ? 'Saving...' : assignment.maxPoints === null ? 'Mark reviewed' : 'Save grade'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </aside>
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function getLookupMode(query: string): 'isbn' | 'search' {
+  const normalized = query.replace(/[^0-9Xx]/g, '');
+  return normalized.length === 10 || normalized.length === 13 ? 'isbn' : 'search';
+}
+
+function getActiveYearGroups(courses: Course[]) {
+  const byType = new Map<Course['courseType'], Course>();
+  [...courses]
+    .filter(course => course.status === 'active')
+    .sort((a, b) =>
+      b.startDate.localeCompare(a.startDate) ||
+      b.graduationYear - a.graduationYear ||
+      b.id - a.id
+    )
+    .forEach(course => {
+      if (!byType.has(course.courseType)) byType.set(course.courseType, course);
+    });
+
+  return ['first_year', 'second_year']
+    .map(type => byType.get(type as Course['courseType']))
+    .filter((course): course is Course => !!course);
+}
+
 export function BooksView({
   assignments,
   submissions,
@@ -70,24 +302,28 @@ export function BooksView({
   lookupBooks,
   uploadBookCover,
   createReadingAssignment,
+  createReadingAssignments,
   updateReadingAssignment,
   deleteReadingAssignment,
+  gradeReadingSubmission,
 }: BooksViewProps) {
-  const activeCourses = courses.filter(course => course.status === 'active');
+  const activeCourses = getActiveYearGroups(courses);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lookupQuery, setLookupQuery] = useState('');
-  const [lookupMode, setLookupMode] = useState<'isbn' | 'search'>('search');
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupPanelOpen, setLookupPanelOpen] = useState(false);
   const [coverUploading, setCoverUploading] = useState(false);
   const [lookupResults, setLookupResults] = useState<BookLookupResult[]>([]);
   const [bookDraft, setBookDraft] = useState<BookDraft>(emptyBook);
-  const [courseId, setCourseId] = useState<number>(activeCourses[0]?.id ?? 0);
+  const [selectedCourseIds, setSelectedCourseIds] = useState<number[]>(activeCourses[0] ? [activeCourses[0].id] : []);
   const [assignmentTitle, setAssignmentTitle] = useState('');
   const [instructions, setInstructions] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [maxPoints, setMaxPoints] = useState('');
   const [status, setStatus] = useState<BookReadingAssignment['status']>('assigned');
   const [filter, setFilter] = useState<'all' | 'assigned' | 'draft' | 'past_due' | 'completed'>('all');
+  const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
 
   const filteredAssignments = useMemo(() => {
     const today = new Date().toISOString().slice(0, 10);
@@ -116,14 +352,15 @@ export function BooksView({
       sourceId: result.sourceId,
     });
     setAssignmentTitle(result.title);
+    setLookupPanelOpen(false);
   };
 
   const runLookup = async () => {
+    setLookupPanelOpen(true);
     setLookupLoading(true);
     try {
-      const results = await lookupBooks(lookupQuery, lookupMode);
+      const results = await lookupBooks(lookupQuery, getLookupMode(lookupQuery));
       setLookupResults(results);
-      if (results[0]) selectLookupResult(results[0]);
     } finally {
       setLookupLoading(false);
     }
@@ -134,11 +371,21 @@ export function BooksView({
     setAssignmentTitle('');
     setInstructions('');
     setDueDate('');
+    setMaxPoints('');
     setStatus('assigned');
     setLookupQuery('');
     setLookupResults([]);
+    setLookupPanelOpen(false);
     setCoverUploading(false);
-    setCourseId(activeCourses[0]?.id ?? 0);
+    setSelectedCourseIds(activeCourses[0] ? [activeCourses[0].id] : []);
+  };
+
+  const toggleSelectedCourse = (id: number) => {
+    setSelectedCourseIds(prev =>
+      prev.includes(id)
+        ? prev.filter(courseId => courseId !== id)
+        : [...prev, id]
+    );
   };
 
   const handleCoverUpload = async (file: File | null) => {
@@ -159,12 +406,13 @@ export function BooksView({
   const submit = async () => {
     setSaving(true);
     try {
-      await createReadingAssignment({
+      await createReadingAssignments({
         book: bookDraft,
-        courseId,
+        courseIds: selectedCourseIds,
         title: assignmentTitle || bookDraft.title,
         instructions,
         dueDate,
+        maxPoints: maxPoints.trim() ? Number(maxPoints) : null,
         status,
       });
       setModalOpen(false);
@@ -240,6 +488,9 @@ export function BooksView({
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
                       <p className="text-xs font-semibold text-[#525252]">{stats.complete}/{stats.total} submitted</p>
+                      {assignment.maxPoints !== null && (
+                        <p className="mt-1 text-xs font-semibold text-[#2563eb]">{assignment.maxPoints} points</p>
+                      )}
                       {assignedBy && (
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-[#737373]">
                           <UserAvatar user={assignedBy} size="sm" />
@@ -252,6 +503,9 @@ export function BooksView({
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => setReviewAssignment(assignment)} className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
+                      Review submissions
+                    </button>
                     <button type="button" onClick={() => updateReadingAssignment(assignment.id, { status: assignment.status === 'draft' ? 'assigned' : 'completed' })} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
                       {assignment.status === 'draft' ? 'Publish' : 'Mark complete'}
                     </button>
@@ -280,35 +534,83 @@ export function BooksView({
               </button>
             </div>
 
-            <div className="mt-5 grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-              <div className="space-y-3">
-                <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                  <div className="flex gap-2">
-                    <select value={lookupMode} onChange={event => setLookupMode(event.target.value as 'isbn' | 'search')} className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-2 text-sm">
-                      <option value="search">Title</option>
-                      <option value="isbn">ISBN</option>
-                    </select>
-                    <input value={lookupQuery} onChange={event => setLookupQuery(event.target.value)} placeholder="Search title, author, or ISBN" className="h-10 min-w-0 flex-1 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
-                    <button type="button" onClick={runLookup} className="grid h-10 w-10 place-items-center rounded-lg bg-[#171717] text-white">
-                      <Search className="h-4 w-4" />
-                    </button>
-                  </div>
-                  <div className="mt-3 max-h-64 space-y-2 overflow-y-auto">
-                    {lookupLoading ? <p className="text-sm text-[#737373]">Searching...</p> : lookupResults.map(result => (
-                      <button key={`${result.sourceProvider}-${result.sourceId}-${result.title}`} type="button" onClick={() => selectLookupResult(result)} className="flex w-full gap-3 rounded-xl border border-[#e5e5e5] bg-white p-2 text-left hover:bg-[#f5f5f5]">
-                        <div className="h-16 w-11 flex-shrink-0 overflow-hidden rounded bg-[#f5f5f5]">
-                          {result.coverUrl && <img src={result.coverUrl} alt="" className="h-full w-full object-cover" />}
-                        </div>
-                        <div className="min-w-0">
-                          <p className="truncate text-sm font-semibold text-[#171717]">{result.title}</p>
-                          <p className="truncate text-xs text-[#737373]">{result.authors.join(', ') || result.sourceProvider}</p>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
+            <div className="mt-5 space-y-5">
+              <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                  <input
+                    value={lookupQuery}
+                    onChange={event => setLookupQuery(event.target.value)}
+                    onKeyDown={event => {
+                      if (event.key === 'Enter') {
+                        event.preventDefault();
+                        void runLookup();
+                      }
+                    }}
+                    placeholder="Search title, author, or ISBN"
+                    className="h-10 min-w-0 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+                  />
+                  <button type="button" onClick={() => void runLookup()} disabled={!lookupQuery.trim() || lookupLoading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
+                    {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    Search
+                  </button>
                 </div>
               </div>
 
+              {lookupPanelOpen ? (
+                <div className="rounded-2xl border border-[#e5e5e5] bg-white">
+                  <div className="flex items-center justify-between gap-3 border-b border-[#eeeeee] px-4 py-3">
+                    <div>
+                      <p className="text-sm font-semibold text-[#171717]">Search results</p>
+                      <p className="text-xs text-[#737373]">
+                        {lookupLoading ? 'Looking up book metadata...' : `${lookupResults.length} result${lookupResults.length === 1 ? '' : 's'} found`}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setLookupPanelOpen(false)}
+                      className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
+                    >
+                      Close results
+                    </button>
+                  </div>
+                  <div className="max-h-[54vh] overflow-y-auto p-3">
+                    {lookupLoading ? (
+                      <div className="flex min-h-48 items-center justify-center rounded-2xl bg-[#fafafa] text-sm text-[#737373]">
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Searching...
+                      </div>
+                    ) : lookupResults.length === 0 ? (
+                      <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] p-8 text-center">
+                        <BookOpen className="mx-auto h-8 w-8 text-[#a3a3a3]" />
+                        <p className="mt-2 text-sm font-semibold text-[#171717]">No books found.</p>
+                        <p className="mt-1 text-xs text-[#737373]">Close results and enter the book manually.</p>
+                      </div>
+                    ) : (
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {lookupResults.map(result => (
+                          <button
+                            key={`${result.sourceProvider}-${result.sourceId}-${result.title}`}
+                            type="button"
+                            onClick={() => selectLookupResult(result)}
+                            className="flex min-w-0 gap-3 rounded-2xl border border-[#e5e5e5] bg-white p-3 text-left hover:border-[#d4d4d4] hover:bg-[#fafafa]"
+                          >
+                            <div className="grid h-24 w-16 flex-shrink-0 place-items-center overflow-hidden rounded-lg bg-[#f5f5f5] text-[#a3a3a3]">
+                              {result.coverUrl ? <img src={result.coverUrl} alt="" className="h-full w-full object-cover" /> : <BookOpen className="h-5 w-5" />}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="line-clamp-2 text-sm font-semibold text-[#171717]">{result.title}</p>
+                              <p className="mt-1 truncate text-xs text-[#737373]">{result.authors.join(', ') || 'Unknown author'}</p>
+                              <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a3a3a3]">
+                                {result.sourceProvider.replace('_', ' ')}
+                              </p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   <input value={bookDraft.title} onChange={event => setBookDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Book title" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm sm:col-span-2" />
@@ -359,26 +661,75 @@ export function BooksView({
                   <input value={bookDraft.isbn13 ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, isbn13: event.target.value }))} placeholder="ISBN 13" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   <input value={bookDraft.internalCode ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, internalCode: event.target.value }))} placeholder="Internal code" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                 </div>
-                <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                  {activeCourses.map(course => <option key={course.id} value={course.id}>{course.courseType === 'first_year' ? 'First Year' : 'Second Year'} {course.graduationYear}</option>)}
-                </select>
+                <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                  <div className="mb-2 flex items-center justify-between gap-3">
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Year group</p>
+                    <span className="text-xs text-[#737373]">{selectedCourseIds.length} selected</span>
+                  </div>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {activeCourses.map(course => {
+                      const selected = selectedCourseIds.includes(course.id);
+                      return (
+                        <button
+                          key={course.id}
+                          type="button"
+                          onClick={() => toggleSelectedCourse(course.id)}
+                          className={`tbo-focus rounded-xl border p-3 text-left transition ${
+                            selected
+                              ? 'border-[#171717] bg-white shadow-[0_8px_24px_rgba(0,0,0,0.06)]'
+                              : 'border-[#e5e5e5] bg-white/70 hover:border-[#d4d4d4] hover:bg-white'
+                          }`}
+                          aria-pressed={selected}
+                        >
+                          <div className="flex items-center justify-between gap-2">
+                            <ActiveYearGroupBadge course={course} />
+                            <span className={`grid h-5 w-5 place-items-center rounded-full border text-[10px] font-semibold ${
+                              selected ? 'border-[#171717] bg-[#171717] text-white' : 'border-[#d4d4d4] text-transparent'
+                            }`}>
+                              <CheckCircle2 className="h-3.5 w-3.5" />
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <input value={assignmentTitle} onChange={event => setAssignmentTitle(event.target.value)} placeholder="Assignment title" className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                 <textarea value={instructions} onChange={event => setInstructions(event.target.value)} placeholder="Instructions" className="min-h-24 w-full rounded-lg border border-[#d4d4d4] p-3 text-sm" />
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-3">
                   <input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  <input
+                    type="number"
+                    min="0"
+                    value={maxPoints}
+                    onChange={event => setMaxPoints(event.target.value)}
+                    placeholder="Optional points"
+                    className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm"
+                  />
                   <select value={status} onChange={event => setStatus(event.target.value as BookReadingAssignment['status'])} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
                     <option value="assigned">Assigned</option>
                     <option value="draft">Draft</option>
                   </select>
                 </div>
-                <button type="button" disabled={saving || !bookDraft.title || !courseId} onClick={submit} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
+                <button type="button" disabled={saving || !bookDraft.title || selectedCourseIds.length === 0} onClick={submit} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
                   <CheckCircle2 className="h-4 w-4" />
                   {saving ? 'Saving...' : 'Create reading assignment'}
                 </button>
               </div>
+              )}
             </div>
           </section>
         </div>
+      )}
+      {reviewAssignment && (
+        <ReviewReadingModal
+          assignment={reviewAssignment}
+          submissions={submissions}
+          users={users}
+          courseStudents={courseStudents}
+          onClose={() => setReviewAssignment(null)}
+          onGrade={gradeReadingSubmission}
+        />
       )}
     </div>
   );

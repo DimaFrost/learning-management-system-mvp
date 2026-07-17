@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Calendar, Clock, User as UserIcon, FolderOpen, Loader2 } from 'lucide-react';
+import { ChevronLeft, Calendar, Clock, FolderOpen, Loader2, BookOpen, FileText, ShieldCheck } from 'lucide-react';
 import type { Class, Subject, Course, User, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { getCourseDisplayName, getClassDisplayTitle } from '../../utils/courseUtils';
@@ -10,6 +10,7 @@ import { MaterialsNotesTab } from '../../components/class/MaterialsNotesTab';
 import { StaffNotesTab } from '../../components/class/StaffNotesTab';
 import { HomeworkTab } from '../../components/class/HomeworkTab';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import type { WorkspaceId } from '../../types/workspace';
 
 interface ClassDetailViewProps {
   selectedClass: Class;
@@ -19,6 +20,7 @@ interface ClassDetailViewProps {
   currentUser: User;
   users: User[];
   courseStudents: CourseStudent[];
+  activeWorkspace: WorkspaceId | null;
   onBack: () => void;
   onProvisionDriveFolders: () => Promise<{ ok: boolean; error?: string }>;
   showConfirmation: (
@@ -55,6 +57,17 @@ function formatClassDate(date: string): string {
   return formatPlatformDate(date);
 }
 
+function getInitials(name: string | null | undefined) {
+  if (!name) return '?';
+  return name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map(part => part[0]?.toUpperCase())
+    .join('') || '?';
+}
+
 const STATUS_BADGE: Record<ClassStatus, { label: string; className: string }> = {
   upcoming: { label: 'Upcoming', className: 'bg-amber-100 text-amber-800' },
   today: { label: 'Today', className: 'bg-green-100 text-green-800' },
@@ -69,15 +82,30 @@ export function ClassDetailView({
   currentUser,
   users,
   courseStudents,
+  activeWorkspace,
   onBack,
   onProvisionDriveFolders,
   showConfirmation,
 }: ClassDetailViewProps) {
   const classContent = useClassContent(selectedClass.id, currentUser, courses);
   const homework = useHomework(selectedClass.id, currentUser, courses);
+  const viewingAsStudent = activeWorkspace === 'student';
+  const viewingAsTeacher = activeWorkspace === 'teacher';
+  const viewingAsTranslator = activeWorkspace === 'translator';
+  const viewingAsAdmin = activeWorkspace === 'administrator';
+  const effectiveUser: User = {
+    ...currentUser,
+    roles: viewingAsStudent
+      ? currentUser.roles.filter(role => role === 'student' || role === 'dev')
+      : viewingAsTeacher
+        ? currentUser.roles.filter(role => role === 'teacher' || role === 'dev')
+        : viewingAsTranslator
+          ? currentUser.roles.filter(role => role === 'translator' || role === 'dev')
+          : currentUser.roles,
+  };
 
   const canManageDriveFolders =
-    hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
+    !viewingAsStudent && (viewingAsAdmin || viewingAsTeacher);
   const driveFoldersMissing = !selectedClass.materialsFolderId;
   const [provisioningFolders, setProvisioningFolders] = useState(false);
   const [provisionError, setProvisionError] = useState<string | null>(null);
@@ -93,9 +121,7 @@ export function ClassDetailView({
   };
 
   const canSeeStaffNotes =
-    hasRole(currentUser, 'teacher') ||
-    hasRole(currentUser, 'translator') ||
-    hasRole(currentUser, 'administrator');
+    !viewingAsStudent && (viewingAsTeacher || viewingAsTranslator || viewingAsAdmin);
 
   const [activeTab, setActiveTab] = useState<TabId>(() =>
     hasRole(currentUser, 'student')
@@ -121,74 +147,71 @@ export function ClassDetailView({
     users.find(u => u.id === id)?.name ?? 'Unassigned';
 
   const courseName = getCourseDisplayName(selectedCourse);
-  const classDisplayTitle = getClassDisplayTitle(selectedClass, selectedSubject, currentUser.roles);
+  const classDisplayTitle = getClassDisplayTitle(selectedClass, selectedSubject, effectiveUser.roles);
   const status = getClassStatus(selectedClass.date);
   const statusBadge = STATUS_BADGE[status];
-
-  const tabs: { id: TabId; label: string; visible: boolean }[] = [
-    { id: 'staff', label: 'Staff Notes', visible: canSeeStaffNotes },
-    { id: 'materials', label: 'Materials & Notes', visible: true },
-    { id: 'homework', label: 'Homework', visible: true },
+  const teacher = users.find(user => user.id === selectedClass.teacherId);
+  const tabs = [
+    { id: 'staff', label: 'Staff Notes', visible: canSeeStaffNotes, icon: <ShieldCheck className="h-4 w-4" /> },
+    { id: 'materials', label: 'Materials & Notes', visible: true, icon: <FileText className="h-4 w-4" /> },
+    { id: 'homework', label: 'Homework', visible: true, icon: <BookOpen className="h-4 w-4" /> },
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 min-w-0">
+    <div className="space-y-5">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3 min-w-0">
         <button
           type="button"
           onClick={onBack}
-          className="flex items-center justify-center w-9 h-9 rounded-lg border border-gray-200 text-gray-600 hover:text-amber-700 hover:border-amber-300 transition-colors flex-shrink-0"
+          className="tbo-focus flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] transition-colors hover:border-[#d4d4d4] hover:bg-[#f5f5f5] hover:text-[#171717]"
           aria-label="Go back"
         >
-          <ChevronLeft className="w-5 h-5" />
+          <ChevronLeft className="h-5 w-5" />
         </button>
-        <nav className="text-sm text-gray-500 overflow-x-auto scrollbar-hide whitespace-nowrap min-w-0">
-          <span className="hover:text-amber-600 cursor-default">Curriculum</span>
-          <span className="mx-2">/</span>
-          <span className="hover:text-amber-600 cursor-default">{courseName}</span>
-          <span className="mx-2">/</span>
-          <span className="hover:text-amber-600 cursor-default">{selectedSubject.title}</span>
-          <span className="mx-2">/</span>
-          <span className="text-amber-700 font-medium">{classDisplayTitle}</span>
+        <nav className="min-w-0 overflow-x-auto whitespace-nowrap text-sm text-[#737373] scrollbar-hide">
+          <span className="cursor-default">Classwork</span>
+          <span className="mx-2 text-[#d4d4d4]">/</span>
+          <span className="cursor-default">{courseName}</span>
+          <span className="mx-2 text-[#d4d4d4]">/</span>
+          <span className="cursor-default">{selectedSubject.title}</span>
+          <span className="mx-2 text-[#d4d4d4]">/</span>
+          <span className="font-medium text-[#171717]">{classDisplayTitle}</span>
         </nav>
       </div>
 
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-4 sm:p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div className="space-y-3">
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold text-gray-900">{classDisplayTitle}</h2>
-              <span
-                className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusBadge.className}`}
-              >
+      <div className="overflow-hidden rounded-2xl border border-[#dbeafe] bg-white shadow-sm ring-1 ring-[#eff6ff]">
+        <div className="grid gap-5 p-5 lg:grid-cols-[1fr_auto] lg:items-start">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold ${statusBadge.className}`}>
                 {statusBadge.label}
               </span>
+              <span className="inline-flex items-center rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
+                {formatHour(selectedClass.hour)}
+              </span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <Calendar className="w-4 h-4 text-amber-600" />
-                <span>{formatClassDate(selectedClass.date)}</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <Clock className="w-4 h-4 text-amber-600" />
-                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">
-                  {formatHour(selectedClass.hour)}
-                </span>
-              </div>
+            <h1 className="tbo-display mt-3 text-3xl text-[#171717]">{classDisplayTitle}</h1>
+            <p className="mt-1 text-sm text-[#737373]">{selectedSubject.title} / {courseName}</p>
+          </div>
+          <div className="grid min-w-[260px] gap-2 rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-3">
+            <div className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-[#bfdbfe]">
+              <span className="grid h-8 w-8 place-items-center rounded-lg bg-[#dbeafe] text-[#1d4ed8]">
+                <Calendar className="h-4 w-4" />
+              </span>
+              <span className="text-sm font-semibold text-[#171717]">{formatClassDate(selectedClass.date)}</span>
             </div>
-
-            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
-              <div className="flex items-center gap-1.5">
-                <UserIcon className="w-4 h-4 text-amber-600" />
-                <span>Teacher: {getUserName(selectedClass.teacherId)}</span>
+            <div className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 ring-1 ring-[#bbf7d0]">
+              <span className="grid h-9 w-9 flex-shrink-0 place-items-center overflow-hidden rounded-full bg-[#ecfdf5] text-xs font-semibold text-[#047857] ring-1 ring-[#bbf7d0]">
+                {teacher?.avatarUrl ? (
+                  <img src={teacher.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  getInitials(teacher?.name ?? getUserName(selectedClass.teacherId))
+                )}
+              </span>
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#059669]">Teacher</p>
+                <p className="truncate text-sm font-semibold text-[#171717]">{teacher?.name ?? getUserName(selectedClass.teacherId)}</p>
               </div>
-              {selectedClass.translatorId && (
-                <div className="flex items-center gap-1.5">
-                  <UserIcon className="w-4 h-4 text-amber-600" />
-                  <span>Translator: {getUserName(selectedClass.translatorId)}</span>
-                </div>
-              )}
             </div>
           </div>
         </div>
@@ -229,14 +252,16 @@ export function ClassDetailView({
         </p>
       )}
 
-      <ScrollableTabs
-        tabs={tabs.filter(tab => tab.visible)}
-        activeTab={activeTab}
-        onTabChange={id => setActiveTab(id as TabId)}
-        ariaLabel="Session tabs"
-        activeClassName="border-amber-600 text-amber-700"
-        inactiveClassName="border-transparent text-gray-500 hover:text-amber-600"
-      />
+      <div className="rounded-2xl border border-[#e5e5e5] bg-white p-2 shadow-sm">
+        <ScrollableTabs
+          tabs={tabs.filter(tab => tab.visible)}
+          activeTab={activeTab}
+          onTabChange={id => setActiveTab(id as TabId)}
+          ariaLabel="Session tabs"
+          activeClassName="border-[#2563eb] text-[#1d4ed8]"
+          inactiveClassName="border-transparent text-[#737373] hover:text-[#1d4ed8]"
+        />
+      </div>
 
       <div>
         {activeTab === 'materials' && (
@@ -244,7 +269,7 @@ export function ClassDetailView({
             selectedClass={selectedClass}
             selectedSubject={selectedSubject}
             selectedCourse={selectedCourse}
-            currentUser={currentUser}
+            currentUser={effectiveUser}
             classContent={classContent}
           />
         )}
@@ -253,7 +278,7 @@ export function ClassDetailView({
             selectedClass={selectedClass}
             selectedCourse={selectedCourse}
             selectedSubject={selectedSubject}
-            currentUser={currentUser}
+            currentUser={effectiveUser}
             classContent={classContent}
           />
         )}
@@ -262,7 +287,7 @@ export function ClassDetailView({
             selectedClass={selectedClass}
             selectedCourse={selectedCourse}
             selectedSubject={selectedSubject}
-            currentUser={currentUser}
+            currentUser={effectiveUser}
             users={users}
             courseStudents={courseStudents}
             homework={homework}

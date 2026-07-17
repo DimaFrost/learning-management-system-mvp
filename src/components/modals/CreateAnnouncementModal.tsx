@@ -37,7 +37,7 @@ type PendingAttachment = {
 
 type GoogleLinkType = 'google_doc' | 'google_sheet' | 'google_slide';
 type AudienceGroup = 'all' | 'staff' | 'students' | 'custom';
-type AudienceSubChoice = 'staff' | 'teachers' | 'first_year_students' | 'second_year_students';
+type AudienceSubChoice = 'staff' | 'teachers' | 'translators' | 'first_year_students' | 'second_year_students';
 type DeliveryMode = 'now' | 'schedule' | 'draft';
 type ContentLanguage = 'en' | 'bg';
 
@@ -46,6 +46,7 @@ const CUSTOM_USER_PREFIX = 'user:';
 const AUDIENCE_TOKEN: Record<AudienceSubChoice, string> = {
   staff: 'audience:staff',
   teachers: 'role:teacher',
+  translators: 'role:translator',
   first_year_students: 'course:first_year',
   second_year_students: 'course:second_year',
 };
@@ -151,9 +152,11 @@ function getRealRoles(user: User) {
   return user.roles.filter(role => role !== 'dev');
 }
 
-function isStaffUser(user: User) {
+function isStaffAudienceUser(user: User) {
   const realRoles = getRealRoles(user);
-  return realRoles.length > 0 && !realRoles.every(role => role === 'student');
+  return realRoles.some(role =>
+    ['administrator', 'teacher', 'mentor', 'team_leader'].includes(role)
+  );
 }
 
 function getAudienceStateFromAnnouncement(announcement: Announcement, courses: Course[]) {
@@ -163,6 +166,7 @@ function getAudienceStateFromAnnouncement(announcement: Announcement, courses: C
 
   if (tokens.includes(AUDIENCE_TOKEN.staff) || announcement.isStaffOnly) staffAudiences.push('staff');
   if (tokens.includes(AUDIENCE_TOKEN.teachers)) staffAudiences.push('teachers');
+  if (tokens.includes(AUDIENCE_TOKEN.translators)) staffAudiences.push('translators');
   if (tokens.includes(AUDIENCE_TOKEN.first_year_students)) studentAudiences.push('first_year_students');
   if (tokens.includes(AUDIENCE_TOKEN.second_year_students)) studentAudiences.push('second_year_students');
   if (announcement.courseId !== null) {
@@ -230,6 +234,7 @@ function getAudienceSummaryLabel(tokens: string[] | null) {
   const labels: string[] = [];
   if (tokens.includes(AUDIENCE_TOKEN.staff)) labels.push('Staff');
   if (tokens.includes(AUDIENCE_TOKEN.teachers)) labels.push('Teachers');
+  if (tokens.includes(AUDIENCE_TOKEN.translators)) labels.push('Translators');
   if (tokens.includes(AUDIENCE_TOKEN.first_year_students)) labels.push('First Year');
   if (tokens.includes(AUDIENCE_TOKEN.second_year_students)) labels.push('Second Year');
   if (tokens.some(token => token.startsWith(CUSTOM_USER_PREFIX))) labels.push('Custom');
@@ -316,10 +321,13 @@ function getRecipientIds({
   }
 
   if (targetRoles.includes(AUDIENCE_TOKEN.staff)) {
-    users.filter(isStaffUser).forEach(user => ids.add(user.id));
+    users.filter(isStaffAudienceUser).forEach(user => ids.add(user.id));
   }
   if (targetRoles.includes(AUDIENCE_TOKEN.teachers)) {
     users.filter(user => user.roles.includes('teacher')).forEach(user => ids.add(user.id));
+  }
+  if (targetRoles.includes(AUDIENCE_TOKEN.translators)) {
+    users.filter(user => user.roles.includes('translator')).forEach(user => ids.add(user.id));
   }
 
   (['first_year_students', 'second_year_students'] as const).forEach(studentAudience => {
@@ -723,8 +731,9 @@ export function CreateAnnouncementModal({
     },
   ];
   const staffSubOptions: Array<{ id: AudienceSubChoice; label: string; description: string }> = [
-    { id: 'staff', label: 'All staff', description: 'Admins, mentors, teachers, translators' },
+    { id: 'staff', label: 'All staff', description: 'Admins, mentors, teachers, team leaders' },
     { id: 'teachers', label: 'Teachers', description: 'Teacher role only' },
+    { id: 'translators', label: 'Translators', description: 'Translator role only' },
   ];
   const studentSubOptions: Array<{ id: AudienceSubChoice; label: string; description: string }> = [
     { id: 'first_year_students', label: 'First Year', description: 'Active first-year students' },
@@ -836,10 +845,10 @@ export function CreateAnnouncementModal({
             className="tbo-focus mb-3 inline-flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
           >
             <ArrowLeft className="h-4 w-4" />
-            Announcements
+            Stream
           </button>
           <h2 className="tbo-display text-2xl leading-tight text-[#171717] sm:text-3xl">
-            {isEditing ? 'Edit announcement' : 'New announcement'}
+            {isEditing ? 'Edit post' : 'New post'}
           </h2>
         </div>
         <div className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#737373] ring-1 ring-[#e5e5e5]">
@@ -920,7 +929,7 @@ export function CreateAnnouncementModal({
                         value={title}
                         onChange={e => setTitle(e.target.value)}
                         className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Announcement title"
+                        placeholder="Post title"
                       />
                     </div>
 
@@ -934,7 +943,7 @@ export function CreateAnnouncementModal({
                         onChange={e => setContent(e.target.value)}
                         rows={8}
                         className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Write your announcement..."
+                        placeholder="Write your post..."
                       />
                     </div>
                   </div>
@@ -956,7 +965,7 @@ export function CreateAnnouncementModal({
                         value={titleBg}
                         onChange={e => setTitleBg(e.target.value)}
                         className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Announcement title in Bulgarian"
+                        placeholder="Post title in Bulgarian"
                       />
                     </div>
 
@@ -970,7 +979,7 @@ export function CreateAnnouncementModal({
                         onChange={e => setContentBg(e.target.value)}
                         rows={8}
                         className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Write your announcement in Bulgarian..."
+                        placeholder="Write your post in Bulgarian..."
                       />
                     </div>
                   </div>
@@ -1020,7 +1029,7 @@ export function CreateAnnouncementModal({
               <h3 className="text-sm font-semibold text-[#171717]">Delivery</h3>
               <p className="mt-0.5 text-xs text-[#737373]">
                 {isEditingPublished
-                  ? 'This announcement is already published. Saving changes updates the post without notifying recipients again.'
+                  ? 'This post is already published. Saving changes updates it without notifying recipients again.'
                   : 'Choose whether this is published now, scheduled, or saved as a draft.'}
               </p>
             </div>
@@ -1073,7 +1082,7 @@ export function CreateAnnouncementModal({
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
                 <h3 className="text-sm font-semibold text-[#171717]">Audience</h3>
-                <p className="mt-0.5 text-xs text-[#737373]">Choose who should see this announcement.</p>
+                <p className="mt-0.5 text-xs text-[#737373]">Choose who should see this post.</p>
               </div>
             </div>
 
@@ -1393,9 +1402,9 @@ export function CreateAnnouncementModal({
               <div className="flex items-start gap-2">
                 <Pin className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#d97706]" />
                 <div>
-                  <p className="text-sm font-semibold text-[#171717]">Pin this announcement</p>
+                  <p className="text-sm font-semibold text-[#171717]">Pin this post</p>
                   <p className="mt-0.5 text-xs leading-5 text-[#737373]">
-                    Pinned announcements appear at the top of the feed.
+                    Pinned posts appear at the top of the stream.
                   </p>
                 </div>
               </div>
@@ -1427,7 +1436,7 @@ export function CreateAnnouncementModal({
                 {recipientCount}
               </p>
               <p className="mt-1 text-xs leading-5 text-[#737373]">
-                Estimated from current users, roles, and active course enrollments.
+                Estimated from current people, roles, and active year group enrollments.
               </p>
             </div>
             <dl className="mt-3 space-y-2 text-sm">
@@ -1614,7 +1623,7 @@ export function CreateAnnouncementModal({
 
               {filteredCustomUsers.length === 0 && (
                 <div className="rounded-xl border border-dashed border-[#d4d4d4] px-4 py-8 text-center text-sm text-[#737373]">
-                  No users match your search.
+                  No people match your search.
                 </div>
               )}
             </div>

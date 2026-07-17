@@ -59,7 +59,7 @@ const sectionMeta: Record<UsersSection, { title: string; eyebrow: string; descri
   directory: {
     title: 'Directory',
     eyebrow: 'All accounts',
-    description: 'Search, filter, and manage every user in one place.',
+    description: 'Search, filter, and manage every person in one place.',
   },
   pending: {
     title: 'Pending access',
@@ -232,8 +232,8 @@ function UserDetailModal({
               type="button"
               onClick={() => { onDeleteUser(user.id); onClose(); }}
               className="grid h-9 w-9 place-items-center rounded-lg border border-[#fecaca] text-[#b91c1c] hover:bg-[#fef2f2]"
-              aria-label="Delete user"
-              title="Delete user"
+              aria-label="Delete person"
+              title="Delete person"
             >
               <Trash2 className="h-4 w-4" />
             </button>
@@ -373,7 +373,7 @@ function DirectoryRowActions({
   onDeleteUser: (id: string) => void;
 }) {
   const isPending = access === 'pending';
-  const editLabel = isPending ? 'Assign roles' : 'Edit user';
+  const editLabel = isPending ? 'Assign roles' : 'Edit person';
 
   return (
     <div className="inline-flex items-center justify-end gap-1.5">
@@ -464,7 +464,7 @@ function DirectoryPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatPill label="Total users" value={rows.length} detail={`${roleCounts.pending} pending access`} />
+        <StatPill label="Total people" value={rows.length} detail={`${roleCounts.pending} pending access`} />
         <StatPill label="Students" value={roleCounts.student} detail="With student role" />
         <StatPill label="Staff" value={roleCounts.staff} detail="Non-student roles" />
         <StatPill label="Showing" value={filteredRows.length} detail="After filters" />
@@ -529,7 +529,7 @@ function DirectoryPanel({
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">
-                    No users match your filters.
+                    No people match your filters.
                   </td>
                 </tr>
               ) : (
@@ -627,7 +627,7 @@ function PendingPanel({
 
       {pendingRows.length === 0 ? (
         <SectionCard className="p-8 text-center text-[#737373]">
-          No pending users — everyone has been assigned roles.
+          No pending people - everyone has been assigned roles.
         </SectionCard>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -933,7 +933,7 @@ export function UsersHubView({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="User Management"
+        title="People"
         eyebrow={meta.eyebrow}
         description={meta.description}
         action={
@@ -943,7 +943,7 @@ export function UsersHubView({
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            Add user
+            Add person
           </button>
         }
       />

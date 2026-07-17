@@ -376,7 +376,7 @@ export function AdminStudentDashboard({
       <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
         <p className="font-semibold text-[#171717]">No student selected.</p>
         <button type="button" onClick={onBack} className="mt-4 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-          Back to users
+          Back to people
         </button>
       </div>
     );

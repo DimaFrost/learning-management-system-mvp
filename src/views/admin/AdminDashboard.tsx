@@ -1154,7 +1154,7 @@ export function AdminDashboard({
       icon: UserCog,
       tone: pendingAccessUsers.length > 0 ? 'orange' : 'green',
       view: 'users',
-      actionLabel: 'Review users',
+      actionLabel: 'Review people',
     },
     {
       title: 'Attendance risk',
@@ -1254,7 +1254,7 @@ export function AdminDashboard({
         title="Dashboard"
         action={
           <GhostButton onClick={() => onNavigate('announcements-new')}>
-            New announcement
+            New post
           </GhostButton>
         }
       />
@@ -1934,10 +1934,10 @@ export function AdminDashboard({
       <SectionCard title="Quick Actions" subtitle="Common administrator moves">
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Review users', view: 'users', icon: Users },
+            { label: 'Review people', view: 'users', icon: Users },
             { label: 'Plan curriculum', view: 'curriculum', icon: Calendar },
             { label: 'Check attendance', view: 'attendance', icon: BarChart3 },
-            { label: 'Post announcement', view: 'announcements', icon: Sparkles },
+            { label: 'Post to Stream', view: 'announcements', icon: Sparkles },
           ].map(action => (
             <button
               key={action.label}

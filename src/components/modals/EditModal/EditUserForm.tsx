@@ -248,7 +248,7 @@ export function EditUserForm({
           )}
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#171717]">
-              {editedUser ? 'Edit user profile' : 'Create user profile'}
+              {editedUser ? 'Edit person profile' : 'Create person profile'}
             </p>
             <p className="truncate text-xs text-[#737373]">
               {formData.email || 'Add email and roles to create access'}

@@ -19,6 +19,7 @@ import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
 import { useBooks } from '../hooks/useBooks';
+import { useStreamSettings } from '../hooks/useStreamSettings';
 import { MyCourseView } from './student/MyCourseView';
 import { StudentDashboard } from './student/StudentDashboard';
 import { MyAttendanceView } from './student/MyAttendanceView';
@@ -42,6 +43,8 @@ import { MessagesView } from './shared/MessagesView';
 import { TodosView } from './shared/TodosView';
 import { SettingsView } from './shared/SettingsView';
 import { ClassDetailView } from './shared/ClassDetailView';
+import { ClassworkView } from './shared/ClassworkView';
+import { GradesView } from './shared/GradesView';
 import { formatPlatformDate } from '../utils/dateUtils';
 
 type ShowConfirmation = (
@@ -258,6 +261,7 @@ export function AppRouter({
   nextScheduledDuty,
 }: AppRouterProps) {
   const books = useBooks(currentUser, courses, courseStudents);
+  const streamSettings = useStreamSettings(currentUser, courses, courseStudents);
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
 
@@ -289,6 +293,7 @@ export function AppRouter({
           currentUser={currentUser}
           users={users}
           courseStudents={courseStudents}
+          activeWorkspace={activeWorkspace}
           onBack={closeClassDetail}
           onProvisionDriveFolders={() =>
             provisionClassDriveFolders(
@@ -332,6 +337,7 @@ export function AppRouter({
         onAddAttachment={addAttachment}
         onDeleteAttachment={deleteAttachment}
         onToggleReaction={toggleReaction}
+        streamSettings={streamSettings}
         openCreateOnMount={activeView === 'announcements-new'}
         onCreateFlowClosed={() => setActiveView('announcements')}
       />
@@ -368,6 +374,52 @@ export function AppRouter({
         onCreate={createTodo}
         onToggleStatus={toggleTodoStatus}
         onDelete={deleteTodo}
+      />
+    );
+  }
+
+  if (activeView === 'classwork' || activeView === 'my-classwork') {
+    const scope = hasRole('administrator') && activeWorkspace === 'administrator'
+      ? 'admin'
+      : hasRole('teacher') && activeWorkspace === 'teacher'
+        ? 'teacher'
+        : 'student';
+    return (
+      <ClassworkView
+        scope={scope}
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+        bookAssignments={scope === 'student' ? books.myAssignments : books.assignments}
+        bookSubmissions={scope === 'student' ? books.mySubmissions : books.submissions}
+        booksLoading={books.loading}
+        onGradeReadingSubmission={books.gradeReadingSubmission}
+        onAddReadingComment={books.addReadingSubmissionComment}
+        onDeleteReadingComment={books.deleteReadingSubmissionComment}
+        getCourseDisplayName={getCourseDisplayName}
+        onOpenClass={openClassDetail}
+        onNavigate={setActiveView}
+      />
+    );
+  }
+
+  if (activeView === 'grades' || activeView === 'my-grades') {
+    const scope = hasRole('administrator') && activeWorkspace === 'administrator'
+      ? 'admin'
+      : hasRole('teacher') && activeWorkspace === 'teacher'
+        ? 'teacher'
+        : 'student';
+    return (
+      <GradesView
+        scope={scope}
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+        bookAssignments={scope === 'student' ? books.myAssignments : books.assignments}
+        bookSubmissions={scope === 'student' ? books.mySubmissions : books.submissions}
+        getCourseSummaries={attendance.getCourseSummaries}
       />
     );
   }
@@ -579,8 +631,10 @@ export function AppRouter({
             lookupBooks={books.lookupBooks}
             uploadBookCover={books.uploadBookCover}
             createReadingAssignment={books.createReadingAssignment}
+            createReadingAssignments={books.createReadingAssignments}
             updateReadingAssignment={books.updateReadingAssignment}
             deleteReadingAssignment={books.deleteReadingAssignment}
+            gradeReadingSubmission={books.gradeReadingSubmission}
           />
         );
       case 'users':

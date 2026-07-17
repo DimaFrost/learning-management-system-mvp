@@ -231,7 +231,7 @@ export function Sidebar({
     {
       id: 'users-directory',
       label: 'Directory',
-      description: 'Search & manage all users',
+      description: 'Search & manage people',
       icon: Users,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -342,6 +342,22 @@ export function Sidebar({
           shared: true,
           badge: todoTodayCount > 0 ? (todoTodayCount > 9 ? '9+' : String(todoTodayCount)) : undefined,
         },
+        {
+          id: 'classwork',
+          label: 'Classwork',
+          description: 'Assignments and materials',
+          icon: BookOpen,
+          roles: ['administrator', 'teacher'],
+          workspaces: ['administrator', 'teacher'],
+        },
+        {
+          id: 'grades',
+          label: 'Grades',
+          description: 'Academic record',
+          icon: BarChart2,
+          roles: ['administrator', 'teacher'],
+          workspaces: ['administrator', 'teacher'],
+        },
       ],
     },
     {
@@ -418,10 +434,18 @@ export function Sidebar({
           workspaces: ['team_leader'],
         },
         {
-          id: 'my-course',
-          label: t('sidebar.myCourse'),
-          description: t('sidebar.myCourse.desc'),
+          id: 'my-classwork',
+          label: 'My Classwork',
+          description: 'Homework and materials',
           icon: GraduationCap,
+          roles: ['student'],
+          workspaces: ['student'],
+        },
+        {
+          id: 'my-grades',
+          label: 'My Grades',
+          description: 'Academic record',
+          icon: BarChart2,
           roles: ['student'],
           workspaces: ['student'],
         },
@@ -681,7 +705,7 @@ export function Sidebar({
           : inUsersModule && visibleUsersItems.length > 0
             ? [
                 {
-                  label: 'Users',
+                  label: 'People',
                   items: visibleUsersItems,
                 },
               ]

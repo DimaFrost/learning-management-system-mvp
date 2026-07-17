@@ -18,6 +18,9 @@ import {
   Paperclip,
   Send,
   RotateCcw,
+  Settings,
+  CheckCircle2,
+  Upload,
 } from 'lucide-react';
 import type { Announcement, AnnouncementAttachment, User, Course, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
@@ -30,6 +33,7 @@ import { formatFileSize } from '../../utils/formatFileSize';
 import { canPreviewInApp, resolveAnnouncementPreview } from '../../utils/filePreview';
 import { FilePreviewModal } from '../../components/modals/FilePreviewModal';
 import type { FilePreviewItem } from '../../utils/filePreview';
+import type { useStreamSettings } from '../../hooks/useStreamSettings';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -70,11 +74,12 @@ interface AnnouncementsViewProps {
   ) => Promise<void>;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
   onToggleReaction: (announcementId: number, emoji: string) => Promise<void>;
+  streamSettings: ReturnType<typeof useStreamSettings>;
   openCreateOnMount?: boolean;
   onCreateFlowClosed?: () => void;
 }
 
-type FilterValue = 'all' | Announcement['type'] | 'draft' | 'scheduled' | 'trash';
+type FilterValue = 'all' | Announcement['type'] | 'draft' | 'scheduled' | 'pending_review' | 'trash';
 
 const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: 'all', label: 'All' },
@@ -83,6 +88,7 @@ const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
   { value: 'material', label: 'Materials' },
   { value: 'system', label: 'System' },
   { value: 'scheduled', label: 'Scheduled' },
+  { value: 'pending_review', label: 'Pending review' },
   { value: 'draft', label: 'Drafts' },
   { value: 'trash', label: 'Trash' },
 ];
@@ -138,6 +144,7 @@ function getInitials(name: string | null | undefined): string {
 function getAnnouncementStatusLabel(announcement: Announcement): string | null {
   if (announcement.status === 'draft') return 'Draft';
   if (announcement.status === 'scheduled') return 'Scheduled';
+  if (announcement.status === 'pending_review') return 'Pending review';
   if (announcement.status === 'archived') return 'Trash';
   return null;
 }
@@ -161,7 +168,7 @@ function getLocalizedAnnouncement(announcement: Announcement, language: AppLangu
   }
 
   return {
-    title: bgTitle || englishTitle || 'Untitled announcement',
+    title: bgTitle || englishTitle || 'Untitled post',
     content: bgContent || englishContent || '',
     fallbackLanguage: language === 'en' && bgTitle && bgContent ? 'Bulgarian' : null,
   };
@@ -202,6 +209,9 @@ function getAttachmentLabel(attachment: AnnouncementAttachment): string {
   if (attachment.attachmentType === 'google_sheet') {
     return attachment.linkTitle ?? 'Google Sheet';
   }
+  if (attachment.attachmentType === 'link') {
+    return attachment.linkTitle ?? attachment.linkUrl ?? 'Link';
+  }
   return attachment.linkTitle ?? 'Google Slides';
 }
 
@@ -211,6 +221,7 @@ function getAttachmentTypeLabel(attachment: AnnouncementAttachment): string {
   }
   if (attachment.attachmentType === 'google_doc') return 'Google Doc';
   if (attachment.attachmentType === 'google_sheet') return 'Google Sheet';
+  if (attachment.attachmentType === 'link') return 'Link';
   return 'Google Slides';
 }
 
@@ -227,6 +238,9 @@ function AttachmentTypeIcon({ attachment }: { attachment: AnnouncementAttachment
   if (attachment.attachmentType === 'google_sheet') {
     return <Table className="h-4 w-4 flex-shrink-0" />;
   }
+  if (attachment.attachmentType === 'link') {
+    return <Link className="h-4 w-4 flex-shrink-0" />;
+  }
   return <Presentation className="h-4 w-4 flex-shrink-0" />;
 }
 
@@ -234,6 +248,7 @@ function getAttachmentIconTone(attachment: AnnouncementAttachment): string {
   if (attachment.attachmentType === 'google_doc') return 'bg-blue-50 text-[#2563eb] ring-blue-100';
   if (attachment.attachmentType === 'google_sheet') return 'bg-emerald-50 text-[#16a34a] ring-emerald-100';
   if (attachment.attachmentType === 'google_slide') return 'bg-orange-50 text-[#ea580c] ring-orange-100';
+  if (attachment.attachmentType === 'link') return 'bg-violet-50 text-violet-700 ring-violet-100';
   if (attachment.mimeType?.startsWith('image/')) return 'bg-rose-50 text-rose-700 ring-rose-100';
   if (attachment.mimeType === 'application/pdf') return 'bg-red-50 text-red-700 ring-red-100';
   if (attachment.mimeType?.includes('word') || attachment.fileName?.match(/\.(doc|docx)$/i)) {
@@ -350,6 +365,7 @@ interface AnnouncementCardProps {
   onTogglePin: (id: number, current: boolean) => Promise<void>;
   onEdit: (announcement: Announcement) => void;
   onDelete: (id: number) => void;
+  onApprove: (id: number) => Promise<void>;
   onRestore: (id: number) => Promise<void>;
   onPermanentDelete: (id: number) => void;
   onToggleReaction: (announcementId: number, emoji: string) => Promise<void>;
@@ -357,6 +373,7 @@ interface AnnouncementCardProps {
   onDeleteComment: (commentId: number) => void;
   onDeleteAttachment: (id: number, storagePath: string | null) => Promise<void>;
   onPreviewAttachment: (item: FilePreviewItem) => void;
+  canComment: boolean;
 }
 
 function AnnouncementCard({
@@ -371,6 +388,7 @@ function AnnouncementCard({
   onTogglePin,
   onEdit,
   onDelete,
+  onApprove,
   onRestore,
   onPermanentDelete,
   onToggleReaction,
@@ -378,6 +396,7 @@ function AnnouncementCard({
   onDeleteComment,
   onDeleteAttachment,
   onPreviewAttachment,
+  canComment,
 }: AnnouncementCardProps) {
   const { language, t } = useLanguage();
   const typeBadge = TYPE_BADGE[announcement.type];
@@ -398,6 +417,7 @@ function AnnouncementCard({
   const audienceBadgeLabel = getAudienceBadgeLabel(announcement);
   const edited = isAnnouncementEdited(announcement);
   const isArchived = announcement.status === 'archived';
+  const isPendingReview = announcement.status === 'pending_review';
   const reactionCounts = (announcement.reactions ?? []).reduce<Record<string, number>>((acc, reaction) => {
     acc[reaction.emoji] = (acc[reaction.emoji] ?? 0) + 1;
     return acc;
@@ -490,9 +510,20 @@ function AnnouncementCard({
               type="button"
               onClick={() => onTogglePin(announcement.id, announcement.isPinned)}
               className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fff7ed] hover:text-[#d97706]"
-              aria-label={announcement.isPinned ? 'Unpin announcement' : 'Pin announcement'}
+              aria-label={announcement.isPinned ? 'Unpin post' : 'Pin post'}
             >
               <Pin className="w-4 h-4" />
+            </button>
+          )}
+          {isPendingReview && isAdmin && (
+            <button
+              type="button"
+              onClick={() => onApprove(announcement.id)}
+              className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#ecfdf5] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-[#d1fae5]"
+              aria-label="Approve post"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              Approve
             </button>
           )}
           {isArchived && isAdmin ? (
@@ -501,7 +532,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onRestore(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#ecfdf5] hover:text-emerald-700"
-                aria-label="Restore announcement"
+                aria-label="Restore post"
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -509,7 +540,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onPermanentDelete(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
-                aria-label="Permanently delete announcement"
+                aria-label="Permanently delete post"
               >
                 <Trash className="h-4 w-4" />
               </button>
@@ -520,7 +551,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onEdit(announcement)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#dbeaff] hover:text-[#2563eb]"
-                aria-label="Edit announcement"
+                aria-label="Edit post"
               >
                 <Pencil className="w-4 h-4" />
               </button>
@@ -528,7 +559,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onDelete(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
-                aria-label="Delete announcement"
+                aria-label="Delete post"
               >
                 <Trash className="w-4 h-4" />
               </button>
@@ -657,30 +688,36 @@ function AnnouncementCard({
               ))
             )}
 
-            <div className="flex gap-2 pt-1">
-              <input
-                type="text"
-                value={commentDraft}
-                onChange={e => onCommentDraftChange(e.target.value)}
-                onKeyDown={e => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handlePostComment();
-                  }
-                }}
-                placeholder="Add a comment"
-                className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
-              />
-              <button
-                type="button"
-                onClick={handlePostComment}
-                disabled={!commentDraft.trim()}
-                className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Send className="h-3.5 w-3.5" />
-                <span>Post</span>
-              </button>
-            </div>
+            {canComment ? (
+              <div className="flex gap-2 pt-1">
+                <input
+                  type="text"
+                  value={commentDraft}
+                  onChange={e => onCommentDraftChange(e.target.value)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handlePostComment();
+                    }
+                  }}
+                  placeholder="Add a comment"
+                  className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
+                />
+                <button
+                  type="button"
+                  onClick={handlePostComment}
+                  disabled={!commentDraft.trim()}
+                  className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  <span>Post</span>
+                </button>
+              </div>
+            ) : (
+              <p className="rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#737373]">
+                Comments are closed for this Stream item.
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -706,6 +743,7 @@ export function AnnouncementsView({
   onAddAttachment,
   onDeleteAttachment,
   onToggleReaction,
+  streamSettings,
   openCreateOnMount = false,
   onCreateFlowClosed,
 }: AnnouncementsViewProps) {
@@ -716,10 +754,34 @@ export function AnnouncementsView({
   const [expandedComments, setExpandedComments] = useState<Set<number>>(new Set());
   const [commentDrafts, setCommentDrafts] = useState<Record<number, string>>({});
   const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const isAdmin = hasRole(currentUser, 'administrator');
+  const isTeacher = hasRole(currentUser, 'teacher');
+  const isStudent = hasRole(currentUser, 'student');
   const canCreateAnnouncement =
-    isAdmin || hasRole(currentUser, 'teacher');
+    isAdmin || isTeacher;
+  const studentPostCourses = courses.filter(course =>
+    course.status === 'active' &&
+    streamSettings.canPostToCourse(course.id) &&
+    courseStudents.some(enrollment =>
+      enrollment.courseId === course.id &&
+      enrollment.studentId === currentUser.id &&
+      enrollment.status === 'active'
+    )
+  );
+  const [studentComposerCourseId, setStudentComposerCourseId] = useState<number | null>(
+    studentPostCourses[0]?.id ?? null
+  );
+  const [studentComposerText, setStudentComposerText] = useState('');
+  const [studentComposerFile, setStudentComposerFile] = useState<File | null>(null);
+  const [studentComposerLinkUrl, setStudentComposerLinkUrl] = useState('');
+  const [studentComposerLinkTitle, setStudentComposerLinkTitle] = useState('');
+  const [studentComposerSaving, setStudentComposerSaving] = useState(false);
+  const canUseStudentComposer = isStudent && !canCreateAnnouncement && studentPostCourses.length > 0;
+  const selectedStudentComposerSetting =
+    studentComposerCourseId == null ? null : streamSettings.getSetting(studentComposerCourseId);
+  const canAttachToStudentPost = Boolean(selectedStudentComposerSetting?.allowStudentAttachments);
 
   useEffect(() => {
     if (!openCreateOnMount || !canCreateAnnouncement) return;
@@ -729,16 +791,65 @@ export function AnnouncementsView({
 
   const visibleFilterOptions = FILTER_OPTIONS.filter(option => {
     if (option.value === 'trash') return isAdmin;
-    if (option.value === 'scheduled' || option.value === 'draft') return canCreateAnnouncement;
+    if (option.value === 'scheduled' || option.value === 'draft' || option.value === 'pending_review') return canCreateAnnouncement;
     return true;
   });
+
+  useEffect(() => {
+    if (studentComposerCourseId && studentPostCourses.some(course => course.id === studentComposerCourseId)) return;
+    setStudentComposerCourseId(studentPostCourses[0]?.id ?? null);
+  }, [studentComposerCourseId, studentPostCourses]);
+
+  const submitStudentPost = async () => {
+    const content = studentComposerText.trim();
+    if (!content || studentComposerCourseId == null) return;
+    const setting = streamSettings.getSetting(studentComposerCourseId);
+    const fileToAttach = setting.allowStudentAttachments ? studentComposerFile : null;
+    const linkUrl = setting.allowStudentAttachments ? studentComposerLinkUrl.trim() : '';
+    const linkTitle = setting.allowStudentAttachments ? studentComposerLinkTitle.trim() : '';
+    setStudentComposerSaving(true);
+    try {
+      const announcementId = await onAdd({
+        title: content.length > 80 ? `${content.slice(0, 77)}...` : content,
+        content,
+        type: 'post',
+        courseId: studentComposerCourseId,
+        targetRoles: null,
+        isPinned: false,
+        isStaffOnly: false,
+        status: setting.requireStudentPostApproval ? 'pending_review' : 'published',
+        scheduledAt: null,
+        notifyAudience: false,
+      });
+      if (fileToAttach) {
+        await onAddAttachment(announcementId, {
+          file: fileToAttach,
+          attachmentType: 'file',
+          linkTitle: fileToAttach.name,
+        });
+      }
+      if (linkUrl) {
+        await onAddAttachment(announcementId, {
+          attachmentType: 'link',
+          linkUrl,
+          linkTitle: linkTitle || linkUrl,
+        });
+      }
+      setStudentComposerText('');
+      setStudentComposerFile(null);
+      setStudentComposerLinkUrl('');
+      setStudentComposerLinkTitle('');
+    } finally {
+      setStudentComposerSaving(false);
+    }
+  };
 
   const filteredList =
     filter === 'all'
       ? announcements.filter(a => a.status !== 'archived')
       : filter === 'trash'
         ? announcements.filter(a => a.status === 'archived')
-      : filter === 'scheduled' || filter === 'draft'
+      : filter === 'scheduled' || filter === 'draft' || filter === 'pending_review'
         ? announcements.filter(a => a.status === filter)
         : announcements.filter(a => a.type === filter && a.status !== 'archived');
 
@@ -770,6 +881,13 @@ export function AnnouncementsView({
     setModalOpen(true);
   };
 
+  const approveAnnouncement = async (id: number) => {
+    await onUpdate(id, {
+      status: 'published',
+      publishedAt: new Date().toISOString(),
+    });
+  };
+
   const liveEditingAnnouncement = editingAnnouncement
     ? announcements.find(a => a.id === editingAnnouncement.id) ?? editingAnnouncement
     : null;
@@ -798,6 +916,7 @@ export function AnnouncementsView({
       onTogglePin={onTogglePin}
       onEdit={openEditModal}
       onDelete={onDelete}
+      onApprove={approveAnnouncement}
       onRestore={onRestore}
       onPermanentDelete={onPermanentDelete}
       onToggleReaction={onToggleReaction}
@@ -805,6 +924,7 @@ export function AnnouncementsView({
       onDeleteComment={onDeleteComment}
       onDeleteAttachment={onDeleteAttachment}
       onPreviewAttachment={setPreviewItem}
+      canComment={streamSettings.canCommentOnCourse(announcement.courseId)}
     />
   );
 
@@ -841,18 +961,236 @@ export function AnnouncementsView({
       <PageHeader
         title={t('announcements.title')}
         action={
-          canCreateAnnouncement ? (
-            <button
-              type="button"
-              onClick={openCreateModal}
-              className="tbo-focus flex w-full items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
-            >
-              <Plus className="w-4 h-4" />
-              <span>{t('announcements.new')}</span>
-            </button>
+          isAdmin || canCreateAnnouncement ? (
+            <div className="flex w-full items-center gap-2 sm:w-auto">
+              {isAdmin && (
+                <button
+                  type="button"
+                  onClick={() => setSettingsOpen(true)}
+                  className="tbo-focus grid h-10 w-10 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                  aria-label="Stream settings"
+                  title="Stream settings"
+                >
+                  <Settings className="h-4 w-4" />
+                </button>
+              )}
+              {canCreateAnnouncement && (
+                <button
+                  type="button"
+                  onClick={openCreateModal}
+                  className="tbo-focus flex flex-1 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>{t('announcements.new')}</span>
+                </button>
+              )}
+            </div>
           ) : undefined
         }
       />
+
+      {settingsOpen && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSettingsOpen(false)} aria-label="Close stream settings" />
+          <section role="dialog" aria-modal="true" className="relative max-h-[90vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
+            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Stream settings</p>
+                <h3 className="mt-1 text-xl font-semibold text-[#171717]">Student permissions</h3>
+                <p className="mt-1 text-sm text-[#737373]">Decide what students can do in each active year group.</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSettingsOpen(false)}
+                className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
+                aria-label="Close"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="tbo-scrollbar max-h-[68vh] space-y-4 overflow-y-auto bg-[#fafafa] p-5">
+              {courses.filter(course => course.status === 'active').map((course, index) => {
+                const setting = streamSettings.getSetting(course.id);
+                const tone = index % 2 === 0
+                  ? {
+                      shell: 'border-[#bfdbfe] bg-[#eff6ff]',
+                      chip: 'bg-[#dbeaff] text-[#2563eb]',
+                      accent: 'text-[#1d4ed8]',
+                    }
+                  : {
+                      shell: 'border-[#fed7aa] bg-[#fff7ed]',
+                      chip: 'bg-[#ffedd5] text-[#c2410c]',
+                      accent: 'text-[#c2410c]',
+                    };
+                return (
+                  <section key={course.id} className={`rounded-2xl border p-4 ${tone.shell}`}>
+                    <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
+                      <div className="min-w-0">
+                        <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${tone.chip}`}>
+                          Year group
+                        </span>
+                        <h4 className="mt-2 truncate text-base font-semibold text-[#171717]">{getCourseDisplayName(course)}</h4>
+                        <p className="mt-0.5 text-xs text-[#737373]">Default is comment only until changed.</p>
+                      </div>
+                      <label className="block">
+                        <span className="mb-1 block text-xs font-semibold text-[#737373]">Student access</span>
+                        <select
+                          value={setting.permission}
+                          onChange={event => streamSettings.updateSetting(course.id, { permission: event.target.value as any })}
+                          className="h-10 w-full rounded-xl border border-white/70 bg-white px-3 text-sm font-semibold text-[#525252] shadow-sm sm:w-44"
+                        >
+                          <option value="students_post_comment">Post & comment</option>
+                          <option value="students_comment">Comment only</option>
+                          <option value="staff_only">Staff only</option>
+                        </select>
+                      </label>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 md:grid-cols-2">
+                      <label className="flex items-start gap-3 rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                        <input
+                          type="checkbox"
+                          checked={setting.requireStudentPostApproval}
+                          onChange={event => streamSettings.updateSetting(course.id, { requireStudentPostApproval: event.target.checked })}
+                          className="mt-1 h-4 w-4 rounded border-[#d4d4d4]"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-[#171717]">Approve student posts</span>
+                          <span className="text-xs text-[#737373]">Student posts wait for review before appearing.</span>
+                        </span>
+                      </label>
+
+                      <label className="flex items-start gap-3 rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                        <input
+                          type="checkbox"
+                          checked={setting.allowStudentAttachments}
+                          onChange={event => streamSettings.updateSetting(course.id, { allowStudentAttachments: event.target.checked })}
+                          className="mt-1 h-4 w-4 rounded border-[#d4d4d4]"
+                        />
+                        <span>
+                          <span className="block text-sm font-semibold text-[#171717]">Student attachments</span>
+                          <span className="text-xs text-[#737373]">Allow files/links on student Stream posts.</span>
+                        </span>
+                      </label>
+
+                      <label className="block rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                        <span className="mb-1 block text-sm font-semibold text-[#171717]">Email notifications</span>
+                        <select
+                          value={setting.emailNotifications}
+                          onChange={event => streamSettings.updateSetting(course.id, { emailNotifications: event.target.value as any })}
+                          className="h-10 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 text-sm text-[#525252]"
+                        >
+                          <option value="all_posts">All posts</option>
+                          <option value="staff_and_pinned">Staff and pinned</option>
+                          <option value="pinned_only">Pinned only</option>
+                          <option value="none">None</option>
+                        </select>
+                      </label>
+
+                      <label className="block rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
+                        <span className="mb-1 block text-sm font-semibold text-[#171717]">Pinned post limit</span>
+                        <div className="flex items-center gap-3">
+                          <input
+                            type="range"
+                            min="0"
+                            max="10"
+                            value={setting.pinnedPostLimit}
+                            onChange={event => streamSettings.updateSetting(course.id, { pinnedPostLimit: Number(event.target.value) })}
+                            className="min-w-0 flex-1 accent-[#171717]"
+                          />
+                          <span className={`grid h-9 w-9 place-items-center rounded-lg bg-white text-sm font-semibold ${tone.accent}`}>
+                            {setting.pinnedPostLimit}
+                          </span>
+                        </div>
+                      </label>
+                    </div>
+                  </section>
+                );
+              })}
+            </div>
+          </section>
+        </div>
+      )}
+
+      {canUseStudentComposer && (
+        <div className="tbo-panel p-4">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm font-semibold text-[#171717]">Share with your year group</p>
+              {studentPostCourses.length > 1 && (
+                <select
+                  value={studentComposerCourseId ?? ''}
+                  onChange={event => setStudentComposerCourseId(Number(event.target.value))}
+                  className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+                >
+                  {studentPostCourses.map(course => (
+                    <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+            <textarea
+              value={studentComposerText}
+              onChange={event => setStudentComposerText(event.target.value)}
+              placeholder="Ask a question or share something with your class..."
+              className="tbo-focus min-h-24 rounded-xl border border-[#d4d4d4] bg-white p-3 text-sm"
+            />
+            {selectedStudentComposerSetting?.requireStudentPostApproval && (
+              <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs font-medium text-[#92400e]">
+                Your post will be sent to an administrator for review before it appears in Stream.
+              </div>
+            )}
+            {canAttachToStudentPost && (
+              <div className="grid gap-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-2">
+                <label className="block">
+                  <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#525252]">
+                    <Upload className="h-3.5 w-3.5" />
+                    File
+                  </span>
+                  <input
+                    type="file"
+                    onChange={event => setStudentComposerFile(event.target.files?.[0] ?? null)}
+                    className="block w-full text-xs text-[#525252] file:mr-3 file:rounded-lg file:border-0 file:bg-white file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-[#171717]"
+                  />
+                  {studentComposerFile && (
+                    <span className="mt-1 block truncate text-xs text-[#737373]">{studentComposerFile.name}</span>
+                  )}
+                </label>
+                <div className="grid gap-2">
+                  <label className="block">
+                    <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#525252]">
+                      <Link className="h-3.5 w-3.5" />
+                      Link
+                    </span>
+                    <input
+                      value={studentComposerLinkUrl}
+                      onChange={event => setStudentComposerLinkUrl(event.target.value)}
+                      placeholder="https://..."
+                      className="tbo-focus h-9 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+                    />
+                  </label>
+                  <input
+                    value={studentComposerLinkTitle}
+                    onChange={event => setStudentComposerLinkTitle(event.target.value)}
+                    placeholder="Optional link title"
+                    className="tbo-focus h-9 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+                  />
+                </div>
+              </div>
+            )}
+            <div className="flex justify-end">
+              <button
+                type="button"
+                onClick={() => void submitStudentPost()}
+                disabled={!studentComposerText.trim() || studentComposerSaving}
+                className="tbo-focus rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {studentComposerSaving ? 'Posting...' : 'Post'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="tbo-panel flex flex-wrap gap-2 p-2">
         {visibleFilterOptions.map(option => (
@@ -876,7 +1214,7 @@ export function AnnouncementsView({
           <div
             className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
             role="status"
-            aria-label="Loading announcements"
+            aria-label="Loading stream"
           />
           <p className="mt-3 text-sm text-[#737373]">{t('announcements.loading')}</p>
         </div>
