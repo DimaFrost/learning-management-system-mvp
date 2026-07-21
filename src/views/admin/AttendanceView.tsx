@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import type {
+  AttendanceCorrectionRequest,
   AttendanceSettings,
   AttendanceStatus,
   ClassAttendanceRecord,
@@ -123,6 +124,7 @@ export interface AttendanceViewProps {
   prayerSchedule: PrayerScheduleEntry[];
   wellSchedule: WellScheduleEntry[];
   pendingTransferRequests: DutyTransferRequest[];
+  correctionRequests: AttendanceCorrectionRequest[];
   classAttendance: ClassAttendanceRecord[];
   theWellAttendance: TheWellAttendanceRecord[];
   sundayAttendance: SundayAttendanceRecord[];
@@ -139,6 +141,7 @@ export interface AttendanceViewProps {
   generateWellScheduleForCourse: (courseId: number) => Promise<void>;
   updatePrayerAssignment: (entryId: number, updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }) => Promise<void>;
   resolveTransferRequest: (requestId: number, approved: boolean) => Promise<void>;
+  resolveAttendanceCorrection: (requestId: number, approved: boolean, resolutionNote?: string) => Promise<void>;
   upsertSundayAttendance: (studentId: string, courseId: number, year: number, month: number, timesServed: number) => Promise<void>;
   updateSettings: (newSettings: Partial<AttendanceSettings>) => Promise<void>;
   upsertMinistryTeam: (input: Partial<MinistryTeam> & { name: string }) => Promise<void>;
@@ -750,6 +753,7 @@ export function AttendanceView({
   prayerSchedule,
   wellSchedule,
   pendingTransferRequests,
+  correctionRequests,
   classAttendance,
   theWellAttendance,
   ministryTeams,
@@ -765,6 +769,7 @@ export function AttendanceView({
   generateWellScheduleForCourse,
   updatePrayerAssignment,
   resolveTransferRequest,
+  resolveAttendanceCorrection,
   updateSettings,
   upsertMinistryTeam,
   upsertMinistryRotation,
@@ -1172,6 +1177,7 @@ export function AttendanceView({
     ? ministryRows.reduce((sum, row) => sum + row.health, 0) / ministryRows.length
     : 1;
   const ministryBelowRequirement = ministryRows.filter(row => row.healthStatus === 'failing' || row.healthStatus === 'at_risk').length;
+  const pendingCorrectionRequests = correctionRequests.filter(request => request.status === 'pending');
   const missingClassRecords = Math.max(0, regularClasses.length * enrolledStudents.length - classAttendance.filter(record =>
     regularClasses.some(cls => cls.id === record.classId)
   ).length);
@@ -2489,6 +2495,34 @@ export function AttendanceView({
 
   const renderDuty = () => (
     <div className="space-y-4">
+      {pendingCorrectionRequests.length > 0 && (
+        <SectionCard className="p-4">
+          <h3 className="font-semibold text-[#171717]">Pending attendance corrections</h3>
+          <div className="mt-3 space-y-2">
+            {pendingCorrectionRequests.map(request => (
+              <div key={request.id} className="rounded-xl border border-[#e5e5e5] p-3 text-sm">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <p className="font-semibold text-[#171717]">{request.studentName}</p>
+                    <p className="mt-1 text-[#525252]">
+                      {request.title} · {formatDate(request.recordDate)}
+                    </p>
+                    <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                      {request.gate.replace('_', ' ')} · {request.currentStatus ?? 'not marked'} to {request.requestedStatus}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">Approve</button>
+                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">Reject</button>
+                  </div>
+                </div>
+                <p className="mt-3 rounded-lg bg-[#fafafa] px-3 py-2 text-[#525252]">{request.reason}</p>
+              </div>
+            ))}
+          </div>
+        </SectionCard>
+      )}
+
       {pendingTransferRequests.length > 0 && (
         <SectionCard className="p-4">
           <h3 className="font-semibold text-[#171717]">Pending transfers</h3>

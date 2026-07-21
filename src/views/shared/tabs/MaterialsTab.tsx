@@ -16,6 +16,8 @@ import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { formatFileSize } from '../../../utils/formatFileSize';
 import { formatPlatformDate } from '../../../utils/dateUtils';
+import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
+import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
 
 interface MaterialsTabProps {
   classId: number;
@@ -40,6 +42,7 @@ interface MaterialsTabProps {
     subjectSlug: string;
     classSlug: string;
   }) => Promise<boolean>;
+  onCreateGoogleDocMaterial: (params: { title: string }) => Promise<boolean>;
   onMaterialsUploaded: (fileNames: string[]) => Promise<void>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
   selectedCourse: Course;
@@ -67,6 +70,7 @@ export function MaterialsTab({
   onUpdateNote,
   onDeleteNote,
   onUploadFile,
+  onCreateGoogleDocMaterial,
   onMaterialsUploaded,
   onDeleteFile,
   selectedCourse,
@@ -84,6 +88,9 @@ export function MaterialsTab({
   const [editNoteTitle, setEditNoteTitle] = useState('');
   const [editNoteContent, setEditNoteContent] = useState('');
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
+  const [isCreatingDoc, setIsCreatingDoc] = useState(false);
+  const [materialDocTitle, setMaterialDocTitle] = useState('');
+  const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -177,6 +184,17 @@ export function MaterialsTab({
     }
 
     setPendingFiles(remaining);
+  };
+
+  const handleCreateGoogleDoc = async () => {
+    const title = materialDocTitle.trim();
+    if (!title) return;
+    const success = await onCreateGoogleDocMaterial({ title });
+    if (success) {
+      setMaterialDocTitle('');
+      setIsCreatingDoc(false);
+      await onMaterialsUploaded([`${title} (Google Doc)`]);
+    }
   };
 
   const canDeleteFile = (file: ClassFile) =>
@@ -354,6 +372,15 @@ export function MaterialsTab({
                 />
                 <button
                   type="button"
+                  onClick={() => setIsCreatingDoc(true)}
+                  disabled={isBusy}
+                  className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                >
+                  <FileText className="w-4 h-4" />
+                  New Google Doc
+                </button>
+                <button
+                  type="button"
                   onClick={() => fileInputRef.current?.click()}
                   disabled={isBusy}
                   className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
@@ -364,6 +391,49 @@ export function MaterialsTab({
               </div>
             )}
           </div>
+
+          {canManageNotes && isCreatingDoc && (
+            <div className="mb-4 rounded-xl border border-blue-200 bg-blue-50 p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                <div className="min-w-0 flex-1">
+                  <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-blue-700">
+                    Material document
+                  </label>
+                  <input
+                    type="text"
+                    value={materialDocTitle}
+                    onChange={event => setMaterialDocTitle(event.target.value)}
+                    placeholder="Document title"
+                    className="mt-2 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <p className="mt-2 text-xs text-blue-700">
+                    Saved under {getCourseDisplayName(selectedCourse)} / Materials / {selectedSubject.title}.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleCreateGoogleDoc}
+                    disabled={isBusy || !materialDocTitle.trim()}
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
+                  >
+                    Create
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsCreatingDoc(false);
+                      setMaterialDocTitle('');
+                    }}
+                    disabled={isBusy}
+                    className="rounded-lg px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {canManageNotes && pendingFiles.length > 0 && (
             <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 space-y-3">
@@ -443,6 +513,18 @@ export function MaterialsTab({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
+                      {(() => {
+                        const preview = resolveClassFilePreview(file);
+                        return preview ? (
+                          <button
+                            type="button"
+                            onClick={() => setPreviewItem(preview)}
+                            className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
+                          >
+                            Preview
+                          </button>
+                        ) : null;
+                      })()}
                       <button
                         type="button"
                         onClick={() => window.open(file.driveViewUrl, '_blank')}
@@ -470,6 +552,7 @@ export function MaterialsTab({
           )}
         </div>
       </section>
+      <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }

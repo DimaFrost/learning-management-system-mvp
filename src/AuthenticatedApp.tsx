@@ -172,6 +172,7 @@ export function AuthenticatedApp({
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [selectedAdminStudentId, setSelectedAdminStudentId] = useState<string | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
+  const [classworkResetKey, setClassworkResetKey] = useState(0);
   const [sidebarMode, setSidebarMode] = useState<'locked' | 'collapsed'>(() => {
     const storedMode = localStorage.getItem('tbo-sidebar-mode');
     return storedMode === 'collapsed' || storedMode === 'auto-hide' ? 'collapsed' : 'locked';
@@ -245,6 +246,13 @@ export function AuthenticatedApp({
   const hasNoRoles = !currentUser.roles ||
     currentUser.roles.filter(r => r !== 'dev').length === 0;
 
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('google_docs')) {
+      setActiveView('settings');
+    }
+  }, [setActiveView]);
+
   if (hasNoRoles) {
     return (
       <OnboardingScreen
@@ -273,6 +281,12 @@ export function AuthenticatedApp({
   }
 
   const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
+  const handleNavigate = (view: string) => {
+    if (view === 'classwork' || view === 'my-classwork') {
+      setClassworkResetKey(key => key + 1);
+    }
+    setActiveView(view);
+  };
 
   return (
     <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#171717]">
@@ -306,7 +320,7 @@ export function AuthenticatedApp({
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
           activeView={activeView}
-          onNavigate={setActiveView}
+          onNavigate={handleNavigate}
           hasRole={hasRole}
           totalUnread={totalUnread}
           announcementDraftCount={announcementDraftCount}
@@ -324,6 +338,7 @@ export function AuthenticatedApp({
             <AppRouter
               activeView={activeView}
               setActiveView={setActiveView}
+              classworkResetKey={classworkResetKey}
               selectedClassId={selectedClassId}
               previousView={previousView}
               openClassDetail={openClassDetail}

@@ -3,12 +3,13 @@
 # class_files
 
 
-Column count: 10
+Column count: 11
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | id | integer:bigint | yes | no |  | Note:<br>This is a Primary Key.<pk/> |
-| class_id | integer:bigint | yes | no |  | Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
+| class_id | integer:bigint | no | yes |  | Optional session context. Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
+| subject_id | integer:bigint | no | yes |  | Subject-level material owner. Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
 | uploader_id | string:uuid | yes | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
 | file_type | string:text | yes | no |  |  |
 | file_name | string:text | yes | no |  |  |
@@ -24,7 +25,6 @@ Column count: 10
 {
   "required": [
     "id",
-    "class_id",
     "uploader_id",
     "file_type",
     "file_name",
@@ -39,7 +39,12 @@ Column count: 10
       "type": "integer"
     },
     "class_id": {
-      "description": "Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
+      "description": "Optional session context. Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
+      "format": "bigint",
+      "type": "integer"
+    },
+    "subject_id": {
+      "description": "Subject-level material owner. Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
       "format": "bigint",
       "type": "integer"
     },

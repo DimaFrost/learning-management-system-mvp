@@ -243,7 +243,11 @@ export function EditModal({
           await Promise.all(ministryTeams.map(async team => {
             const currentMemberIds = team.members.filter(member => member.active).map(member => member.userId);
             const shouldLead = ledTeamIds.includes(team.id);
-            const currentlyLeads = currentMemberIds.includes(userId);
+            const currentlyLeads = team.members.some(member =>
+              member.userId === userId &&
+              member.active &&
+              (member.role === 'leader' || member.role === 'assistant')
+            );
             if (shouldLead === currentlyLeads) return;
             const nextMemberIds = shouldLead
               ? [...currentMemberIds, userId]

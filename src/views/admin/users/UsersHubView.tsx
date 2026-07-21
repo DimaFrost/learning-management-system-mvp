@@ -2,10 +2,17 @@ import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   ArrowUpDown,
   ArrowUpRight,
+  BadgeCheck,
+  BookOpen,
+  Briefcase,
   Clock3,
   GraduationCap,
+  HeartHandshake,
+  Languages,
   Pencil,
+  Phone,
   Plus,
+  ShieldCheck,
   Trash2,
   X,
   UserCheck,
@@ -117,6 +124,7 @@ function getContributionBadges(row: UserDirectoryRow): Array<{ label: string; to
 }
 
 function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
+  const [leadershipOpen, setLeadershipOpen] = useState(false);
   const badges = getContributionBadges(row);
   const toneClasses: Record<ContributionTone, string> = {
     neutral: 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]',
@@ -132,11 +140,49 @@ function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
 
   return (
     <div className="flex max-w-[18rem] flex-wrap gap-1">
-      {badges.slice(0, 3).map(badge => (
-        <span key={badge.label} className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${toneClasses[badge.tone]}`}>
-          {badge.label}
-        </span>
-      ))}
+      {badges.slice(0, 3).map(badge => {
+        const isLeadership = badge.label === 'Leading' && row.ministryTeams.length > 0;
+        if (isLeadership) {
+          return (
+            <span key={badge.label} className="relative inline-flex">
+              <button
+                type="button"
+                onClick={event => {
+                  event.stopPropagation();
+                  setLeadershipOpen(open => !open);
+                }}
+                className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none transition hover:shadow-sm ${toneClasses[badge.tone]}`}
+              >
+                Leading
+                <span className="rounded-full bg-[#fff7ed] px-1.5 py-0.5 text-[10px] text-[#9a3412] ring-1 ring-[#fed7aa]">
+                  {row.ministryTeams.length}
+                </span>
+              </button>
+              {leadershipOpen && (
+                <div
+                  className="absolute left-0 top-7 z-30 w-56 rounded-xl border border-[#fed7aa] bg-white p-2 text-left shadow-[0_16px_40px_rgba(23,23,23,0.14)]"
+                  onClick={event => event.stopPropagation()}
+                >
+                  <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">Leading ministries</p>
+                  <div className="max-h-44 overflow-y-auto">
+                    {row.ministryTeams.map(team => (
+                      <p key={team} className="rounded-lg px-2 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#fff7ed]">
+                        {team}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </span>
+          );
+        }
+
+        return (
+          <span key={badge.label} className={`inline-flex items-center rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${toneClasses[badge.tone]}`}>
+            {badge.label}
+          </span>
+        );
+      })}
       {badges.length > 3 && (
         <span className="inline-flex items-center rounded-full bg-[#f5f5f5] px-2 py-1 text-[11px] font-semibold leading-none text-[#525252]">
           +{badges.length - 3}
@@ -146,11 +192,16 @@ function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
   );
 }
 
-function DetailLine({ label, value }: { label: string; value: ReactNode }) {
+function DetailLine({ label, value, icon: Icon }: { label: string; value: ReactNode; icon: typeof Users }) {
   return (
-    <div className="rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
-      <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
-      <div className="mt-1 text-sm font-medium text-[#171717]">{value}</div>
+    <div className="flex gap-3 rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
+      <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-white text-[#737373] ring-1 ring-[#eeeeee]">
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <div className="min-w-0">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
+        <div className="mt-1 text-sm font-medium text-[#171717]">{value}</div>
+      </div>
     </div>
   );
 }
@@ -298,17 +349,17 @@ function UserDetailModal({
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <DetailLine label="Access" value={<AccessBadge status={row.access} />} />
-            <DetailLine label="Phone" value={user.phone || <span className="text-[#737373]">Not added</span>} />
-            <DetailLine label="Language" value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
-            <DetailLine label="Roles" value={<RoleBadges roles={row.realRoles} yearGroups={row.courses} />} />
-            <DetailLine label="Year groups" value={row.courses.length > 0 ? (
+            <DetailLine icon={ShieldCheck} label="Access" value={<AccessBadge status={row.access} />} />
+            <DetailLine icon={Phone} label="Phone" value={user.phone || <span className="text-[#737373]">Not added</span>} />
+            <DetailLine icon={Languages} label="Language" value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
+            <DetailLine icon={BadgeCheck} label="Roles" value={<RoleBadges roles={row.realRoles} yearGroups={row.courses} />} />
+            <DetailLine icon={GraduationCap} label="Year groups" value={row.courses.length > 0 ? (
               <div className="flex flex-wrap gap-1">{row.courses.map(course => <ActiveYearGroupBadge key={course.id} course={course} />)}</div>
             ) : <span className="text-[#737373]">None</span>} />
-            <DetailLine label="Mentor" value={row.mentorNames.length > 0 ? row.mentorNames.join(', ') : <span className="text-[#737373]">Not assigned</span>} />
-            <DetailLine label="Mentees" value={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : <span className="text-[#737373]">None</span>} />
-            <DetailLine label="Ministry" value={row.ministryTeams.length > 0 ? row.ministryTeams.join(', ') : <span className="text-[#737373]">None</span>} />
-            <DetailLine label="Staff load" value={`${row.teachingCount} teaching / ${row.translatingCount} translating / ${row.menteeCount} mentees`} />
+            <DetailLine icon={HeartHandshake} label="Mentor" value={row.mentorNames.length > 0 ? row.mentorNames.join(', ') : <span className="text-[#737373]">Not assigned</span>} />
+            <DetailLine icon={Users} label="Mentees" value={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : <span className="text-[#737373]">None</span>} />
+            <DetailLine icon={BookOpen} label="Ministry" value={row.ministryTeams.length > 0 ? row.ministryTeams.join(', ') : <span className="text-[#737373]">None</span>} />
+            <DetailLine icon={Briefcase} label="Staff load" value={`${row.teachingCount} teaching / ${row.translatingCount} translating / ${row.menteeCount} mentees`} />
           </div>
         </div>
 
@@ -553,9 +604,6 @@ function DirectoryPanel({
                         <div className="min-w-0">
                           <p className="font-medium text-[#171717]">{row.user.name}</p>
                           <p className="truncate text-xs text-[#737373]">{row.user.email}</p>
-                          {row.user.phone && (
-                            <p className="text-xs text-[#a3a3a3]">{row.user.phone}</p>
-                          )}
                         </div>
                       </div>
                     </td>

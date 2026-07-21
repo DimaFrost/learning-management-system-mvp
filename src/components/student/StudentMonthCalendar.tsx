@@ -167,7 +167,8 @@ export function StudentMonthCalendar({ events, gateFilter = 'all', onOpenClass }
   const selectedEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : [];
 
   return (
-    <>
+    <div className={`grid gap-4 transition-all ${selectedDate ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'lg:grid-cols-1'}`}>
+      <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-end gap-1.5">
         <span className="hidden items-center gap-1 rounded-full bg-[#dcfce7] px-2 py-1 text-[10px] font-semibold text-[#166534] sm:inline-flex">
           <Check className="h-3 w-3" />
@@ -260,50 +261,39 @@ export function StudentMonthCalendar({ events, gateFilter = 'all', onOpenClass }
           );
         })}
       </div>
+      </div>
 
       {selectedDate && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/35 p-4 sm:items-center">
-          <button
-            type="button"
-            className="absolute inset-0"
-            onClick={() => setSelectedDate(null)}
-            aria-label="Close calendar day"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            className="relative z-10 w-full max-w-lg rounded-2xl border border-[#e5e5e5] bg-white p-5 shadow-xl"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                  {selectedEvents.length} event{selectedEvents.length === 1 ? '' : 's'}
-                </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">
-                  {formatPlatformDate(selectedDate)}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedDate(null)}
-                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
+        <aside className="min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                {selectedEvents.length} event{selectedEvents.length === 1 ? '' : 's'}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-[#171717]">
+                {formatPlatformDate(selectedDate)}
+              </h3>
             </div>
-            <div className="mt-4 space-y-2">
-              {selectedEvents.length === 0 ? (
-                <p className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">No tracked sessions on this day.</p>
-              ) : (
-                selectedEvents.map(event => (
-                  <EventRow key={event.id} event={event} onOpenClass={onOpenClass} />
-                ))
-              )}
-            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
+              aria-label="Close day details"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
-        </div>
+          <div className="mt-4 space-y-2">
+            {selectedEvents.length === 0 ? (
+              <p className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">No tracked sessions on this day.</p>
+            ) : (
+              selectedEvents.map(event => (
+                <EventRow key={event.id} event={event} onOpenClass={onOpenClass} />
+              ))
+            )}
+          </div>
+        </aside>
       )}
-    </>
+    </div>
   );
 }

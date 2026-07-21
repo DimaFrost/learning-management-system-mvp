@@ -28,6 +28,9 @@ export type StudentAttendanceBreakdownRecord = {
   subtitle?: string;
   status: AttendanceStatus | null;
   courseId: number;
+  classId?: number;
+  wellWeekStart?: string;
+  ministrySessionId?: number;
 };
 
 function getDayOfWeek(date: string): number {
@@ -88,6 +91,7 @@ export function buildStudentAttendanceBreakdown({
             subtitle: subject.title,
             status,
             courseId: course.id,
+            classId: cls.id,
           });
           continue;
         }
@@ -102,6 +106,7 @@ export function buildStudentAttendanceBreakdown({
           subtitle: cls.hour === 'first' ? 'First hour' : cls.hour === 'second' ? 'Second hour' : 'Joint session',
           status,
           courseId: course.id,
+          classId: cls.id,
         });
       }
     }
@@ -119,6 +124,7 @@ export function buildStudentAttendanceBreakdown({
             && record.studentId === studentId
         )?.status ?? null,
         courseId: course.id,
+        wellWeekStart: entry.weekStart,
       });
     }
 
@@ -143,6 +149,7 @@ export function buildStudentAttendanceBreakdown({
             record => record.sessionId === session.id && record.studentId === studentId
           )?.status ?? null,
           courseId: course.id,
+          ministrySessionId: session.id,
         });
       }
     }

@@ -12,6 +12,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | announcement_comments | id |
 | announcement_reactions | id |
 | announcements | id |
+| attendance_correction_requests | id |
 | attendance_settings | id |
 | book_reading_assignments | id |
 | book_reading_submissions | id |
@@ -24,6 +25,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | courses | id |
 | duty_schedule | id |
 | duty_transfer_requests | id |
+| google_docs_connections | id |
 | homework_assignments | id |
 | homework_comments | id |
 | homework_submissions | id |
@@ -60,6 +62,11 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | announcement_reactions.user_id | profiles.id |
 | announcements.author_id | profiles.id |
 | announcements.course_id | courses.id |
+| attendance_correction_requests.class_id | classes.id |
+| attendance_correction_requests.course_id | courses.id |
+| attendance_correction_requests.ministry_session_id | ministry_service_sessions.id |
+| attendance_correction_requests.resolved_by | profiles.id |
+| attendance_correction_requests.student_id | profiles.id |
 | book_reading_assignments.assigned_by | profiles.id |
 | book_reading_assignments.book_id | books.id |
 | book_reading_assignments.course_id | courses.id |
@@ -71,6 +78,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | class_attendance.marked_by | profiles.id |
 | class_attendance.student_id | profiles.id |
 | class_files.class_id | classes.id |
+| class_files.subject_id | subjects.id |
 | class_files.uploader_id | profiles.id |
 | class_notes.author_id | profiles.id |
 | class_notes.class_id | classes.id |
@@ -87,8 +95,10 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | duty_transfer_requests.from_student_id | profiles.id |
 | duty_transfer_requests.resolved_by | profiles.id |
 | duty_transfer_requests.to_student_id | profiles.id |
+| google_docs_connections.connected_by | profiles.id |
 | homework_assignments.author_id | profiles.id |
 | homework_assignments.class_id | classes.id |
+| homework_assignments.subject_id | subjects.id |
 | homework_comments.author_id | profiles.id |
 | homework_comments.submission_id | homework_submissions.id |
 | homework_submissions.assignment_id | homework_assignments.id |

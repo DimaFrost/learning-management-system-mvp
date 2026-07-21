@@ -1,11 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, ClipboardList, FileText, MessageCircle, Search, Send, TrendingUp, Users, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowLeft, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, ClipboardList, Clock3, ExternalLink, FileText, MessageCircle, Minus, Plus, Search, Send, TrendingUp, Users, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { BookReadingAssignment, BookReadingSubmission, Class, Course, CourseStudent, HomeworkSubmission, User } from '../../types/lms';
+import type { BookReadingAssignment, BookReadingSubmission, Class, Course, CourseStudent, HomeworkSubmission, Subject, User } from '../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { ReviewReadingModal } from '../admin/BooksView';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { AssignmentComposer, type AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
+import { createHomeworkGoogleDoc } from '../../utils/googleDocsV2';
+import { parseHomeworkInstructions } from '../../utils/homeworkInstructions';
 
 type ClassworkScope = 'admin' | 'teacher' | 'student';
 type ContentFilter = 'all' | 'homework' | 'materials' | 'extras' | 'none';
@@ -18,7 +21,8 @@ type HomeworkRow = {
   description: string | null;
   due_date: string | null;
   max_points: number;
-  class_id: number;
+  class_id: number | null;
+  subject_id: number | null;
 };
 
 type SubjectAttendanceRow = {
@@ -44,7 +48,6 @@ type ClassworkItem = {
   pointsLabel?: string;
   hasMaterials?: boolean;
   homeworkCount?: number;
-  homeworkPointsLabel?: string | null;
   submission?: BookReadingSubmission;
   assignment?: BookReadingAssignment;
 };
@@ -55,6 +58,12 @@ type SubjectRun = {
   subjectTitle: string;
   course: Course | null;
   items: ClassworkItem[];
+};
+
+type HomeworkDetailSelection = {
+  homework: HomeworkRow;
+  session?: ClassworkItem;
+  run: SubjectRun;
 };
 
 interface ClassworkViewProps {
@@ -75,7 +84,10 @@ interface ClassworkViewProps {
   getCourseDisplayName: (course: Course) => string;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onNavigate?: (view: string) => void;
+  resetKey?: number;
 }
+
+const SUBJECTS_PER_PAGE = 6;
 
 function findClass(courses: Course[], classId: number): { cls: Class; course: Course; subjectId: number; subjectTitle: string } | null {
   for (const course of courses) {
@@ -122,7 +134,7 @@ function getStatusTone(status: string) {
 }
 
 function getDueGroup(item: ClassworkItem) {
-  if (item.kind === 'session') return item.dueDate ? 'Session' : 'Session/class';
+  if (item.kind === 'session') return 'Session';
   if (!item.dueDate) return 'No due date';
   const today = new Date();
   today.setHours(0, 0, 0, 0);
@@ -157,6 +169,102 @@ function getHomeworkStatusLabel(status: string) {
   return status.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
+function getSubjectAssignmentStatus(params: {
+  run: SubjectRun;
+  homeworkRows: HomeworkRow[];
+  homeworkSubmissions: HomeworkSubmission[];
+  currentUser: User;
+  scope: ClassworkScope;
+  timelineState: ReturnType<typeof getRunTimelineState>;
+}) {
+  const sessionClassIds = params.run.items
+    .map(item => item.classInfo?.classId)
+    .filter((id): id is number => typeof id === 'number');
+  const assignments = params.homeworkRows.filter(homework =>
+    homework.subject_id === params.run.subjectId ||
+    (homework.class_id != null && sessionClassIds.includes(homework.class_id))
+  );
+
+  if (assignments.length === 0) {
+    return {
+      label: 'No assignments',
+      icon: 'none' as const,
+      textClass: 'text-[#a3a3a3]',
+      title: 'There are no assignments attached to this subject yet.',
+    };
+  }
+
+  const assignmentIds = new Set(assignments.map(homework => homework.id));
+  const submissions = params.homeworkSubmissions.filter(submission => assignmentIds.has(submission.assignmentId));
+
+  if (params.scope === 'student') {
+    if (params.timelineState === 'upcoming') {
+      return {
+        label: 'Upcoming assignments',
+        icon: 'upcoming' as const,
+        textClass: 'text-[#2563eb]',
+        title: 'Assignments are attached, but this subject has not started yet.',
+      };
+    }
+
+    const hasPending = assignments.some(homework => {
+      const submission = submissions.find(item => item.assignmentId === homework.id && item.studentId === params.currentUser.id);
+      return !submission || submission.status === 'draft' || submission.status === 'returned' || submission.status === 'not_started';
+    });
+    if (hasPending) {
+      return {
+        label: 'Action needed',
+        icon: 'action' as const,
+        textClass: 'text-[#b91c1c]',
+        title: 'At least one assignment still needs your attention.',
+      };
+    }
+  }
+
+  const needsStaffReview = submissions.some(submission => submission.status === 'submitted' || submission.status === 'returned');
+  if (needsStaffReview) {
+    return {
+      label: 'Review pending',
+      icon: 'review' as const,
+      textClass: 'text-[#b45309]',
+      title: 'Students have nothing more to do on some work, but staff review or final grading is not complete.',
+    };
+  }
+
+  return {
+    label: 'Complete',
+    icon: 'complete' as const,
+    textClass: 'text-[#047857]',
+    title: 'Assignments are complete on the student and staff side.',
+  };
+}
+
+function SubjectAssignmentStatusIcon({
+  status,
+  collapsed,
+}: {
+  status: ReturnType<typeof getSubjectAssignmentStatus>;
+  collapsed: boolean;
+}) {
+  const className = 'h-4 w-4';
+  const Icon =
+    status.icon === 'complete' ? CheckCircle2 :
+    status.icon === 'review' ? Clock3 :
+    status.icon === 'action' ? AlertTriangle :
+    status.icon === 'upcoming' ? CalendarDays :
+    Minus;
+
+  return (
+    <span
+      title={status.title}
+      aria-label={status.label}
+      className={`inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ${collapsed ? '' : 'border-l border-[#d4d4d4]'} ${status.textClass}`}
+    >
+      <Icon className={className} />
+    </span>
+  );
+}
+
 function getCompactDateParts(dateString: string | null) {
   if (!dateString) return null;
   const date = new Date(dateString);
@@ -165,6 +273,33 @@ function getCompactDateParts(dateString: string | null) {
     day: date.toLocaleDateString(undefined, { day: '2-digit' }),
     month: date.toLocaleDateString(undefined, { month: 'short' }),
   };
+}
+
+function formatDueDateTime(dateString: string | null) {
+  if (!dateString) return 'No due date';
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return 'No due date';
+  return `${formatPlatformDate(dateString)}, ${date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+}
+
+function getDueCountdown(dateString: string | null) {
+  if (!dateString) return 'No due date set';
+  const due = new Date(dateString);
+  if (Number.isNaN(due.getTime())) return 'No due date set';
+  const diffMs = due.getTime() - Date.now();
+  const absMs = Math.abs(diffMs);
+  const totalMinutes = Math.max(0, Math.floor(absMs / 60000));
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const parts = [
+    days > 0 ? `${days}d` : null,
+    hours > 0 || days > 0 ? `${hours}h` : null,
+    `${minutes}m`,
+  ].filter(Boolean);
+  if (diffMs < 0) return `Overdue by ${parts.join(' ')}`;
+  if (totalMinutes === 0) return 'Due now';
+  return `${parts.join(' ')} left`;
 }
 
 function getRunDateRange(run: SubjectRun) {
@@ -176,6 +311,40 @@ function getRunDateRange(run: SubjectRun) {
   const first = formatPlatformDate(dates[0]);
   const last = formatPlatformDate(dates[dates.length - 1]);
   return first === last ? first : `${first} - ${last}`;
+}
+
+function getRunBounds(run: SubjectRun) {
+  const dates = run.items
+    .map(item => item.dueDate)
+    .filter((date): date is string => Boolean(date))
+    .map(date => new Date(date))
+    .filter(date => !Number.isNaN(date.getTime()))
+    .sort((a, b) => a.getTime() - b.getTime());
+  return {
+    first: dates[0] ?? null,
+    last: dates[dates.length - 1] ?? null,
+  };
+}
+
+function getRunTimelineState(run: SubjectRun) {
+  const { first, last } = getRunBounds(run);
+  if (!first || !last) return 'upcoming';
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const start = new Date(first);
+  start.setHours(0, 0, 0, 0);
+  const end = new Date(last);
+  end.setHours(23, 59, 59, 999);
+  if (end.getTime() < today.getTime()) return 'past';
+  if (start.getTime() <= today.getTime() && end.getTime() >= today.getTime()) return 'current';
+  return 'upcoming';
+}
+
+function findDefaultSubjectRunIndex(runs: SubjectRun[]) {
+  const current = runs.findIndex(run => getRunTimelineState(run) === 'current');
+  if (current >= 0) return current;
+  const upcoming = runs.findIndex(run => getRunTimelineState(run) === 'upcoming');
+  return upcoming >= 0 ? upcoming : Math.max(0, runs.length - 1);
 }
 
 function getRunTeachers(run: SubjectRun, courses: Course[], users: User[]) {
@@ -368,10 +537,216 @@ function ReadingDetailModal({
   );
 }
 
+function HomeworkAssignmentDetailPage({
+  selection,
+  scope,
+  currentUser,
+  users,
+  courseStudents,
+  homeworkSubmissions,
+  onBack,
+  onRefresh,
+}: {
+  selection: HomeworkDetailSelection;
+  scope: ClassworkScope;
+  currentUser: User;
+  users: User[];
+  courseStudents: CourseStudent[];
+  homeworkSubmissions: HomeworkSubmission[];
+  onBack: () => void;
+  onRefresh: () => Promise<void>;
+}) {
+  const { homework, session, run } = selection;
+  const parsed = parseHomeworkInstructions(homework.description);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const enrolledStudentIds = run.course
+    ? courseStudents.filter(row => row.courseId === run.course?.id && row.status === 'active').map(row => row.studentId)
+    : [];
+  const submissions = homeworkSubmissions.filter(submission => submission.assignmentId === homework.id);
+  const mySubmission = submissions.find(submission => submission.studentId === currentUser.id);
+  const submittedCount = submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length;
+  const status = scope === 'student' ? (mySubmission?.status ?? 'not_started') : null;
+  const openUrl = mySubmission?.googleDocUrl ?? mySubmission?.driveViewUrl ?? null;
+
+  const createDoc = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await createHomeworkGoogleDoc(homework.id);
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Could not create the Google Doc.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const submitDoc = async () => {
+    if (!mySubmission) return;
+    setSaving(true);
+    setError(null);
+    const { error: submitError } = await supabase
+      .from('homework_submissions')
+      .update({
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', mySubmission.id);
+    if (submitError) {
+      setError('Could not submit the assignment.');
+    } else {
+      await onRefresh();
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div className="space-y-5">
+      <button
+        type="button"
+        onClick={onBack}
+        className="tbo-focus inline-flex h-9 items-center gap-2 border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]"
+      >
+        <ArrowLeft className="h-4 w-4" />
+        Back to {run.subjectTitle}
+      </button>
+
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
+        <main className="min-w-0 space-y-4">
+          <section className="border-y border-[#d4d4d4] bg-white p-5">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Assignment</p>
+                <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{homework.title}</h1>
+                <p className="mt-2 text-sm text-[#737373]">
+                  {run.subjectTitle}{session ? ` · ${session.title}` : ''}
+                </p>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                {run.course ? <ActiveYearGroupBadge course={run.course} size="sm" /> : null}
+                <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#171717] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717]">
+                  <CalendarDays className="h-4 w-4 text-[#737373]" />
+                  {formatDueDateTime(homework.due_date)}
+                </span>
+                {homework.due_date && (
+                  <span className="inline-flex h-9 items-center border-l-2 border-[#ea580c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
+                    {getDueCountdown(homework.due_date)}
+                  </span>
+                )}
+              </div>
+            </div>
+          </section>
+
+          <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+            <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
+              <ClipboardList className="h-4 w-4 text-[#8b5e34]" />
+              Instructions
+            </div>
+            <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
+              {parsed.instructions || 'No instructions were added.'}
+            </p>
+            {parsed.details.resources.length > 0 && (
+              <div className="mt-4 border-t border-[#eee7dc] pt-4">
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">Resources</p>
+                <div className="mt-2 grid gap-2">
+                  {parsed.details.resources.map(resource => (
+                    <a key={resource} href={resource} target="_blank" rel="noreferrer" className="tbo-focus inline-flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
+                      <ExternalLink className="h-4 w-4 text-[#737373]" />
+                      <span className="truncate">{resource}</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+          </section>
+
+          {scope !== 'student' && (
+            <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#171717]">Student work</p>
+                  <p className="mt-1 text-xs text-[#737373]">{submittedCount}/{enrolledStudentIds.length || submissions.length} submitted</p>
+                </div>
+                <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
+                  {homework.max_points ? `${homework.max_points} pts` : 'Completion'}
+                </span>
+              </div>
+              <div className="mt-4 divide-y divide-[#e5e5e5] border-y border-[#d4d4d4]">
+                {enrolledStudentIds.length === 0 ? (
+                  <p className="py-4 text-sm text-[#737373]">No enrolled students.</p>
+                ) : enrolledStudentIds.map(studentId => {
+                  const student = users.find(user => user.id === studentId);
+                  const submission = submissions.find(item => item.studentId === studentId);
+                  const studentStatus = submission?.status ?? 'not_started';
+                  return (
+                    <div key={studentId} className="flex items-center justify-between gap-3 py-3">
+                      <div className="flex min-w-0 items-center gap-2">
+                        {student ? <UserAvatar user={student} size="sm" /> : null}
+                        <span className="min-w-0 truncate text-sm font-semibold text-[#171717]">{student?.name ?? 'Student'}</span>
+                      </div>
+                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(studentStatus)}`}>
+                        {getHomeworkStatusLabel(studentStatus)}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+        </main>
+
+        <aside className="space-y-3">
+          <section className="border-y border-[#d4d4d4] bg-white p-4">
+            <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? 'Your work' : 'Assignment summary'}</p>
+            <div className="mt-3 space-y-2 text-sm text-[#525252]">
+              <div className="flex items-center justify-between gap-2">
+                <span>Status</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(status ?? 'submitted')}`}>
+                  {scope === 'student' ? getHomeworkStatusLabel(status ?? 'not_started') : `${submittedCount} submitted`}
+                </span>
+              </div>
+              <div className="flex items-center justify-between gap-2">
+                <span>Points</span>
+                <span className="font-semibold text-[#171717]">{homework.max_points ? `${homework.max_points} pts` : 'Completion'}</span>
+              </div>
+            </div>
+            {error && <p className="mt-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm font-semibold text-[#b91c1c]">{error}</p>}
+            {scope === 'student' && (
+              <div className="mt-4 grid gap-2">
+                {!mySubmission && (
+                  <button type="button" onClick={createDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50">
+                    <FileText className="h-4 w-4" />
+                    Create school Google Doc
+                  </button>
+                )}
+                {openUrl && (
+                  <button type="button" onClick={() => window.open(openUrl, '_blank')} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
+                    <ExternalLink className="h-4 w-4" />
+                    Open work
+                  </button>
+                )}
+                {mySubmission && mySubmission.status !== 'submitted' && mySubmission.status !== 'graded' && (
+                  <button type="button" onClick={submitDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#047857] px-3 text-sm font-semibold text-white hover:bg-[#065f46] disabled:opacity-50">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Submit
+                  </button>
+                )}
+              </div>
+            )}
+          </section>
+        </aside>
+      </div>
+    </div>
+  );
+}
+
 function SubjectDetailPage({
   run,
+  initialTab,
   onBack,
-  onOpenItem,
+  onOpenAssignment,
   homeworkRows,
   homeworkSubmissions,
   courses,
@@ -380,10 +755,13 @@ function SubjectDetailPage({
   currentUser,
   scope,
   onNavigate,
+  onCreateAssignment,
+  assignmentSaving,
 }: {
   run: SubjectRun;
+  initialTab?: SubjectTab;
   onBack: () => void;
-  onOpenItem: (item: ClassworkItem) => void;
+  onOpenAssignment: (homework: HomeworkRow, session?: ClassworkItem) => void;
   homeworkRows: HomeworkRow[];
   homeworkSubmissions: HomeworkSubmission[];
   courses: Course[];
@@ -392,24 +770,35 @@ function SubjectDetailPage({
   currentUser: User;
   scope: ClassworkScope;
   onNavigate?: (view: string) => void;
+  onCreateAssignment: (subjectId: number, classId: number | null, data: AssignmentComposerPayload) => Promise<void>;
+  assignmentSaving: boolean;
 }) {
-  const [activeTab, setActiveTab] = useState<SubjectTab>('sessions');
+  const [activeTab, setActiveTab] = useState<SubjectTab>(initialTab ?? 'sessions');
   const [attendanceRows, setAttendanceRows] = useState<SubjectAttendanceRow[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [assignmentSessionPickerOpen, setAssignmentSessionPickerOpen] = useState(false);
+  const [composerItem, setComposerItem] = useState<ClassworkItem | null>(null);
   const sessionItems = run.items.filter(item => item.classInfo);
   const materials = run.items.filter(hasSessionMaterials);
   const sessionClassIds = sessionItems
     .map(item => item.classInfo?.classId)
     .filter((id): id is number => typeof id === 'number');
   const homeworkItems = homeworkRows
-    .filter(homework => sessionClassIds.includes(homework.class_id))
+    .filter(homework => homework.subject_id === run.subjectId || (homework.class_id != null && sessionClassIds.includes(homework.class_id)))
     .map(homework => {
-      const session = sessionItems.find(item => item.classInfo?.classId === homework.class_id);
+      const session = homework.class_id == null ? undefined : sessionItems.find(item => item.classInfo?.classId === homework.class_id);
       const submissions = homeworkSubmissions.filter(submission => submission.assignmentId === homework.id);
       const mySubmission = submissions.find(submission => submission.studentId === currentUser.id);
       return { homework, session, submissions, mySubmission };
     });
   const runTeachers = getRunTeachers(run, courses, users);
+  const canCreateHomework = scope !== 'student' && sessionItems.length > 0;
+  const composerClassContext = composerItem?.classInfo
+    ? findClass(courses, composerItem.classInfo.classId)
+    : null;
+  const composerSubject = composerClassContext && run.course
+    ? run.course.subjects.find(subject => subject.id === composerClassContext.subjectId) ?? null
+    : null;
   const enrolledStudentIds = run.course
     ? courseStudents
       .filter(row => row.courseId === run.course?.id && row.status === 'active')
@@ -457,6 +846,14 @@ function SubjectDetailPage({
       : null,
     !nextSession ? 'No upcoming session is scheduled' : null,
   ].filter((item): item is string => Boolean(item));
+  const openSessionHomework = (item: ClassworkItem) => {
+    const attached = homeworkItems.filter(({ homework }) => homework.class_id === item.classInfo?.classId);
+    if (attached.length === 1) {
+      onOpenAssignment(attached[0].homework, item);
+      return;
+    }
+    setActiveTab('homework');
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -494,6 +891,35 @@ function SubjectDetailPage({
     { id: 'attendance', label: 'Attendance', count: attendanceMarked, icon: CheckCircle2 },
   ];
 
+  const openAssignmentComposer = () => {
+    setComposerItem(sessionItems[0] ?? null);
+    setAssignmentSessionPickerOpen(false);
+  };
+
+  useEffect(() => {
+    setActiveTab(initialTab ?? 'sessions');
+  }, [initialTab, run.key]);
+
+  if (composerItem && composerClassContext && composerSubject && composerClassContext.course) {
+    return (
+      <AssignmentComposer
+        editingAssignment={null}
+        selectedClass={composerClassContext.cls}
+        selectedSubject={composerSubject as Subject}
+        selectedCourse={composerClassContext.course}
+        studentCount={enrolledStudentIds.length}
+        saving={assignmentSaving}
+        backLabel="Subject homework"
+        onCancel={() => setComposerItem(null)}
+        onSubmit={async data => {
+          await onCreateAssignment(composerSubject.id, null, data);
+          setComposerItem(null);
+          setActiveTab('homework');
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="border-l-2 border-[#171717] pl-4">
@@ -515,28 +941,30 @@ function SubjectDetailPage({
             {run.course ? <ActiveYearGroupBadge course={run.course} size="sm" /> : null}
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               {nextSession && (
-                <button
-                  type="button"
-                  onClick={() => onOpenItem(nextSession)}
-                  className="tbo-focus inline-flex h-9 max-w-[260px] items-center gap-2 border-l-2 border-[#171717] bg-white px-3 text-sm font-semibold text-[#171717] ring-1 ring-[#e5e5e5] hover:bg-[#f5f5f5]"
+                <span
+                  className="inline-flex h-9 max-w-[260px] items-center gap-2 border-l-2 border-[#171717] bg-white px-3 text-sm font-semibold text-[#171717] ring-1 ring-[#e5e5e5]"
                   title={`${nextSession.title}${nextSession.dueDate ? ` · ${formatPlatformDate(nextSession.dueDate)}` : ''}`}
                 >
                   <CalendarDays className="h-4 w-4 flex-shrink-0 text-[#737373]" />
                   <span className="truncate">{nextSession.title}</span>
-                </button>
+                </span>
               )}
-              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
+              <button type="button" onClick={() => setActiveTab('sessions')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]">
                 <span className="text-lg leading-none">{sessionItems.length}</span>
                 Sessions
-              </span>
-              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
+              </button>
+              <button type="button" onClick={() => setActiveTab('homework')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857] hover:bg-[#d1fae5]">
                 <span className="text-lg leading-none">{homeworkItems.length}</span>
                 Homework
-              </span>
-              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
+              </button>
+              <button type="button" onClick={() => setActiveTab('materials')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
+                <span className="text-lg leading-none">{materials.length}</span>
+                Materials
+              </button>
+              <button type="button" onClick={() => setActiveTab('attendance')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#7c3aed] bg-[#f5f3ff] px-3 text-sm font-semibold text-[#6d28d9] hover:bg-[#ede9fe]">
                 <span className="text-lg leading-none">{attendanceMarked ? `${attendancePercent}%` : '-'}</span>
                 Attendance
-              </span>
+              </button>
             </div>
           </div>
         </div>
@@ -565,7 +993,53 @@ function SubjectDetailPage({
                 </button>
               );
             })}
+            {canCreateHomework && (
+              <button
+                type="button"
+                onClick={openAssignmentComposer}
+                className="tbo-focus ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626]"
+              >
+                <Plus className="h-4 w-4" />
+                Add assignment
+              </button>
+            )}
           </div>
+
+          {assignmentSessionPickerOpen && (
+            <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <p className="text-sm font-semibold text-[#172554]">Choose an optional session context</p>
+                  <p className="mt-1 text-xs text-[#1e40af]">Assignments appear under the subject. Pick a session only when the work clearly belongs to one class meeting.</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setAssignmentSessionPickerOpen(false)}
+                  className="rounded-lg border border-[#bfdbfe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]"
+                >
+                  Close
+                </button>
+              </div>
+              <div className="mt-3 grid gap-2 md:grid-cols-2">
+                {sessionItems.map(item => (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => {
+                      setComposerItem(item);
+                      setAssignmentSessionPickerOpen(false);
+                    }}
+                    className="tbo-focus rounded-xl border border-[#bfdbfe] bg-white px-3 py-3 text-left hover:bg-[#f8fbff]"
+                  >
+                    <span className="block truncate text-sm font-semibold text-[#171717]">{item.title}</span>
+                    <span className="mt-1 block text-xs font-medium text-[#737373]">
+                      {item.dueDate ? formatPlatformDate(item.dueDate) : 'No date'}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {activeTab === 'sessions' && (
             <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
@@ -584,11 +1058,9 @@ function SubjectDetailPage({
                   ? users.find(user => user.id === findClass(courses, item.classInfo!.classId)?.cls.teacherId)
                   : null;
                 return (
-                  <button
+                  <div
                     key={item.id}
-                    type="button"
-                    onClick={() => onOpenItem(item)}
-                    className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa] md:grid-cols-[72px_28px_minmax(0,1fr)_auto_auto]"
+                    className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left md:grid-cols-[72px_28px_minmax(0,1fr)_auto_auto]"
                   >
                     <span>
                       {compactDate ? (
@@ -613,14 +1085,30 @@ function SubjectDetailPage({
                       <span className="block truncate text-sm font-semibold text-[#171717]">{item.title}</span>
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373]">
                         <span className="font-semibold capitalize text-[#525252]">{timelineState}</span>
-                        {hasSessionMaterials(item) && <span className="inline-flex items-center gap-1 font-semibold text-[#c2410c]"><FileText className="h-3.5 w-3.5" />Materials</span>}
-                        {hasSessionHomework(item) && <span className="inline-flex items-center gap-1 font-semibold text-[#1d4ed8]"><BookOpen className="h-3.5 w-3.5" />{item.homeworkCount} homework</span>}
+                        {hasSessionMaterials(item) && (
+                          <button
+                            type="button"
+                            onClick={() => setActiveTab('materials')}
+                            className="tbo-focus inline-flex items-center gap-1 font-semibold text-[#c2410c] hover:text-[#9a3412]"
+                          >
+                            <FileText className="h-3.5 w-3.5" />Materials
+                          </button>
+                        )}
+                        {hasSessionHomework(item) && (
+                          <button
+                            type="button"
+                            onClick={() => openSessionHomework(item)}
+                            className="tbo-focus inline-flex items-center gap-1 font-semibold text-[#1d4ed8] hover:text-[#1e40af]"
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />{item.homeworkCount} homework
+                          </button>
+                        )}
                         {!hasSessionMaterials(item) && !hasSessionHomework(item) && <span>No extras attached</span>}
                       </span>
                     </span>
                     <span className="hidden md:block">{teacher ? <UserAvatar user={teacher} size="sm" /> : null}</span>
-                    <span className="text-xs font-semibold text-[#171717]">Open</span>
-                  </button>
+                    <span className="text-xs font-semibold text-[#737373]">Session</span>
+                  </div>
                 );
               })}
             </div>
@@ -638,7 +1126,7 @@ function SubjectDetailPage({
                 <button
                   key={homework.id}
                   type="button"
-                  onClick={() => session && onOpenItem(session)}
+                  onClick={() => onOpenAssignment(homework, session)}
                   className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa] md:grid-cols-[28px_minmax(0,1fr)_160px_80px]"
                 >
                   <BookOpen className="h-4 w-4 text-[#1d4ed8]" />
@@ -655,7 +1143,6 @@ function SubjectDetailPage({
                     }`}>
                       {scope === 'student' ? getHomeworkStatusLabel(status) : status}
                     </span>
-                    {homework.max_points ? `${homework.max_points} pts` : 'Completion'}
                   </span>
                 </button>
               );
@@ -671,7 +1158,7 @@ function SubjectDetailPage({
                 <button
                   key={item.id}
                   type="button"
-                  onClick={() => onOpenItem(item)}
+                  onClick={() => setActiveTab('sessions')}
                   className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa] md:grid-cols-[28px_minmax(0,1fr)_120px]"
                 >
                   <FileText className="h-4 w-4 text-[#c2410c]" />
@@ -679,7 +1166,7 @@ function SubjectDetailPage({
                     <span className="block truncate text-sm font-semibold text-[#171717]">Session materials</span>
                     <span className="mt-1 block truncate text-xs text-[#737373]">Attached to {item.title}</span>
                   </span>
-                  <span className="text-xs font-semibold text-[#171717]">Open session</span>
+                  <span className="text-xs font-semibold text-[#171717]">Show sessions</span>
                 </button>
               ))}
             </div>
@@ -809,6 +1296,7 @@ export function ClassworkView({
   getCourseDisplayName,
   onOpenClass,
   onNavigate,
+  resetKey = 0,
 }: ClassworkViewProps) {
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
@@ -819,6 +1307,11 @@ export function ClassworkView({
   const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
   const [detailAssignment, setDetailAssignment] = useState<BookReadingAssignment | null>(null);
   const [selectedSubjectRun, setSelectedSubjectRun] = useState<SubjectRun | null>(null);
+  const [selectedSubjectInitialTab, setSelectedSubjectInitialTab] = useState<SubjectTab>('sessions');
+  const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [subjectPage, setSubjectPage] = useState(0);
+  const [manuallyToggledRuns, setManuallyToggledRuns] = useState<Set<string>>(new Set());
 
   const scopedCourseIds = useMemo(
     () => getScopedCourseIds(scope, currentUser, courses, courseStudents),
@@ -837,19 +1330,30 @@ export function ClassworkView({
     return Array.from(ids);
   }, [courses, currentUser.id, scope, scopedCourseIds]);
 
+  const scopedSubjectIds = useMemo(() => {
+    const ids = new Set<number>();
+    courses.filter(course => scopedCourseIds.includes(course.id)).forEach(course => {
+      course.subjects.forEach(subject => {
+        if (scope === 'teacher' && !subject.classes.some(cls => cls.teacherId === currentUser.id)) return;
+        ids.add(subject.id);
+      });
+    });
+    return Array.from(ids);
+  }, [courses, currentUser.id, scope, scopedCourseIds]);
+
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
       setLoadingHomework(true);
-      if (scopedClassIds.length === 0) {
+      if (scopedSubjectIds.length === 0) {
         setHomeworkRows([]);
         setLoadingHomework(false);
         return;
       }
       const { data, error } = await supabase
         .from('homework_assignments')
-        .select('id, title, description, due_date, max_points, class_id')
-        .in('class_id', scopedClassIds)
+        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .in('subject_id', scopedSubjectIds)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (cancelled) return;
       if (error) {
@@ -862,60 +1366,84 @@ export function ClassworkView({
     };
     void load();
     return () => { cancelled = true; };
-  }, [scopedClassIds]);
+  }, [scopedSubjectIds]);
+
+  const loadHomeworkSubmissions = useCallback(async () => {
+    const assignmentIds = homeworkRows.map(homework => homework.id);
+    if (assignmentIds.length === 0) {
+      setHomeworkSubmissions([]);
+      return;
+    }
+    let query = supabase
+      .from('homework_submissions')
+      .select(`
+        id, assignment_id, student_id, submission_type, drive_file_id,
+        drive_view_url, file_name, google_doc_id, google_doc_url,
+        status, submitted_at, points, grade_comment, graded_at,
+        graded_by, created_at, updated_at,
+        student:profiles!student_id(id, name)
+      `)
+      .in('assignment_id', assignmentIds);
+    if (scope === 'student') {
+      query = query.eq('student_id', currentUser.id);
+    }
+    const { data, error } = await query;
+    if (error) {
+      console.error('Failed to load classwork homework submissions', error);
+      setHomeworkSubmissions([]);
+    } else {
+      setHomeworkSubmissions((data ?? []).map(row => ({
+        id: row.id,
+        assignmentId: row.assignment_id,
+        studentId: row.student_id,
+        studentName: row.student?.name ?? 'Unknown',
+        submissionType: row.submission_type,
+        driveFileId: row.drive_file_id,
+        driveViewUrl: row.drive_view_url,
+        fileName: row.file_name,
+        googleDocId: row.google_doc_id,
+        googleDocUrl: row.google_doc_url,
+        status: row.status,
+        submittedAt: row.submitted_at,
+        points: row.points,
+        gradeComment: row.grade_comment,
+        gradedAt: row.graded_at,
+        gradedBy: row.graded_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+      })) as HomeworkSubmission[]);
+    }
+  }, [currentUser.id, homeworkRows, scope]);
 
   useEffect(() => {
-    let cancelled = false;
-    const loadSubmissions = async () => {
-      const assignmentIds = homeworkRows.map(homework => homework.id);
-      if (assignmentIds.length === 0) {
-        setHomeworkSubmissions([]);
-        return;
+    void loadHomeworkSubmissions();
+  }, [loadHomeworkSubmissions]);
+
+  const createSubjectAssignment = async (subjectId: number, classId: number | null, data: AssignmentComposerPayload) => {
+    setAssignmentSaving(true);
+    try {
+      const { data: inserted, error } = await supabase
+        .from('homework_assignments')
+        .insert({
+          class_id: classId,
+          subject_id: subjectId,
+          author_id: currentUser.id,
+          title: data.title,
+          description: data.description,
+          due_date: data.dueDate,
+          max_points: data.maxPoints,
+        })
+        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .single();
+
+      if (error) throw error;
+      if (inserted) {
+        setHomeworkRows(prev => [inserted as HomeworkRow, ...prev]);
       }
-      let query = supabase
-        .from('homework_submissions')
-        .select(`
-          id, assignment_id, student_id, submission_type, drive_file_id,
-          drive_view_url, file_name, google_doc_id, google_doc_url,
-          status, submitted_at, points, grade_comment, graded_at,
-          graded_by, created_at, updated_at,
-          student:profiles!student_id(id, name)
-        `)
-        .in('assignment_id', assignmentIds);
-      if (scope === 'student') {
-        query = query.eq('student_id', currentUser.id);
-      }
-      const { data, error } = await query;
-      if (cancelled) return;
-      if (error) {
-        console.error('Failed to load classwork homework submissions', error);
-        setHomeworkSubmissions([]);
-      } else {
-        setHomeworkSubmissions((data ?? []).map(row => ({
-          id: row.id,
-          assignmentId: row.assignment_id,
-          studentId: row.student_id,
-          studentName: row.student?.name ?? 'Unknown',
-          submissionType: row.submission_type,
-          driveFileId: row.drive_file_id,
-          driveViewUrl: row.drive_view_url,
-          fileName: row.file_name,
-          googleDocId: row.google_doc_id,
-          googleDocUrl: row.google_doc_url,
-          status: row.status,
-          submittedAt: row.submitted_at,
-          points: row.points,
-          gradeComment: row.grade_comment,
-          gradedAt: row.graded_at,
-          gradedBy: row.graded_by,
-          createdAt: row.created_at,
-          updatedAt: row.updated_at,
-        })) as HomeworkSubmission[]);
-      }
-    };
-    void loadSubmissions();
-    return () => { cancelled = true; };
-  }, [currentUser.id, homeworkRows, scope]);
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
 
   const items = useMemo(() => {
     const rows: ClassworkItem[] = [];
@@ -925,7 +1453,6 @@ export function ClassworkView({
         subject.classes.forEach(cls => {
           if (scope === 'teacher' && cls.teacherId !== currentUser.id) return;
           const classHomework = homeworkRows.filter(homework => homework.class_id === cls.id);
-          const totalPoints = classHomework.reduce((sum, homework) => sum + (homework.max_points ?? 0), 0);
           rows.push({
             id: `session-${cls.id}`,
             kind: 'session',
@@ -937,11 +1464,10 @@ export function ClassworkView({
             subjectId: subject.id,
             subjectTitle: subject.title,
             classInfo: { classId: cls.id, subjectId: subject.id, courseId: course.id },
-            status: 'Session/class',
+            status: 'Session',
             pointsLabel: null,
             hasMaterials: Boolean(cls.materialsFolderId),
             homeworkCount: classHomework.length,
-            homeworkPointsLabel: classHomework.length > 0 ? `${totalPoints} pts` : null,
           });
         });
       });
@@ -993,34 +1519,84 @@ export function ClassworkView({
       .sort((a, b) => (a.dueDate ?? '9999-99-99').localeCompare(b.dueDate ?? '9999-99-99') || a.title.localeCompare(b.title));
   }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, query, scope, scopedCourseIds]);
   const stats = {
-    homework: items.filter(hasSessionHomework).length,
+    homework: homeworkRows.length,
     reading: items.filter(item => item.kind === 'reading').length,
     materials: items.filter(hasSessionMaterials).length,
     sessions: items.filter(item => item.kind === 'session').length,
   };
   const subjectRuns = buildSubjectRuns(items);
+  const totalSubjectPages = Math.max(1, Math.ceil(subjectRuns.length / SUBJECTS_PER_PAGE));
+  const currentSubjectPage = Math.min(subjectPage, totalSubjectPages - 1);
+  const pagedSubjectRuns = subjectRuns.slice(
+    currentSubjectPage * SUBJECTS_PER_PAGE,
+    currentSubjectPage * SUBJECTS_PER_PAGE + SUBJECTS_PER_PAGE
+  );
 
   const loading = loadingHomework || booksLoading;
   const title = scope === 'student' ? 'My Classwork' : 'Classwork';
 
+  useEffect(() => {
+    setSelectedSubjectRun(null);
+    setSelectedHomeworkDetail(null);
+    setDetailAssignment(null);
+    setReviewAssignment(null);
+  }, [resetKey]);
+
+  useEffect(() => {
+    if (subjectRuns.length === 0) {
+      setSubjectPage(0);
+      return;
+    }
+    const targetIndex = findDefaultSubjectRunIndex(subjectRuns);
+    setSubjectPage(Math.floor(targetIndex / SUBJECTS_PER_PAGE));
+    setManuallyToggledRuns(new Set());
+  }, [contentFilter, kind, query, resetKey, subjectRuns.length]);
+
+  const isRunCollapsed = (run: SubjectRun) => {
+    const defaultCollapsed = getRunTimelineState(run) === 'past';
+    return manuallyToggledRuns.has(run.key) ? !defaultCollapsed : defaultCollapsed;
+  };
+
+  const toggleRunCollapsed = (run: SubjectRun) => {
+    setManuallyToggledRuns(prev => {
+      const next = new Set(prev);
+      if (next.has(run.key)) next.delete(run.key);
+      else next.add(run.key);
+      return next;
+    });
+  };
+
   const openItem = (item: ClassworkItem) => {
     if (item.kind === 'reading' && item.assignment) {
       setSelectedSubjectRun(null);
+      setSelectedHomeworkDetail(null);
       setDetailAssignment(item.assignment);
       return;
     }
-    if (item.classInfo) {
-      setSelectedSubjectRun(null);
-      onOpenClass(item.classInfo.classId, item.classInfo.subjectId, item.classInfo.courseId);
-    }
   };
+
+  if (selectedHomeworkDetail) {
+    return (
+      <HomeworkAssignmentDetailPage
+        selection={selectedHomeworkDetail}
+        scope={scope}
+        currentUser={currentUser}
+        users={users}
+        courseStudents={courseStudents}
+        homeworkSubmissions={homeworkSubmissions}
+        onBack={() => setSelectedHomeworkDetail(null)}
+        onRefresh={loadHomeworkSubmissions}
+      />
+    );
+  }
 
   if (selectedSubjectRun) {
     return (
       <SubjectDetailPage
         run={selectedSubjectRun}
+        initialTab={selectedSubjectInitialTab}
         onBack={() => setSelectedSubjectRun(null)}
-        onOpenItem={openItem}
+        onOpenAssignment={(homework, session) => setSelectedHomeworkDetail({ homework, session, run: selectedSubjectRun })}
         homeworkRows={homeworkRows}
         homeworkSubmissions={homeworkSubmissions}
         courses={courses}
@@ -1029,6 +1605,8 @@ export function ClassworkView({
         currentUser={currentUser}
         scope={scope}
         onNavigate={onNavigate}
+        onCreateAssignment={createSubjectAssignment}
+        assignmentSaving={assignmentSaving}
       />
     );
   }
@@ -1108,26 +1686,112 @@ export function ClassworkView({
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
-        <div className="space-y-8">
-          {subjectRuns.map(run => {
-            const runTeachers = getRunTeachers(run, courses, users);
-            return (
-            <section key={run.key} className="border-l-2 border-[#171717] pl-4">
-              <div className="mb-3 grid gap-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-end">
+        <div className="space-y-4">
+          {subjectRuns.length > SUBJECTS_PER_PAGE && (
+            <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[#d4d4d4] bg-white px-4 py-3">
+              <div>
+                <p className="text-sm font-semibold text-[#171717]">
+                  Subjects {currentSubjectPage * SUBJECTS_PER_PAGE + 1}-{Math.min(subjectRuns.length, (currentSubjectPage + 1) * SUBJECTS_PER_PAGE)} of {subjectRuns.length}
+                </p>
+                <p className="mt-0.5 text-xs text-[#737373]">Past subjects are compact by default.</p>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedSubjectRun(run)}
-                  className="tbo-focus min-w-0 text-left"
+                  onClick={() => setSubjectPage(page => Math.max(0, page - 1))}
+                  disabled={currentSubjectPage === 0}
+                  className="tbo-focus inline-flex h-9 items-center gap-1 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-40"
                 >
-                  <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
-                    {getRunDateRange(run)}
-                  </span>
-                  <span className="mt-1 block truncate text-xl font-semibold text-[#171717]">
-                    {run.subjectTitle}
-                  </span>
+                  <ArrowLeft className="h-4 w-4" />
+                  Previous
                 </button>
-                <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                  {runTeachers.length > 0 && (
+                <span className="text-xs font-semibold text-[#737373]">{currentSubjectPage + 1}/{totalSubjectPages}</span>
+                <button
+                  type="button"
+                  onClick={() => setSubjectPage(page => Math.min(totalSubjectPages - 1, page + 1))}
+                  disabled={currentSubjectPage >= totalSubjectPages - 1}
+                  className="tbo-focus inline-flex h-9 items-center gap-1 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-40"
+                >
+                  Next
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {pagedSubjectRuns.map(run => {
+            const runTeachers = getRunTeachers(run, courses, users);
+            const runHomeworkCount = homeworkRows.filter(homework => homework.subject_id === run.subjectId).length;
+            const runMaterialsCount = run.items.filter(hasSessionMaterials).length;
+            const runHasHomework = runHomeworkCount > 0;
+            const runHasMaterials = runMaterialsCount > 0;
+            const runGridTemplate = '72px 28px minmax(220px,1fr) 96px 76px 88px 104px';
+            const collapsed = isRunCollapsed(run);
+            const timelineState = getRunTimelineState(run);
+            const assignmentStatus = getSubjectAssignmentStatus({
+              run,
+              homeworkRows,
+              homeworkSubmissions,
+              currentUser,
+              scope,
+              timelineState,
+            });
+            const openSubject = (tab: SubjectTab = 'sessions') => {
+              setSelectedSubjectInitialTab(tab);
+              setSelectedSubjectRun(run);
+            };
+            return (
+            <section key={run.key} className={`border-l-2 pl-4 ${timelineState === 'current' ? 'border-[#16a34a]' : timelineState === 'upcoming' ? 'border-[#171717]' : 'border-[#d4d4d4]'}`}>
+              <div
+                role={collapsed ? 'button' : undefined}
+                tabIndex={collapsed ? 0 : undefined}
+                onClick={collapsed ? () => toggleRunCollapsed(run) : undefined}
+                onKeyDown={collapsed ? event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleRunCollapsed(run);
+                  }
+                } : undefined}
+                className={collapsed
+                  ? 'tbo-focus grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 transition hover:bg-[#fafafa]'
+                  : 'mb-3 grid gap-2 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center'
+                }
+              >
+                <button
+                  type="button"
+                  onClick={() => toggleRunCollapsed(run)}
+                  className={collapsed ? 'hidden' : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'}
+                  aria-label={collapsed ? 'Expand subject' : 'Collapse subject'}
+                >
+                  {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
+                <div className="min-w-0">
+                  <button
+                    type="button"
+                    onClick={event => {
+                      event.stopPropagation();
+                      collapsed ? toggleRunCollapsed(run) : openSubject('sessions');
+                    }}
+                    className={`tbo-focus min-w-0 text-left ${collapsed ? 'flex w-full items-center gap-2' : ''}`}
+                  >
+                    {collapsed && <ChevronRight className="h-4 w-4 flex-none text-[#737373]" />}
+                    <span className={`${collapsed ? 'shrink-0 tracking-[0.14em]' : 'flex flex-wrap items-center gap-2 tracking-[0.18em]'} text-[11px] font-semibold uppercase text-[#737373]`}>
+                      <span>{timelineState === 'current' ? 'Current - ' : timelineState === 'past' ? 'Past - ' : ''}{getRunDateRange(run)}</span>
+                      {!collapsed && run.course ? (
+                        <span className="normal-case tracking-normal">
+                          <ActiveYearGroupBadge course={run.course} size="sm" />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span className={`${collapsed ? 'min-w-0 text-sm' : 'mt-1 block text-xl'} truncate font-semibold text-[#171717]`}>
+                      {run.subjectTitle}
+                    </span>
+                  </button>
+                </div>
+                <div className={collapsed ? 'flex flex-wrap items-center gap-2 md:justify-end' : 'grid items-stretch gap-2 md:grid-cols-[minmax(0,1fr)_44px]'}>
+                  <div className={collapsed ? 'contents' : 'grid gap-1.5'}>
+                    <div className={collapsed ? 'contents' : 'flex flex-wrap items-center justify-end gap-2'}>
+                  {!collapsed && runTeachers.length > 0 && (
                     <span className="flex -space-x-2 pr-1">
                       {runTeachers.slice(0, 5).map(teacher => (
                         <span key={teacher.id} className="grid h-7 w-7 place-items-center overflow-hidden rounded-full bg-[#f5f5f5] text-[10px] font-semibold text-[#525252] ring-2 ring-white">
@@ -1145,25 +1809,74 @@ export function ClassworkView({
                       )}
                     </span>
                   )}
-                  {run.course ? <ActiveYearGroupBadge course={run.course} size="sm" /> : null}
+                    </div>
+                    <div className={collapsed ? 'contents' : 'flex flex-wrap items-center justify-end gap-2'}>
+                  <SubjectAssignmentStatusIcon status={assignmentStatus} collapsed={collapsed} />
+                  {runHasMaterials && (
+                    <button
+                      type="button"
+                      onClick={() => openSubject('materials')}
+                      className="tbo-focus border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#c2410c] hover:text-[#9a3412]"
+                    >
+                      {runMaterialsCount} material{runMaterialsCount === 1 ? '' : 's'}
+                    </button>
+                  )}
+                  {runHasHomework && (
+                    <button
+                      type="button"
+                      onClick={() => openSubject('homework')}
+                      className="tbo-focus border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#1d4ed8] hover:text-[#1e40af]"
+                    >
+                      {runHomeworkCount} assignment{runHomeworkCount === 1 ? '' : 's'}
+                    </button>
+                  )}
                   <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
                     {run.items.length} item{run.items.length === 1 ? '' : 's'}
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedSubjectRun(run)}
-                    className="tbo-focus border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#171717] hover:text-[#2563eb]"
-                  >
-                    Open subject
-                  </button>
+                    </div>
+                  </div>
+                  {!collapsed && (
+                    <button
+                      type="button"
+                      onClick={() => openSubject('sessions')}
+                      title="Open subject"
+                      aria-label="Open subject"
+                      className="tbo-focus grid h-full min-h-[44px] w-11 place-items-center rounded-xl border border-[#d4d4d4] bg-white text-[#171717] hover:bg-[#f5f5f5] hover:text-[#2563eb]"
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               </div>
-              <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+              {!collapsed && <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+                <div
+                  className="-mx-4 hidden w-[calc(100%+2rem)] items-center gap-4 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373] md:grid"
+                  style={{ gridTemplateColumns: runGridTemplate }}
+                >
+                  <span />
+                  <span />
+                  <span />
+                  <span />
+                  <span className="flex justify-center">
+                    {runHasMaterials ? (
+                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c2410c]">Materials</span>
+                    ) : null}
+                  </span>
+                  <span className="flex justify-center">
+                    {runHasHomework ? (
+                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1d4ed8]">Assignments</span>
+                    ) : null}
+                  </span>
+                  <span className="text-right">Teachers</span>
+                </div>
                 {run.items.map(item => {
                   const Icon = item.kind === 'reading' ? BookOpen : CalendarDays;
                   const teacher = item.classInfo
                     ? users.find(user => user.id === findClass(courses, item.classInfo!.classId)?.cls.teacherId)
                     : null;
+                  const attachedHomework = item.classInfo
+                    ? homeworkRows.filter(homework => homework.class_id === item.classInfo?.classId)
+                    : [];
                   const accent =
                     item.kind === 'reading' ? 'text-[#047857]' :
                     hasSessionHomework(item) ? 'text-[#1d4ed8]' :
@@ -1174,14 +1887,15 @@ export function ClassworkView({
                       role="button"
                       tabIndex={0}
                       key={item.id}
-                      onClick={() => openItem(item)}
+                      onClick={() => item.kind === 'reading' ? openItem(item) : openSubject('sessions')}
                       onKeyDown={event => {
                         if (event.key === 'Enter' || event.key === ' ') {
                           event.preventDefault();
-                          openItem(item);
+                          item.kind === 'reading' ? openItem(item) : openSubject('sessions');
                         }
                       }}
-                      className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa] md:grid-cols-[72px_28px_minmax(220px,1fr)_96px_76px_88px_104px]"
+                      className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa]"
+                      style={{ gridTemplateColumns: runGridTemplate }}
                     >
                       <span className="text-left">
                         {compactDate ? (
@@ -1202,30 +1916,39 @@ export function ClassworkView({
                       <span className="text-xs font-semibold capitalize text-[#525252]">
                         {item.status}
                       </span>
-                      <span className="flex items-center gap-1.5 text-xs font-semibold text-[#737373]">
-                        {item.kind === 'session' ? (
-                          <>
-                            {hasSessionMaterials(item) && (
-                              <span title="Materials" className="inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#fff7ed] text-[#c2410c] ring-1 ring-[#fed7aa]">
-                                <FileText className="h-3.5 w-3.5" />
-                              </span>
-                            )}
-                            {hasSessionHomework(item) && (
-                              <span title={`${item.homeworkCount} homework item${item.homeworkCount === 1 ? '' : 's'}`} className="inline-flex h-6 items-center gap-1 rounded-full bg-[#eff6ff] px-2 text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
-                                <BookOpen className="h-3.5 w-3.5" />
-                                {item.homeworkPointsLabel}
-                              </span>
-                            )}
-                            {!hasSessionMaterials(item) && !hasSessionHomework(item) && (
-                              <span className="text-[#d4d4d4]">-</span>
-                            )}
-                          </>
-                        ) : (
-                          item.pointsLabel ?? '-'
-                        )}
+                      <span className="flex justify-center">
+                        {item.kind === 'session' && hasSessionMaterials(item) ? (
+                          <button
+                            type="button"
+                            title="Open materials"
+                            onClick={event => {
+                              event.stopPropagation();
+                              openSubject('materials');
+                            }}
+                            className="tbo-focus inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#fff7ed] text-[#c2410c] ring-1 ring-[#fed7aa] hover:bg-[#ffedd5]"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
                       </span>
-                      <span className="hidden items-center md:flex">
-                        {teacher ? <UserAvatar user={teacher} size="sm" /> : null}
+                      <span className="flex justify-center">
+                        {item.kind === 'session' && hasSessionHomework(item) ? (
+                          <button
+                            type="button"
+                            title={`${item.homeworkCount} assignment${item.homeworkCount === 1 ? '' : 's'}`}
+                            onClick={event => {
+                              event.stopPropagation();
+                              if (attachedHomework.length === 1) {
+                                setSelectedHomeworkDetail({ homework: attachedHomework[0], session: item, run });
+                                return;
+                              }
+                              openSubject('homework');
+                            }}
+                            className="tbo-focus inline-flex h-6 w-6 items-center justify-center rounded-full bg-[#eff6ff] text-[#1d4ed8] ring-1 ring-[#bfdbfe] hover:bg-[#dbeafe]"
+                          >
+                            <BookOpen className="h-3.5 w-3.5" />
+                          </button>
+                        ) : null}
                       </span>
                       <span className="flex items-center justify-end" onClick={event => event.stopPropagation()}>
                         {item.kind === 'reading' ? (
@@ -1248,19 +1971,13 @@ export function ClassworkView({
                             )}
                           </span>
                         ) : item.classInfo ? (
-                          <button
-                            type="button"
-                            onClick={() => item.classInfo && onOpenClass(item.classInfo.classId, item.classInfo.subjectId, item.classInfo.courseId)}
-                            className="rounded-md border border-[#d4d4d4] bg-white px-3 py-1.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5]"
-                          >
-                            Open
-                          </button>
+                          teacher ? <UserAvatar user={teacher} size="sm" /> : null
                         ) : null}
                       </span>
                     </div>
                   );
                 })}
-              </div>
+              </div>}
             </section>
           );
           })}

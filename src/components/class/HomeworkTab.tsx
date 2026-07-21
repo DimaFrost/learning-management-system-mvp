@@ -37,6 +37,7 @@ export function HomeworkTab({
     deleteAssignment,
     submitFile,
     linkGoogleDoc,
+    createSchoolGoogleDoc,
     submitGoogleDoc,
     gradeSubmission,
     returnSubmission,
@@ -65,6 +66,7 @@ export function HomeworkTab({
       onDeleteAssignment={id => deleteAssignment(id, showConfirmation)}
       onSubmitFile={submitFile}
       onLinkGoogleDoc={linkGoogleDoc}
+      onCreateSchoolGoogleDoc={createSchoolGoogleDoc}
       onSubmitGoogleDoc={submitGoogleDoc}
       onGrade={gradeSubmission}
       onReturn={returnSubmission}

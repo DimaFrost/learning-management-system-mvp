@@ -2,6 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type {
   AttendanceSettings,
+  AttendanceCorrectionGate,
+  AttendanceCorrectionRequest,
   AttendanceStatus,
   DutyScheduleEntry,
   PrayerScheduleEntry,
@@ -59,6 +61,13 @@ function profileName(profile: SupabaseProfileJoin | undefined): string {
 function profileValue(profile: SupabaseProfileJoin | undefined) {
   if (!profile) return null;
   return Array.isArray(profile) ? profile[0] ?? null : profile;
+}
+
+function isMissingRelationError(error: { code?: string; message?: string } | null | undefined): boolean {
+  return error?.code === '42P01' ||
+    error?.code === 'PGRST205' ||
+    error?.message?.toLowerCase().includes('could not find the table') === true ||
+    error?.message?.toLowerCase().includes('schema cache') === true;
 }
 
 type AttendanceSettingsRow = {
@@ -193,6 +202,8 @@ export function useAttendance(
   const [wellSchedule, setWellSchedule] = useState<WellScheduleEntry[]>([]);
   const [transferRequests, setTransferRequests] =
     useState<DutyTransferRequest[]>([]);
+  const [correctionRequests, setCorrectionRequests] =
+    useState<AttendanceCorrectionRequest[]>([]);
   const [classAttendance, setClassAttendance] =
     useState<ClassAttendanceRecord[]>([]);
   const [theWellAttendance, setTheWellAttendance] =
@@ -215,7 +226,7 @@ export function useAttendance(
     setLoading(true);
     setError(null);
     try {
-      const [settingsRes, dutyRes, prayerRes, wellScheduleRes, transferRes,
+      const [settingsRes, dutyRes, prayerRes, wellScheduleRes, transferRes, correctionRes,
         classAttRes, wellRes, wellSessionRes, sundayRes,
         ministryTeamsRes, ministryMembersRes, ministryRotationsRes, ministrySessionsRes, ministryAttendanceRes] = await Promise.all([
         supabase.from('attendance_settings').select('*').single(),
@@ -235,6 +246,13 @@ export function useAttendance(
           resolved_at, resolved_by,
           from_student:profiles!from_student_id(id, name),
           to_student:profiles!to_student_id(id, name)
+        `).order('requested_at', { ascending: false }),
+        supabase.from('attendance_correction_requests').select(`
+          id, student_id, course_id, gate, record_date, title,
+          class_id, well_week_start, ministry_session_id,
+          current_status, requested_status, reason, status,
+          requested_at, resolved_at, resolved_by, resolution_note,
+          student:profiles!student_id(id, name)
         `).order('requested_at', { ascending: false }),
         supabase.from('class_attendance').select(`
           id, class_id, student_id, status, marked_by, marked_at,
@@ -272,19 +290,20 @@ export function useAttendance(
         throw settingsRes.error;
       }
       if (dutyRes.error) throw dutyRes.error;
-      if (prayerRes.error && prayerRes.error.code !== '42P01') throw prayerRes.error;
-      if (wellScheduleRes.error && wellScheduleRes.error.code !== '42P01') throw wellScheduleRes.error;
+      if (prayerRes.error && !isMissingRelationError(prayerRes.error)) throw prayerRes.error;
+      if (wellScheduleRes.error && !isMissingRelationError(wellScheduleRes.error)) throw wellScheduleRes.error;
       if (transferRes.error) throw transferRes.error;
+      if (correctionRes.error && !isMissingRelationError(correctionRes.error)) throw correctionRes.error;
       if (classAttRes.error) throw classAttRes.error;
       if (wellRes.error) throw wellRes.error;
       if (wellSessionRes.error) throw wellSessionRes.error;
       if (sundayRes.error) throw sundayRes.error;
       const ministryMissing =
-        ministryTeamsRes.error?.code === '42P01' ||
-        ministryMembersRes.error?.code === '42P01' ||
-        ministryRotationsRes.error?.code === '42P01' ||
-        ministrySessionsRes.error?.code === '42P01' ||
-        ministryAttendanceRes.error?.code === '42P01';
+        isMissingRelationError(ministryTeamsRes.error) ||
+        isMissingRelationError(ministryMembersRes.error) ||
+        isMissingRelationError(ministryRotationsRes.error) ||
+        isMissingRelationError(ministrySessionsRes.error) ||
+        isMissingRelationError(ministryAttendanceRes.error);
       if (!ministryMissing) {
         if (ministryTeamsRes.error) throw ministryTeamsRes.error;
         if (ministryMembersRes.error) throw ministryMembersRes.error;
@@ -307,7 +326,7 @@ export function useAttendance(
         status: row.status,
       })));
 
-      setPrayerSchedule((prayerRes.error?.code === '42P01' ? [] : prayerRes.data ?? []).map(row => {
+      setPrayerSchedule((isMissingRelationError(prayerRes.error) ? [] : prayerRes.data ?? []).map(row => {
         const tuesdayStudent = users.find(user => user.id === row.tuesday_student_id);
         const thursdayStudent = users.find(user => user.id === row.thursday_student_id);
         return {
@@ -321,7 +340,7 @@ export function useAttendance(
         };
       }));
 
-      setWellSchedule((wellScheduleRes.error?.code === '42P01' ? [] : wellScheduleRes.data ?? []).map(row => ({
+      setWellSchedule((isMissingRelationError(wellScheduleRes.error) ? [] : wellScheduleRes.data ?? []).map(row => ({
         id: row.id,
         courseId: row.course_id,
         weekStart: row.week_start,
@@ -342,6 +361,27 @@ export function useAttendance(
         requestedAt: row.requested_at,
         resolvedAt: row.resolved_at,
         resolvedBy: row.resolved_by,
+      })));
+
+      setCorrectionRequests((isMissingRelationError(correctionRes.error) ? [] : correctionRes.data ?? []).map(row => ({
+        id: row.id,
+        studentId: row.student_id,
+        studentName: profileName(row.student),
+        courseId: row.course_id,
+        gate: row.gate,
+        recordDate: row.record_date,
+        title: row.title,
+        classId: row.class_id,
+        wellWeekStart: row.well_week_start,
+        ministrySessionId: row.ministry_session_id,
+        currentStatus: row.current_status,
+        requestedStatus: row.requested_status,
+        reason: row.reason,
+        status: row.status,
+        requestedAt: row.requested_at,
+        resolvedAt: row.resolved_at,
+        resolvedBy: row.resolved_by,
+        resolutionNote: row.resolution_note,
       })));
 
       setClassAttendance((classAttRes.data ?? []).map(row => ({
@@ -725,6 +765,95 @@ export function useAttendance(
         .eq('id', request.dutyScheduleId);
       if (dutyError) throw dutyError;
     }
+
+    await fetchAll();
+  };
+
+  const requestAttendanceCorrection = async (params: {
+    gate: AttendanceCorrectionGate;
+    recordDate: string;
+    title: string;
+    courseId?: number | null;
+    classId?: number | null;
+    wellWeekStart?: string | null;
+    ministrySessionId?: number | null;
+    currentStatus?: AttendanceStatus | null;
+    requestedStatus: AttendanceStatus;
+    reason: string;
+  }): Promise<void> => {
+    const { error: insertError } = await supabase.from('attendance_correction_requests').insert({
+      student_id: currentUser.id,
+      course_id: params.courseId ?? null,
+      gate: params.gate,
+      record_date: params.recordDate,
+      title: params.title,
+      class_id: params.classId ?? null,
+      well_week_start: params.wellWeekStart ?? null,
+      ministry_session_id: params.ministrySessionId ?? null,
+      current_status: params.currentStatus ?? null,
+      requested_status: params.requestedStatus,
+      reason: params.reason,
+    });
+    if (insertError) throw insertError;
+    await fetchAll();
+  };
+
+  const resolveAttendanceCorrection = async (
+    requestId: number,
+    approved: boolean,
+    resolutionNote?: string
+  ): Promise<void> => {
+    const request = correctionRequests.find(item => item.id === requestId);
+    if (!request) return;
+
+    if (approved) {
+      if ((request.gate === 'classes' || request.gate === 'activation') && request.classId) {
+        const { error: classError } = await supabase
+          .from('class_attendance')
+          .upsert({
+            class_id: request.classId,
+            student_id: request.studentId,
+            status: request.requestedStatus,
+            marked_by: currentUser.id,
+            marked_at: new Date().toISOString(),
+          }, { onConflict: 'class_id,student_id' });
+        if (classError) throw classError;
+      } else if (request.gate === 'the_well' && request.courseId && request.wellWeekStart) {
+        const { error: wellError } = await supabase
+          .from('the_well_session_attendance')
+          .upsert({
+            student_id: request.studentId,
+            course_id: request.courseId,
+            week_start: request.wellWeekStart,
+            status: request.requestedStatus,
+            marked_by: currentUser.id,
+            marked_at: new Date().toISOString(),
+          }, { onConflict: 'student_id,course_id,week_start' });
+        if (wellError) throw wellError;
+      } else if (request.gate === 'ministry' && request.ministrySessionId) {
+        const { error: ministryError } = await supabase
+          .from('ministry_service_attendance')
+          .upsert({
+            session_id: request.ministrySessionId,
+            student_id: request.studentId,
+            status: request.requestedStatus,
+            marked_by: currentUser.id,
+            marked_at: new Date().toISOString(),
+          }, { onConflict: 'session_id,student_id' });
+        if (ministryError) throw ministryError;
+      }
+    }
+
+    const { error: updateError } = await supabase
+      .from('attendance_correction_requests')
+      .update({
+        status: approved ? 'approved' : 'rejected',
+        resolved_at: new Date().toISOString(),
+        resolved_by: currentUser.id,
+        resolution_note: resolutionNote ?? null,
+      })
+      .eq('id', requestId);
+    if (updateError) throw updateError;
 
     await fetchAll();
   };
@@ -1276,7 +1405,7 @@ export function useAttendance(
     ministryAttendance, ministryTeams, settings]);
 
   return {
-    settings, dutySchedule, prayerSchedule, wellSchedule, transferRequests,
+    settings, dutySchedule, prayerSchedule, wellSchedule, transferRequests, correctionRequests,
     classAttendance, theWellAttendance, theWellSessionAttendance, sundayAttendance,
     ministryTeams, ministryRotations, ministrySessions, ministryAttendance,
     loading, error,
@@ -1286,6 +1415,7 @@ export function useAttendance(
     generatePrayerScheduleForSchoolYear, updatePrayerAssignment,
     generateWellScheduleForCourse, removeWellScheduleDate,
     requestDutyTransfer, resolveTransferRequest,
+    requestAttendanceCorrection, resolveAttendanceCorrection,
     markClassAttendance, markWellSessionAttendance,
     upsertTheWellAttendance: upsertTheWellAttendanceWithRefetch,
     upsertSundayAttendance, updateSettings,

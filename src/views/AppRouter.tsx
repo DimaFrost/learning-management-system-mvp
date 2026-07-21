@@ -57,6 +57,7 @@ type ShowConfirmation = (
 export interface AppRouterProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  classworkResetKey: number;
   selectedClassId: number | null;
   previousView: string;
   openClassDetail: (classId: number, subjectId: number, courseId: number) => void;
@@ -185,6 +186,7 @@ export interface AppRouterProps {
 export function AppRouter({
   activeView,
   setActiveView,
+  classworkResetKey,
   selectedClassId,
   openClassDetail,
   closeClassDetail,
@@ -312,6 +314,7 @@ export function AppRouter({
     return (
       <SettingsView
         currentUser={currentUser}
+        activeWorkspace={activeWorkspace}
         onProfileUpdated={onProfileUpdated}
       />
     );
@@ -400,6 +403,7 @@ export function AppRouter({
         getCourseDisplayName={getCourseDisplayName}
         onOpenClass={openClassDetail}
         onNavigate={setActiveView}
+        resetKey={classworkResetKey}
       />
     );
   }
@@ -420,6 +424,7 @@ export function AppRouter({
         bookAssignments={scope === 'student' ? books.myAssignments : books.assignments}
         bookSubmissions={scope === 'student' ? books.mySubmissions : books.submissions}
         getCourseSummaries={attendance.getCourseSummaries}
+        onNavigate={setActiveView}
       />
     );
   }
@@ -449,6 +454,8 @@ export function AppRouter({
         ministrySessions={attendance.ministrySessions}
         ministryAttendance={attendance.ministryAttendance}
         ministryTeams={attendance.ministryTeams}
+        correctionRequests={attendance.correctionRequests}
+        onRequestCorrection={attendance.requestAttendanceCorrection}
         loading={attendance.loading}
       />
     );
@@ -462,7 +469,8 @@ export function AppRouter({
         courseStudents={courseStudents}
         ministryTeams={attendance.ministryTeams}
         ministryRotations={attendance.ministryRotations}
-        getCourseDisplayName={getCourseDisplayName}
+        ministrySessions={attendance.ministrySessions}
+        ministryAttendance={attendance.ministryAttendance}
         loading={attendance.loading}
       />
     );
@@ -754,6 +762,7 @@ export function AppRouter({
             prayerSchedule={attendance.prayerSchedule}
             wellSchedule={attendance.wellSchedule}
             pendingTransferRequests={attendance.pendingTransferRequests}
+            correctionRequests={attendance.correctionRequests}
             classAttendance={attendance.classAttendance}
             theWellAttendance={attendance.theWellAttendance}
             sundayAttendance={attendance.sundayAttendance}
@@ -770,6 +779,7 @@ export function AppRouter({
             generateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
             updatePrayerAssignment={attendance.updatePrayerAssignment}
             resolveTransferRequest={attendance.resolveTransferRequest}
+            resolveAttendanceCorrection={attendance.resolveAttendanceCorrection}
             upsertSundayAttendance={attendance.upsertSundayAttendance}
             updateSettings={attendance.updateSettings}
             upsertMinistryTeam={attendance.upsertMinistryTeam}

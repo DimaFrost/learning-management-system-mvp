@@ -1,10 +1,14 @@
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import {
   Plus,
   Pencil,
   Trash,
   ChevronDown,
   ExternalLink,
+  FileText,
+  RefreshCcw,
+  ShieldCheck,
+  Clock3,
 } from 'lucide-react';
 import type {
   HomeworkAssignment,
@@ -19,9 +23,14 @@ import type {
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { formatDueDate, formatPlatformDate } from '../../../utils/dateUtils';
-import { CreateAssignmentModal } from '../../../components/modals/CreateAssignmentModal';
 import { GradeModal } from '../../../components/modals/GradeModal';
 import { SubmissionDetailModal } from '../../../components/modals/SubmissionDetailModal';
+import { AssignmentComposer } from '../../../components/assignments/AssignmentComposer';
+import {
+  getHomeworkGoogleDocStatus,
+  type HomeworkGoogleDocStatus,
+} from '../../../utils/googleDocsV2';
+import { parseHomeworkInstructions } from '../../../utils/homeworkInstructions';
 
 type ShowConfirmation = (
   title: string,
@@ -61,6 +70,7 @@ interface HomeworkTabProps {
     assignmentId: number;
     googleDocUrl: string;
   }) => Promise<void>;
+  onCreateSchoolGoogleDoc: (assignmentId: number) => Promise<void>;
   onSubmitGoogleDoc: (submissionId: number) => Promise<void>;
   onGrade: (params: {
     submissionId: number;
@@ -86,6 +96,118 @@ function formatSubmittedDate(date: string): string {
 
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {
   return submission.driveViewUrl ?? submission.googleDocUrl;
+}
+
+function formatGoogleDocTime(value: string | null) {
+  if (!value) return 'Not available';
+  return new Date(value).toLocaleString(undefined, {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) {
+  const [status, setStatus] = useState<HomeworkGoogleDocStatus | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadStatus = async () => {
+    if (!submission.googleDocId && !submission.googleDocUrl) return;
+    setLoading(true);
+    setError(null);
+    try {
+      setStatus(await getHomeworkGoogleDocStatus(submission.id));
+    } catch (err) {
+      setStatus(null);
+      setError(err instanceof Error ? err.message : 'Could not load Google Doc details.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadStatus();
+  }, [submission.id, submission.googleDocId, submission.googleDocUrl]);
+
+  const owner = status?.owners[0];
+  const lastEditor = status?.lastModifyingUser;
+  const openUrl = status?.url ?? submission.googleDocUrl;
+
+  return (
+    <div className="rounded-2xl border border-[#e5e5e5] bg-[#fbfaf7] p-4">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[#e7dccb] bg-white text-[#8b5e34] shadow-sm">
+            <FileText className="h-5 w-5" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-[#171717]">
+              {status?.name ?? submission.fileName ?? 'School Google Doc'}
+            </p>
+            <p className="mt-1 text-xs text-[#737373]">
+              {loading ? 'Checking Google Drive...' : 'Stored in the school Google Drive'}
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            onClick={loadStatus}
+            disabled={loading}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-[#d6cbbb] bg-white px-3 py-1.5 text-xs font-semibold text-[#6f533b] hover:bg-[#f5f1ea] disabled:opacity-50"
+          >
+            <RefreshCcw className="h-3.5 w-3.5" />
+            Refresh
+          </button>
+          {openUrl && (
+            <button
+              type="button"
+              onClick={() => window.open(openUrl, '_blank')}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#262626]"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              Open
+            </button>
+          )}
+        </div>
+      </div>
+
+      {error ? (
+        <div className="mt-3 rounded-lg border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-xs font-medium text-[#991b1b]">
+          {error}
+        </div>
+      ) : (
+        <div className="mt-4 grid gap-2 md:grid-cols-3">
+          <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">
+              <Clock3 className="h-3.5 w-3.5" />
+              Last edited
+            </p>
+            <p className="mt-1 text-xs font-semibold text-[#171717]">{formatGoogleDocTime(status?.modifiedTime ?? null)}</p>
+            {lastEditor?.name && <p className="mt-0.5 truncate text-[11px] text-[#737373]">by {lastEditor.name}</p>}
+          </div>
+          <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">Owner</p>
+            <p className="mt-1 truncate text-xs font-semibold text-[#171717]">{owner?.name ?? 'School Drive'}</p>
+            {owner?.email && <p className="mt-0.5 truncate text-[11px] text-[#737373]">{owner.email}</p>}
+          </div>
+          <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
+            <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">
+              <ShieldCheck className="h-3.5 w-3.5" />
+              Your access
+            </p>
+            <p className={`mt-1 text-xs font-semibold ${status?.currentUserAccess.hasAccess ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
+              {status?.currentUserAccess.hasAccess ? `Can open${status.currentUserAccess.role ? ` as ${status.currentUserAccess.role}` : ''}` : 'Needs sharing'}
+            </p>
+            <p className="mt-0.5 text-[11px] text-[#737373]">{status?.currentUserAccess.message ?? 'Checking permissions...'}</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
 }
 
 function isSubmittedStatus(status: SubmissionStatus): boolean {
@@ -204,6 +326,7 @@ function StudentAssignmentCard({
   classSlug,
   onSubmitFile,
   onLinkGoogleDoc,
+  onCreateSchoolGoogleDoc,
   onSubmitGoogleDoc,
   onAddComment,
   onDeleteComment,
@@ -217,6 +340,7 @@ function StudentAssignmentCard({
   classSlug: string;
   onSubmitFile: HomeworkTabProps['onSubmitFile'];
   onLinkGoogleDoc: HomeworkTabProps['onLinkGoogleDoc'];
+  onCreateSchoolGoogleDoc: HomeworkTabProps['onCreateSchoolGoogleDoc'];
   onSubmitGoogleDoc: HomeworkTabProps['onSubmitGoogleDoc'];
   onAddComment: HomeworkTabProps['onAddComment'];
   onDeleteComment: HomeworkTabProps['onDeleteComment'];
@@ -225,6 +349,8 @@ function StudentAssignmentCard({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [googleDocUrl, setGoogleDocUrl] = useState('');
   const status: SubmissionStatus = submission?.status ?? 'not_started';
+  const parsedDescription = parseHomeworkInstructions(assignment.description);
+  const submissionLabel = parsedDescription.details.submission ?? 'School Google Doc';
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -280,24 +406,38 @@ function StudentAssignmentCard({
   };
 
   return (
-    <div className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-4">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h3 className="text-lg font-semibold text-gray-900">{assignment.title}</h3>
-          <p className="text-sm text-gray-500 mt-1">
-            Due: {formatDueDate(assignment.dueDate)}
-          </p>
+    <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-sm">
+      <div className="border-b border-[#eee7dc] bg-[#fbfaf7] px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="min-w-0">
+            <h3 className="text-lg font-semibold text-[#171717]">{assignment.title}</h3>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className="rounded-full border border-[#d6cbbb] bg-white px-2.5 py-1 text-xs font-semibold text-[#6f533b]">
+                {submissionLabel}
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap items-center justify-end gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#e5e5e5] bg-white px-3 py-1 text-xs font-semibold text-[#525252]">
+              <Clock3 className="h-3.5 w-3.5 text-[#8b5e34]" />
+              {formatDueDate(assignment.dueDate)}
+            </span>
+            <SubmissionStatusBadge
+              status={status}
+              maxPoints={assignment.maxPoints}
+              points={submission?.points}
+            />
+          </div>
         </div>
-        <SubmissionStatusBadge
-          status={status}
-          maxPoints={assignment.maxPoints}
-          points={submission?.points}
-        />
       </div>
 
-      {assignment.description && (
-        <p className="text-gray-700 whitespace-pre-wrap">{assignment.description}</p>
-      )}
+      <div className="space-y-4 p-5">
+        {parsedDescription.instructions && (
+          <div className="rounded-2xl border border-[#eee7dc] bg-[#fffdf9] p-4">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">Instructions</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{parsedDescription.instructions}</p>
+          </div>
+        )}
 
       {status === 'not_started' && (
         <div className="space-y-3">
@@ -309,6 +449,14 @@ function StudentAssignmentCard({
             onChange={handleFileChange}
           />
           <div className="flex flex-wrap gap-3">
+            <button
+              type="button"
+              onClick={() => onCreateSchoolGoogleDoc(assignment.id)}
+              disabled={saving}
+              className="px-4 py-2 text-sm font-semibold text-white bg-[#2563eb] rounded-lg hover:bg-[#1d4ed8] disabled:opacity-50"
+            >
+              Create school Google Doc
+            </button>
             <button
               type="button"
               onClick={() => fileInputRef.current?.click()}
@@ -324,6 +472,9 @@ function StudentAssignmentCard({
 
       {status === 'draft' && submission && (
         <div className="space-y-3">
+          {submission.submissionType === 'google_doc' && (
+            <GoogleDocInfoPanel submission={submission} />
+          )}
           <p className="text-sm text-gray-600">
             Your document has been linked. Click Submit when you are ready.
           </p>
@@ -351,6 +502,9 @@ function StudentAssignmentCard({
 
       {status === 'submitted' && submission && (
         <>
+          {submission.submissionType === 'google_doc' && (
+            <GoogleDocInfoPanel submission={submission} />
+          )}
           <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
             Submitted on{' '}
             {submission.submittedAt
@@ -377,6 +531,9 @@ function StudentAssignmentCard({
 
       {status === 'graded' && submission && (
         <>
+          {submission.submissionType === 'google_doc' && (
+            <GoogleDocInfoPanel submission={submission} />
+          )}
           <div className="p-4 rounded-lg bg-green-50 border border-green-200">
             <p className="text-3xl font-bold text-green-800">
               {submission.points ?? 0} / {assignment.maxPoints}
@@ -407,6 +564,9 @@ function StudentAssignmentCard({
 
       {status === 'returned' && submission && (
         <>
+          {submission.submissionType === 'google_doc' && (
+            <GoogleDocInfoPanel submission={submission} />
+          )}
           <div className="p-4 rounded-lg bg-orange-50 border border-orange-200 text-sm text-orange-800">
             Your submission has been returned for revision
             {submission.gradeComment && (
@@ -435,6 +595,7 @@ function StudentAssignmentCard({
           {linkDocSection}
         </>
       )}
+      </div>
     </div>
   );
 }
@@ -451,6 +612,7 @@ export function HomeworkTab({
   onDeleteAssignment,
   onSubmitFile,
   onLinkGoogleDoc,
+  onCreateSchoolGoogleDoc,
   onSubmitGoogleDoc,
   onGrade,
   onReturn,
@@ -471,7 +633,7 @@ export function HomeworkTab({
     .toLowerCase().replace(/\s+/g, '-');
   const classSlug = `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`;
 
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
   const [editingAssignment, setEditingAssignment] =
     useState<HomeworkAssignment | null>(null);
   const [expandedAssignments, setExpandedAssignments] = useState<Set<number>>(
@@ -522,6 +684,7 @@ export function HomeworkTab({
     } else {
       await onCreateAssignment(data);
     }
+    setComposerOpen(false);
   };
 
   const openGradeModal = (
@@ -542,6 +705,24 @@ export function HomeworkTab({
   };
 
   if (isTeacherOrAdmin) {
+    if (composerOpen) {
+      return (
+        <AssignmentComposer
+          editingAssignment={editingAssignment}
+          selectedClass={selectedClass}
+          selectedSubject={selectedSubject}
+          selectedCourse={selectedCourse}
+          studentCount={enrolledStudents.length}
+          saving={saving}
+          onCancel={() => {
+            setComposerOpen(false);
+            setEditingAssignment(null);
+          }}
+          onSubmit={handleCreateOrUpdate}
+        />
+      );
+    }
+
     return (
       <div className="space-y-6">
         <div className="flex justify-end">
@@ -549,7 +730,7 @@ export function HomeworkTab({
             type="button"
             onClick={() => {
               setEditingAssignment(null);
-              setCreateModalOpen(true);
+              setComposerOpen(true);
             }}
             disabled={saving}
             className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
@@ -572,6 +753,8 @@ export function HomeworkTab({
             const isExpanded = expandedAssignments.has(assignment.id);
             const canManageAssignment =
               isAdmin || assignment.authorId === currentUser.id;
+            const parsedDescription = parseHomeworkInstructions(assignment.description);
+            const submissionLabel = parsedDescription.details.submission ?? 'School Google Doc';
 
             return (
               <div
@@ -586,6 +769,9 @@ export function HomeworkTab({
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">
                       Due: {formatDueDate(assignment.dueDate)}
                     </span>
+                    <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
+                      {submissionLabel}
+                    </span>
                   </div>
                   {canManageAssignment && (
                     <div className="flex items-center gap-1">
@@ -593,7 +779,7 @@ export function HomeworkTab({
                         type="button"
                         onClick={() => {
                           setEditingAssignment(assignment);
-                          setCreateModalOpen(true);
+                          setComposerOpen(true);
                         }}
                         disabled={saving}
                         className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100"
@@ -614,9 +800,9 @@ export function HomeworkTab({
                   )}
                 </div>
 
-                {assignment.description && (
+                {parsedDescription.instructions && (
                   <p className="text-gray-700 whitespace-pre-wrap">
-                    {assignment.description}
+                    {parsedDescription.instructions}
                   </p>
                 )}
 
@@ -699,16 +885,6 @@ export function HomeworkTab({
           })
         )}
 
-        <CreateAssignmentModal
-          isOpen={createModalOpen}
-          editingAssignment={editingAssignment}
-          onClose={() => {
-            setCreateModalOpen(false);
-            setEditingAssignment(null);
-          }}
-          onSubmit={handleCreateOrUpdate}
-        />
-
         <GradeModal
           submission={gradingSubmission}
           assignment={gradingAssignment}
@@ -761,6 +937,7 @@ export function HomeworkTab({
             classSlug={classSlug}
             onSubmitFile={onSubmitFile}
             onLinkGoogleDoc={onLinkGoogleDoc}
+            onCreateSchoolGoogleDoc={onCreateSchoolGoogleDoc}
             onSubmitGoogleDoc={onSubmitGoogleDoc}
             onAddComment={onAddComment}
             onDeleteComment={onDeleteComment}

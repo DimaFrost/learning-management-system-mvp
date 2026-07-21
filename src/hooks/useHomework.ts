@@ -10,6 +10,7 @@ import type {
 import {
   createAssignmentFolder,
 } from '../utils/driveOperations';
+import { createHomeworkGoogleDoc } from '../utils/googleDocsV2';
 import {
   uploadFileToStorage,
   buildStoragePath,
@@ -70,6 +71,7 @@ export function useHomework(
       setAssignments((aData ?? []).map(row => ({
         id: row.id,
         classId: row.class_id,
+        subjectId: row.subject_id,
         authorId: row.author_id,
         authorName: row.author?.name ?? 'Unknown',
         title: row.title,
@@ -146,6 +148,7 @@ export function useHomework(
         .from('homework_assignments')
         .insert({
           class_id: classId,
+          subject_id: findClassCourseContext(classId, courses)?.subject.id ?? null,
           author_id: currentUser.id,
           title: data.title,
           description: data.description,
@@ -223,15 +226,18 @@ export function useHomework(
     id: number,
     updates: Partial<HomeworkAssignment>
   ) => {
+    const updatePayload: Record<string, unknown> = {
+      updated_at: new Date().toISOString(),
+    };
+    if ('subjectId' in updates) updatePayload.subject_id = updates.subjectId;
+    if ('title' in updates) updatePayload.title = updates.title;
+    if ('description' in updates) updatePayload.description = updates.description;
+    if ('dueDate' in updates) updatePayload.due_date = updates.dueDate;
+    if ('maxPoints' in updates) updatePayload.max_points = updates.maxPoints;
+
     const { error } = await supabase
       .from('homework_assignments')
-      .update({
-        title: updates.title,
-        description: updates.description,
-        due_date: updates.dueDate,
-        max_points: updates.maxPoints,
-        updated_at: new Date().toISOString(),
-      })
+      .update(updatePayload)
       .eq('id', id);
     if (error) { setError('Failed to update assignment'); return; }
     await fetchHomework();
@@ -325,6 +331,20 @@ export function useHomework(
     }
   };
 
+  const createSchoolGoogleDoc = async (assignmentId: number) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await createHomeworkGoogleDoc(assignmentId);
+      await fetchHomework();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to create Google Doc. Please try again.');
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const submitGoogleDoc = async (submissionId: number) => {
     const { error } = await supabase
       .from('homework_submissions')
@@ -398,7 +418,7 @@ export function useHomework(
   return {
     assignments, submissions, loading, saving, error,
     createAssignment, updateAssignment, deleteAssignment,
-    submitFile, linkGoogleDoc, submitGoogleDoc,
+    submitFile, linkGoogleDoc, createSchoolGoogleDoc, submitGoogleDoc,
     gradeSubmission, returnSubmission,
     addComment, deleteComment,
     getSubmission,

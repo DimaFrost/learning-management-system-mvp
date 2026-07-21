@@ -1,4 +1,4 @@
-import { BookOpen, Check, HeartHandshake, Mail, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
+import { BookOpen, Check, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Course, CourseStudent, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
@@ -134,7 +134,11 @@ export function EditUserForm({
     : [];
   const activeMinistryTeams = ministryTeams.filter(team => team.active);
   const ledTeamIds = editedUser
-    ? new Set(activeMinistryTeams.filter(team => team.members.some(member => member.userId === editedUser.id && member.active)).map(team => team.id))
+    ? new Set(activeMinistryTeams.filter(team => team.members.some(member =>
+        member.userId === editedUser.id &&
+        member.active &&
+        (member.role === 'leader' || member.role === 'assistant')
+      )).map(team => team.id))
     : new Set<number>();
   const selectedLedTeams = activeMinistryTeams.filter(team => ledTeamIds.has(team.id));
   const draftYearGroupId = formData.assignedYearGroupId ?? activeEnrollments[0]?.courseId ?? '';
@@ -285,6 +289,20 @@ export function EditUserForm({
               placeholder="Enter email address"
             />
             {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
+          </label>
+
+          <label className="block sm:col-span-2">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+              <Phone className="h-3.5 w-3.5" />
+              Phone
+            </span>
+            <input
+              type="tel"
+              value={formData.phone || ''}
+              onChange={event => onChange('phone', event.target.value)}
+              className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
+              placeholder="Add phone number"
+            />
           </label>
         </div>
       </div>

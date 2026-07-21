@@ -1,4 +1,4 @@
-import type { AnnouncementAttachment } from '../types/lms';
+import type { AnnouncementAttachment, ClassFile } from '../types/lms';
 
 export type FilePreviewMode = 'pdf' | 'image' | 'office' | 'google';
 
@@ -59,6 +59,11 @@ function getGoogleEmbedUrl(
   return linkUrl.replace(/\/edit(\?.*)?$/, '/preview');
 }
 
+function getDrivePreviewUrl(fileId: string | null | undefined): string | null {
+  if (!fileId) return null;
+  return `https://drive.google.com/file/d/${fileId}/preview`;
+}
+
 export function canPreviewInApp(attachment: AnnouncementAttachment): boolean {
   return resolveAnnouncementPreview(attachment) !== null;
 }
@@ -98,7 +103,7 @@ export function resolveAnnouncementPreview(attachment: AnnouncementAttachment): 
     return {
       title,
       url,
-      previewUrl: url,
+      previewUrl: getDrivePreviewUrl(attachment.storagePath) ?? url,
       downloadUrl: url,
       fileName,
       mimeType,
@@ -111,7 +116,7 @@ export function resolveAnnouncementPreview(attachment: AnnouncementAttachment): 
     return {
       title,
       url,
-      previewUrl: url,
+      previewUrl: getDrivePreviewUrl(attachment.storagePath) ?? url,
       downloadUrl: url,
       fileName,
       mimeType,
@@ -124,7 +129,7 @@ export function resolveAnnouncementPreview(attachment: AnnouncementAttachment): 
     return {
       title,
       url,
-      previewUrl: getOfficeEmbedUrl(url),
+      previewUrl: getDrivePreviewUrl(attachment.storagePath) ?? getOfficeEmbedUrl(url),
       downloadUrl: url,
       fileName,
       mimeType,
@@ -134,6 +139,84 @@ export function resolveAnnouncementPreview(attachment: AnnouncementAttachment): 
   }
 
   return null;
+}
+
+export function resolveClassFilePreview(file: ClassFile): FilePreviewItem | null {
+  const url = file.driveViewUrl;
+  const title = file.fileName;
+  const fileName = file.fileName;
+  const mimeType = file.mimeType;
+
+  if (mimeType === 'application/vnd.google-apps.document') {
+    const previewUrl = getGoogleEmbedUrl(url, 'google_doc');
+    if (!previewUrl) return null;
+    return {
+      title,
+      url,
+      previewUrl,
+      downloadUrl: url,
+      fileName,
+      mimeType,
+      mode: 'google',
+      typeLabel: 'Google Doc',
+    };
+  }
+
+  if (isPdf(mimeType, fileName)) {
+    return {
+      title,
+      url,
+      previewUrl: getDrivePreviewUrl(file.storagePath) ?? url,
+      downloadUrl: url,
+      fileName,
+      mimeType,
+      mode: 'pdf',
+      typeLabel: 'PDF',
+    };
+  }
+
+  if (isImage(mimeType, fileName)) {
+    return {
+      title,
+      url,
+      previewUrl: getDrivePreviewUrl(file.storagePath) ?? url,
+      downloadUrl: url,
+      fileName,
+      mimeType,
+      mode: 'image',
+      typeLabel: 'Image',
+    };
+  }
+
+  if (isWordDocument(mimeType, fileName)) {
+    return {
+      title,
+      url,
+      previewUrl: getDrivePreviewUrl(file.storagePath) ?? getOfficeEmbedUrl(url),
+      downloadUrl: url,
+      fileName,
+      mimeType,
+      mode: 'office',
+      typeLabel: 'Word document',
+    };
+  }
+
+  return getDrivePreviewUrl(file.storagePath)
+    ? {
+        title,
+        url,
+        previewUrl: getDrivePreviewUrl(file.storagePath)!,
+        downloadUrl: url,
+        fileName,
+        mimeType,
+        mode: 'google',
+        typeLabel: 'Drive file',
+      }
+    : null;
+}
+
+export function canPreviewClassFile(file: ClassFile): boolean {
+  return resolveClassFilePreview(file) !== null;
 }
 
 export function canPreviewLocalFile(file: File): boolean {

@@ -18,7 +18,7 @@ export function MaterialsNotesTab({
   classContent,
 }: MaterialsNotesTabProps) {
   const materialFiles = classContent.files.filter(f => f.fileType === 'material');
-  const { notes, saving, addNote, updateNote, deleteNote, uploadFile, deleteFile, announceMaterialsUpload } =
+  const { notes, saving, addNote, updateNote, deleteNote, uploadFile, createGoogleDocMaterial, deleteFile, announceMaterialsUpload } =
     classContent;
 
   return (
@@ -32,6 +32,7 @@ export function MaterialsNotesTab({
       onUpdateNote={updateNote}
       onDeleteNote={deleteNote}
       onUploadFile={uploadFile}
+      onCreateGoogleDocMaterial={createGoogleDocMaterial}
       onMaterialsUploaded={announceMaterialsUpload}
       onDeleteFile={deleteFile}
       selectedCourse={selectedCourse}

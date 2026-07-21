@@ -3,10 +3,18 @@ import type { User } from '../../types/lms';
 import { useSettings } from '../../hooks/useSettings';
 import { hasRole } from '../../utils/userUtils';
 import { AvatarCropModal } from '../../components/modals/AvatarCropModal';
-import { Save, Bell, User as UserIcon, Camera } from 'lucide-react';
+import {
+  type GoogleDocsDiagnosticCheck,
+  getGoogleDocsConnectionStatus,
+  startGoogleDocsOAuth,
+  testGoogleDocsSetup,
+} from '../../utils/googleDocsV2';
+import { Save, Bell, User as UserIcon, Camera, FileText, RefreshCcw, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import type { WorkspaceId } from '../../types/workspace';
 
 interface SettingsViewProps {
   currentUser: User;
+  activeWorkspace: WorkspaceId | null;
   onProfileUpdated: () => void;
 }
 
@@ -78,7 +86,7 @@ function NotificationToggle({
   );
 }
 
-export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProps) {
+export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }: SettingsViewProps) {
   const { saving, error, successMessage, updateProfile, updateNotificationPreferences, uploadAvatar, removeAvatar } =
     useSettings(currentUser, onProfileUpdated);
 
@@ -86,13 +94,58 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
   const [lastName, setLastName] = useState(currentUser.lastName);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
   const [filePickError, setFilePickError] = useState<string | null>(null);
+  const [docsConnection, setDocsConnection] = useState<{
+    connected_email: string;
+    updated_at: string;
+  } | null>(null);
+  const [docsMessage, setDocsMessage] = useState<string | null>(null);
+  const [docsError, setDocsError] = useState<string | null>(null);
+  const [docsSaving, setDocsSaving] = useState(false);
+  const [docsTesting, setDocsTesting] = useState(false);
+  const [docsDiagnostics, setDocsDiagnostics] = useState<GoogleDocsDiagnosticCheck[] | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const canEditName = hasRole(currentUser, 'administrator');
+  const canEditProfileName = hasRole(currentUser, 'administrator');
+  const canManageGoogleDocs = activeWorkspace === 'administrator' && hasRole(currentUser, 'administrator');
 
   useEffect(() => {
     setFirstName(currentUser.firstName);
     setLastName(currentUser.lastName);
   }, [currentUser.firstName, currentUser.lastName]);
+
+  useEffect(() => {
+    if (!canManageGoogleDocs) return;
+    const params = new URLSearchParams(window.location.search);
+    const googleDocsStatus = params.get('google_docs');
+    const googleDocsMessage = params.get('google_docs_message');
+
+    if (googleDocsStatus === 'connected') {
+      setDocsMessage(`Google Docs connected${googleDocsMessage ? ` as ${googleDocsMessage}` : ''}.`);
+    } else if (googleDocsStatus === 'error') {
+      setDocsError(googleDocsMessage || 'Google Docs authorization failed.');
+    }
+
+    if (googleDocsStatus) {
+      params.delete('google_docs');
+      params.delete('google_docs_message');
+      const nextUrl = `${window.location.pathname}${params.toString() ? `?${params.toString()}` : ''}${window.location.hash}`;
+      window.history.replaceState({}, '', nextUrl);
+    }
+
+    getGoogleDocsConnectionStatus()
+      .then(result => {
+        const connection = result.connection
+          ? {
+              connected_email: result.connection.connected_email,
+              updated_at: result.connection.updated_at,
+            }
+          : null;
+
+        setDocsConnection(connection);
+      })
+      .catch(() => {
+        setDocsConnection(null);
+      });
+  }, [canManageGoogleDocs]);
 
   const isProfileSuccess =
     successMessage === 'Profile updated.' ||
@@ -105,6 +158,35 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
       ...currentUser.notificationPreferences,
       [key]: !currentUser.notificationPreferences[key],
     });
+  };
+
+  const connectGoogleDocs = async () => {
+    setDocsSaving(true);
+    setDocsError(null);
+    setDocsMessage(null);
+    try {
+      const result = await startGoogleDocsOAuth(window.location.href);
+      window.location.assign(result.authUrl);
+    } catch (err) {
+      setDocsError(err instanceof Error ? err.message : 'Could not start Google Docs authorization.');
+      setDocsSaving(false);
+    }
+  };
+
+  const testGoogleConnection = async () => {
+    setDocsTesting(true);
+    setDocsError(null);
+    setDocsMessage(null);
+    try {
+      const result = await testGoogleDocsSetup();
+      setDocsDiagnostics(result.checks);
+      setDocsMessage(result.ok ? 'Google Docs setup is ready.' : 'Google Docs setup needs attention.');
+    } catch (err) {
+      setDocsDiagnostics(null);
+      setDocsError(err instanceof Error ? err.message : 'Could not test Google Docs setup.');
+    } finally {
+      setDocsTesting(false);
+    }
   };
 
   return (
@@ -138,7 +220,7 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
               type="text"
               value={firstName}
               onChange={e => setFirstName(e.target.value)}
-              disabled={!canEditName}
+              disabled={!canEditProfileName}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
             />
           </div>
@@ -151,13 +233,13 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
               type="text"
               value={lastName}
               onChange={e => setLastName(e.target.value)}
-              disabled={!canEditName}
+              disabled={!canEditProfileName}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed"
             />
           </div>
         </div>
 
-        {!canEditName && (
+        {!canEditProfileName && (
           <p className="text-xs text-gray-500">
             Name can only be changed by an administrator.
           </p>
@@ -237,7 +319,7 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
           </div>
         )}
 
-        {canEditName && (
+        {canEditProfileName && (
           <button
             type="button"
             onClick={() => updateProfile({ firstName, lastName })}
@@ -278,6 +360,112 @@ export function SettingsView({ currentUser, onProfileUpdated }: SettingsViewProp
           </div>
         )}
       </div>
+
+      {canManageGoogleDocs && (
+        <div className="overflow-hidden rounded-2xl border border-[#dbeafe] bg-white shadow-sm">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e0f2fe] bg-[#eff6ff] px-6 py-5">
+            <div className="flex items-start gap-3">
+              <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-[#2563eb] shadow-sm">
+                <FileText className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-[#172554]">Google Docs</h3>
+                <p className="mt-1 max-w-2xl text-sm text-[#1e40af]">
+                  Connect the school Google account used to create assignment documents in the Shared Drive.
+                </p>
+              </div>
+            </div>
+            <div className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
+              Dedicated OAuth
+            </div>
+          </div>
+
+          <div className="space-y-4 px-6 py-5">
+            <div className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-[#e5e7eb] bg-[#fafafa] px-4 py-3">
+              <div className="flex items-center gap-3">
+                <ShieldCheck className={`h-5 w-5 ${docsConnection ? 'text-[#16a34a]' : 'text-[#a3a3a3]'}`} />
+                <div>
+                  <p className="text-sm font-semibold text-[#171717]">
+                    {docsConnection ? docsConnection.connected_email : 'No Google account connected'}
+                  </p>
+                  <p className="text-xs text-[#737373]">
+                    {docsConnection
+                      ? `Last saved ${new Date(docsConnection.updated_at).toLocaleString()}`
+                      : 'Connect the school Google account to create student assignment documents.'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={connectGoogleDocs}
+                  disabled={docsSaving}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#bfdbfe] bg-white px-3 py-2 text-sm font-semibold text-[#1d4ed8] hover:bg-[#eff6ff] disabled:opacity-50"
+                >
+                  <RefreshCcw className="h-4 w-4" />
+                  {docsSaving ? 'Opening Google...' : docsConnection ? 'Reconnect Google' : 'Connect Google'}
+                </button>
+                {docsConnection ? (
+                  <span className="inline-flex items-center gap-2 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-sm font-semibold text-[#15803d]">
+                    <CheckCircle2 className="h-4 w-4" />
+                    Connected
+                  </span>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={testGoogleConnection}
+                  disabled={docsTesting || !docsConnection}
+                  className="inline-flex items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm font-semibold text-[#404040] hover:bg-[#f5f5f5] disabled:opacity-50"
+                >
+                  <ShieldCheck className="h-4 w-4" />
+                  {docsTesting ? 'Testing...' : 'Test setup'}
+                </button>
+              </div>
+            </div>
+
+            {docsDiagnostics && (
+              <div className="grid gap-3 md:grid-cols-3">
+                {docsDiagnostics.map(check => (
+                  <div
+                    key={check.label}
+                    className={`rounded-xl border px-4 py-3 ${
+                      check.ok
+                        ? 'border-[#bbf7d0] bg-[#f0fdf4]'
+                        : 'border-[#fecaca] bg-[#fef2f2]'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <p className={`text-sm font-semibold ${check.ok ? 'text-[#14532d]' : 'text-[#991b1b]'}`}>
+                        {check.label}
+                      </p>
+                      <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
+                        check.ok ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'
+                      }`}>
+                        {check.ok ? 'Ready' : 'Fix'}
+                      </span>
+                    </div>
+                    {check.name && <p className="mt-1 truncate text-xs font-medium text-[#525252]">{check.name}</p>}
+                    <p className={`mt-2 text-xs leading-5 ${check.ok ? 'text-[#166534]' : 'text-[#991b1b]'}`}>
+                      {check.message}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {docsError && (
+              <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {docsError}
+              </div>
+            )}
+            {docsMessage && (
+              <div className="rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-700">
+                {docsMessage}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {pendingFile && (
         <AvatarCropModal

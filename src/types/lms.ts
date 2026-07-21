@@ -215,7 +215,8 @@ export interface ClassNote {
 
 export interface ClassFile {
   id: number;
-  classId: number;
+  classId: number | null;
+  subjectId: number | null;
   uploaderId: string;
   uploaderName: string;
   fileType: 'material' | 'homework' | 'teacher_note' | 'translator_note';
@@ -246,7 +247,8 @@ export interface SubjectNote {
 
 export interface HomeworkAssignment {
   id: number;
-  classId: number;
+  classId: number | null;
+  subjectId: number | null;
   authorId: string;
   authorName: string;
   title: string;
@@ -441,6 +443,8 @@ export interface AttendanceSettings {
 
 export type AttendanceStatus = 'present' | 'late' | 'absent';
 export type DutyTransferStatus = 'pending' | 'approved' | 'rejected';
+export type AttendanceCorrectionGate = 'classes' | 'the_well' | 'activation' | 'ministry';
+export type AttendanceCorrectionStatus = 'pending' | 'approved' | 'rejected';
 
 export interface DutyScheduleEntry {
   id: number;
@@ -488,6 +492,27 @@ export interface DutyTransferRequest {
   requestedAt: string;
   resolvedAt: string | null;
   resolvedBy: string | null;
+}
+
+export interface AttendanceCorrectionRequest {
+  id: number;
+  studentId: string;
+  studentName: string;
+  courseId: number | null;
+  gate: AttendanceCorrectionGate;
+  recordDate: string;
+  title: string;
+  classId: number | null;
+  wellWeekStart: string | null;
+  ministrySessionId: number | null;
+  currentStatus: AttendanceStatus | null;
+  requestedStatus: AttendanceStatus;
+  reason: string;
+  status: AttendanceCorrectionStatus;
+  requestedAt: string;
+  resolvedAt: string | null;
+  resolvedBy: string | null;
+  resolutionNote: string | null;
 }
 
 export interface ClassAttendanceRecord {

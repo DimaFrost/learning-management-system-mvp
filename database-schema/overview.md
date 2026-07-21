@@ -9,7 +9,7 @@ Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 39
+Exposed tables/views: 41
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -17,19 +17,21 @@ Exposed tables/views: 39
 | announcement_comments | 5 | [announcement_comments](./tables/announcement_comments.md) |
 | announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
 | announcements | 16 | [announcements](./tables/announcements.md) |
+| attendance_correction_requests | 16 | [attendance_correction_requests](./tables/attendance_correction_requests.md) |
 | attendance_settings | 41 | [attendance_settings](./tables/attendance_settings.md) |
 | book_reading_assignments | 10 | [book_reading_assignments](./tables/book_reading_assignments.md) |
 | book_reading_submissions | 12 | [book_reading_submissions](./tables/book_reading_submissions.md) |
 | books | 17 | [books](./tables/books.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
-| class_files | 10 | [class_files](./tables/class_files.md) |
+| class_files | 11 | [class_files](./tables/class_files.md) |
 | class_notes | 8 | [class_notes](./tables/class_notes.md) |
 | classes | 13 | [classes](./tables/classes.md) |
 | course_students | 6 | [course_students](./tables/course_students.md) |
 | courses | 8 | [courses](./tables/courses.md) |
 | duty_schedule | 7 | [duty_schedule](./tables/duty_schedule.md) |
 | duty_transfer_requests | 11 | [duty_transfer_requests](./tables/duty_transfer_requests.md) |
-| homework_assignments | 10 | [homework_assignments](./tables/homework_assignments.md) |
+| google_docs_connections | 10 | [google_docs_connections](./tables/google_docs_connections.md) |
+| homework_assignments | 11 | [homework_assignments](./tables/homework_assignments.md) |
 | homework_comments | 5 | [homework_comments](./tables/homework_comments.md) |
 | homework_submissions | 17 | [homework_submissions](./tables/homework_submissions.md) |
 | mentorship_logs | 11 | [mentorship_logs](./tables/mentorship_logs.md) |

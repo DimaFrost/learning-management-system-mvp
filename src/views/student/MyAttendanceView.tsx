@@ -44,6 +44,33 @@ const GATE_ICONS = {
   activation: ShieldCheck,
 } as const;
 
+const GATE_TONES = {
+  classes: {
+    border: 'border-[#bfdbfe]',
+    band: 'bg-[#2563eb]',
+    icon: 'bg-[#dbeaff] text-[#2563eb]',
+    panel: 'bg-[#eff6ff] border-[#bfdbfe]',
+  },
+  the_well: {
+    border: 'border-[#bbf7d0]',
+    band: 'bg-[#16a34a]',
+    icon: 'bg-[#dcfce7] text-[#16a34a]',
+    panel: 'bg-[#ecfdf5] border-[#bbf7d0]',
+  },
+  ministry: {
+    border: 'border-[#e9d5ff]',
+    band: 'bg-[#7c3aed]',
+    icon: 'bg-[#f3e8ff] text-[#7c3aed]',
+    panel: 'bg-[#faf5ff] border-[#e9d5ff]',
+  },
+  activation: {
+    border: 'border-[#fed7aa]',
+    band: 'bg-[#ea580c]',
+    icon: 'bg-[#fff7ed] text-[#ea580c]',
+    panel: 'bg-[#fff7ed] border-[#fed7aa]',
+  },
+} as const;
+
 function SectionCard({
   children,
   className = '',
@@ -79,12 +106,15 @@ function GateCard({
   children?: React.ReactNode;
 }) {
   const Icon = GATE_ICONS[gate.key];
+  const tone = GATE_TONES[gate.key];
 
   return (
-    <SectionCard className="p-4">
+    <SectionCard className={`overflow-hidden ${tone.border}`}>
+      <div className={`h-1.5 ${tone.band}`} />
+      <div className="p-4">
       <div className="flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <span className="grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl bg-[#f5f5f5] text-[#525252]">
+          <span className={`grid h-10 w-10 flex-shrink-0 place-items-center rounded-xl ${tone.icon}`}>
             <Icon className="h-5 w-5" />
           </span>
           <div className="min-w-0">
@@ -101,14 +131,14 @@ function GateCard({
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
-        <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+        <div className={`rounded-xl border px-3 py-2 ${tone.panel}`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Credits</p>
           <p className="mt-1 text-lg font-semibold text-[#171717]">
             {gate.earnedCredits.toFixed(1)}
             <span className="text-sm font-medium text-[#737373]"> / {gate.requiredCredits.toFixed(1)}</span>
           </p>
         </div>
-        <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
+        <div className={`rounded-xl border px-3 py-2 ${tone.panel}`}>
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Score</p>
           <div className="mt-1">
             <ScoreBar score={gate.score} />
@@ -117,6 +147,7 @@ function GateCard({
       </div>
 
       {children ? <div className="mt-4 border-t border-[#e5e5e5] pt-4">{children}</div> : null}
+      </div>
     </SectionCard>
   );
 }

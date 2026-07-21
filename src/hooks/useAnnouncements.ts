@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '../lib/supabase';
 import type { Announcement, AnnouncementComment, AnnouncementAttachment, AnnouncementReaction, User, CourseStudent, Course } from '../types/lms';
-import { uploadFileToStorage } from '../utils/storageOperations';
+import { uploadStreamGoogleDriveAttachment } from '../utils/googleDocsV2';
 
 type ShowConfirmation = (
   title: string,
@@ -806,26 +806,11 @@ export function useAnnouncements(
             throw new Error('File is required for file attachments');
           }
 
-          const path = `announcements/${announcementId}/${attachment.file.name}`;
-          const { storagePath, publicUrl } = await uploadFileToStorage({
+          await uploadStreamGoogleDriveAttachment({
+            announcementId,
             file: attachment.file,
-            path,
+            displayName: attachment.linkTitle?.trim() || attachment.file.name,
           });
-
-          const { error: insertError } = await supabase
-            .from('announcement_attachments')
-            .insert({
-              announcement_id: announcementId,
-              uploader_id: fetchUser.id,
-              attachment_type: 'file',
-              file_name: attachment.linkTitle?.trim() || attachment.file.name,
-              storage_path: storagePath,
-              public_url: publicUrl,
-              mime_type: attachment.file.type || null,
-              file_size: attachment.file.size,
-            });
-
-          if (insertError) throw insertError;
         } else {
           const { error: insertError } = await supabase
             .from('announcement_attachments')
@@ -853,7 +838,7 @@ export function useAnnouncements(
     async (attachmentId: number, storagePath: string | null) => {
       setError(null);
       try {
-        if (storagePath) {
+        if (storagePath && !/^[a-zA-Z0-9_-]{20,}$/.test(storagePath)) {
           const { error: storageError } = await supabase.storage
             .from('tbo-lms')
             .remove([storagePath]);

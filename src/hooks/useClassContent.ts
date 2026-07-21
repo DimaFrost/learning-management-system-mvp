@@ -6,6 +6,7 @@ import {
   deleteFileFromStorage,
   buildStoragePath,
 } from '../utils/storageOperations';
+import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
 import { sendNotification } from '../utils/notifications';
 import { findClassCourseContext } from '../utils/courseUtils';
 
@@ -34,6 +35,7 @@ export function useClassContent(
       setNotes((notesData ?? []).map(row => ({
         id: row.id,
         classId: row.class_id,
+        subjectId: row.subject_id,
         authorId: row.author_id,
         authorName: row.author?.name ?? 'Unknown',
         noteType: row.note_type,
@@ -133,11 +135,21 @@ export function useClassContent(
         fileName: params.file.name,
       });
 
+      if (params.fileType === 'material') {
+        await uploadMaterialGoogleDriveFile({
+          classId: classId!,
+          file: params.file,
+        });
+        await fetchContent();
+        return true;
+      }
+
       const { storagePath: savedPath, publicUrl } =
         await uploadFileToStorage({ file: params.file, path: storagePath });
 
       const { error } = await supabase.from('class_files').insert({
         class_id: classId,
+        subject_id: findClassCourseContext(classId, courses)?.subject.id ?? null,
         uploader_id: currentUser.id,
         file_type: params.fileType,
         file_name: params.file.name,
@@ -158,9 +170,33 @@ export function useClassContent(
     }
   };
 
+  const createGoogleDocMaterial = async (params: {
+    title: string;
+  }) => {
+    if (!classId) return false;
+    setSaving(true);
+    setError(null);
+    try {
+      await createMaterialGoogleDoc({
+        classId,
+        title: params.title,
+      });
+      await fetchContent();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Google Doc material could not be created');
+      console.error(err);
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const deleteFile = async (file: ClassFile) => {
     try {
-      await deleteFileFromStorage(file.storagePath);
+      if (file.mimeType !== 'application/vnd.google-apps.document') {
+        await deleteFileFromStorage(file.storagePath);
+      }
       await supabase.from('class_files').delete().eq('id', file.id);
       await fetchContent();
     } catch (err) {
@@ -208,6 +244,7 @@ export function useClassContent(
   return {
     notes, files, loading, saving, error,
     addNote, updateNote, deleteNote,
+    createGoogleDocMaterial,
     uploadFile, deleteFile,
     announceMaterialsUpload,
     refetch: fetchContent,
