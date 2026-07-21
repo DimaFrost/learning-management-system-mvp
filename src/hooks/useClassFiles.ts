@@ -31,6 +31,7 @@ export function useClassFiles(classId: number | null) {
       setFiles((data ?? []).map(row => ({
         id: row.id,
         classId: row.class_id,
+        subjectId: row.subject_id ?? null,
         uploaderId: row.uploader_id,
         uploaderName: row.uploader?.name ?? 'Unknown',
         fileType: row.file_type,

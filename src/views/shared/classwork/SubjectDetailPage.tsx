@@ -1,10 +1,31 @@
-import { useEffect, useState } from 'react';
-import { ArrowLeft, BookOpen, CalendarDays, CheckCircle2, ClipboardList, FileText, Pencil, Plus, Trash2, TrendingUp, Users } from 'lucide-react';
+import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import {
+  ArrowLeft,
+  BookOpen,
+  CalendarDays,
+  CheckCircle2,
+  ClipboardList,
+  ExternalLink,
+  File as FileIcon,
+  FileText,
+  FileVideo,
+  Image,
+  Pencil,
+  Plus,
+  Trash2,
+  TrendingUp,
+  Upload,
+  Users,
+  X,
+} from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import type { Course, CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
+import type { CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../../admin/users/usersShared';
 import { formatPlatformDate } from '../../../utils/dateUtils';
+import { formatFileSize } from '../../../utils/formatFileSize';
+import { hasRole } from '../../../utils/userUtils';
 import { AssignmentComposer, type AssignmentComposerPayload } from '../../../components/assignments/AssignmentComposer';
+import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
 import {
   findClass,
   getCompactDateParts,
@@ -24,6 +45,15 @@ import type {
   SubjectRun,
   SubjectTab,
 } from './types';
+
+type MaterialUploadKind = 'student' | 'staff';
+
+function getMaterialFileIcon(mimeType: string | null) {
+  if (mimeType?.startsWith('image/')) return Image;
+  if (mimeType?.includes('pdf')) return FileText;
+  if (mimeType?.includes('video')) return FileVideo;
+  return FileIcon;
+}
 
 export function SubjectDetailPage({
   run,
@@ -67,8 +97,39 @@ export function SubjectDetailPage({
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [assignmentSessionPickerOpen, setAssignmentSessionPickerOpen] = useState(false);
   const [composerItem, setComposerItem] = useState<ClassworkItem | null>(null);
+  const [materialsUploadOpen, setMaterialsUploadOpen] = useState(false);
+  const [materialUploadKind, setMaterialUploadKind] = useState<MaterialUploadKind>('student');
+  const [pendingMaterialFiles, setPendingMaterialFiles] = useState<File[]>([]);
+  const [materialDocTitle, setMaterialDocTitle] = useState('');
+  const [isCreatingMaterialDoc, setIsCreatingMaterialDoc] = useState(false);
+  const [relatedClassId, setRelatedClassId] = useState<number | null>(null);
+  const materialFileInputRef = useRef<HTMLInputElement>(null);
+
   const sessionItems = run.items.filter(item => item.classInfo);
-  const materials = run.items.filter(hasSessionMaterials);
+  const canSeeStaffNotes = scope !== 'student';
+  const canManageMaterials =
+    scope !== 'student' && (hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher'));
+  const {
+    files: subjectFiles,
+    loading: materialsLoading,
+    saving: materialsSaving,
+    error: materialsError,
+    uploadStudentMaterial,
+    uploadStaffNote,
+    createGoogleDoc,
+    deleteFile: deleteSubjectFile,
+  } = useSubjectMaterials(run.subjectId, currentUser, run.course, {
+    studentOnly: !canSeeStaffNotes,
+  });
+  const studentMaterialFiles = subjectFiles.filter(file => file.fileType === 'material');
+  const staffNoteFiles = subjectFiles.filter(file => file.fileType === 'teacher_note');
+  const visibleMaterialsCount = canSeeStaffNotes
+    ? studentMaterialFiles.length + staffNoteFiles.length
+    : studentMaterialFiles.length;
+  const getRelatedSessionLabel = (classId: number | null) => {
+    if (classId == null) return null;
+    return sessionItems.find(item => item.classInfo?.classId === classId)?.title ?? null;
+  };
   const sessionClassIds = sessionItems
     .map(item => item.classInfo?.classId)
     .filter((id): id is number => typeof id === 'number');
@@ -176,7 +237,7 @@ export function SubjectDetailPage({
   const tabs: Array<{ id: SubjectTab; label: string; count: number; icon: typeof CalendarDays }> = [
     { id: 'sessions', label: 'Sessions', count: sessionItems.length, icon: CalendarDays },
     { id: 'homework', label: 'Homework', count: homeworkItems.length, icon: BookOpen },
-    { id: 'materials', label: 'Materials', count: materials.length, icon: FileText },
+    { id: 'materials', label: 'Materials', count: visibleMaterialsCount, icon: FileText },
     { id: 'attendance', label: 'Attendance', count: attendanceMarked, icon: CheckCircle2 },
   ];
 
@@ -185,9 +246,69 @@ export function SubjectDetailPage({
     setAssignmentSessionPickerOpen(false);
   };
 
+  const openMaterialsUpload = () => {
+    setMaterialsUploadOpen(true);
+    setMaterialUploadKind('student');
+    setPendingMaterialFiles([]);
+    setMaterialDocTitle('');
+    setIsCreatingMaterialDoc(false);
+    setRelatedClassId(null);
+  };
+
+  const closeMaterialsUpload = () => {
+    setMaterialsUploadOpen(false);
+    setPendingMaterialFiles([]);
+    setMaterialDocTitle('');
+    setIsCreatingMaterialDoc(false);
+    setRelatedClassId(null);
+  };
+
+  const handleMaterialFileSelect = (event: ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.target.files ?? []);
+    if (selected.length > 0) {
+      setPendingMaterialFiles(prev => [...prev, ...selected]);
+    }
+    event.target.value = '';
+  };
+
+  const uploadPendingMaterials = async () => {
+    if (pendingMaterialFiles.length === 0) return;
+    const filesToUpload = [...pendingMaterialFiles];
+    setPendingMaterialFiles([]);
+    for (const file of filesToUpload) {
+      const ok = materialUploadKind === 'student'
+        ? await uploadStudentMaterial(file, relatedClassId)
+        : await uploadStaffNote(file, relatedClassId);
+      if (!ok) break;
+    }
+  };
+
+  const handleCreateSubjectMaterialDoc = async () => {
+    const title = materialDocTitle.trim();
+    if (!title) return;
+    const ok = await createGoogleDoc(
+      materialUploadKind === 'staff' ? 'staff' : 'student',
+      title,
+      relatedClassId
+    );
+    if (ok) {
+      setIsCreatingMaterialDoc(false);
+      setMaterialDocTitle('');
+    }
+  };
+
   useEffect(() => {
     setActiveTab(initialTab ?? 'sessions');
   }, [initialTab, run.key]);
+
+  useEffect(() => {
+    if (activeTab !== 'materials') {
+      setMaterialsUploadOpen(false);
+    }
+    if (activeTab !== 'homework') {
+      setAssignmentSessionPickerOpen(false);
+    }
+  }, [activeTab]);
 
   if (composerItem && composerClassContext && composerSubject && composerClassContext.course) {
     return (
@@ -267,7 +388,7 @@ export function SubjectDetailPage({
                 Homework
               </button>
               <button type="button" onClick={() => setActiveTab('materials')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
-                <span className="text-lg leading-none">{materials.length}</span>
+                <span className="text-lg leading-none">{visibleMaterialsCount}</span>
                 Materials
               </button>
               <button type="button" onClick={() => setActiveTab('attendance')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#7c3aed] bg-[#f5f3ff] px-3 text-sm font-semibold text-[#6d28d9] hover:bg-[#ede9fe]">
@@ -302,7 +423,7 @@ export function SubjectDetailPage({
                 </button>
               );
             })}
-            {canCreateHomework && (
+            {activeTab === 'homework' && canCreateHomework && (
               <button
                 type="button"
                 onClick={openAssignmentComposer}
@@ -312,7 +433,206 @@ export function SubjectDetailPage({
                 Add assignment
               </button>
             )}
+            {activeTab === 'materials' && canManageMaterials && (
+              <button
+                type="button"
+                onClick={openMaterialsUpload}
+                className="tbo-focus ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626]"
+              >
+                <Plus className="h-4 w-4" />
+                Add Materials
+              </button>
+            )}
           </div>
+
+          {materialsUploadOpen && canManageMaterials && (
+            <div
+              className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+              onClick={closeMaterialsUpload}
+              role="presentation"
+            >
+              <div
+                className="max-h-[90vh] w-full max-w-lg overflow-y-auto bg-white shadow-xl"
+                onClick={event => event.stopPropagation()}
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="upload-materials-title"
+              >
+                <div className="p-6">
+                  <div className="flex items-start justify-between gap-3">
+                    <div>
+                      <h3 id="upload-materials-title" className="text-lg font-semibold text-[#171717]">
+                        Upload subject materials
+                      </h3>
+                      <p className="mt-1 text-xs text-[#737373]">
+                        Student Materials are visible to students. Staff Notes stay private to staff.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={closeMaterialsUpload}
+                      className="tbo-focus text-[#a3a3a3] hover:text-[#171717]"
+                      aria-label="Close"
+                    >
+                      <X className="h-5 w-5" />
+                    </button>
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                      Related session (optional)
+                    </label>
+                    <select
+                      value={relatedClassId ?? ''}
+                      onChange={event => {
+                        const value = event.target.value;
+                        setRelatedClassId(value ? Number(value) : null);
+                      }}
+                      className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
+                    >
+                      <option value="">None</option>
+                      {sessionItems.map(item => (
+                        <option key={item.id} value={item.classInfo!.classId}>
+                          {item.title}
+                          {item.dueDate ? ` · ${formatPlatformDate(item.dueDate)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {(
+                      [
+                        { id: 'student' as const, label: 'Student Materials' },
+                        { id: 'staff' as const, label: 'Staff Notes' },
+                      ] as const
+                    ).map(option => {
+                      const active = materialUploadKind === option.id;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setMaterialUploadKind(option.id);
+                            setIsCreatingMaterialDoc(false);
+                            setPendingMaterialFiles([]);
+                          }}
+                          className={`tbo-focus inline-flex h-9 items-center border px-3 text-sm font-semibold transition ${
+                            active
+                              ? 'border-[#171717] bg-[#171717] text-white'
+                              : 'border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5]'
+                          }`}
+                        >
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-4 flex flex-wrap items-center gap-2">
+                    <input
+                      ref={materialFileInputRef}
+                      type="file"
+                      multiple
+                      className="hidden"
+                      onChange={handleMaterialFileSelect}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => materialFileInputRef.current?.click()}
+                      disabled={materialsSaving}
+                      className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
+                    >
+                      <Upload className="h-4 w-4" />
+                      Select files
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsCreatingMaterialDoc(true)}
+                      disabled={materialsSaving}
+                      className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
+                    >
+                      <FileText className="h-4 w-4" />
+                      New Google Doc
+                    </button>
+                  </div>
+
+                  {isCreatingMaterialDoc && (
+                    <div className="mt-3 flex flex-col gap-3 border-l-2 border-[#171717] bg-[#fafafa] p-3 md:flex-row md:items-end">
+                      <div className="min-w-0 flex-1">
+                        <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                          Document title
+                        </label>
+                        <input
+                          type="text"
+                          value={materialDocTitle}
+                          onChange={event => setMaterialDocTitle(event.target.value)}
+                          placeholder={materialUploadKind === 'staff' ? 'Staff note document' : 'Material document'}
+                          className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleCreateSubjectMaterialDoc()}
+                          disabled={materialsSaving || !materialDocTitle.trim()}
+                          className="tbo-focus inline-flex h-9 items-center rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
+                        >
+                          Create
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsCreatingMaterialDoc(false);
+                            setMaterialDocTitle('');
+                          }}
+                          disabled={materialsSaving}
+                          className="tbo-focus inline-flex h-9 items-center rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {pendingMaterialFiles.length > 0 && (
+                    <div className="mt-3 space-y-2 border-l-2 border-[#171717] bg-[#fafafa] p-3">
+                      <p className="text-sm font-semibold text-[#171717]">
+                        Ready to upload ({pendingMaterialFiles.length})
+                      </p>
+                      <ul className="space-y-1">
+                        {pendingMaterialFiles.map((file, index) => (
+                          <li key={`${file.name}-${file.size}-${index}`} className="flex items-center justify-between gap-2 text-sm text-[#525252]">
+                            <span className="min-w-0 truncate">{file.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => setPendingMaterialFiles(prev => prev.filter((_, i) => i !== index))}
+                              className="tbo-focus text-xs font-semibold text-[#dc2626] hover:underline"
+                            >
+                              Remove
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                      <button
+                        type="button"
+                        onClick={() => void uploadPendingMaterials()}
+                        disabled={materialsSaving}
+                        className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {materialsSaving ? 'Uploading…' : 'Upload'}
+                      </button>
+                    </div>
+                  )}
+
+                  {materialsError && (
+                    <p className="mt-3 text-sm font-semibold text-[#dc2626]">{materialsError}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {assignmentSessionPickerOpen && (
             <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
@@ -508,24 +828,124 @@ export function SubjectDetailPage({
           )}
 
           {activeTab === 'materials' && (
-            <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
-              {materials.length === 0 ? (
-                <div className="py-8 text-sm text-[#737373]">No materials are attached to this subject yet.</div>
-              ) : materials.map(item => (
-                <button
-                  key={item.id}
-                  type="button"
-                  onClick={() => setActiveTab('sessions')}
-                  className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition hover:bg-[#fafafa] md:grid-cols-[28px_minmax(0,1fr)_120px]"
-                >
-                  <FileText className="h-4 w-4 text-[#c2410c]" />
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-semibold text-[#171717]">Session materials</span>
-                    <span className="mt-1 block truncate text-xs text-[#737373]">Attached to {item.title}</span>
-                  </span>
-                  <span className="text-xs font-semibold text-[#171717]">Show sessions</span>
-                </button>
-              ))}
+            <div className="space-y-4">
+              {materialsLoading ? (
+                <div className="border-y border-[#d4d4d4] bg-white px-4 py-8 text-sm text-[#737373]">
+                  Loading materials...
+                </div>
+              ) : (
+                <>
+                  <section className="border-l-2 border-[#c2410c] pl-4">
+                    <div className="mb-2 flex items-center justify-between gap-2">
+                      <h3 className="text-sm font-semibold text-[#171717]">Student Materials</h3>
+                      <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                        {studentMaterialFiles.length}
+                      </span>
+                    </div>
+                    <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+                      {studentMaterialFiles.length === 0 ? (
+                        <div className="py-6 text-sm text-[#737373]">No student materials yet.</div>
+                      ) : studentMaterialFiles.map(file => {
+                        const FileGlyph = getMaterialFileIcon(file.mimeType);
+                        const relatedSession = getRelatedSessionLabel(file.classId);
+                        return (
+                          <div
+                            key={file.id}
+                            className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 md:grid-cols-[28px_minmax(0,1fr)_auto]"
+                          >
+                            <FileGlyph className="h-4 w-4 text-[#c2410c]" />
+                            <div className="min-w-0">
+                              <p className="truncate text-sm font-semibold text-[#171717]">{file.fileName}</p>
+                              <p className="mt-1 text-xs text-[#737373]">
+                                {formatPlatformDate(file.createdAt)}
+                                {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
+                                {relatedSession ? ` · ${relatedSession}` : ''}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <a
+                                href={file.driveViewUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                                title="Open"
+                              >
+                                <ExternalLink className="h-3.5 w-3.5" />
+                              </a>
+                              {canManageMaterials && (
+                                <button
+                                  type="button"
+                                  onClick={() => void deleteSubjectFile(file)}
+                                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                  title="Delete"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </section>
+
+                  {canSeeStaffNotes && (
+                    <section className="border-l-2 border-[#171717] pl-4">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <h3 className="text-sm font-semibold text-[#171717]">Staff Notes</h3>
+                        <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                          {staffNoteFiles.length}
+                        </span>
+                      </div>
+                      <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+                        {staffNoteFiles.length === 0 ? (
+                          <div className="py-6 text-sm text-[#737373]">No staff notes yet.</div>
+                        ) : staffNoteFiles.map(file => {
+                          const FileGlyph = getMaterialFileIcon(file.mimeType);
+                          const relatedSession = getRelatedSessionLabel(file.classId);
+                          return (
+                            <div
+                              key={file.id}
+                              className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 md:grid-cols-[28px_minmax(0,1fr)_auto]"
+                            >
+                              <FileGlyph className="h-4 w-4 text-[#525252]" />
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-[#171717]">{file.fileName}</p>
+                                <p className="mt-1 text-xs text-[#737373]">
+                                  {formatPlatformDate(file.createdAt)}
+                                  {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
+                                  {relatedSession ? ` · ${relatedSession}` : ''}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <a
+                                  href={file.driveViewUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                                  title="Open"
+                                >
+                                  <ExternalLink className="h-3.5 w-3.5" />
+                                </a>
+                                {canManageMaterials && (
+                                  <button
+                                    type="button"
+                                    onClick={() => void deleteSubjectFile(file)}
+                                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                    title="Delete"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  )}
+                </>
+              )}
             </div>
           )}
 
@@ -602,7 +1022,7 @@ export function SubjectDetailPage({
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{sessionItems.length} sessions</span>
               <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857] ring-1 ring-[#bbf7d0]">{homeworkItems.length} homework</span>
-              <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">{materials.length} materials</span>
+              <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">{visibleMaterialsCount} materials</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-[#525252]">
               <div className="flex items-center justify-between gap-2">

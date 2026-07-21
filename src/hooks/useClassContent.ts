@@ -55,6 +55,7 @@ export function useClassContent(
       setFiles((filesData ?? []).map(row => ({
         id: row.id,
         classId: row.class_id,
+        subjectId: row.subject_id ?? null,
         uploaderId: row.uploader_id,
         uploaderName: row.uploader?.name ?? 'Unknown',
         fileType: row.file_type,
@@ -149,7 +150,7 @@ export function useClassContent(
 
       const { error } = await supabase.from('class_files').insert({
         class_id: classId,
-        subject_id: findClassCourseContext(classId, courses)?.subject.id ?? null,
+        subject_id: classId != null ? findClassCourseContext(classId, courses)?.subject.id ?? null : null,
         uploader_id: currentUser.id,
         file_type: params.fileType,
         file_name: params.file.name,

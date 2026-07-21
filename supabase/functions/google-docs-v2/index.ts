@@ -504,36 +504,39 @@ async function createHomeworkDoc(profile: Profile, body: Record<string, unknown>
 }
 
 async function createMaterialDoc(profile: Profile, body: Record<string, unknown>) {
-  const classId = Number(body.classId);
+  const classId = body.classId == null || body.classId === '' ? NaN : Number(body.classId);
+  const subjectIdParam = body.subjectId == null || body.subjectId === '' ? NaN : Number(body.subjectId);
   const requestedTitle = String(body.title ?? '').trim();
-  if (!Number.isFinite(classId)) {
-    throw new HttpError('Valid classId is required', 400);
+  const rawFileType = String(body.fileType ?? 'material').trim();
+  const fileType = rawFileType === 'teacher_note' ? 'teacher_note' : 'material';
+  const hasClassId = Number.isFinite(classId);
+  const hasSubjectId = Number.isFinite(subjectIdParam);
+
+  if (!hasClassId && !hasSubjectId) {
+    throw new HttpError('Valid classId or subjectId is required', 400);
   }
   if (!requestedTitle) {
     throw new HttpError('A material title is required', 400);
   }
 
-  const { data: classData, error: classError } = await adminClient
-    .from('classes')
-    .select(`
-      id, title, date, hour, teacher_id, subject_id,
-      subject:subjects(
-        id, title, course_id,
-        course:courses(id, course_type, graduation_year)
-      )
-    `)
-    .eq('id', classId)
-    .single();
+  let subject: Subject;
+  let course: Course;
+  let classRow: ClassRow | null = null;
+  let insertClassId: number | null = null;
+  let insertSubjectId: number;
 
-  if (classError || !classData) {
-    throw new HttpError('Class session not found', 404);
-  }
-
-  const classRow = classData as ClassRow;
-  const subject = firstItem(classRow.subject);
-  const course = firstItem(subject?.course);
-  if (!subject || !course) {
-    throw new HttpError('Class session is missing subject/year group context', 400);
+  if (hasClassId) {
+    const ctx = await getClassContext(classId);
+    subject = ctx.subject;
+    course = ctx.course;
+    classRow = ctx.classRow;
+    insertClassId = classId;
+    insertSubjectId = subject.id;
+  } else {
+    const ctx = await getSubjectContext(subjectIdParam);
+    subject = ctx.subject;
+    course = ctx.course;
+    insertSubjectId = subject.id;
   }
 
   const subjectTeachers = await getSubjectTeacherIds(subject.id);
@@ -546,24 +549,33 @@ async function createMaterialDoc(profile: Profile, body: Record<string, unknown>
 
   const token = await getGoogleAccessToken();
   const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
-  const materialsFolderId = await ensureDriveFolderPath(token, folderId, [
-    'Materials',
-    subject.title,
-  ]);
+  const rootFolderName = fileType === 'teacher_note' ? 'Teacher Notes' : 'Materials';
+  const folderPath = [rootFolderName, subject.title];
+  if (classRow) {
+    const classFolderName = [
+      classRow.date ?? 'No date',
+      classRow.title,
+    ].filter(Boolean).join(' - ');
+    folderPath.push(classFolderName);
+  }
+  const materialsFolderId = await ensureDriveFolderPath(token, folderId, folderPath);
   const docName = sanitizeDocName(requestedTitle);
   const created = await createGoogleDoc(token, docName, materialsFolderId);
 
   const teacherEmails = await getProfileEmails(subjectTeachers);
-  const studentEmails = await getActiveCourseStudentEmails(course.id);
   await shareFileBatch(token, created.id, teacherEmails, 'writer');
-  await shareFileBatch(token, created.id, studentEmails, 'reader');
+  if (fileType === 'material') {
+    const studentEmails = await getActiveCourseStudentEmails(course.id);
+    await shareFileBatch(token, created.id, studentEmails, 'reader');
+  }
 
   const { data: file, error: fileError } = await adminClient
     .from('class_files')
     .insert({
-      class_id: classId,
+      class_id: insertClassId,
+      subject_id: insertSubjectId,
       uploader_id: profile.id,
-      file_type: 'material',
+      file_type: fileType,
       file_name: docName,
       drive_file_id: created.id,
       drive_view_url: created.webViewLink,
@@ -584,20 +596,47 @@ async function createMaterialDoc(profile: Profile, body: Record<string, unknown>
 }
 
 async function uploadMaterialFile(profile: Profile, body: Record<string, unknown>) {
-  const classId = Number(body.classId);
+  const classId = body.classId == null || body.classId === '' ? NaN : Number(body.classId);
+  const subjectIdParam = body.subjectId == null || body.subjectId === '' ? NaN : Number(body.subjectId);
   const fileName = String(body.fileName ?? '').trim();
   const mimeType = String(body.mimeType ?? 'application/octet-stream');
   const base64 = String(body.base64 ?? '');
   const fileSize = Number(body.fileSize ?? 0);
+  const hasClassId = Number.isFinite(classId);
+  const hasSubjectId = Number.isFinite(subjectIdParam);
 
-  if (!Number.isFinite(classId)) {
-    throw new HttpError('Valid classId is required', 400);
+  if (!hasClassId && !hasSubjectId) {
+    throw new HttpError('Valid classId or subjectId is required', 400);
   }
   if (!fileName || !base64) {
     throw new HttpError('A file name and file content are required', 400);
   }
 
-  const { classRow, subject, course } = await getClassContext(classId);
+  let subject: Subject;
+  let course: Course;
+  let folderPath: string[];
+  let insertClassId: number | null = null;
+  let insertSubjectId: number;
+
+  if (hasClassId) {
+    const ctx = await getClassContext(classId);
+    subject = ctx.subject;
+    course = ctx.course;
+    insertClassId = classId;
+    insertSubjectId = subject.id;
+    const classFolderName = [
+      ctx.classRow.date ?? 'No date',
+      ctx.classRow.title,
+    ].filter(Boolean).join(' - ');
+    folderPath = ['Materials', subject.title, classFolderName];
+  } else {
+    const ctx = await getSubjectContext(subjectIdParam);
+    subject = ctx.subject;
+    course = ctx.course;
+    insertSubjectId = subject.id;
+    folderPath = ['Materials', subject.title];
+  }
+
   const subjectTeachers = await getSubjectTeacherIds(subject.id);
   const canUpload =
     isAdmin(profile) ||
@@ -608,15 +647,7 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
 
   const token = await getGoogleAccessToken();
   const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
-  const classFolderName = [
-    classRow.date ?? 'No date',
-    classRow.title,
-  ].filter(Boolean).join(' - ');
-  const materialsFolderId = await ensureDriveFolderPath(token, folderId, [
-    'Materials',
-    subject.title,
-    classFolderName,
-  ]);
+  const materialsFolderId = await ensureDriveFolderPath(token, folderId, folderPath);
 
   const uploaded = await uploadDriveFile(token, {
     folderId: materialsFolderId,
@@ -633,7 +664,8 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
   const { data: file, error: fileError } = await adminClient
     .from('class_files')
     .insert({
-      class_id: classId,
+      class_id: insertClassId,
+      subject_id: insertSubjectId,
       uploader_id: profile.id,
       file_type: 'material',
       file_name: fileName,
@@ -780,6 +812,29 @@ async function getClassContext(classId: number) {
   }
 
   return { classRow, subject, course };
+}
+
+async function getSubjectContext(subjectId: number) {
+  const { data: subjectData, error: subjectError } = await adminClient
+    .from('subjects')
+    .select(`
+      id, title, course_id,
+      course:courses(id, course_type, graduation_year)
+    `)
+    .eq('id', subjectId)
+    .single();
+
+  if (subjectError || !subjectData) {
+    throw new HttpError('Subject not found', 404);
+  }
+
+  const subject = subjectData as Subject;
+  const course = firstItem(subject.course);
+  if (!course) {
+    throw new HttpError('Subject is missing year group context', 400);
+  }
+
+  return { subject, course };
 }
 
 async function getSubjectTeacherIds(subjectId: number) {

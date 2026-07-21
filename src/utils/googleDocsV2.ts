@@ -115,8 +115,10 @@ export async function createHomeworkGoogleDoc(assignmentId: number): Promise<{
 }
 
 export async function createMaterialGoogleDoc(params: {
-  classId: number;
+  classId?: number;
+  subjectId?: number;
   title: string;
+  fileType?: 'material' | 'teacher_note';
 }): Promise<{
   fileId: number;
   googleDocId: string;
@@ -125,8 +127,10 @@ export async function createMaterialGoogleDoc(params: {
 }> {
   return callGoogleDocsV2({
     action: 'create-material-doc',
-    classId: params.classId,
+    ...(params.classId != null ? { classId: params.classId } : {}),
+    ...(params.subjectId != null ? { subjectId: params.subjectId } : {}),
     title: params.title,
+    fileType: params.fileType ?? 'material',
   });
 }
 
@@ -143,7 +147,8 @@ function readFileAsBase64(file: File): Promise<string> {
 }
 
 export async function uploadMaterialGoogleDriveFile(params: {
-  classId: number;
+  classId?: number;
+  subjectId?: number;
   file: File;
 }): Promise<{
   fileId: number;
@@ -153,7 +158,8 @@ export async function uploadMaterialGoogleDriveFile(params: {
 }> {
   return callGoogleDocsV2({
     action: 'upload-material-file',
-    classId: params.classId,
+    ...(params.classId != null ? { classId: params.classId } : {}),
+    ...(params.subjectId != null ? { subjectId: params.subjectId } : {}),
     fileName: params.file.name,
     mimeType: params.file.type || 'application/octet-stream',
     fileSize: params.file.size,
