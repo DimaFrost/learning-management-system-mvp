@@ -19,12 +19,14 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import type { CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
+import type { ClassFile, CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../../admin/users/usersShared';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 import { formatFileSize } from '../../../utils/formatFileSize';
 import { hasRole } from '../../../utils/userUtils';
+import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
 import { AssignmentComposer, type AssignmentComposerPayload } from '../../../components/assignments/AssignmentComposer';
+import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
 import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
 import {
   findClass,
@@ -103,6 +105,7 @@ export function SubjectDetailPage({
   const [materialDocTitle, setMaterialDocTitle] = useState('');
   const [isCreatingMaterialDoc, setIsCreatingMaterialDoc] = useState(false);
   const [relatedClassId, setRelatedClassId] = useState<number | null>(null);
+  const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
 
   const sessionItems = run.items.filter(item => item.classInfo);
@@ -255,6 +258,15 @@ export function SubjectDetailPage({
     setRelatedClassId(null);
   };
 
+  const openMaterialFile = (file: ClassFile) => {
+    const preview = resolveClassFilePreview(file);
+    if (preview) {
+      setPreviewItem(preview);
+      return;
+    }
+    window.open(file.driveViewUrl, '_blank', 'noopener,noreferrer');
+  };
+
   const closeMaterialsUpload = () => {
     setMaterialsUploadOpen(false);
     setPendingMaterialFiles([]);
@@ -279,8 +291,9 @@ export function SubjectDetailPage({
       const ok = materialUploadKind === 'student'
         ? await uploadStudentMaterial(file, relatedClassId)
         : await uploadStaffNote(file, relatedClassId);
-      if (!ok) break;
+      if (!ok) return;
     }
+    closeMaterialsUpload();
   };
 
   const handleCreateSubjectMaterialDoc = async () => {
@@ -292,8 +305,7 @@ export function SubjectDetailPage({
       relatedClassId
     );
     if (ok) {
-      setIsCreatingMaterialDoc(false);
-      setMaterialDocTitle('');
+      closeMaterialsUpload();
     }
   };
 
@@ -855,7 +867,13 @@ export function SubjectDetailPage({
                           >
                             <FileGlyph className="h-4 w-4 text-[#c2410c]" />
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-[#171717]">{file.fileName}</p>
+                              <button
+                                type="button"
+                                onClick={() => openMaterialFile(file)}
+                                className="tbo-focus block max-w-full truncate text-left text-sm font-semibold text-[#171717] hover:underline"
+                              >
+                                {file.fileName}
+                              </button>
                               <p className="mt-1 text-xs text-[#737373]">
                                 {formatPlatformDate(file.createdAt)}
                                 {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
@@ -868,7 +886,7 @@ export function SubjectDetailPage({
                                 target="_blank"
                                 rel="noreferrer"
                                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                title="Open"
+                                title="Open in new tab"
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
@@ -910,7 +928,13 @@ export function SubjectDetailPage({
                             >
                               <FileGlyph className="h-4 w-4 text-[#525252]" />
                               <div className="min-w-0">
-                                <p className="truncate text-sm font-semibold text-[#171717]">{file.fileName}</p>
+                                <button
+                                  type="button"
+                                  onClick={() => openMaterialFile(file)}
+                                  className="tbo-focus block max-w-full truncate text-left text-sm font-semibold text-[#171717] hover:underline"
+                                >
+                                  {file.fileName}
+                                </button>
                                 <p className="mt-1 text-xs text-[#737373]">
                                   {formatPlatformDate(file.createdAt)}
                                   {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
@@ -923,7 +947,7 @@ export function SubjectDetailPage({
                                   target="_blank"
                                   rel="noreferrer"
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                  title="Open"
+                                  title="Open in new tab"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </a>
@@ -1059,6 +1083,7 @@ export function SubjectDetailPage({
           </div>
         </aside>
       </div>
+      <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }

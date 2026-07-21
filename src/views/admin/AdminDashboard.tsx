@@ -1800,8 +1800,8 @@ export function AdminDashboard({
                 </div>
               ) : (
                 <ul className="space-y-1.5">
-                  {yearGroupHealthGaps.slice(0, 4).map(gap => (
-                    <li key={gap} className="flex items-start gap-2 text-xs leading-5 text-[#525252]">
+                  {yearGroupHealthGaps.slice(0, 4).map((gap, index) => (
+                    <li key={`${index}-${gap}`} className="flex items-start gap-2 text-xs leading-5 text-[#525252]">
                       <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-[#ea580c]" />
                       <span>{gap}</span>
                     </li>
