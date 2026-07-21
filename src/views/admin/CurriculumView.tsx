@@ -1,6 +1,6 @@
+import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Course, User, Subject, Class, WellScheduleEntry } from '../../types/lms';
-import { PageHeader } from '../../components/ui/PageHeader';
+import type { Course, CourseStudent, User, Subject, Class, WellScheduleEntry } from '../../types/lms';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
 import { CurriculumArchiveView } from './CurriculumArchiveView';
@@ -9,6 +9,7 @@ import { CurriculumPlanningView } from './CurriculumPlanningView';
 interface CurriculumViewProps {
   activeCurriculumSection: 'overview' | 'date-view' | 'archived' | 'planning';
   courses: Course[];
+  courseStudents: CourseStudent[];
   users: User[];
   currentUser: User;
   onAddClass: (courseId: number, subjectId: number, cls: Partial<Class>) => Promise<void>;
@@ -30,6 +31,7 @@ interface CurriculumViewProps {
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
   onReactivate: (courseId: number) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
+  onNavigate?: (view: string) => void;
   wellSchedule: WellScheduleEntry[];
   onGenerateWellScheduleForCourse: (courseId: number) => Promise<void>;
   onRemoveWellScheduleDate: (wellDate: string, courseIds?: number[]) => Promise<void>;
@@ -38,10 +40,9 @@ interface CurriculumViewProps {
 export function CurriculumView({
   activeCurriculumSection,
   courses,
+  courseStudents,
   users,
   currentUser,
-  onAddClass,
-  onUpdateClass,
   onAddCourse,
   onRefetchCourses,
   collapsedCourses,
@@ -59,28 +60,51 @@ export function CurriculumView({
   onDeleteClass,
   onReactivate,
   onOpenClass,
+  onNavigate,
   wellSchedule,
   onGenerateWellScheduleForCourse,
   onRemoveWellScheduleDate,
 }: CurriculumViewProps) {
+  const [overviewDetailActive, setOverviewDetailActive] = useState(false);
+  const showShellHeader = !(activeCurriculumSection === 'overview' && overviewDetailActive);
+
+  useEffect(() => {
+    if (activeCurriculumSection !== 'overview') {
+      setOverviewDetailActive(false);
+    }
+  }, [activeCurriculumSection]);
+
   return (
-    <div className="space-y-6">
-      <PageHeader
-        title="Curriculum Management"
-        action={
-          <button
-            onClick={() => onEditCourse()}
-            className="tbo-focus inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040] sm:w-auto"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Year Group</span>
-          </button>
-        }
-      />
+    <div className="space-y-5">
+      {showShellHeader && (
+        <div className="border-l-2 border-[#171717] pl-4">
+          <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+            <div className="min-w-0">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Curriculum</p>
+              <h1 className="tbo-display mt-1 text-3xl text-[#171717]">Curriculum Management</h1>
+              <p className="mt-1 max-w-2xl text-sm text-[#737373]">
+                Manage year groups, subjects, and sessions across the school year.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <button
+                type="button"
+                onClick={() => onEditCourse()}
+                className="tbo-focus inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040] sm:w-auto"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Add Year Group</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {activeCurriculumSection === 'overview' && (
         <CurriculumOverview
           courses={courses}
+          courseStudents={courseStudents}
+          users={users}
           currentUser={currentUser}
           collapsedCourses={collapsedCourses}
           collapsedSubjects={collapsedSubjects}
@@ -96,6 +120,8 @@ export function CurriculumView({
           onDeleteSubject={onDeleteSubject}
           onDeleteClass={onDeleteClass}
           onOpenClass={onOpenClass}
+          onNavigate={onNavigate}
+          onDetailActiveChange={setOverviewDetailActive}
         />
       )}
       {activeCurriculumSection === 'date-view' && (

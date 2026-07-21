@@ -1,4 +1,4 @@
-import { Calendar, Plus, BookOpen, Edit3, Trash2, Eye } from 'lucide-react';
+import { Calendar, Plus, Edit3, Trash2, Eye } from 'lucide-react';
 import type { Course, User, Class, Subject } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -14,12 +14,26 @@ interface CurriculumDateViewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
+const SESSION_GRID = 'minmax(160px,1.2fr) minmax(120px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
+
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return {
     weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
     fullDate: formatPlatformDate(dateStr),
   };
+}
+
+function hourLabel(hour: string) {
+  if (hour === 'first') return '1st Hour';
+  if (hour === 'second') return '2nd Hour';
+  return 'Both Hours';
+}
+
+function hourTone(hour: string) {
+  if (hour === 'first') return 'bg-[#ecfdf5] text-[#047857] ring-[#bbf7d0]';
+  if (hour === 'second') return 'bg-[#f5f3ff] text-[#6d28d9] ring-[#ddd6fe]';
+  return 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]';
 }
 
 export function CurriculumDateView({
@@ -63,40 +77,47 @@ export function CurriculumDateView({
   const sortedDates = Object.keys(classesByDate).sort();
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">Schedule by Date</h3>
-        <div className="text-sm text-gray-600">
-          {sortedDates.length} days with sessions • {allClasses.length} total sessions
+    <div className="space-y-5">
+      <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Schedule</p>
+            <h3 className="text-sm font-semibold text-[#171717]">Schedule by Date</h3>
+          </div>
+          <p className="text-sm text-[#737373]">
+            {sortedDates.length} days · {allClasses.length} sessions
+          </p>
         </div>
       </div>
 
       {sortedDates.length > 0 ? (
-        <div className="space-y-4">
+        <div className="space-y-5">
           {sortedDates.map(date => {
             const dateInfo = formatDate(date);
             const classesForDate = classesByDate[date];
             const totalClasses = Object.values(classesForDate).reduce((sum, courseClasses) => sum + courseClasses.length, 0);
 
             return (
-              <div key={date} className="bg-white rounded-lg shadow border border-gray-200 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center space-x-3">
-                    <Calendar className="w-5 h-5 text-blue-600" />
-                    <div>
-                      <h4 className="text-lg font-semibold text-gray-900">{dateInfo.weekday}</h4>
-                      <p className="text-sm text-gray-600">{dateInfo.fullDate}</p>
+              <section key={date} className="border-l-2 border-[#171717] pl-4">
+                <div className="mb-3 grid gap-3 border-b border-[#d4d4d4] pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
+                      {dateInfo.fullDate}
+                    </p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                      <h4 className="tbo-display text-2xl text-[#171717]">{dateInfo.weekday}</h4>
+                      <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                        {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
+                      </span>
                     </div>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
-                    </span>
                   </div>
                   <button
+                    type="button"
                     onClick={() => onEditClass(0, 0, null, date)}
-                    className="bg-blue-600 text-white px-3 py-1.5 rounded-lg hover:bg-blue-700 flex items-center space-x-1 text-sm"
+                    className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white transition hover:bg-[#404040]"
                   >
-                    <Plus className="w-3 h-3" />
-                    <span>Add Session</span>
+                    <Plus className="h-3.5 w-3.5" />
+                    Add Session
                   </button>
                 </div>
 
@@ -115,106 +136,180 @@ export function CurriculumDateView({
                     })
                     .map(([courseName, courseClasses]) => (
                       <div key={courseName}>
-                        <h5 className="text-sm font-semibold text-gray-700 mb-3 flex items-center">
-                          <BookOpen className="w-4 h-4 mr-2 text-blue-600" />
-                          {courseName} ({courseClasses.length} {courseClasses.length === 1 ? 'session' : 'sessions'})
-                        </h5>
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                        <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                          {courseName} · {courseClasses.length} {courseClasses.length === 1 ? 'session' : 'sessions'}
+                        </p>
+                        <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+                          <div
+                            className="-mx-4 hidden w-[calc(100%+2rem)] items-center gap-4 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373] md:grid"
+                            style={{ gridTemplateColumns: SESSION_GRID }}
+                          >
+                            <span>Session</span>
+                            <span>Subject</span>
+                            <span>Hour</span>
+                            <span>Teacher</span>
+                            <span>Translator</span>
+                            <span className="text-right">Actions</span>
+                          </div>
                           {courseClasses.map(cls => {
                             const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, activeCourses, cls.id);
                             const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, activeCourses, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
                             const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
                             const needsAttention = hasConflict || hasVacantRoles;
+                            const teacher = getUserById(cls.teacherId);
+                            const translator = getUserById(cls.translatorId);
 
                             return (
-                              <div key={cls.id} className={`border rounded-lg p-4 ${
-                                needsAttention ? 'border-orange-200 bg-orange-50' : 'border-gray-200'
-                              }`}>
-                                <div className="flex items-start justify-between mb-3">
-                                  <div className="flex-1">
-                                    <div className="flex items-center space-x-2 mb-2">
-                                      <button
-                                        type="button"
-                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                                        className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
-                                      >
-                                        <h6 className="font-medium text-gray-900">{getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}</h6>
-                                      </button>
-                                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                        cls.hour === 'first' ? 'bg-green-100 text-green-800' :
-                                        cls.hour === 'second' ? 'bg-purple-100 text-purple-800' :
-                                        'bg-blue-100 text-blue-800'
-                                      }`}>
-                                        {cls.hour === 'first' ? '1st Hour' :
-                                         cls.hour === 'second' ? '2nd Hour' :
-                                         'Both Hours'}
-                                      </span>
-                                    </div>
-                                    <p className="text-sm text-gray-600 mb-2">
-                                      {cls.subjectTitle}
-                                    </p>
-                                    {hasConflict && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 mb-2">
-                                        ⚠️ Scheduling Conflict
-                                      </span>
-                                    )}
-                                    {hasVacantRoles && !hasConflict && (
-                                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-800 mb-2">
-                                        ⚠️ Incomplete Setup
-                                      </span>
-                                    )}
-                                  </div>
-                                  <div className="flex space-x-1">
+                              <div
+                                key={cls.id}
+                                className={`-mx-4 w-[calc(100%+2rem)] px-4 py-3 transition hover:bg-[#fafafa] ${
+                                  needsAttention ? 'bg-[#fff7ed]' : ''
+                                }`}
+                              >
+                                <div
+                                  className="hidden items-center gap-4 md:grid"
+                                  style={{ gridTemplateColumns: SESSION_GRID }}
+                                >
+                                  <div className="min-w-0">
                                     <button
+                                      type="button"
                                       onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                                      className="p-1 text-gray-400 hover:text-amber-600"
+                                      className="tbo-focus truncate text-left text-sm font-semibold text-[#171717] hover:underline"
+                                    >
+                                      {getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}
+                                    </button>
+                                    <div className="mt-1 flex flex-wrap gap-1.5">
+                                      {hasConflict && (
+                                        <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
+                                          Conflict
+                                        </span>
+                                      )}
+                                      {hasVacantRoles && !hasConflict && (
+                                        <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
+                                          Incomplete
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className="truncate text-sm text-[#525252]">{cls.subjectTitle}</span>
+                                  <span className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
+                                    {hourLabel(cls.hour)}
+                                  </span>
+                                  <span
+                                    className={`truncate text-sm ${
+                                      teacherConflict.hasConflict
+                                        ? 'font-semibold text-[#dc2626]'
+                                        : cls.teacherId
+                                          ? 'text-[#525252]'
+                                          : 'font-semibold text-[#c2410c]'
+                                    }`}
+                                  >
+                                    {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
+                                  </span>
+                                  <span
+                                    className={`truncate text-sm ${
+                                      translatorConflict.hasConflict
+                                        ? 'font-semibold text-[#dc2626]'
+                                        : cls.translatorId
+                                          ? 'text-[#525252]'
+                                          : 'font-semibold text-[#c2410c]'
+                                    }`}
+                                  >
+                                    {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
+                                  </span>
+                                  <div className="flex items-center justify-end gap-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                      className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                                       title="Open session"
                                     >
-                                      <Eye className="w-4 h-4" />
+                                      <Eye className="h-3.5 w-3.5" />
                                     </button>
                                     <button
+                                      type="button"
                                       onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
-                                      className="p-1 text-gray-400 hover:text-blue-600"
+                                      className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                                       title="Edit session"
                                     >
-                                      <Edit3 className="w-4 h-4" />
+                                      <Edit3 className="h-3.5 w-3.5" />
                                     </button>
                                     <button
+                                      type="button"
                                       onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
-                                      className="p-1 text-gray-400 hover:text-red-600"
+                                      className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
                                       title="Delete session"
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Trash2 className="h-3.5 w-3.5" />
                                     </button>
                                   </div>
                                 </div>
 
-                                <div className="space-y-2">
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Teacher:</span>
-                                    <span className={`text-sm ${
-                                      teacherConflict.hasConflict
-                                        ? 'text-red-600 font-medium'
-                                        : cls.teacherId
-                                          ? 'text-gray-900'
-                                          : 'text-red-500 font-medium'
-                                    }`}>
-                                      {cls.teacherId ? getUserById(cls.teacherId)?.name : '⚠️ Vacant'}
-                                    </span>
+                                <div className="flex flex-col gap-2 md:hidden">
+                                  <div className="flex items-start justify-between gap-2">
+                                    <div className="min-w-0">
+                                      <button
+                                        type="button"
+                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                        className="tbo-focus text-left text-sm font-semibold text-[#171717] hover:underline"
+                                      >
+                                        {getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}
+                                      </button>
+                                      <p className="mt-0.5 text-xs text-[#737373]">{cls.subjectTitle}</p>
+                                    </div>
+                                    <div className="flex shrink-0 gap-1">
+                                      <button
+                                        type="button"
+                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
+                                        title="Open session"
+                                      >
+                                        <Eye className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
+                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
+                                        title="Edit session"
+                                      >
+                                        <Edit3 className="h-3.5 w-3.5" />
+                                      </button>
+                                      <button
+                                        type="button"
+                                        onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
+                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                        title="Delete session"
+                                      >
+                                        <Trash2 className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
                                   </div>
-                                  <div className="flex items-center justify-between">
-                                    <span className="text-sm font-medium text-gray-700">Translator:</span>
-                                    <span className={`text-sm ${
-                                      translatorConflict.hasConflict
-                                        ? 'text-red-600 font-medium'
-                                        : cls.translatorId
-                                          ? 'text-gray-900'
-                                          : 'text-red-500 font-medium'
-                                    }`}>
-                                      {cls.translatorId ? getUserById(cls.translatorId)?.name : '⚠️ Vacant'}
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
+                                      {hourLabel(cls.hour)}
                                     </span>
+                                    {hasConflict && (
+                                      <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
+                                        Conflict
+                                      </span>
+                                    )}
+                                    {hasVacantRoles && !hasConflict && (
+                                      <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
+                                        Incomplete
+                                      </span>
+                                    )}
                                   </div>
+                                  <p className="text-xs text-[#737373]">
+                                    Teacher:{' '}
+                                    <span className={cls.teacherId && !teacherConflict.hasConflict ? 'text-[#171717]' : 'font-semibold text-[#c2410c]'}>
+                                      {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
+                                    </span>
+                                    {' · '}Translator:{' '}
+                                    <span className={cls.translatorId && !translatorConflict.hasConflict ? 'text-[#171717]' : 'font-semibold text-[#c2410c]'}>
+                                      {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
+                                    </span>
+                                  </p>
                                 </div>
                               </div>
                             );
@@ -222,16 +317,16 @@ export function CurriculumDateView({
                         </div>
                       </div>
                     ))}
-
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
       ) : (
-        <div className="text-center py-12">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No sessions scheduled yet.</p>
+        <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
+          <Calendar className="mx-auto h-8 w-8 text-[#a3a3a3]" />
+          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions scheduled yet.</p>
+          <p className="mt-1 text-sm text-[#737373]">Sessions will appear here by date once they are added.</p>
         </div>
       )}
     </div>

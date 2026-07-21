@@ -590,6 +590,7 @@ export function AppRouter({
                       : 'overview'
             }
             courses={courses}
+            courseStudents={courseStudents}
             users={users}
             currentUser={currentUser}
             onAddClass={addClass}
@@ -621,6 +622,7 @@ export function AppRouter({
             onDeleteClass={deleteClass}
             onReactivate={(courseId) => updateCourse(courseId, { status: 'active' })}
             onOpenClass={openClassDetail}
+            onNavigate={setActiveView}
             wellSchedule={attendance.wellSchedule}
             onGenerateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
             onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
