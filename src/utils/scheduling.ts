@@ -6,10 +6,17 @@ export interface PlanningBreakRef {
   endDate: string;
 }
 
+function formatLocalYmd(d: Date): string {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 function addDays(dateStr: string, days: number): string {
   const d = new Date(dateStr + 'T00:00:00');
   d.setDate(d.getDate() + days);
-  return d.toISOString().split('T')[0];
+  return formatLocalYmd(d);
 }
 
 export function isDateInBreak(date: string, breaks: PlanningBreakRef[]): boolean {
@@ -70,10 +77,6 @@ export function getNextClassDate(
   if (!startDate) return '';
   if (classIndex < 0) return '';
 
-  if (breaks.length === 0) {
-    return getNextClassDateLegacy(startDate, classIndex);
-  }
-
   let currentDay = findFirstClassDayOnOrAfter(startDate, breaks);
   let slotInDay = 0;
 
@@ -87,50 +90,6 @@ export function getNextClassDate(
   }
 
   return currentDay;
-}
-
-function getNextClassDateLegacy(startDate: string, classIndex: number): string {
-  const start = new Date(startDate + 'T00:00:00');
-  const dayOfWeek = start.getDay();
-
-  let daysToAdd = 0;
-  if (dayOfWeek === 2) {
-    daysToAdd = 0;
-  } else if (dayOfWeek === 4) {
-    daysToAdd = 0;
-  } else if (dayOfWeek <= 1) {
-    daysToAdd = 2 - dayOfWeek;
-  } else if (dayOfWeek === 3) {
-    daysToAdd = 1;
-  } else {
-    daysToAdd = 9 - dayOfWeek;
-  }
-
-  const dayIndex = Math.floor(classIndex / 2);
-  const weekIndex = Math.floor(dayIndex / 2);
-  const dayInWeek = dayIndex % 2;
-
-  const isStartTuesday = dayOfWeek === 2;
-  const isStartThursday = dayOfWeek === 4;
-
-  daysToAdd += weekIndex * 7;
-
-  if (isStartTuesday) {
-    if (dayInWeek === 1) {
-      daysToAdd += 2;
-    }
-  } else if (isStartThursday) {
-    if (dayInWeek === 1) {
-      daysToAdd += 5;
-    }
-  } else if (dayInWeek === 1) {
-    daysToAdd += 2;
-  }
-
-  const classDate = new Date(start);
-  classDate.setDate(start.getDate() + daysToAdd);
-
-  return classDate.toISOString().split('T')[0];
 }
 
 export const checkDoubleBooking = (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number): { hasConflict: boolean; conflictingClasses: any[] } => {

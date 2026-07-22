@@ -1,17 +1,58 @@
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, Plus, Edit3, Trash2, Eye } from 'lucide-react';
-import type { Course, User, Class, Subject } from '../../types/lms';
+import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { supabase } from '../../lib/supabase';
+import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
+import {
+  SubjectDetailPage,
+  HomeworkAssignmentDetailPage,
+  buildSubjectRunFromSubject,
+  type HomeworkRow,
+  type HomeworkDetailSelection,
+  type SubjectRun,
+} from '../shared/classwork';
 
 interface CurriculumDateViewProps {
   courses: Course[];
+  courseStudents: CourseStudent[];
+  users: User[];
   currentUser: User;
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   checkDoubleBooking: (personId: string | null, date: string, hour: string, courses: Course[], excludeClassId?: number) => { hasConflict: boolean; conflictingClasses: any[] };
+  onEditSubject: (courseId: number, subject?: Subject) => void;
   onEditClass: (courseId: number, subjectId: number, classData: Class | null, date?: string) => void;
+  onDeleteSubject: (courseId: number, subjectId: number) => void;
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
-  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
+  onNavigate?: (view: string) => void;
+  onDetailActiveChange?: (active: boolean) => void;
+}
+
+type SelectedSubject = {
+  courseId: number;
+  subjectId: number;
+};
+
+type HomeworkCommentRow = {
+  id: number;
+  submission_id: number;
+  author_id?: string | null;
+  content: string;
+  created_at: string;
+  author?: { id: string; name: string } | null;
+};
+
+function mapHomeworkComment(row: HomeworkCommentRow) {
+  return {
+    id: row.id,
+    submissionId: row.submission_id,
+    authorId: row.author?.id ?? row.author_id ?? '',
+    authorName: row.author?.name ?? 'Unknown',
+    content: row.content,
+    createdAt: row.created_at,
+  };
 }
 
 function formatDate(dateStr: string) {
@@ -36,14 +77,25 @@ function hourTone(hour: string) {
 
 export function CurriculumDateView({
   courses,
+  courseStudents,
+  users,
   currentUser,
   getUserById,
   getCourseDisplayName,
   checkDoubleBooking,
+  onEditSubject,
   onEditClass,
+  onDeleteSubject,
   onDeleteClass,
-  onOpenClass,
+  onNavigate,
+  onDetailActiveChange,
 }: CurriculumDateViewProps) {
+  const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
+  const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
+  const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
+  const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
+  const [assignmentSaving, setAssignmentSaving] = useState(false);
+
   const activeCourses = courses.filter(isCourseActive);
   const allClasses = activeCourses.flatMap(course =>
     course.subjects.flatMap(subject =>
@@ -73,6 +125,198 @@ export function CurriculumDateView({
   }, {} as Record<string, Record<string, any[]>>);
 
   const sortedDates = Object.keys(classesByDate).sort();
+
+  const selectedCourse = selectedSubject
+    ? courses.find(course => course.id === selectedSubject.courseId) ?? null
+    : null;
+  const selectedSubjectEntity = selectedCourse
+    ? selectedCourse.subjects.find(subject => subject.id === selectedSubject!.subjectId) ?? null
+    : null;
+
+  const subjectRun: SubjectRun | null = useMemo(() => {
+    if (!selectedCourse || !selectedSubjectEntity) return null;
+    return buildSubjectRunFromSubject(selectedCourse, selectedSubjectEntity, homeworkRows, currentUser.roles);
+  }, [currentUser.roles, homeworkRows, selectedCourse, selectedSubjectEntity]);
+
+  useEffect(() => {
+    onDetailActiveChange?.(Boolean(selectedSubject) || Boolean(selectedHomeworkDetail));
+  }, [onDetailActiveChange, selectedHomeworkDetail, selectedSubject]);
+
+  useEffect(() => {
+    if (!selectedSubject) {
+      setHomeworkRows([]);
+      setHomeworkSubmissions([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('homework_assignments')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
+        .eq('subject_id', selectedSubject.subjectId)
+        .order('due_date', { ascending: true, nullsFirst: false });
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load curriculum subject homework', error);
+        setHomeworkRows([]);
+      } else {
+        setHomeworkRows((data ?? []) as HomeworkRow[]);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [selectedSubject]);
+
+  const loadHomeworkSubmissions = useCallback(async () => {
+    const assignmentIds = homeworkRows.map(homework => homework.id);
+    if (assignmentIds.length === 0) {
+      setHomeworkSubmissions([]);
+      return;
+    }
+    const { data, error } = await supabase
+      .from('homework_submissions')
+      .select(`
+        id, assignment_id, student_id, submission_type, drive_file_id,
+        drive_view_url, file_name, google_doc_id, google_doc_url,
+        status, submitted_at, points, grade_comment, graded_at,
+        graded_by, created_at, updated_at,
+        student:profiles!student_id(id, name),
+        comments:homework_comments(
+          id, submission_id, author_id, content, created_at,
+          author:profiles!author_id(id, name)
+        )
+      `)
+      .in('assignment_id', assignmentIds);
+    if (error) {
+      console.error('Failed to load curriculum homework submissions', error);
+      setHomeworkSubmissions([]);
+    } else {
+      setHomeworkSubmissions((data ?? []).map(row => ({
+        id: row.id,
+        assignmentId: row.assignment_id,
+        studentId: row.student_id,
+        studentName: row.student?.name ?? 'Unknown',
+        submissionType: row.submission_type,
+        driveFileId: row.drive_file_id,
+        driveViewUrl: row.drive_view_url,
+        fileName: row.file_name,
+        googleDocId: row.google_doc_id,
+        googleDocUrl: row.google_doc_url,
+        status: row.status,
+        submittedAt: row.submitted_at,
+        points: row.points,
+        gradeComment: row.grade_comment,
+        gradedAt: row.graded_at,
+        gradedBy: row.graded_by,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at,
+        comments: (row.comments ?? []).map(mapHomeworkComment),
+      })) as HomeworkSubmission[]);
+    }
+  }, [homeworkRows]);
+
+  useEffect(() => {
+    void loadHomeworkSubmissions();
+  }, [loadHomeworkSubmissions]);
+
+  useEffect(() => {
+    if (!selectedSubject) return;
+    const course = courses.find(item => item.id === selectedSubject.courseId);
+    const subject = course?.subjects.find(item => item.id === selectedSubject.subjectId);
+    if (!course || !subject) {
+      setSelectedSubject(null);
+      setSelectedHomeworkDetail(null);
+    }
+  }, [courses, selectedSubject]);
+
+  const createSubjectAssignment = async (subjectId: number, classId: number | null, data: AssignmentComposerPayload) => {
+    setAssignmentSaving(true);
+    try {
+      const { data: inserted, error } = await supabase
+        .from('homework_assignments')
+        .insert({
+          class_id: classId,
+          subject_id: subjectId,
+          author_id: currentUser.id,
+          title: data.title,
+          description: data.description,
+          due_date: data.dueDate,
+          grading_due_date: data.gradingDueDate,
+          max_points: data.maxPoints,
+        })
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
+        .single();
+
+      if (error) throw error;
+      if (inserted) {
+        setHomeworkRows(prev => [inserted as HomeworkRow, ...prev]);
+      }
+    } finally {
+      setAssignmentSaving(false);
+    }
+  };
+
+  const openSubjectPage = (courseId: number, subjectId: number) => {
+    setSelectedSubject({ courseId, subjectId });
+  };
+
+  if (selectedHomeworkDetail) {
+    return (
+      <HomeworkAssignmentDetailPage
+        selection={selectedHomeworkDetail}
+        scope="admin"
+        currentUser={currentUser}
+        users={users}
+        courseStudents={courseStudents}
+        homeworkSubmissions={homeworkSubmissions}
+        onBack={() => setSelectedHomeworkDetail(null)}
+        onRefresh={loadHomeworkSubmissions}
+      />
+    );
+  }
+
+  if (selectedSubject && subjectRun && selectedCourse && selectedSubjectEntity) {
+    const courseId = selectedCourse.id;
+    const subjectId = selectedSubjectEntity.id;
+
+    return (
+      <SubjectDetailPage
+        run={subjectRun}
+        initialTab="sessions"
+        onBack={() => setSelectedSubject(null)}
+        onOpenAssignment={(homework, session) => setSelectedHomeworkDetail({ homework, session, run: subjectRun })}
+        homeworkRows={homeworkRows}
+        homeworkSubmissions={homeworkSubmissions}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+        currentUser={currentUser}
+        scope="admin"
+        onNavigate={onNavigate}
+        onCreateAssignment={createSubjectAssignment}
+        assignmentSaving={assignmentSaving}
+        backLabel="Back to date view"
+        curriculumActions={{
+          onEditSubject: () => onEditSubject(courseId, selectedSubjectEntity),
+          onAddSession: () => onEditClass(courseId, subjectId, null),
+          onEditSession: classId => {
+            const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
+            if (cls) onEditClass(courseId, subjectId, cls);
+          },
+          onDeleteSession: classId => onDeleteClass(courseId, subjectId, classId),
+          getSessionAttention: classId => {
+            const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
+            if (!cls) return null;
+            const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
+            const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
+            const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
+            const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
+            return { hasConflict, hasVacantRoles };
+          },
+        }}
+      />
+    );
+  }
 
   return (
     <div className="space-y-5">
@@ -155,7 +399,7 @@ export function CurriculumDateView({
                                   <div className="min-w-0">
                                     <button
                                       type="button"
-                                      onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                      onClick={() => openSubjectPage(cls.courseId, cls.subjectId)}
                                       className="tbo-focus text-left text-sm font-semibold text-[#171717] hover:underline"
                                     >
                                       {getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}
@@ -165,9 +409,9 @@ export function CurriculumDateView({
                                   <div className="flex shrink-0 gap-1">
                                     <button
                                       type="button"
-                                      onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
+                                      onClick={() => openSubjectPage(cls.courseId, cls.subjectId)}
                                       className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                      title="Open session"
+                                      title="Open subject"
                                     >
                                       <Eye className="h-3.5 w-3.5" />
                                     </button>

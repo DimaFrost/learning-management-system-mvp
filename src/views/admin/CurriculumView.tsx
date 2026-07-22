@@ -66,11 +66,18 @@ export function CurriculumView({
   onRemoveWellScheduleDate,
 }: CurriculumViewProps) {
   const [overviewDetailActive, setOverviewDetailActive] = useState(false);
-  const showShellHeader = !(activeCurriculumSection === 'overview' && overviewDetailActive);
+  const [dateViewDetailActive, setDateViewDetailActive] = useState(false);
+  const showShellHeader = !(
+    (activeCurriculumSection === 'overview' && overviewDetailActive) ||
+    (activeCurriculumSection === 'date-view' && dateViewDetailActive)
+  );
 
   useEffect(() => {
     if (activeCurriculumSection !== 'overview') {
       setOverviewDetailActive(false);
+    }
+    if (activeCurriculumSection !== 'date-view') {
+      setDateViewDetailActive(false);
     }
   }, [activeCurriculumSection]);
 
@@ -127,13 +134,18 @@ export function CurriculumView({
       {activeCurriculumSection === 'date-view' && (
         <CurriculumDateView
           courses={courses}
+          courseStudents={courseStudents}
+          users={users}
           currentUser={currentUser}
           getUserById={getUserById}
           getCourseDisplayName={getCourseDisplayName}
           checkDoubleBooking={checkDoubleBooking}
+          onEditSubject={onEditSubject}
           onEditClass={onEditClass}
+          onDeleteSubject={onDeleteSubject}
           onDeleteClass={onDeleteClass}
-          onOpenClass={onOpenClass}
+          onNavigate={onNavigate}
+          onDetailActiveChange={setDateViewDetailActive}
         />
       )}
       {activeCurriculumSection === 'archived' && (
