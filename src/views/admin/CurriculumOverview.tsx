@@ -3,7 +3,6 @@ import { CalendarDays, ChevronRight, ChevronDown, Edit3, Trash2, Plus, ExternalL
 import type { Course, CourseStudent, HomeworkSubmission, User, Subject, Class } from '../../types/lms';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
-import { SubjectCurriculumPlan } from '../../components/subject/SubjectCurriculumPlan';
 import { ActiveYearGroupBadge } from './users/usersShared';
 import { supabase } from '../../lib/supabase';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
@@ -267,9 +266,6 @@ export function CurriculumOverview({
             const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
             return { hasConflict, hasVacantRoles };
           },
-          curriculumPlan: (
-            <SubjectCurriculumPlan subjectId={subjectId} currentUser={currentUser} />
-          ),
         }}
       />
     );

@@ -1,4 +1,3 @@
-import type { ReactNode } from 'react';
 import type { BookReadingAssignment, BookReadingSubmission, Course } from '../../../types/lms';
 
 export type ClassworkScope = 'admin' | 'teacher' | 'student';
@@ -61,5 +60,4 @@ export type CurriculumSubjectActions = {
   onEditSession: (classId: number) => void;
   onDeleteSession: (classId: number) => void;
   getSessionAttention?: (classId: number) => { hasConflict: boolean; hasVacantRoles: boolean } | null;
-  curriculumPlan?: ReactNode;
 };

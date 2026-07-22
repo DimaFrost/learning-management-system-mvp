@@ -27,6 +27,7 @@ import { hasRole } from '../../../utils/userUtils';
 import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
 import { AssignmentComposer, type AssignmentComposerPayload } from '../../../components/assignments/AssignmentComposer';
 import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
+import { SubjectCurriculumPlan } from '../../../components/subject/SubjectCurriculumPlan';
 import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
 import {
   findClass,
@@ -841,6 +842,21 @@ export function SubjectDetailPage({
 
           {activeTab === 'materials' && (
             <div className="space-y-4">
+              {run.subjectId != null && (
+                <section className="border-l-2 border-[#171717] pl-4">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="text-sm font-semibold text-[#171717]">Curriculum Plan</h3>
+                  </div>
+                  <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
+                    <SubjectCurriculumPlan
+                      subjectId={run.subjectId}
+                      currentUser={currentUser}
+                      layout="materials"
+                    />
+                  </div>
+                </section>
+              )}
+
               {materialsLoading ? (
                 <div className="border-y border-[#d4d4d4] bg-white px-4 py-8 text-sm text-[#737373]">
                   Loading materials...
@@ -1058,11 +1074,6 @@ export function SubjectDetailPage({
                 <span className="font-semibold text-[#171717]">{attendanceMarked ? `${attendancePercent}%` : 'Not marked'}</span>
               </div>
             </div>
-            {curriculumActions?.curriculumPlan ? (
-              <div className="mt-4 border-t border-[#e5e5e5] pt-4">
-                {curriculumActions.curriculumPlan}
-              </div>
-            ) : null}
           </div>
 
           <div className="border-y border-[#d4d4d4] bg-white p-4">
