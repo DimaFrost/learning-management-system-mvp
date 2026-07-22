@@ -402,10 +402,14 @@ export function CurriculumOverview({
                 ) : (
                   <div className="space-y-4">
                     {course.subjects.map(subject => {
-                      const isSubjectCollapsed = collapsedSubjects.has(`${course.id}-${subject.id}`);
                       const run = buildSubjectRunFromSubject(course, subject, [], currentUser.roles);
                       const dateRange = getRunDateRange(run);
                       const timelineState = getRunTimelineState(run);
+                      const subjectKey = `${course.id}-${subject.id}`;
+                      const defaultCollapsed = timelineState === 'past';
+                      const isSubjectCollapsed = collapsedSubjects.has(subjectKey)
+                        ? !defaultCollapsed
+                        : defaultCollapsed;
                       const sessionCount = subject.classes.length;
                       const materialsCount = subject.classes.filter(cls => Boolean(cls.materialsFolderId)).length;
                       const openSubjectPage = () => setSelectedSubject({ courseId: course.id, subjectId: subject.id });

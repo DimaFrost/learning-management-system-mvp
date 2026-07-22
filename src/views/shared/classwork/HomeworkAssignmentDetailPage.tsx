@@ -1,12 +1,36 @@
 import { useState } from 'react';
-import { ArrowLeft, CalendarDays, CheckCircle2, ClipboardList, ExternalLink, FileText } from 'lucide-react';
+import { ArrowLeft, CalendarDays, CheckCircle2, ClipboardCheck, ClipboardList, ExternalLink, FileText } from 'lucide-react';
+import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
+import { GradeModal } from '../../../components/modals/GradeModal';
 import { supabase } from '../../../lib/supabase';
-import type { CourseStudent, HomeworkSubmission, User } from '../../../types/lms';
+import type { CourseStudent, HomeworkAssignment, HomeworkSubmission, User } from '../../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../../admin/users/usersShared';
 import { createHomeworkGoogleDoc } from '../../../utils/googleDocsV2';
 import { parseHomeworkInstructions } from '../../../utils/homeworkInstructions';
+import { resolveHomeworkSubmissionPreview, type FilePreviewItem } from '../../../utils/filePreview';
 import { formatDueDateTime, getDueCountdown, getHomeworkStatusLabel, getHomeworkStatusTone } from './helpers';
-import type { ClassworkScope, HomeworkDetailSelection } from './types';
+import type { ClassworkScope, HomeworkDetailSelection, HomeworkRow } from './types';
+
+function getSubmissionUrl(submission: HomeworkSubmission): string | null {
+  return submission.driveViewUrl ?? submission.googleDocUrl;
+}
+
+function toHomeworkAssignment(homework: HomeworkRow, currentUser: User): HomeworkAssignment {
+  return {
+    id: homework.id,
+    classId: homework.class_id,
+    subjectId: homework.subject_id,
+    authorId: currentUser.id,
+    authorName: currentUser.name,
+    title: homework.title,
+    description: homework.description,
+    dueDate: homework.due_date,
+    maxPoints: homework.max_points,
+    driveFolderId: null,
+    createdAt: '',
+    updatedAt: '',
+  };
+}
 
 export function HomeworkAssignmentDetailPage({
   selection,
@@ -31,6 +55,8 @@ export function HomeworkAssignmentDetailPage({
   const parsed = parseHomeworkInstructions(homework.description);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [gradingSubmission, setGradingSubmission] = useState<HomeworkSubmission | null>(null);
+  const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
   const enrolledStudentIds = run.course
     ? courseStudents.filter(row => row.courseId === run.course?.id && row.status === 'active').map(row => row.studentId)
     : [];
@@ -39,6 +65,17 @@ export function HomeworkAssignmentDetailPage({
   const submittedCount = submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length;
   const status = scope === 'student' ? (mySubmission?.status ?? 'not_started') : null;
   const openUrl = mySubmission?.googleDocUrl ?? mySubmission?.driveViewUrl ?? null;
+  const gradingAssignment = gradingSubmission ? toHomeworkAssignment(homework, currentUser) : null;
+
+  const openSubmission = (submission: HomeworkSubmission) => {
+    const preview = resolveHomeworkSubmissionPreview(submission);
+    if (preview) {
+      setPreviewItem(preview);
+      return;
+    }
+    const url = getSubmissionUrl(submission);
+    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   const createDoc = async () => {
     setSaving(true);
@@ -71,6 +108,46 @@ export function HomeworkAssignmentDetailPage({
       await onRefresh();
     }
     setSaving(false);
+  };
+
+  const gradeSubmission = async (params: {
+    submissionId: number;
+    points: number;
+    gradeComment: string | null;
+  }) => {
+    setError(null);
+    const { error: gradeError } = await supabase
+      .from('homework_submissions')
+      .update({
+        points: params.points,
+        grade_comment: params.gradeComment,
+        status: 'graded',
+        graded_at: new Date().toISOString(),
+        graded_by: currentUser.id,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', params.submissionId);
+    if (gradeError) {
+      setError('Failed to save grade');
+      throw gradeError;
+    }
+    await onRefresh();
+  };
+
+  const returnSubmission = async (submissionId: number) => {
+    setError(null);
+    const { error: returnError } = await supabase
+      .from('homework_submissions')
+      .update({
+        status: 'returned',
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', submissionId);
+    if (returnError) {
+      setError('Failed to return submission');
+      throw returnError;
+    }
+    await onRefresh();
   };
 
   return (
@@ -151,15 +228,51 @@ export function HomeworkAssignmentDetailPage({
                   const student = users.find(user => user.id === studentId);
                   const submission = submissions.find(item => item.studentId === studentId);
                   const studentStatus = submission?.status ?? 'not_started';
+                  const submissionUrl = submission ? getSubmissionUrl(submission) : null;
+                  const canGrade = Boolean(
+                    submission && (studentStatus === 'submitted' || studentStatus === 'graded')
+                  );
+                  const gradeTitle = studentStatus === 'graded' ? 'Edit grade' : 'Grade';
                   return (
-                    <div key={studentId} className="flex items-center justify-between gap-3 py-3">
+                    <div key={studentId} className="flex flex-wrap items-center justify-between gap-3 py-3">
                       <div className="flex min-w-0 items-center gap-2">
                         {student ? <UserAvatar user={student} size="sm" /> : null}
-                        <span className="min-w-0 truncate text-sm font-semibold text-[#171717]">{student?.name ?? 'Student'}</span>
+                        <div className="min-w-0">
+                          <span className="block truncate text-sm font-semibold text-[#171717]">{student?.name ?? 'Student'}</span>
+                          {studentStatus === 'graded' && submission?.points != null && (
+                            <span className="text-xs text-[#737373]">
+                              {submission.points}/{homework.max_points} pts
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(studentStatus)}`}>
-                        {getHomeworkStatusLabel(studentStatus)}
-                      </span>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(studentStatus)}`}>
+                          {getHomeworkStatusLabel(studentStatus)}
+                        </span>
+                        {submissionUrl && submission && (
+                          <button
+                            type="button"
+                            onClick={() => openSubmission(submission)}
+                            className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                            title="Open"
+                            aria-label="Open submission"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                        {canGrade && submission && (
+                          <button
+                            type="button"
+                            onClick={() => setGradingSubmission(submission)}
+                            className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                            title={gradeTitle}
+                            aria-label={gradeTitle}
+                          >
+                            <ClipboardCheck className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
                     </div>
                   );
                 })}
@@ -209,6 +322,18 @@ export function HomeworkAssignmentDetailPage({
           </section>
         </aside>
       </div>
+
+      {scope !== 'student' && (
+        <GradeModal
+          submission={gradingSubmission}
+          assignment={gradingAssignment}
+          onClose={() => setGradingSubmission(null)}
+          onGrade={gradeSubmission}
+          onReturn={returnSubmission}
+        />
+      )}
+
+      <FilePreviewModal item={previewItem} onClose={() => setPreviewItem(null)} />
     </div>
   );
 }
