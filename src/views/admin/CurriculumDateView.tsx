@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Calendar, Plus, Edit3, Trash2, Eye } from 'lucide-react';
+import { Calendar, ChevronDown, ChevronRight, Plus, Edit3, Trash2, Eye } from 'lucide-react';
 import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -34,6 +34,14 @@ type SelectedSubject = {
   courseId: number;
   subjectId: number;
 };
+
+type DateFilter = 'all' | 'upcoming' | 'past';
+
+const DATE_FILTERS: { id: DateFilter; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'upcoming', label: 'Upcoming' },
+  { id: 'past', label: 'Past' },
+];
 
 type HomeworkCommentRow = {
   id: number;
@@ -75,6 +83,14 @@ function hourTone(hour: string) {
   return 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]';
 }
 
+function todayYmd() {
+  const now = new Date();
+  const y = now.getFullYear();
+  const m = String(now.getMonth() + 1).padStart(2, '0');
+  const day = String(now.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
 export function CurriculumDateView({
   courses,
   courseStudents,
@@ -95,6 +111,9 @@ export function CurriculumDateView({
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
+  const [manuallyToggledDates, setManuallyToggledDates] = useState<Set<string>>(new Set());
+  const [dateFilter, setDateFilter] = useState<DateFilter>('all');
+  const today = todayYmd();
 
   const activeCourses = courses.filter(isCourseActive);
   const allClasses = activeCourses.flatMap(course =>
@@ -125,6 +144,15 @@ export function CurriculumDateView({
   }, {} as Record<string, Record<string, any[]>>);
 
   const sortedDates = Object.keys(classesByDate).sort();
+  const visibleDates = sortedDates.filter(date => {
+    if (dateFilter === 'upcoming') return date >= today;
+    if (dateFilter === 'past') return date < today;
+    return true;
+  });
+  const visibleSessionCount = visibleDates.reduce(
+    (sum, date) => sum + Object.values(classesByDate[date]).reduce((daySum, courseClasses) => daySum + courseClasses.length, 0),
+    0
+  );
 
   const selectedCourse = selectedSubject
     ? courses.find(course => course.id === selectedSubject.courseId) ?? null
@@ -260,6 +288,20 @@ export function CurriculumDateView({
     setSelectedSubject({ courseId, subjectId });
   };
 
+  const isDateCollapsed = (date: string) => {
+    const defaultCollapsed = date < today;
+    return manuallyToggledDates.has(date) ? !defaultCollapsed : defaultCollapsed;
+  };
+
+  const toggleDateCollapsed = (date: string) => {
+    setManuallyToggledDates(prev => {
+      const next = new Set(prev);
+      if (next.has(date)) next.delete(date);
+      else next.add(date);
+      return next;
+    });
+  };
+
   if (selectedHomeworkDetail) {
     return (
       <HomeworkAssignmentDetailPage
@@ -321,48 +363,146 @@ export function CurriculumDateView({
   return (
     <div className="space-y-5">
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Schedule</p>
             <h3 className="text-sm font-semibold text-[#171717]">Schedule by Date</h3>
           </div>
-          <p className="text-sm text-[#737373]">
-            {sortedDates.length} days · {allClasses.length} sessions
-          </p>
+          <div className="flex flex-col gap-2 sm:items-end">
+            <div className="inline-flex overflow-hidden rounded-lg border border-[#d4d4d4]" role="tablist" aria-label="Date filter">
+              {DATE_FILTERS.map(filter => {
+                const active = dateFilter === filter.id;
+                return (
+                  <button
+                    key={filter.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={active}
+                    onClick={() => setDateFilter(filter.id)}
+                    className={`tbo-focus h-9 px-3 text-sm font-semibold transition ${
+                      active
+                        ? 'bg-[#171717] text-white'
+                        : 'bg-white text-[#171717] hover:bg-[#f5f5f5]'
+                    }`}
+                  >
+                    {filter.label}
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-sm text-[#737373]">
+              {visibleDates.length} days · {visibleSessionCount} sessions
+            </p>
+          </div>
         </div>
       </div>
 
-      {sortedDates.length > 0 ? (
+      {sortedDates.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
+          <Calendar className="mx-auto h-8 w-8 text-[#a3a3a3]" />
+          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions scheduled yet.</p>
+          <p className="mt-1 text-sm text-[#737373]">Sessions will appear here by date once they are added.</p>
+        </div>
+      ) : visibleDates.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
+          <p className="text-sm font-semibold text-[#171717]">
+            {dateFilter === 'upcoming' ? 'No upcoming dates.' : 'No past dates.'}
+          </p>
+        </div>
+      ) : (
         <div className="space-y-5">
-          {sortedDates.map(date => {
+          {visibleDates.map(date => {
             const dateInfo = formatDate(date);
             const classesForDate = classesByDate[date];
             const totalClasses = Object.values(classesForDate).reduce((sum, courseClasses) => sum + courseClasses.length, 0);
+            const collapsed = isDateCollapsed(date);
 
             return (
               <section key={date} className="border-l-2 border-[#171717] pl-4">
-                <div className="mb-3 grid gap-3 border-b border-[#d4d4d4] pb-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
-                      {dateInfo.fullDate}
-                    </p>
-                    <div className="mt-1 flex flex-wrap items-center gap-2">
-                      <h4 className="tbo-display text-2xl text-[#171717]">{dateInfo.weekday}</h4>
-                      <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                        {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
-                      </span>
-                    </div>
-                  </div>
+                <div
+                  className={
+                    collapsed
+                      ? 'tbo-focus grid cursor-pointer grid-cols-[minmax(0,1fr)_auto] items-center gap-3 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 transition hover:bg-[#fafafa]'
+                      : 'mb-3 grid gap-3 border-b border-[#d4d4d4] pb-3 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:items-end'
+                  }
+                  role={collapsed ? 'button' : undefined}
+                  tabIndex={collapsed ? 0 : undefined}
+                  onClick={collapsed ? () => toggleDateCollapsed(date) : undefined}
+                  onKeyDown={
+                    collapsed
+                      ? event => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            toggleDateCollapsed(date);
+                          }
+                        }
+                      : undefined
+                  }
+                >
                   <button
                     type="button"
-                    onClick={() => onEditClass(0, 0, null, date)}
-                    className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white transition hover:bg-[#404040]"
+                    onClick={event => {
+                      event.stopPropagation();
+                      toggleDateCollapsed(date);
+                    }}
+                    className={
+                      collapsed
+                        ? 'hidden'
+                        : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] sm:grid'
+                    }
+                    aria-label={collapsed ? 'Expand date' : 'Collapse date'}
                   >
-                    <Plus className="h-3.5 w-3.5" />
-                    Add Session
+                    {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
+
+                  <div className="min-w-0">
+                    {collapsed ? (
+                      <div className="flex min-w-0 items-center gap-2">
+                        <ChevronRight className="h-4 w-4 flex-none text-[#737373]" />
+                        <div className="min-w-0">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
+                            {dateInfo.fullDate}
+                          </p>
+                          <h4 className="truncate text-sm font-semibold text-[#171717]">{dateInfo.weekday}</h4>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
+                          {dateInfo.fullDate}
+                        </p>
+                        <div className="mt-1 flex flex-wrap items-center gap-2">
+                          <h4 className="tbo-display text-2xl text-[#171717]">{dateInfo.weekday}</h4>
+                          <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                            {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div
+                    className="flex flex-wrap items-center gap-2 sm:justify-end"
+                    onClick={event => event.stopPropagation()}
+                  >
+                    {collapsed ? (
+                      <span className="text-xs font-semibold text-[#525252]">
+                        {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onEditClass(0, 0, null, date)}
+                        className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white transition hover:bg-[#404040]"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add Session
+                      </button>
+                    )}
+                  </div>
                 </div>
 
+                {!collapsed && (
                 <div className="space-y-4">
                   {Object.entries(classesForDate)
                     .sort(([courseNameA], [courseNameB]) => {
@@ -483,15 +623,10 @@ export function CurriculumDateView({
                       </div>
                     ))}
                 </div>
+                )}
               </section>
             );
           })}
-        </div>
-      ) : (
-        <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
-          <Calendar className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions scheduled yet.</p>
-          <p className="mt-1 text-sm text-[#737373]">Sessions will appear here by date once they are added.</p>
         </div>
       )}
     </div>

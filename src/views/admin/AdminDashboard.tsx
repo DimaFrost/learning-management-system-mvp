@@ -1318,7 +1318,7 @@ export function AdminDashboard({
   const openCalendarEvent = (event: MonthCalendarEvent) => {
     if (!event.classId || !event.subjectId || !event.courseId) return;
     closeCalendarDetails();
-    onOpenClass(event.classId, event.subjectId, event.courseId);
+    onOpenSubject(event.courseId, event.subjectId);
   };
 
   const closeMetricInsight = () => {
