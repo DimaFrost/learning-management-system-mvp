@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Fragment, useEffect, useRef, useState, type ChangeEvent } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -36,6 +36,7 @@ import {
   getHomeworkStatusTone,
   getRunDateRange,
   getRunTeachers,
+  groupByCalendarWeek,
   hasSessionHomework,
   hasSessionMaterials,
 } from './helpers';
@@ -685,7 +686,14 @@ export function SubjectDetailPage({
 
           {activeTab === 'sessions' && (
             <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
-              {sessionItems.map(item => {
+              {groupByCalendarWeek(sessionItems, item => item.dueDate).map(weekGroup => (
+                <Fragment key={weekGroup.weekStart}>
+                  <div className="-mx-4 w-[calc(100%+2rem)] bg-[#fafafa] px-4 py-2">
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                      {weekGroup.weekLabel}
+                    </p>
+                  </div>
+                  {weekGroup.items.map(item => {
                 const compactDate = getCompactDateParts(item.dueDate);
                 const sessionDate = item.dueDate ? new Date(item.dueDate) : null;
                 sessionDate?.setHours(0, 0, 0, 0);
@@ -800,7 +808,9 @@ export function SubjectDetailPage({
                     )}
                   </div>
                 );
-              })}
+                  })}
+                </Fragment>
+              ))}
             </div>
           )}
 

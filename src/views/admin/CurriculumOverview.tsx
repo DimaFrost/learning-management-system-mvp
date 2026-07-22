@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronRight, ChevronDown, Edit3, Trash2, Plus, ExternalLink, Eye } from 'lucide-react';
 import type { Course, CourseStudent, HomeworkSubmission, User, Subject, Class } from '../../types/lms';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
@@ -13,6 +13,7 @@ import {
   getCompactDateParts,
   getRunDateRange,
   getRunTimelineState,
+  groupByCalendarWeek,
   type HomeworkRow,
   type HomeworkDetailSelection,
   type SubjectRun,
@@ -595,112 +596,41 @@ export function CurriculumOverview({
                                     <span>Translator</span>
                                     <span className="text-right">Actions</span>
                                   </div>
-                                  {subject.classes.map(cls => {
-                                    const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
-                                    const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
-                                    const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
-                                    const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
-                                    const teacher = getUserById(cls.teacherId);
-                                    const translator = getUserById(cls.translatorId);
-                                    const compactDate = getCompactDateParts(cls.date || null);
-                                    const iconAccent = 'text-[#c2410c]';
+                                  {groupByCalendarWeek(subject.classes, cls => cls.date).map(weekGroup => (
+                                    <Fragment key={weekGroup.weekStart}>
+                                      <div className="-mx-4 w-[calc(100%+2rem)] bg-[#fafafa] px-4 py-2">
+                                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                                          {weekGroup.weekLabel}
+                                        </p>
+                                      </div>
+                                      {weekGroup.items.map(cls => {
+                                        const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, courses, cls.id);
+                                        const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, courses, cls.id);
+                                        const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
+                                        const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
+                                        const teacher = getUserById(cls.teacherId);
+                                        const translator = getUserById(cls.translatorId);
+                                        const compactDate = getCompactDateParts(cls.date || null);
+                                        const iconAccent = 'text-[#c2410c]';
 
-                                    return (
-                                      <div
-                                        key={cls.id}
-                                        role="button"
-                                        tabIndex={0}
-                                        onClick={openSubjectPage}
-                                        onKeyDown={event => {
-                                          if (event.key === 'Enter' || event.key === ' ') {
-                                            event.preventDefault();
-                                            openSubjectPage();
-                                          }
-                                        }}
-                                        className="tbo-focus -mx-4 w-[calc(100%+2rem)] px-4 py-3 text-left transition hover:bg-[#fafafa]"
-                                      >
-                                        <div
-                                          className="hidden items-center gap-4 md:grid"
-                                          style={{ gridTemplateColumns: SESSION_GRID }}
-                                        >
-                                          <span className="text-left">
-                                            {compactDate ? (
-                                              <span className="block">
-                                                <span className="block text-sm font-semibold leading-none text-[#171717]">{compactDate.day}</span>
-                                                <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
-                                              </span>
-                                            ) : (
-                                              <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">No date</span>
-                                            )}
-                                          </span>
-                                          <span className={`grid h-7 w-7 place-items-center ${iconAccent}`}>
-                                            <CalendarDays className="h-4 w-4" />
-                                          </span>
-                                          <span className="min-w-0 truncate text-sm font-semibold text-[#171717]">
-                                            {getClassDisplayTitle(cls, subject, currentUser.roles)}
-                                            {hasConflict && (
-                                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#dc2626]">Conflict</span>
-                                            )}
-                                            {hasVacantRoles && !hasConflict && (
-                                              <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Incomplete</span>
-                                            )}
-                                          </span>
-                                          <span className="text-xs font-semibold capitalize text-[#525252]">
-                                            {hourLabel(cls.hour)}
-                                          </span>
-                                          <span
-                                            className={`truncate text-sm ${
-                                              teacherConflict.hasConflict
-                                                ? 'font-semibold text-[#dc2626]'
-                                                : cls.teacherId === null
-                                                  ? 'font-semibold text-[#c2410c]'
-                                                  : 'text-[#525252]'
-                                            }`}
+                                        return (
+                                          <div
+                                            key={cls.id}
+                                            role="button"
+                                            tabIndex={0}
+                                            onClick={openSubjectPage}
+                                            onKeyDown={event => {
+                                              if (event.key === 'Enter' || event.key === ' ') {
+                                                event.preventDefault();
+                                                openSubjectPage();
+                                              }
+                                            }}
+                                            className="tbo-focus -mx-4 w-[calc(100%+2rem)] px-4 py-3 text-left transition hover:bg-[#fafafa]"
                                           >
-                                            {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
-                                          </span>
-                                          <span
-                                            className={`truncate text-sm ${
-                                              translatorConflict.hasConflict
-                                                ? 'font-semibold text-[#dc2626]'
-                                                : cls.translatorId === null
-                                                  ? 'font-semibold text-[#c2410c]'
-                                                  : 'text-[#525252]'
-                                            }`}
-                                          >
-                                            {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
-                                          </span>
-                                          <div className="flex items-center justify-end gap-1" onClick={event => event.stopPropagation()}>
-                                            <button
-                                              type="button"
-                                              onClick={openSubjectPage}
-                                              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                              title="Open subject"
+                                            <div
+                                              className="hidden items-center gap-4 md:grid"
+                                              style={{ gridTemplateColumns: SESSION_GRID }}
                                             >
-                                              <Eye className="h-3.5 w-3.5" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => onEditClass(course.id, subject.id, cls)}
-                                              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                              title="Edit session"
-                                            >
-                                              <Edit3 className="h-3.5 w-3.5" />
-                                            </button>
-                                            <button
-                                              type="button"
-                                              onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
-                                              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                              title="Delete session"
-                                            >
-                                              <Trash2 className="h-3.5 w-3.5" />
-                                            </button>
-                                          </div>
-                                        </div>
-
-                                        <div className="flex flex-col gap-2 md:hidden">
-                                          <div className="flex items-start justify-between gap-2">
-                                            <div className="flex min-w-0 items-start gap-3">
                                               <span className="text-left">
                                                 {compactDate ? (
                                                   <span className="block">
@@ -708,57 +638,137 @@ export function CurriculumOverview({
                                                     <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
                                                   </span>
                                                 ) : (
-                                                  <span className="text-[11px] font-semibold uppercase text-[#737373]">No date</span>
+                                                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">No date</span>
                                                 )}
                                               </span>
-                                              <div className="min-w-0">
-                                                <p className="truncate text-sm font-semibold text-[#171717]">
-                                                  {getClassDisplayTitle(cls, subject, currentUser.roles)}
-                                                </p>
-                                                <p className="mt-1 text-xs font-semibold text-[#525252]">{hourLabel(cls.hour)}</p>
+                                              <span className={`grid h-7 w-7 place-items-center ${iconAccent}`}>
+                                                <CalendarDays className="h-4 w-4" />
+                                              </span>
+                                              <span className="min-w-0 truncate text-sm font-semibold text-[#171717]">
+                                                {getClassDisplayTitle(cls, subject, currentUser.roles)}
+                                                {hasConflict && (
+                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#dc2626]">Conflict</span>
+                                                )}
+                                                {hasVacantRoles && !hasConflict && (
+                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Incomplete</span>
+                                                )}
+                                              </span>
+                                              <span className="text-xs font-semibold capitalize text-[#525252]">
+                                                {hourLabel(cls.hour)}
+                                              </span>
+                                              <span
+                                                className={`truncate text-sm ${
+                                                  teacherConflict.hasConflict
+                                                    ? 'font-semibold text-[#dc2626]'
+                                                    : cls.teacherId === null
+                                                      ? 'font-semibold text-[#c2410c]'
+                                                      : 'text-[#525252]'
+                                                }`}
+                                              >
+                                                {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
+                                              </span>
+                                              <span
+                                                className={`truncate text-sm ${
+                                                  translatorConflict.hasConflict
+                                                    ? 'font-semibold text-[#dc2626]'
+                                                    : cls.translatorId === null
+                                                      ? 'font-semibold text-[#c2410c]'
+                                                      : 'text-[#525252]'
+                                                }`}
+                                              >
+                                                {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                              </span>
+                                              <div className="flex items-center justify-end gap-1" onClick={event => event.stopPropagation()}>
+                                                <button
+                                                  type="button"
+                                                  onClick={openSubjectPage}
+                                                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                                                  title="Open subject"
+                                                >
+                                                  <Eye className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => onEditClass(course.id, subject.id, cls)}
+                                                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                                                  title="Edit session"
+                                                >
+                                                  <Edit3 className="h-3.5 w-3.5" />
+                                                </button>
+                                                <button
+                                                  type="button"
+                                                  onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
+                                                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                                  title="Delete session"
+                                                >
+                                                  <Trash2 className="h-3.5 w-3.5" />
+                                                </button>
                                               </div>
                                             </div>
-                                            <div className="flex shrink-0 gap-1" onClick={event => event.stopPropagation()}>
-                                              <button
-                                                type="button"
-                                                onClick={openSubjectPage}
-                                                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                                title="Open subject"
-                                              >
-                                                <Eye className="h-3.5 w-3.5" />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => onEditClass(course.id, subject.id, cls)}
-                                                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                                title="Edit session"
-                                              >
-                                                <Edit3 className="h-3.5 w-3.5" />
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
-                                                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                                title="Delete session"
-                                              >
-                                                <Trash2 className="h-3.5 w-3.5" />
-                                              </button>
+
+                                            <div className="flex flex-col gap-2 md:hidden">
+                                              <div className="flex items-start justify-between gap-2">
+                                                <div className="flex min-w-0 items-start gap-3">
+                                                  <span className="text-left">
+                                                    {compactDate ? (
+                                                      <span className="block">
+                                                        <span className="block text-sm font-semibold leading-none text-[#171717]">{compactDate.day}</span>
+                                                        <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
+                                                      </span>
+                                                    ) : (
+                                                      <span className="text-[11px] font-semibold uppercase text-[#737373]">No date</span>
+                                                    )}
+                                                  </span>
+                                                  <div className="min-w-0">
+                                                    <p className="truncate text-sm font-semibold text-[#171717]">
+                                                      {getClassDisplayTitle(cls, subject, currentUser.roles)}
+                                                    </p>
+                                                    <p className="mt-1 text-xs font-semibold text-[#525252]">{hourLabel(cls.hour)}</p>
+                                                  </div>
+                                                </div>
+                                                <div className="flex shrink-0 gap-1" onClick={event => event.stopPropagation()}>
+                                                  <button
+                                                    type="button"
+                                                    onClick={openSubjectPage}
+                                                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
+                                                    title="Open subject"
+                                                  >
+                                                    <Eye className="h-3.5 w-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => onEditClass(course.id, subject.id, cls)}
+                                                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
+                                                    title="Edit session"
+                                                  >
+                                                    <Edit3 className="h-3.5 w-3.5" />
+                                                  </button>
+                                                  <button
+                                                    type="button"
+                                                    onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
+                                                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                                    title="Delete session"
+                                                  >
+                                                    <Trash2 className="h-3.5 w-3.5" />
+                                                  </button>
+                                                </div>
+                                              </div>
+                                              <p className="text-xs text-[#737373]">
+                                                Teacher:{' '}
+                                                <span className={teacherConflict.hasConflict || cls.teacherId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
+                                                  {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
+                                                </span>
+                                                {' · '}Translator:{' '}
+                                                <span className={translatorConflict.hasConflict || cls.translatorId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
+                                                  {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                                </span>
+                                              </p>
                                             </div>
                                           </div>
-                                          <p className="text-xs text-[#737373]">
-                                            Teacher:{' '}
-                                            <span className={teacherConflict.hasConflict || cls.teacherId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
-                                              {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
-                                            </span>
-                                            {' · '}Translator:{' '}
-                                            <span className={translatorConflict.hasConflict || cls.translatorId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
-                                              {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
-                                            </span>
-                                          </p>
-                                        </div>
-                                      </div>
-                                    );
-                                  })}
+                                        );
+                                      })}
+                                    </Fragment>
+                                  ))}
                                 </div>
                               )}
                             </div>

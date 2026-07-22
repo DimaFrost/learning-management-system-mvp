@@ -27,7 +27,12 @@ export {
   findDefaultSubjectRunIndex,
   getRunTeachers,
   buildSubjectRuns,
+  weekStartKey,
+  groupByCalendarWeek,
+  UNSCHEDULED_WEEK_KEY,
 } from './helpers';
+
+export type { CalendarWeekGroup } from './helpers';
 
 export { HomeworkAssignmentDetailPage } from './HomeworkAssignmentDetailPage';
 export { SubjectDetailPage } from './SubjectDetailPage';

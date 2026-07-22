@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { AlertCircle, ArrowLeft, BookOpen, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, CircleDot, CircleEllipsis, Clock, Edit3, ExternalLink, FileText, MessageCircle, MinusCircle, Search, Send, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, User } from '../../types/lms';
@@ -18,6 +18,7 @@ import {
   getScopedCourseIds,
   getStatusTone,
   getSubjectAssignmentStatus,
+  groupByCalendarWeek,
   hasSessionHomework,
   hasSessionMaterials,
   HomeworkAssignmentDetailPage,
@@ -995,7 +996,14 @@ export function ClassworkView({
                   </span>
                   <span className="text-right">Teachers</span>
                 </div>
-                {run.items.map(item => {
+                {groupByCalendarWeek(run.items, item => item.dueDate).map(weekGroup => (
+                  <Fragment key={weekGroup.weekStart}>
+                    <div className="-mx-4 w-[calc(100%+2rem)] bg-[#fafafa] px-4 py-2">
+                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                        {weekGroup.weekLabel}
+                      </p>
+                    </div>
+                    {weekGroup.items.map(item => {
                   const Icon = item.kind === 'reading' ? BookOpen : CalendarDays;
                   const teacher = item.classInfo
                     ? users.find(user => user.id === findClass(courses, item.classInfo!.classId)?.cls.teacherId)
@@ -1102,7 +1110,9 @@ export function ClassworkView({
                       </span>
                     </div>
                   );
-                })}
+                    })}
+                  </Fragment>
+                ))}
               </div>}
             </section>
           );

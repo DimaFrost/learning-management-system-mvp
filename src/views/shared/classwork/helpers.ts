@@ -258,3 +258,58 @@ export function getSubjectAssignmentStatus(params: {
     title: 'Assignments are complete on the student and staff side.',
   };
 }
+
+export const UNSCHEDULED_WEEK_KEY = 'unscheduled';
+
+/** Monday YYYY-MM-DD for the calendar week that contains the date (Tue/Thu share a week). */
+export function weekStartKey(dateStr: string | null | undefined): string {
+  if (!dateStr) return UNSCHEDULED_WEEK_KEY;
+  const date = new Date(`${dateStr}T00:00:00`);
+  const day = date.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  date.setDate(date.getDate() + diff);
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const datePart = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${datePart}`;
+}
+
+export type CalendarWeekGroup<T> = {
+  weekStart: string;
+  weekLabel: string;
+  items: T[];
+};
+
+/** Group items by Monday-start calendar week; undated items go in a final Unscheduled bucket. */
+export function groupByCalendarWeek<T>(
+  items: T[],
+  getDate: (item: T) => string | null | undefined
+): CalendarWeekGroup<T>[] {
+  const byWeek = new Map<string, T[]>();
+  for (const item of items) {
+    const key = weekStartKey(getDate(item));
+    const list = byWeek.get(key);
+    if (list) list.push(item);
+    else byWeek.set(key, [item]);
+  }
+
+  const scheduled = [...byWeek.entries()]
+    .filter(([key]) => key !== UNSCHEDULED_WEEK_KEY)
+    .sort(([a], [b]) => a.localeCompare(b));
+
+  const groups: CalendarWeekGroup<T>[] = scheduled.map(([weekStart, weekItems], index) => ({
+    weekStart,
+    weekLabel: `Week ${index + 1}`,
+    items: weekItems,
+  }));
+
+  const unscheduled = byWeek.get(UNSCHEDULED_WEEK_KEY);
+  if (unscheduled?.length) {
+    groups.push({
+      weekStart: UNSCHEDULED_WEEK_KEY,
+      weekLabel: 'Unscheduled',
+      items: unscheduled,
+    });
+  }
+
+  return groups;
+}
