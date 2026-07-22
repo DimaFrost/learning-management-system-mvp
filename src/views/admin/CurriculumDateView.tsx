@@ -14,8 +14,6 @@ interface CurriculumDateViewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
-const SESSION_GRID = 'minmax(160px,1.2fr) minmax(120px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
-
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
   return {
@@ -139,86 +137,32 @@ export function CurriculumDateView({
                         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
                           {courseName} · {courseClasses.length} {courseClasses.length === 1 ? 'session' : 'sessions'}
                         </p>
-                        <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
-                          <div
-                            className="-mx-4 hidden w-[calc(100%+2rem)] items-center gap-4 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373] md:grid"
-                            style={{ gridTemplateColumns: SESSION_GRID }}
-                          >
-                            <span>Session</span>
-                            <span>Subject</span>
-                            <span>Hour</span>
-                            <span>Teacher</span>
-                            <span>Translator</span>
-                            <span className="text-right">Actions</span>
-                          </div>
+                        <div className="grid gap-3 sm:grid-cols-2">
                           {courseClasses.map(cls => {
                             const teacherConflict = checkDoubleBooking(cls.teacherId, cls.date, cls.hour, activeCourses, cls.id);
                             const translatorConflict = checkDoubleBooking(cls.translatorId, cls.date, cls.hour, activeCourses, cls.id);
                             const hasConflict = teacherConflict.hasConflict || translatorConflict.hasConflict;
                             const hasVacantRoles = cls.teacherId === null || cls.translatorId === null || !cls.date;
-                            const needsAttention = hasConflict || hasVacantRoles;
                             const teacher = getUserById(cls.teacherId);
                             const translator = getUserById(cls.translatorId);
 
                             return (
                               <div
                                 key={cls.id}
-                                className={`-mx-4 w-[calc(100%+2rem)] px-4 py-3 transition hover:bg-[#fafafa] ${
-                                  needsAttention ? 'bg-[#fff7ed]' : ''
-                                }`}
+                                className="border border-[#e5e5e5] bg-white px-4 py-3 transition hover:bg-[#fafafa]"
                               >
-                                <div
-                                  className="hidden items-center gap-4 md:grid"
-                                  style={{ gridTemplateColumns: SESSION_GRID }}
-                                >
+                                <div className="flex items-start justify-between gap-2">
                                   <div className="min-w-0">
                                     <button
                                       type="button"
                                       onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                                      className="tbo-focus truncate text-left text-sm font-semibold text-[#171717] hover:underline"
+                                      className="tbo-focus text-left text-sm font-semibold text-[#171717] hover:underline"
                                     >
                                       {getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}
                                     </button>
-                                    <div className="mt-1 flex flex-wrap gap-1.5">
-                                      {hasConflict && (
-                                        <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
-                                          Conflict
-                                        </span>
-                                      )}
-                                      {hasVacantRoles && !hasConflict && (
-                                        <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                                          Incomplete
-                                        </span>
-                                      )}
-                                    </div>
+                                    <p className="mt-0.5 truncate text-xs text-[#737373]">{cls.subjectTitle}</p>
                                   </div>
-                                  <span className="truncate text-sm text-[#525252]">{cls.subjectTitle}</span>
-                                  <span className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
-                                    {hourLabel(cls.hour)}
-                                  </span>
-                                  <span
-                                    className={`truncate text-sm ${
-                                      teacherConflict.hasConflict
-                                        ? 'font-semibold text-[#dc2626]'
-                                        : cls.teacherId
-                                          ? 'text-[#525252]'
-                                          : 'font-semibold text-[#c2410c]'
-                                    }`}
-                                  >
-                                    {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
-                                  </span>
-                                  <span
-                                    className={`truncate text-sm ${
-                                      translatorConflict.hasConflict
-                                        ? 'font-semibold text-[#dc2626]'
-                                        : cls.translatorId
-                                          ? 'text-[#525252]'
-                                          : 'font-semibold text-[#c2410c]'
-                                    }`}
-                                  >
-                                    {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
-                                  </span>
-                                  <div className="flex items-center justify-end gap-1">
+                                  <div className="flex shrink-0 gap-1">
                                     <button
                                       type="button"
                                       onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
@@ -246,71 +190,48 @@ export function CurriculumDateView({
                                   </div>
                                 </div>
 
-                                <div className="flex flex-col gap-2 md:hidden">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="min-w-0">
-                                      <button
-                                        type="button"
-                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                                        className="tbo-focus text-left text-sm font-semibold text-[#171717] hover:underline"
-                                      >
-                                        {getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}
-                                      </button>
-                                      <p className="mt-0.5 text-xs text-[#737373]">{cls.subjectTitle}</p>
-                                    </div>
-                                    <div className="flex shrink-0 gap-1">
-                                      <button
-                                        type="button"
-                                        onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                        title="Open session"
-                                      >
-                                        <Eye className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
-                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                        title="Edit session"
-                                      >
-                                        <Edit3 className="h-3.5 w-3.5" />
-                                      </button>
-                                      <button
-                                        type="button"
-                                        onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
-                                        className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                        title="Delete session"
-                                      >
-                                        <Trash2 className="h-3.5 w-3.5" />
-                                      </button>
-                                    </div>
-                                  </div>
-                                  <div className="flex flex-wrap items-center gap-2">
-                                    <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
-                                      {hourLabel(cls.hour)}
+                                <div className="mt-2 flex flex-wrap items-center gap-2">
+                                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
+                                    {hourLabel(cls.hour)}
+                                  </span>
+                                  {hasConflict && (
+                                    <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
+                                      Conflict
                                     </span>
-                                    {hasConflict && (
-                                      <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
-                                        Conflict
-                                      </span>
-                                    )}
-                                    {hasVacantRoles && !hasConflict && (
-                                      <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                                        Incomplete
-                                      </span>
-                                    )}
-                                  </div>
-                                  <p className="text-xs text-[#737373]">
-                                    Teacher:{' '}
-                                    <span className={cls.teacherId && !teacherConflict.hasConflict ? 'text-[#171717]' : 'font-semibold text-[#c2410c]'}>
-                                      {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
+                                  )}
+                                  {hasVacantRoles && !hasConflict && (
+                                    <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
+                                      Incomplete
                                     </span>
-                                    {' · '}Translator:{' '}
-                                    <span className={cls.translatorId && !translatorConflict.hasConflict ? 'text-[#171717]' : 'font-semibold text-[#c2410c]'}>
-                                      {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
-                                    </span>
-                                  </p>
+                                  )}
                                 </div>
+
+                                <p className="mt-2 text-xs text-[#737373]">
+                                  Teacher:{' '}
+                                  <span
+                                    className={
+                                      teacherConflict.hasConflict
+                                        ? 'font-semibold text-[#dc2626]'
+                                        : cls.teacherId
+                                          ? 'text-[#171717]'
+                                          : 'font-semibold text-[#c2410c]'
+                                    }
+                                  >
+                                    {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
+                                  </span>
+                                  {' · '}Translator:{' '}
+                                  <span
+                                    className={
+                                      translatorConflict.hasConflict
+                                        ? 'font-semibold text-[#dc2626]'
+                                        : cls.translatorId
+                                          ? 'text-[#171717]'
+                                          : 'font-semibold text-[#c2410c]'
+                                    }
+                                  >
+                                    {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
+                                  </span>
+                                </p>
                               </div>
                             );
                           })}
