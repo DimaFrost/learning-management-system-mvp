@@ -3,7 +3,7 @@
 # book_reading_assignments
 
 
-Column count: 10
+Column count: 11
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -17,6 +17,7 @@ Column count: 10
 | status | string:text | yes | no | assigned |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
+| max_points | integer:integer | no | no |  |  |
 
 ## Raw Definition
 
@@ -78,6 +79,10 @@ Column count: 10
       "default": "now()",
       "format": "timestamp with time zone",
       "type": "string"
+    },
+    "max_points": {
+      "format": "integer",
+      "type": "integer"
     }
   },
   "type": "object"

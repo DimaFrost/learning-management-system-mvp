@@ -7,8 +7,12 @@ import {
   X,
   ArrowLeft,
   Trash2,
+  Users,
+  GraduationCap,
+  UserCheck,
+  ShieldCheck,
 } from 'lucide-react';
-import type { Conversation, Message, User } from '../../types/lms';
+import type { Conversation, Course, CourseStudent, Message, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 
@@ -16,10 +20,16 @@ interface MessagesViewProps {
   conversations: Conversation[];
   currentUser: User;
   users: User[];
+  courses: Course[];
+  courseStudents: CourseStudent[];
   loading: boolean;
   sending: boolean;
   error: string | null;
-  onSend: (recipientId: string, content: string) => Promise<void>;
+  onSend: (
+    recipientIds: string | string[],
+    content: string,
+    audience?: { key: string; label: string }
+  ) => Promise<void>;
   onMarkAsRead: (otherUserId: string) => Promise<void>;
   onDeleteMessage: (messageId: number) => Promise<void>;
 }
@@ -132,6 +142,7 @@ interface ConversationListItemProps {
 
 function ConversationListItem({ conversation, otherUser, isSelected, onSelect }: ConversationListItemProps) {
   const hasUnread = conversation.unreadCount > 0;
+  const isAudience = Boolean(conversation.audienceKey);
 
   return (
     <button
@@ -141,14 +152,20 @@ function ConversationListItem({ conversation, otherUser, isSelected, onSelect }:
         isSelected ? 'bg-amber-50' : ''
       }`}
     >
-      <UserAvatar
-        user={otherUser ?? { name: conversation.otherUserName }}
-        size="lg"
-      />
+      {isAudience ? (
+        <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+          <Users className="h-5 w-5" />
+        </div>
+      ) : (
+        <UserAvatar
+          user={otherUser ?? { name: conversation.otherUserName }}
+          size="lg"
+        />
+      )}
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <span className={`text-sm truncate ${hasUnread ? 'font-bold text-gray-900' : 'font-medium text-gray-900'}`}>
-            {conversation.otherUserName}
+            {conversation.audienceLabel ?? conversation.otherUserName}
           </span>
           <span className="text-xs text-gray-400 shrink-0">
             {formatListTimestamp(conversation.lastMessageAt)}
@@ -168,6 +185,14 @@ function ConversationListItem({ conversation, otherUser, isSelected, onSelect }:
     </button>
   );
 }
+
+type AudienceOption = {
+  key: string;
+  label: string;
+  helper: string;
+  icon: typeof Users;
+  recipientIds: string[];
+};
 
 interface MessageBubbleProps {
   message: Message;
@@ -265,6 +290,8 @@ export function MessagesView({
   conversations,
   currentUser,
   users,
+  courses,
+  courseStudents,
   loading,
   sending,
   error,
@@ -277,10 +304,19 @@ export function MessagesView({
   const [newMessage, setNewMessage] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [composeSearchQuery, setComposeSearchQuery] = useState('');
+  const [selectedAudienceKey, setSelectedAudienceKey] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   const canStartConversations = hasRole(currentUser, 'administrator');
   const mobileShowThread = selectedUserId !== null || composeMode;
+  const activeFirstYearCourseIds = new Set(courses.filter(course => course.status === 'active' && course.courseType === 'first_year').map(course => course.id));
+  const activeSecondYearCourseIds = new Set(courses.filter(course => course.status === 'active' && course.courseType === 'second_year').map(course => course.id));
+  const firstYearStudentIds = new Set(courseStudents
+    .filter(row => row.status === 'active' && activeFirstYearCourseIds.has(row.courseId))
+    .map(row => row.studentId));
+  const secondYearStudentIds = new Set(courseStudents
+    .filter(row => row.status === 'active' && activeSecondYearCourseIds.has(row.courseId))
+    .map(row => row.studentId));
 
   const filteredConversations = conversations.filter(conv =>
     conv.otherUserName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -293,9 +329,56 @@ export function MessagesView({
   const otherUserName =
     selectedConversation?.otherUserName ?? selectedUser?.name ?? 'Unknown';
 
-  const composeCandidates = users
+  const activeUsers = users.filter(u => u.id !== currentUser.id);
+  const audienceOptions: AudienceOption[] = [
+    {
+      key: '@all',
+      label: '@all',
+      helper: 'Everyone except you',
+      icon: Users,
+      recipientIds: activeUsers.map(user => user.id),
+    },
+    {
+      key: '@students',
+      label: '@students',
+      helper: 'All students',
+      icon: GraduationCap,
+      recipientIds: activeUsers.filter(user => user.roles.includes('student')).map(user => user.id),
+    },
+    {
+      key: '@firstYears',
+      label: '@firstYears',
+      helper: 'First Year students',
+      icon: GraduationCap,
+      recipientIds: activeUsers.filter(user => firstYearStudentIds.has(user.id)).map(user => user.id),
+    },
+    {
+      key: '@secondYears',
+      label: '@secondYears',
+      helper: 'Second Year students',
+      icon: GraduationCap,
+      recipientIds: activeUsers.filter(user => secondYearStudentIds.has(user.id)).map(user => user.id),
+    },
+    {
+      key: '@teachers',
+      label: '@teachers',
+      helper: 'Teachers',
+      icon: UserCheck,
+      recipientIds: activeUsers.filter(user => user.roles.includes('teacher')).map(user => user.id),
+    },
+    {
+      key: '@staff',
+      label: '@staff',
+      helper: 'Admins, teachers, mentors, translators, leaders',
+      icon: ShieldCheck,
+      recipientIds: activeUsers.filter(user => user.roles.some(role => role !== 'student' && role !== 'dev')).map(user => user.id),
+    },
+  ].map(option => ({ ...option, recipientIds: Array.from(new Set(option.recipientIds)) }));
+
+  const composeCandidates = activeUsers
     .filter(u => u.id !== currentUser.id)
     .filter(u => u.name.toLowerCase().includes(composeSearchQuery.toLowerCase()));
+  const selectedAudience = audienceOptions.find(option => option.key === selectedAudienceKey);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -304,42 +387,63 @@ export function MessagesView({
   const handleSelectConversation = (conv: Conversation) => {
     setSelectedUserId(conv.otherUserId);
     setComposeMode(false);
-    onMarkAsRead(conv.otherUserId);
+    if (!conv.audienceKey) onMarkAsRead(conv.otherUserId);
   };
 
   const handleNewMessage = () => {
     if (!canStartConversations) return;
     setComposeMode(true);
     setSelectedUserId(null);
+    setSelectedAudienceKey(null);
     setComposeSearchQuery('');
   };
 
   const handleCancelCompose = () => {
     setComposeMode(false);
     setSelectedUserId(null);
+    setSelectedAudienceKey(null);
     setComposeSearchQuery('');
   };
 
   const handleMobileBack = () => {
     setSelectedUserId(null);
     setComposeMode(false);
+    setSelectedAudienceKey(null);
     setComposeSearchQuery('');
   };
 
   const handleSelectComposeUser = (user: User) => {
     setSelectedUserId(user.id);
+    setSelectedAudienceKey(null);
     setComposeMode(false);
     setComposeSearchQuery('');
   };
 
+  const handleSelectAudience = (audience: AudienceOption) => {
+    if (audience.recipientIds.length === 0) return;
+    setSelectedAudienceKey(audience.key);
+    setSelectedUserId(null);
+  };
+
   const handleSend = async () => {
-    if (!selectedUserId || !newMessage.trim() || sending) return;
+    if (!newMessage.trim() || sending) return;
+    if (composeMode && selectedAudience) {
+      await onSend(selectedAudience.recipientIds, newMessage, {
+        key: selectedAudience.key,
+        label: selectedAudience.label,
+      });
+      setComposeMode(false);
+      setSelectedAudienceKey(null);
+      setNewMessage('');
+      return;
+    }
+    if (!selectedUserId) return;
     if (!canStartConversations && !selectedConversation) return;
     await onSend(selectedUserId, newMessage);
     setNewMessage('');
   };
 
-  const canReplyInThread = canStartConversations || !!selectedConversation;
+  const canReplyInThread = (canStartConversations || !!selectedConversation) && !selectedConversation?.audienceKey;
 
   const showThreadPanel = selectedUserId !== null && !composeMode;
   const showComposePanel = composeMode && canStartConversations;
@@ -448,21 +552,60 @@ export function MessagesView({
                 </button>
               </div>
 
-              <div className="px-4 py-3 border-b border-gray-200">
+              <div className="px-4 py-3 border-b border-gray-200 space-y-3">
+                <div>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Groups</p>
+                  <div className="grid gap-2 sm:grid-cols-2">
+                    {audienceOptions.map(audience => {
+                      const Icon = audience.icon;
+                      const active = selectedAudienceKey === audience.key;
+                      return (
+                        <button
+                          key={audience.key}
+                          type="button"
+                          disabled={audience.recipientIds.length === 0}
+                          onClick={() => handleSelectAudience(audience)}
+                          className={`rounded-xl border px-3 py-2 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+                            active ? 'border-blue-300 bg-blue-50' : 'border-gray-200 bg-white hover:bg-gray-50'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2">
+                            <span className={`flex h-8 w-8 items-center justify-center rounded-lg ${active ? 'bg-white text-blue-700' : 'bg-gray-100 text-gray-600'}`}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0">
+                              <span className="block text-sm font-semibold text-gray-900">{audience.label}</span>
+                              <span className="block truncate text-xs text-gray-500">{audience.recipientIds.length} recipients · {audience.helper}</span>
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                   <input
                     type="text"
                     value={composeSearchQuery}
                     onChange={e => setComposeSearchQuery(e.target.value)}
-                    placeholder="Search for a person..."
+                    placeholder="Or search for one person..."
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>
               </div>
 
               <div className="flex-1 overflow-y-auto">
-                {composeCandidates.length === 0 ? (
+                {selectedAudience ? (
+                  <div className="p-4">
+                    <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
+                      <p className="text-sm font-semibold text-blue-900">{selectedAudience.label}</p>
+                      <p className="mt-1 text-sm text-blue-700">
+                        This message will be sent to {selectedAudience.recipientIds.length} people.
+                      </p>
+                    </div>
+                  </div>
+                ) : composeCandidates.length === 0 ? (
                   <p className="text-center text-gray-500 text-sm py-8">No users found.</p>
                 ) : (
                   composeCandidates.map(user => (
@@ -480,6 +623,14 @@ export function MessagesView({
                   ))
                 )}
               </div>
+              {selectedAudience && (
+                <ComposeArea
+                  newMessage={newMessage}
+                  sending={sending}
+                  onChange={setNewMessage}
+                  onSend={handleSend}
+                />
+              )}
             </>
           )}
 
@@ -494,12 +645,21 @@ export function MessagesView({
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <UserAvatar
-                  user={{ name: otherUserName, avatarUrl: selectedUser?.avatarUrl }}
-                  size="lg"
-                />
+                {selectedConversation?.audienceKey ? (
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-blue-50 text-blue-700">
+                    <Users className="h-5 w-5" />
+                  </div>
+                ) : (
+                  <UserAvatar
+                    user={{ name: otherUserName, avatarUrl: selectedUser?.avatarUrl }}
+                    size="lg"
+                  />
+                )}
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-900 truncate">{otherUserName}</p>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{selectedConversation?.audienceLabel ?? otherUserName}</p>
+                  {selectedConversation?.audienceKey && (
+                    <p className="text-xs text-gray-500">{selectedConversation.recipientIds.length} recipients</p>
+                  )}
                 </div>
               </div>
 
@@ -531,6 +691,12 @@ export function MessagesView({
                 )}
                 <div ref={bottomRef} />
               </div>
+
+              {selectedConversation?.audienceKey && (
+                <div className="border-t border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
+                  Audience messages are broadcast copies. Replies happen as direct conversations with the admin.
+                </div>
+              )}
 
               {canReplyInThread && (
                 <ComposeArea

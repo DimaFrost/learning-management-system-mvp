@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { supabase } from '../lib/supabase';
+import { queueWorkflowEmail } from '../utils/notificationJobs';
 import type {
   Course,
   CourseStudent,
@@ -326,6 +327,14 @@ export function useTodos(
       throw new Error('No to-dos were created.');
     }
     await Promise.all(createdTodos.map(syncTodoReminderJobs));
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: createdTodos.map(todo => todo.assignedTo),
+      subject: `New to-do: ${input.title.trim()}`,
+      title: `New to-do assigned by ${currentUser.name}`,
+      body: `${input.title.trim()}\n\n${input.description?.trim() || ''}\n\nDue: ${input.dueDate}`.trim(),
+      kind: 'system',
+    });
     await refetchTodos();
     return createdTodos[0];
   }, [currentUser.id, currentUser.name, isAdmin, refetchTodos, syncTodoReminderJobs, users]);

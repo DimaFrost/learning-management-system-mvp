@@ -3,7 +3,7 @@
 # profiles
 
 
-Column count: 12
+Column count: 13
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -19,6 +19,7 @@ Column count: 12
 | avatar_url | string:text | no | no |  |  |
 | preferred_language | string:text | yes | no | en |  |
 | phone | string:text | no | no |  |  |
+| teaching_course_types | array:text[] | yes | no |  |  |
 
 ## Raw Definition
 
@@ -34,7 +35,8 @@ Column count: 12
     "first_name",
     "last_name",
     "notification_preferences",
-    "preferred_language"
+    "preferred_language",
+    "teaching_course_types"
   ],
   "properties": {
     "id": {
@@ -92,6 +94,13 @@ Column count: 12
     "phone": {
       "format": "text",
       "type": "string"
+    },
+    "teaching_course_types": {
+      "format": "text[]",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
     }
   },
   "type": "object"

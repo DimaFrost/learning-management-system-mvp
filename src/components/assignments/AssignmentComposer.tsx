@@ -15,6 +15,7 @@ export type AssignmentComposerPayload = {
   title: string;
   description: string | null;
   dueDate: string | null;
+  gradingDueDate: string | null;
   maxPoints: number;
 };
 
@@ -69,6 +70,7 @@ export function AssignmentComposer({
     editingAssignment?.dueDate ? toDatetimeLocalValue(editingAssignment.dueDate) : ''
   );
   const [pointsMode, setPointsMode] = useState(editingAssignment?.maxPoints === 0 ? 'ungraded' : 'points');
+  const [gradingDueDate, setGradingDueDate] = useState(editingAssignment?.gradingDueDate ?? '');
   const [maxPoints, setMaxPoints] = useState(editingAssignment?.maxPoints ?? 100);
   const [errors, setErrors] = useState<{ title?: string; maxPoints?: string }>({});
   const [submitting, setSubmitting] = useState(false);
@@ -91,6 +93,7 @@ export function AssignmentComposer({
         title: title.trim(),
         description: instructions.trim() || null,
         dueDate: fromDatetimeLocalValue(dueDate),
+        gradingDueDate: gradingDueDate || null,
         maxPoints: pointsMode === 'ungraded' ? 0 : maxPoints,
       });
       onCancel();
@@ -238,6 +241,17 @@ export function AssignmentComposer({
                     {errors.maxPoints && <p className="mt-1 text-xs font-medium text-[#b91c1c]">{errors.maxPoints}</p>}
                   </>
                 )}
+                <div className="mt-4 border-t border-[#e5e5e5] pt-4">
+                  <label htmlFor="assignment-page-grading-due" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Mark by</label>
+                  <input
+                    id="assignment-page-grading-due"
+                    type="date"
+                    value={gradingDueDate}
+                    onChange={event => setGradingDueDate(event.target.value)}
+                    className="mt-2 h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm outline-none focus:border-[#2563eb]"
+                  />
+                  <p className="mt-1 text-xs text-[#737373]">Used for teacher grading to-dos after students submit.</p>
+                </div>
               </div>
 
               <button

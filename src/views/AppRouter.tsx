@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type {
   User,
   Class,
@@ -30,6 +30,8 @@ import { DutyMarkingView } from './student/DutyMarkingView';
 import { MyClassesView } from './teacher/MyClassesView';
 import { StaffDashboard } from './shared/StaffDashboard';
 import { AdminDashboard } from './admin/AdminDashboard';
+import { InboxView } from './admin/InboxView';
+import { KnowledgeBaseView } from './admin/KnowledgeBaseView';
 import { CurriculumView } from './admin/CurriculumView';
 import { BooksView } from './admin/BooksView';
 import { UsersHubView } from './admin/users/UsersHubView';
@@ -45,6 +47,9 @@ import { SettingsView } from './shared/SettingsView';
 import { ClassDetailView } from './shared/ClassDetailView';
 import { ClassworkView } from './shared/ClassworkView';
 import { GradesView } from './shared/GradesView';
+import { SubmissionsView } from './shared/SubmissionsView';
+import { AbsenceNoticesView } from './shared/AbsenceNoticesView';
+import { MyAssignmentsView } from './student/MyAssignmentsView';
 import { formatPlatformDate } from '../utils/dateUtils';
 
 type ShowConfirmation = (
@@ -58,6 +63,7 @@ export interface AppRouterProps {
   activeView: string;
   setActiveView: (view: string) => void;
   classworkResetKey: number;
+  submissionsResetKey: number;
   selectedClassId: number | null;
   previousView: string;
   openClassDetail: (classId: number, subjectId: number, courseId: number) => void;
@@ -172,7 +178,11 @@ export interface AppRouterProps {
   messagesLoading: boolean;
   messagesSending: boolean;
   messagesError: string | null;
-  sendMessage: (recipientId: string, content: string) => Promise<void>;
+  sendMessage: (
+    recipientIds: string | string[],
+    content: string,
+    audience?: { key: string; label: string }
+  ) => Promise<void>;
   markConversationAsRead: (otherUserId: string) => Promise<void>;
   deleteMessage: (messageId: number) => Promise<void>;
   messagesCurrentUser: User;
@@ -187,6 +197,7 @@ export function AppRouter({
   activeView,
   setActiveView,
   classworkResetKey,
+  submissionsResetKey,
   selectedClassId,
   openClassDetail,
   closeClassDetail,
@@ -262,10 +273,15 @@ export function AppRouter({
   effectiveCurrentDuties,
   nextScheduledDuty,
 }: AppRouterProps) {
-  const books = useBooks(currentUser, courses, courseStudents);
+  const [classworkSubjectTarget, setClassworkSubjectTarget] = useState<{ courseId: number; subjectId: number } | null>(null);
+  const books = useBooks(currentUser, courses, courseStudents, users);
   const streamSettings = useStreamSettings(currentUser, courses, courseStudents);
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
+  const openSubjectInClasswork = (courseId: number, subjectId: number) => {
+    setClassworkSubjectTarget({ courseId, subjectId });
+    setActiveView(activeWorkspace === 'student' ? 'my-classwork' : 'classwork');
+  };
 
   if (activeView === 'class-detail' && selectedClassId !== null) {
     let foundClass: Class | undefined;
@@ -353,6 +369,8 @@ export function AppRouter({
         conversations={conversations}
         currentUser={messagesCurrentUser}
         users={users}
+        courses={courses}
+        courseStudents={courseStudents}
         loading={messagesLoading}
         sending={messagesSending}
         error={messagesError}
@@ -404,6 +422,8 @@ export function AppRouter({
         onOpenClass={openClassDetail}
         onNavigate={setActiveView}
         resetKey={classworkResetKey}
+        initialSubjectTarget={classworkSubjectTarget}
+        onInitialSubjectTargetHandled={() => setClassworkSubjectTarget(null)}
       />
     );
   }
@@ -424,6 +444,51 @@ export function AppRouter({
         bookAssignments={scope === 'student' ? books.myAssignments : books.assignments}
         bookSubmissions={scope === 'student' ? books.mySubmissions : books.submissions}
         getCourseSummaries={attendance.getCourseSummaries}
+        onNavigate={setActiveView}
+      />
+    );
+  }
+
+  if (activeView === 'submissions') {
+    const scope = hasRole('administrator') && activeWorkspace === 'administrator'
+      ? 'admin'
+      : 'teacher';
+    return (
+      <SubmissionsView
+        key={submissionsResetKey}
+        scope={scope}
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+      />
+    );
+  }
+
+  if (activeView === 'absence-notices') {
+    const scope = hasRole('administrator') && activeWorkspace === 'administrator'
+      ? 'admin'
+      : 'student';
+    return (
+      <AbsenceNoticesView
+        scope={scope}
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+      />
+    );
+  }
+
+  if (activeView === 'my-assignments') {
+    return (
+      <MyAssignmentsView
+        currentUser={currentUser}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+        bookAssignments={books.myAssignments}
+        bookSubmissions={books.mySubmissions}
         onNavigate={setActiveView}
       />
     );
@@ -531,6 +596,7 @@ export function AppRouter({
           booksLoading={books.loading}
           onNavigate={setActiveView}
           onOpenClass={openClassDetail}
+          onOpenSubject={openSubjectInClasswork}
         />
       );
     }
@@ -808,8 +874,13 @@ export function AppRouter({
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
             onOpenClass={openClassDetail}
+            onOpenSubject={openSubjectInClasswork}
           />
         );
+      case 'inbox':
+        return <InboxView currentUser={currentUser} />;
+      case 'knowledge-base':
+        return <KnowledgeBaseView />;
     }
   }
 
@@ -925,6 +996,7 @@ export function AppRouter({
         booksLoading={books.loading}
         onNavigate={setActiveView}
         onOpenClass={openClassDetail}
+        onOpenSubject={openSubjectInClasswork}
       />
     );
   }
@@ -982,6 +1054,7 @@ export function AppRouter({
             booksLoading={books.loading}
             onNavigate={setActiveView}
             onOpenClass={openClassDetail}
+            onOpenSubject={openSubjectInClasswork}
           />
         );
     }
@@ -1005,6 +1078,7 @@ export function AppRouter({
         getCourseDisplayName={getCourseDisplayName}
         onNavigate={setActiveView}
         onOpenClass={openClassDetail}
+        onOpenSubject={openSubjectInClasswork}
       />
     );
   }

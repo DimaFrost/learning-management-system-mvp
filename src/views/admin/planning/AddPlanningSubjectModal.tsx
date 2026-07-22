@@ -1,6 +1,6 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { X, Save } from 'lucide-react';
-import type { User } from '../../../types/lms';
+import type { CourseType, User } from '../../../types/lms';
 
 export interface AddPlanningSubjectData {
   courseSide: 'firstYear' | 'secondYear';
@@ -37,6 +37,12 @@ export function AddPlanningSubjectModal({
 
   const canPickFirstYear = firstYearCourseId != null;
   const canPickSecondYear = secondYearCourseId != null;
+  const selectedCourseType: CourseType = courseSide === 'firstYear' ? 'first_year' : 'second_year';
+  const teacherOptions = useMemo(() => users.filter(user => {
+    if (!user.roles.includes('teacher')) return false;
+    const scopedTypes = user.teachingCourseTypes ?? [];
+    return scopedTypes.length === 0 || scopedTypes.includes(selectedCourseType);
+  }), [selectedCourseType, users]);
 
   useEffect(() => {
     if (!open) return;
@@ -52,6 +58,13 @@ export function AddPlanningSubjectModal({
       setCourseSide('secondYear');
     }
   }, [open, canPickFirstYear, canPickSecondYear]);
+
+  useEffect(() => {
+    if (!primaryTeacherId) return;
+    if (!teacherOptions.some(teacher => teacher.id === primaryTeacherId)) {
+      setPrimaryTeacherId(null);
+    }
+  }, [primaryTeacherId, teacherOptions]);
 
   if (!open) return null;
 
@@ -196,8 +209,7 @@ export function AddPlanningSubjectModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
               <option value="">Select a teacher</option>
-              {users
-                .filter(u => u.roles.includes('teacher'))
+              {teacherOptions
                 .map(teacher => (
                   <option key={teacher.id} value={teacher.id}>
                     {teacher.name}

@@ -43,6 +43,26 @@ interface CurriculumOverviewProps {
 
 const SESSION_GRID = '72px 28px minmax(180px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
 
+type HomeworkCommentRow = {
+  id: number;
+  submission_id: number;
+  author_id?: string | null;
+  content: string;
+  created_at: string;
+  author?: { id: string; name: string } | null;
+};
+
+function mapHomeworkComment(row: HomeworkCommentRow) {
+  return {
+    id: row.id,
+    submissionId: row.submission_id,
+    authorId: row.author?.id ?? row.author_id ?? '',
+    authorName: row.author?.name ?? 'Unknown',
+    content: row.content,
+    createdAt: row.created_at,
+  };
+}
+
 function hourLabel(hour: string) {
   if (hour === 'first') return '1st Hour';
   if (hour === 'second') return '2nd Hour';
@@ -115,7 +135,7 @@ export function CurriculumOverview({
     const load = async () => {
       const { data, error } = await supabase
         .from('homework_assignments')
-        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
         .eq('subject_id', selectedSubject.subjectId)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (cancelled) return;
@@ -143,7 +163,11 @@ export function CurriculumOverview({
         drive_view_url, file_name, google_doc_id, google_doc_url,
         status, submitted_at, points, grade_comment, graded_at,
         graded_by, created_at, updated_at,
-        student:profiles!student_id(id, name)
+        student:profiles!student_id(id, name),
+        comments:homework_comments(
+          id, submission_id, author_id, content, created_at,
+          author:profiles!author_id(id, name)
+        )
       `)
       .in('assignment_id', assignmentIds);
     if (error) {
@@ -169,6 +193,7 @@ export function CurriculumOverview({
         gradedBy: row.graded_by,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        comments: (row.comments ?? []).map(mapHomeworkComment),
       })) as HomeworkSubmission[]);
     }
   }, [homeworkRows]);
@@ -200,9 +225,10 @@ export function CurriculumOverview({
           title: data.title,
           description: data.description,
           due_date: data.dueDate,
+          grading_due_date: data.gradingDueDate,
           max_points: data.maxPoints,
         })
-        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
         .single();
 
       if (error) throw error;

@@ -58,6 +58,7 @@ interface AdminDashboardProps {
   getCourseDisplayName: (course: Course) => string;
   onNavigate: (view: string) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
+  onOpenSubject: (courseId: number, subjectId: number) => void;
 }
 
 type HomeworkOps = {
@@ -67,8 +68,29 @@ type HomeworkOps = {
   overdue: number;
   submitted: number;
   ungraded: number;
+  gradingDueDate: string | null;
   returned: number;
   loading: boolean;
+};
+
+type DashboardHomeworkAssignmentRow = {
+  id: number;
+  title: string;
+  due_date: string | null;
+  grading_due_date: string | null;
+  class_id: number | null;
+  class?: {
+    teacher_id: string | null;
+    subject?: { course_id: number | null } | null;
+  } | null;
+};
+
+type DashboardHomeworkSubmissionRow = {
+  id: number;
+  status: string;
+  submitted_at: string | null;
+  graded_at: string | null;
+  assignment?: DashboardHomeworkAssignmentRow | null;
 };
 
 type UpcomingItem = {
@@ -332,7 +354,7 @@ function getScopedCourses(
   currentUser: User,
   activeWorkspace: WorkspaceId | null
 ) {
-  const activeCourses = courses.filter(course => course.status === 'active');
+  const activeCourses = useMemo(() => courses.filter(course => course.status === 'active'), [courses]);
 
   switch (activeWorkspace) {
     case 'teacher':
@@ -690,6 +712,7 @@ export function AdminDashboard({
   getCourseDisplayName,
   onNavigate,
   onOpenClass,
+  onOpenSubject,
 }: AdminDashboardProps) {
   const [homeworkOps, setHomeworkOps] = useState<HomeworkOps>({
     assignments: 0,
@@ -698,6 +721,7 @@ export function AdminDashboard({
     overdue: 0,
     submitted: 0,
     ungraded: 0,
+    gradingDueDate: null,
     returned: 0,
     loading: true,
   });
@@ -707,6 +731,7 @@ export function AdminDashboard({
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(startOfToday()));
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [selectedMetricInsight, setSelectedMetricInsight] = useState<MetricInsight | null>(null);
+  const activeCourses = courses.filter(course => course.status === 'active');
 
   useEffect(() => {
     let cancelled = false;
@@ -716,10 +741,25 @@ export function AdminDashboard({
         const [assignmentsRes, submissionsRes] = await Promise.all([
           supabase
             .from('homework_assignments')
-            .select('id, title, due_date, class_id'),
+            .select(`
+              id, title, due_date, grading_due_date, class_id,
+              class:classes (
+                teacher_id,
+                subject:subjects ( course_id )
+              )
+            `),
           supabase
             .from('homework_submissions')
-            .select('id, status, submitted_at, graded_at'),
+            .select(`
+              id, status, submitted_at, graded_at,
+              assignment:homework_assignments (
+                id, title, due_date, grading_due_date, class_id,
+                class:classes (
+                  teacher_id,
+                  subject:subjects ( course_id )
+                )
+              )
+            `),
         ]);
 
         if (assignmentsRes.error) throw assignmentsRes.error;
@@ -727,11 +767,26 @@ export function AdminDashboard({
 
         const today = startOfToday();
         const soon = new Date(today.getTime() + 7 * DAY_MS);
-        const assignments = assignmentsRes.data ?? [];
-        const submissions = submissionsRes.data ?? [];
+        const activeCourseIdSet = new Set(activeCourses.map(course => course.id));
+        const isTeacherWorkspace = activeWorkspace === 'teacher';
+        const assignmentInScope = (assignment: DashboardHomeworkAssignmentRow | null | undefined) => {
+          if (!assignment) return false;
+          const courseId = assignment.class?.subject?.course_id ?? null;
+          if (courseId != null && !activeCourseIdSet.has(courseId)) return false;
+          if (isTeacherWorkspace && assignment.class?.teacher_id !== currentUser.id) return false;
+          return true;
+        };
+        const assignments = ((assignmentsRes.data ?? []) as DashboardHomeworkAssignmentRow[]).filter(assignmentInScope);
+        const submissions = ((submissionsRes.data ?? []) as DashboardHomeworkSubmissionRow[])
+          .filter(row => assignmentInScope(row.assignment));
 
         if (!cancelled) {
           const todayKey = dateKey(today);
+          const ungradedSubmissions = submissions.filter(row => row.status === 'submitted' && !row.graded_at);
+          const gradingDueDates = ungradedSubmissions
+            .map(row => row.assignment?.grading_due_date ?? null)
+            .filter((value): value is string => Boolean(value))
+            .sort();
           setHomeworkOps({
             assignments: assignments.length,
             dueToday: assignments.filter(row => {
@@ -748,7 +803,8 @@ export function AdminDashboard({
               return new Date(`${row.due_date}T00:00:00`) < today;
             }).length,
             submitted: submissions.filter(row => row.status === 'submitted' || row.status === 'graded').length,
-            ungraded: submissions.filter(row => row.status === 'submitted' && !row.graded_at).length,
+            ungraded: ungradedSubmissions.length,
+            gradingDueDate: gradingDueDates[0] ?? null,
             returned: submissions.filter(row => row.status === 'returned').length,
             loading: false,
           });
@@ -766,7 +822,7 @@ export function AdminDashboard({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [activeCourses, activeWorkspace, currentUser.id]);
 
   useEffect(() => {
     if (!signalModalOpen) return;
@@ -782,7 +838,6 @@ export function AdminDashboard({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [signalModalOpen]);
 
-  const activeCourses = courses.filter(course => course.status === 'active');
   const upcomingScopeCourses = getScopedCourses(courses, courseStudents, currentUser, activeWorkspace);
   const activeStudents = courseStudents.filter(enrollment => enrollment.status === 'active');
   const activeStudentIds = getActiveStudentIds(courseStudents);
@@ -1017,8 +1072,30 @@ export function AdminDashboard({
     .slice(0, 5);
 
   const recentMentorshipLogs = mentorshipLogs.filter(log => daysSince(log.date) <= 7).length;
+  const dynamicGradingTodo: TodoItem | null = activeWorkspace === 'teacher' && homeworkOps.ungraded > 0 ? {
+    id: -900001,
+    batchId: null,
+    title: 'Grade submitted work',
+    description: `${homeworkOps.ungraded} submission${homeworkOps.ungraded === 1 ? '' : 's'} waiting for review.`,
+    assignedTo: currentUser.id,
+    assignedToName: currentUser.name,
+    assignedToAvatarUrl: currentUser.avatarUrl ?? null,
+    createdBy: currentUser.id,
+    createdByName: 'Classwork',
+    dueDate: homeworkOps.gradingDueDate ?? todayKey,
+    priority: 'priority',
+    status: 'open',
+    assignmentType: 'person',
+    targetLabel: 'Submitted assignments',
+    recipientCount: homeworkOps.ungraded,
+    completedAt: null,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    readOnly: true,
+  } : null;
   const openTodos = todos.filter(todo => todo.status === 'open');
-  const todoPreview = [...todosToday]
+  const dashboardTodos = dynamicGradingTodo ? [dynamicGradingTodo, ...todosToday] : [...todosToday];
+  const todoPreview = dashboardTodos
     .sort((a, b) => {
       const aOverdue = a.dueDate < todayKey;
       const bOverdue = b.dueDate < todayKey;
@@ -1234,13 +1311,13 @@ export function AdminDashboard({
     setSignalModalOpen(false);
   };
 
-  const closeCalendarModal = () => {
+  const closeCalendarDetails = () => {
     setSelectedCalendarDate(null);
   };
 
   const openCalendarEvent = (event: MonthCalendarEvent) => {
     if (!event.classId || !event.subjectId || !event.courseId) return;
-    closeCalendarModal();
+    closeCalendarDetails();
     onOpenClass(event.classId, event.subjectId, event.courseId);
   };
 
@@ -1384,7 +1461,7 @@ export function AdminDashboard({
                     onClick={() => onNavigate('todos')}
                     className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
                   >
-                    {openTodos.length} open
+                    {openTodos.length + (dynamicGradingTodo ? 1 : 0)} open
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
@@ -1414,7 +1491,7 @@ export function AdminDashboard({
                       <button
                         key={todo.id}
                         type="button"
-                        onClick={() => onNavigate('todos')}
+                        onClick={() => onNavigate(todo.readOnly && todo.title === 'Grade submitted work' ? 'classwork' : 'todos')}
                         className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
                           overdue
                             ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
@@ -1434,7 +1511,12 @@ export function AdminDashboard({
                           {overdue ? <TrendingDown className="h-3 w-3" /> : todo.priority === 'priority' ? <Sparkles className="h-3 w-3" /> : <ClipboardCheck className="h-3 w-3" />}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-[#171717]">{todo.title}</p>
+                          <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#171717]">
+                            <span className="truncate">{todo.title}</span>
+                            {todo.recipientCount && todo.recipientCount > 1 ? (
+                              <span className="flex-none rounded-full bg-[#171717] px-1.5 py-0.5 text-[10px] text-white">{todo.recipientCount}</span>
+                            ) : null}
+                          </p>
                           <p className="truncate text-[11px] text-[#737373]">
                             {relativeDueDate}{todo.assignedToName ? ` · ${todo.assignedToName}` : ''}
                           </p>
@@ -1591,7 +1673,11 @@ export function AdminDashboard({
                             <span className="text-[11px] text-[#c2410c]">Joint</span>
                           </div>
                           <div className="bg-white">
-                            <div className="grid gap-2 px-2.5 py-2 sm:grid-cols-[24px_1fr_auto] sm:items-center">
+                            <button
+                              type="button"
+                              onClick={() => onOpenSubject(item.courseId, item.subjectId)}
+                              className="tbo-focus grid w-full gap-2 px-2.5 py-2 text-left transition hover:bg-[#fafafa] sm:grid-cols-[24px_1fr_auto] sm:items-center"
+                            >
                               <span
                                 className={`flex h-6 w-6 items-center justify-center rounded-md ${toneClasses[item.tone]}`}
                                 title={item.meta}
@@ -1607,7 +1693,7 @@ export function AdminDashboard({
                                   {item.translator ? <PersonAvatar person={item.translator} /> : null}
                                 </div>
                               ) : null}
-                            </div>
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -1619,9 +1705,11 @@ export function AdminDashboard({
                           </div>
                           <div className="divide-y divide-[#eeeeee] bg-white">
                             {yearGroup.items.map(item => (
-                              <div
+                              <button
                                 key={item.id}
-                                className="grid gap-2 px-2.5 py-2 sm:grid-cols-[24px_1fr_auto] sm:items-center"
+                                type="button"
+                                onClick={() => onOpenSubject(item.courseId, item.subjectId)}
+                                className="tbo-focus grid w-full gap-2 px-2.5 py-2 text-left transition hover:bg-[#fafafa] sm:grid-cols-[24px_1fr_auto] sm:items-center"
                               >
                                 <span
                                   className={`flex h-6 w-6 items-center justify-center rounded-md ${toneClasses[item.tone]}`}
@@ -1642,7 +1730,7 @@ export function AdminDashboard({
                                     {item.translator ? <PersonAvatar person={item.translator} /> : null}
                                   </div>
                                 ) : null}
-                              </div>
+                              </button>
                             ))}
                           </div>
                         </div>
@@ -1690,6 +1778,61 @@ export function AdminDashboard({
             </div>
           }
         >
+          {selectedCalendarDate ? (
+            <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                    {selectedCalendarEvents.length} event{selectedCalendarEvents.length === 1 ? '' : 's'}
+                  </p>
+                  <h3 className="mt-1 text-lg font-semibold text-[#171717]">{selectedCalendarDateLabel}</h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeCalendarDetails}
+                  className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                  aria-label="Close calendar details"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="tbo-scrollbar max-h-[390px] space-y-2 overflow-y-auto pr-1">
+                {selectedCalendarEvents.length === 0 ? (
+                  <div className="rounded-xl bg-white p-4 text-sm text-[#737373]">
+                    Nothing scheduled.
+                  </div>
+                ) : (
+                  selectedCalendarEvents.map(event => (
+                    <button
+                      type="button"
+                      key={event.id}
+                      onClick={() => openCalendarEvent(event)}
+                      className="tbo-focus grid w-full gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-left transition hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:grid-cols-[36px_1fr_auto] sm:items-center"
+                      aria-label={`Open ${event.title}`}
+                    >
+                      <span className={`grid h-9 w-9 place-items-center rounded-lg ${toneClasses[event.tone]}`}>
+                        {event.type === 'activation' ? (
+                          <Users className="h-4 w-4" />
+                        ) : (
+                          <Calendar className="h-4 w-4" />
+                        )}
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <p className="truncate text-sm font-semibold text-[#171717]">{event.title}</p>
+                          <YearRomanBadge label={event.yearLabel} tone={event.type === 'activation' ? 'orange' : 'blue'} compact />
+                        </div>
+                        <p className="mt-1 text-xs text-[#737373]">
+                          {event.type === 'activation' ? 'Activation Saturday' : 'Session'}
+                        </p>
+                      </div>
+                      <ArrowUpRight className="hidden h-4 w-4 text-[#a3a3a3] sm:block" />
+                    </button>
+                  ))
+                )}
+              </div>
+            </div>
+          ) : (
           <div className="grid grid-cols-7 grid-rows-[auto_repeat(5,minmax(0,1fr))] gap-1.5">
             {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
               <div key={day} className="rounded-md bg-[#fafafa] px-1 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a3a3a3]">
@@ -1713,7 +1856,7 @@ export function AdminDashboard({
                         ? 'border-[#eeeeee] bg-[#fffaf5] hover:border-[#fed7aa] hover:bg-[#fff7ed]'
                         : 'border-[#eeeeee] bg-white hover:border-[#d4d4d4] hover:bg-[#fafafa]'
                       : 'border-transparent bg-[#fafafa] text-[#c8c8c8]'
-                  } ${hasEvents ? 'shadow-[0_1px_0_rgba(0,0,0,0.03)]' : ''} ${day.isToday ? 'ring-1 ring-[#2563eb]' : ''}`}
+                  } ${hasEvents ? 'shadow-[0_1px_0_rgba(0,0,0,0.03)]' : ''} ${day.isToday ? 'ring-1 ring-[#2563eb]' : ''} ${selectedCalendarDate === day.date ? 'ring-2 ring-[#171717]' : ''}`}
                   aria-label={`Open ${events.length} events for ${day.date}`}
                 >
                   <div className="flex items-center justify-between gap-1">
@@ -1751,6 +1894,7 @@ export function AdminDashboard({
               );
             })}
           </div>
+          )}
         </SectionCard>
       </div>
 
@@ -2031,78 +2175,6 @@ export function AdminDashboard({
                 {selectedMetricInsight.actionLabel}
                 <ArrowUpRight className="h-4 w-4" />
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {selectedCalendarDate && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <button
-            type="button"
-            className="absolute inset-0 cursor-default"
-            onClick={closeCalendarModal}
-            aria-label="Close calendar day"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="calendar-day-title"
-            className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-lg sm:rounded-2xl"
-          >
-            <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                  {selectedCalendarEvents.length} event{selectedCalendarEvents.length === 1 ? '' : 's'}
-                </p>
-                <h3 id="calendar-day-title" className="mt-1 text-lg font-semibold text-[#171717]">
-                  {selectedCalendarDateLabel}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={closeCalendarModal}
-                className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-
-            <div className="tbo-scrollbar max-h-[60vh] space-y-3 overflow-y-auto p-5">
-              {selectedCalendarEvents.length === 0 ? (
-                <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
-                  Nothing is scheduled for this date.
-                </div>
-              ) : (
-                selectedCalendarEvents.map(event => (
-                  <button
-                    type="button"
-                    key={event.id}
-                    onClick={() => openCalendarEvent(event)}
-                    className="tbo-focus grid w-full gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-left transition hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:grid-cols-[36px_1fr_auto] sm:items-center"
-                    aria-label={`Open ${event.title}`}
-                  >
-                    <span className={`grid h-9 w-9 place-items-center rounded-lg ${toneClasses[event.tone]}`}>
-                      {event.type === 'activation' ? (
-                        <Users className="h-4 w-4" />
-                      ) : (
-                        <Calendar className="h-4 w-4" />
-                      )}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <p className="truncate text-sm font-semibold text-[#171717]">{event.title}</p>
-                        <YearRomanBadge label={event.yearLabel} tone={event.type === 'activation' ? 'orange' : 'blue'} compact />
-                      </div>
-                      <p className="mt-1 text-xs text-[#737373]">
-                        {event.type === 'activation' ? 'Activation Saturday' : 'Session'}
-                      </p>
-                    </div>
-                    <ArrowUpRight className="hidden h-4 w-4 text-[#a3a3a3] sm:block" />
-                  </button>
-                ))
-              )}
             </div>
           </div>
         </div>

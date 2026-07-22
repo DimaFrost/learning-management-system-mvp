@@ -77,6 +77,7 @@ export function useHomework(
         title: row.title,
         description: row.description,
         dueDate: row.due_date,
+        gradingDueDate: row.grading_due_date,
         maxPoints: row.max_points,
         driveFolderId: row.drive_folder_id,
         createdAt: row.created_at,
@@ -138,6 +139,7 @@ export function useHomework(
     title: string;
     description: string | null;
     dueDate: string | null;
+    gradingDueDate?: string | null;
     maxPoints: number;
     classHomeworkFolderId: string | null;
   }) => {
@@ -153,6 +155,7 @@ export function useHomework(
           title: data.title,
           description: data.description,
           due_date: data.dueDate,
+          grading_due_date: data.gradingDueDate ?? null,
           max_points: data.maxPoints,
         })
         .select()
@@ -233,6 +236,7 @@ export function useHomework(
     if ('title' in updates) updatePayload.title = updates.title;
     if ('description' in updates) updatePayload.description = updates.description;
     if ('dueDate' in updates) updatePayload.due_date = updates.dueDate;
+    if ('gradingDueDate' in updates) updatePayload.grading_due_date = updates.gradingDueDate;
     if ('maxPoints' in updates) updatePayload.max_points = updates.maxPoints;
 
     const { error } = await supabase

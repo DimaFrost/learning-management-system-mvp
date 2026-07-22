@@ -2,25 +2,28 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-16T14:00:01.988Z
+Generated at: 2026-07-22T14:38:24.008Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 41
+Exposed tables/views: 45
 
 | Table | Columns | File |
 | --- | ---: | --- |
+| absence_notice_sessions | 4 | [absence_notice_sessions](./tables/absence_notice_sessions.md) |
+| absence_notices | 7 | [absence_notices](./tables/absence_notices.md) |
 | announcement_attachments | 12 | [announcement_attachments](./tables/announcement_attachments.md) |
 | announcement_comments | 5 | [announcement_comments](./tables/announcement_comments.md) |
 | announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
 | announcements | 16 | [announcements](./tables/announcements.md) |
-| attendance_correction_requests | 16 | [attendance_correction_requests](./tables/attendance_correction_requests.md) |
+| attendance_correction_requests | 17 | [attendance_correction_requests](./tables/attendance_correction_requests.md) |
 | attendance_settings | 41 | [attendance_settings](./tables/attendance_settings.md) |
-| book_reading_assignments | 10 | [book_reading_assignments](./tables/book_reading_assignments.md) |
-| book_reading_submissions | 12 | [book_reading_submissions](./tables/book_reading_submissions.md) |
+| book_reading_assignments | 11 | [book_reading_assignments](./tables/book_reading_assignments.md) |
+| book_reading_submission_comments | 5 | [book_reading_submission_comments](./tables/book_reading_submission_comments.md) |
+| book_reading_submissions | 16 | [book_reading_submissions](./tables/book_reading_submissions.md) |
 | books | 17 | [books](./tables/books.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
 | class_files | 11 | [class_files](./tables/class_files.md) |
@@ -31,11 +34,11 @@ Exposed tables/views: 41
 | duty_schedule | 7 | [duty_schedule](./tables/duty_schedule.md) |
 | duty_transfer_requests | 11 | [duty_transfer_requests](./tables/duty_transfer_requests.md) |
 | google_docs_connections | 10 | [google_docs_connections](./tables/google_docs_connections.md) |
-| homework_assignments | 11 | [homework_assignments](./tables/homework_assignments.md) |
+| homework_assignments | 12 | [homework_assignments](./tables/homework_assignments.md) |
 | homework_comments | 5 | [homework_comments](./tables/homework_comments.md) |
 | homework_submissions | 17 | [homework_submissions](./tables/homework_submissions.md) |
 | mentorship_logs | 11 | [mentorship_logs](./tables/mentorship_logs.md) |
-| messages | 6 | [messages](./tables/messages.md) |
+| messages | 8 | [messages](./tables/messages.md) |
 | ministry_rotations | 11 | [ministry_rotations](./tables/ministry_rotations.md) |
 | ministry_service_attendance | 6 | [ministry_service_attendance](./tables/ministry_service_attendance.md) |
 | ministry_service_sessions | 13 | [ministry_service_sessions](./tables/ministry_service_sessions.md) |
@@ -44,8 +47,9 @@ Exposed tables/views: 41
 | notification_deliveries | 10 | [notification_deliveries](./tables/notification_deliveries.md) |
 | notification_jobs | 13 | [notification_jobs](./tables/notification_jobs.md) |
 | prayer_schedule | 6 | [prayer_schedule](./tables/prayer_schedule.md) |
-| profiles | 12 | [profiles](./tables/profiles.md) |
+| profiles | 13 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
+| stream_course_settings | 8 | [stream_course_settings](./tables/stream_course_settings.md) |
 | subject_notes | 13 | [subject_notes](./tables/subject_notes.md) |
 | subjects | 9 | [subjects](./tables/subjects.md) |
 | sunday_attendance | 8 | [sunday_attendance](./tables/sunday_attendance.md) |

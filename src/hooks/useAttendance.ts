@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
+import { getAdminIds, queueWorkflowEmail } from '../utils/notificationJobs';
 import type {
   AttendanceSettings,
   AttendanceCorrectionGate,
@@ -736,6 +737,15 @@ export function useAttendance(
       reason: params.reason ?? null,
     });
     if (insertError) throw insertError;
+    const toStudent = users.find(user => user.id === params.toStudentId);
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: [...getAdminIds(users), params.toStudentId],
+      subject: 'Duty transfer requested',
+      title: `${currentUser.name} requested a duty transfer`,
+      body: `${currentUser.name} requested to transfer duty to ${toStudent?.name ?? 'another student'} for the week starting ${duty.weekStart}.${params.reason ? `\n\nReason: ${params.reason}` : ''}`,
+      kind: 'attendance',
+    });
     await fetchAll();
   };
 
@@ -766,6 +776,17 @@ export function useAttendance(
       if (dutyError) throw dutyError;
     }
 
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: [request.fromStudentId, request.toStudentId],
+      subject: approved ? 'Duty transfer approved' : 'Duty transfer rejected',
+      title: approved ? 'Duty transfer approved' : 'Duty transfer rejected',
+      body: approved
+        ? `The duty transfer for the week starting ${request.weekStart} was approved.`
+        : `The duty transfer for the week starting ${request.weekStart} was rejected.`,
+      kind: 'attendance',
+    });
+
     await fetchAll();
   };
 
@@ -795,6 +816,14 @@ export function useAttendance(
       reason: params.reason,
     });
     if (insertError) throw insertError;
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: getAdminIds(users),
+      subject: 'Attendance correction requested',
+      title: `${currentUser.name} requested an attendance correction`,
+      body: `${params.title}\n\nRequested status: ${params.requestedStatus}\nReason: ${params.reason}`,
+      kind: 'attendance',
+    });
     await fetchAll();
   };
 
@@ -854,6 +883,15 @@ export function useAttendance(
       })
       .eq('id', requestId);
     if (updateError) throw updateError;
+
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: [request.studentId],
+      subject: approved ? 'Attendance correction approved' : 'Attendance correction rejected',
+      title: approved ? 'Attendance correction approved' : 'Attendance correction rejected',
+      body: `${request.title}\n\n${resolutionNote ?? ''}`.trim(),
+      kind: 'attendance',
+    });
 
     await fetchAll();
   };
@@ -1163,6 +1201,15 @@ export function useAttendance(
         .insert(rows);
       if (attendanceError) throw attendanceError;
     }
+
+    void queueWorkflowEmail({
+      createdBy: currentUser.id,
+      recipientIds: getAdminIds(users),
+      subject: 'Ministry report submitted',
+      title: `${team?.name ?? 'Ministry team'} report submitted`,
+      body: `${currentUser.name} submitted a ministry report for ${input.serviceDate}.\n\n${input.generalView.trim()}`,
+      kind: 'attendance',
+    });
 
     await fetchAll();
   };

@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   BarChart3,
   BookOpen,
@@ -13,6 +13,7 @@ import {
   TrendingDown,
   Users,
   type LucideIcon,
+  X,
 } from 'lucide-react';
 import type {
   Announcement,
@@ -84,6 +85,7 @@ interface StudentDashboardProps {
   booksLoading: boolean;
   onNavigate: (view: string) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
+  onOpenSubject: (courseId: number, subjectId: number) => void;
 }
 
 type UpcomingSession = {
@@ -261,7 +263,9 @@ export function StudentDashboard({
   booksLoading,
   onNavigate,
   onOpenClass,
+  onOpenSubject,
 }: StudentDashboardProps) {
+  const [expandedTodoGroup, setExpandedTodoGroup] = useState<TodoItem[] | null>(null);
   const todayKey = getTodayDateString();
   const { activeHomework, loading: homeworkLoading } = useStudentHomework(
     currentUser,
@@ -307,7 +311,21 @@ export function StudentDashboard({
     return Array.from(byId.values()).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
   }, [studentScheduleTodos, todos]);
 
-  const todoPreview = dashboardOpenTodos.slice(0, 4);
+  const dashboardTodoGroups = useMemo(() => {
+    const groups = new Map<string, TodoItem[]>();
+    dashboardOpenTodos.forEach(todo => {
+      const key = todo.readOnly && todo.title === 'You are on duty'
+        ? 'schedule:duty'
+        : `${todo.readOnly ? 'schedule' : 'todo'}:${todo.title}:${todo.assignedTo}`;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(todo);
+    });
+    return Array.from(groups.values())
+      .map(items => items.sort((a, b) => a.dueDate.localeCompare(b.dueDate)))
+      .sort((a, b) => a[0].dueDate.localeCompare(b[0].dueDate));
+  }, [dashboardOpenTodos]);
+
+  const todoPreview = dashboardTodoGroups.slice(0, 4);
 
   const overdueHomework = activeHomework.filter(item =>
     item.dueDate && item.dueDate < todayKey && item.status !== 'submitted' && item.status !== 'graded'
@@ -501,13 +519,21 @@ export function StudentDashboard({
                     </div>
                   </button>
                 ) : (
-                  todoPreview.map(todo => {
+                  todoPreview.map(group => {
+                    const todo = group[0];
+                    const extraCount = group.length - 1;
                     const overdue = todo.dueDate < todayKey;
                     return (
                       <button
                         key={todo.id}
                         type="button"
-                        onClick={() => onNavigate('todos')}
+                        onClick={() => {
+                          if (group.length > 1) {
+                            setExpandedTodoGroup(group);
+                            return;
+                          }
+                          onNavigate(todo.readOnly && todo.title === 'You are on duty' ? 'on-duty' : 'todos');
+                        }}
                         className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
                           overdue
                             ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
@@ -539,7 +565,12 @@ export function StudentDashboard({
                           )}
                         </span>
                         <div className="min-w-0">
-                          <p className="truncate text-xs font-semibold text-[#171717]">{todo.title}</p>
+                          <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-[#171717]">
+                            <span className="truncate">{todo.title}</span>
+                            {extraCount > 0 && (
+                              <span className="flex-none rounded-full bg-[#171717] px-1.5 py-0.5 text-[10px] text-white">+{extraCount}</span>
+                            )}
+                          </p>
                           <p className="truncate text-[11px] text-[#737373]">
                             {overdue ? 'Overdue' : formatPlatformDate(todo.dueDate)}
                           </p>
@@ -558,6 +589,42 @@ export function StudentDashboard({
           </div>
         </div>
       </section>
+      {expandedTodoGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-6 backdrop-blur-sm">
+          <div className="w-full max-w-md border border-[#d4d4d4] bg-white shadow-2xl">
+            <div className="flex items-start justify-between gap-3 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Scheduled dates</p>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{expandedTodoGroup[0]?.title}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setExpandedTodoGroup(null)}
+                className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5]"
+                aria-label="Close dates"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="max-h-80 divide-y divide-[#e5e5e5] overflow-y-auto px-4">
+              {expandedTodoGroup.map(todo => (
+                <button
+                  key={todo.id}
+                  type="button"
+                  onClick={() => {
+                    setExpandedTodoGroup(null);
+                    onNavigate(todo.readOnly && todo.title === 'You are on duty' ? 'on-duty' : 'todos');
+                  }}
+                  className="tbo-focus flex w-full items-center justify-between gap-3 py-3 text-left hover:bg-[#fafafa]"
+                >
+                  <span className="text-sm font-semibold text-[#171717]">{formatPlatformDate(todo.dueDate)}</span>
+                  <span className="truncate text-xs text-[#737373]">{todo.description}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric
@@ -631,7 +698,7 @@ export function StudentDashboard({
                         <button
                           key={session.id}
                           type="button"
-                          onClick={() => onOpenClass(session.classId, session.subjectId, session.courseId)}
+                          onClick={() => onOpenSubject(session.courseId, session.subjectId)}
                           className="tbo-focus flex w-full items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-left hover:bg-white"
                         >
                           <span className={`grid h-8 w-8 place-items-center rounded-lg ${

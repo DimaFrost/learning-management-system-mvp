@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
-import type { User, UserRole } from '../types/lms';
+import type { CourseType, User, UserRole } from '../types/lms';
 import { sendNotification } from '../utils/notifications';
 
 type ShowConfirmation = (
@@ -20,8 +20,12 @@ function mapProfileToUser(row: {
   last_name?: string | null;
   avatar_url?: string | null;
   preferred_language?: string | null;
+  teaching_course_types?: string[] | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
 }): User {
+  const teachingCourseTypes = (row.teaching_course_types ?? [])
+    .filter((value): value is CourseType => value === 'first_year' || value === 'second_year');
+
   return {
     id: row.id,
     name: row.name,
@@ -32,6 +36,7 @@ function mapProfileToUser(row: {
     lastName: row.last_name ?? '',
     avatarUrl: row.avatar_url ?? null,
     preferredLanguage: row.preferred_language === 'bg' ? 'bg' : 'en',
+    teachingCourseTypes,
     notificationPreferences: {
       announcements: true,
       roleChange: true,
@@ -100,6 +105,7 @@ export function useUsers() {
           ...(user.preferredLanguage !== undefined && { preferred_language: user.preferredLanguage }),
           ...(user.firstName !== undefined && { first_name: user.firstName }),
           ...(user.lastName !== undefined && { last_name: user.lastName }),
+          ...(user.teachingCourseTypes !== undefined && { teaching_course_types: user.teachingCourseTypes }),
         })
         .eq('id', user.id);
 
@@ -126,6 +132,7 @@ export function useUsers() {
           ...(updates.preferredLanguage !== undefined && { preferred_language: updates.preferredLanguage }),
           ...(updates.firstName !== undefined && { first_name: updates.firstName }),
           ...(updates.lastName !== undefined && { last_name: updates.lastName }),
+          ...(updates.teachingCourseTypes !== undefined && { teaching_course_types: updates.teachingCourseTypes }),
         })
         .eq('id', id);
 

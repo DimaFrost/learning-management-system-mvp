@@ -378,6 +378,12 @@
             "$ref": "#/parameters/rowFilter.homework_assignments.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_assignments.subject_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -471,6 +477,12 @@
             "$ref": "#/parameters/rowFilter.homework_assignments.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_assignments.subject_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -514,6 +526,12 @@
           },
           {
             "$ref": "#/parameters/rowFilter.homework_assignments.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.subject_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
           },
           {
             "$ref": "#/parameters/body.homework_assignments"
@@ -1202,6 +1220,9 @@
             "$ref": "#/parameters/rowFilter.class_files.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.class_files.subject_id"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -1295,6 +1316,9 @@
             "$ref": "#/parameters/rowFilter.class_files.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.class_files.subject_id"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -1340,6 +1364,9 @@
             "$ref": "#/parameters/rowFilter.class_files.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.class_files.subject_id"
+          },
+          {
             "$ref": "#/parameters/body.class_files"
           },
           {
@@ -1353,6 +1380,167 @@
         },
         "tags": [
           "class_files"
+        ]
+      }
+    },
+    "/absence_notices": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/absence_notices"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "absence_notices"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.absence_notices"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "absence_notices"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "absence_notices"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.submitted_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notices.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.absence_notices"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "absence_notices"
         ]
       }
     },
@@ -1936,6 +2124,9 @@
             "$ref": "#/parameters/rowFilter.book_reading_assignments.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_assignments.max_points"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -2029,6 +2220,9 @@
             "$ref": "#/parameters/rowFilter.book_reading_assignments.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_assignments.max_points"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -2072,6 +2266,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.book_reading_assignments.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_assignments.max_points"
           },
           {
             "$ref": "#/parameters/body.book_reading_assignments"
@@ -2542,6 +2739,9 @@
             "$ref": "#/parameters/rowFilter.profiles.phone"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -2641,6 +2841,9 @@
             "$ref": "#/parameters/rowFilter.profiles.phone"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -2690,6 +2893,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.profiles.phone"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
           },
           {
             "$ref": "#/parameters/body.profiles"
@@ -2929,6 +3135,257 @@
         },
         "tags": [
           "ministry_teams"
+        ]
+      }
+    },
+    "/attendance_correction_requests": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.gate"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.record_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.well_week_start"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.ministry_session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.current_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolution_note"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/attendance_correction_requests"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "attendance_correction_requests"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.attendance_correction_requests"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "attendance_correction_requests"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.gate"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.record_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.well_week_start"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.ministry_session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.current_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolution_note"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "attendance_correction_requests"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.gate"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.record_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.well_week_start"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.ministry_session_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.current_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.reason"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.requested_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolved_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_correction_requests.resolution_note"
+          },
+          {
+            "$ref": "#/parameters/body.attendance_correction_requests"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "attendance_correction_requests"
         ]
       }
     },
@@ -3693,6 +4150,176 @@
         ]
       }
     },
+    "/stream_course_settings": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.permission"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.require_student_post_approval"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.allow_student_attachments"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.email_notifications"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.pinned_post_limit"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/stream_course_settings"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "stream_course_settings"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.stream_course_settings"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "stream_course_settings"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.permission"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.require_student_post_approval"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.allow_student_attachments"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.email_notifications"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.pinned_post_limit"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "stream_course_settings"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.permission"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.require_student_post_approval"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.allow_student_attachments"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.email_notifications"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.stream_course_settings.pinned_post_limit"
+          },
+          {
+            "$ref": "#/parameters/body.stream_course_settings"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "stream_course_settings"
+        ]
+      }
+    },
     "/announcement_attachments": {
       "get": {
         "parameters": [
@@ -3896,6 +4523,194 @@
         },
         "tags": [
           "announcement_attachments"
+        ]
+      }
+    },
+    "/google_docs_connections": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.access_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.refresh_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.expires_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.scopes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/google_docs_connections"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "google_docs_connections"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.google_docs_connections"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "google_docs_connections"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.access_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.refresh_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.expires_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.scopes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "google_docs_connections"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.provider"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_email"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.access_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.refresh_token"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.expires_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.scopes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.connected_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.google_docs_connections.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.google_docs_connections"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "google_docs_connections"
         ]
       }
     },
@@ -4584,6 +5399,18 @@
             "$ref": "#/parameters/rowFilter.book_reading_submissions.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.grade_comment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -4683,6 +5510,18 @@
             "$ref": "#/parameters/rowFilter.book_reading_submissions.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.grade_comment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -4732,6 +5571,18 @@
           },
           {
             "$ref": "#/parameters/rowFilter.book_reading_submissions.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.grade_comment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
           },
           {
             "$ref": "#/parameters/body.book_reading_submissions"
@@ -5069,6 +5920,149 @@
         },
         "tags": [
           "prayer_schedule"
+        ]
+      }
+    },
+    "/book_reading_submission_comments": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.submission_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.author_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.content"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/book_reading_submission_comments"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "book_reading_submission_comments"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.book_reading_submission_comments"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "book_reading_submission_comments"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.submission_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.author_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.content"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "book_reading_submission_comments"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.submission_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.author_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.content"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submission_comments.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.book_reading_submission_comments"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "book_reading_submission_comments"
         ]
       }
     },
@@ -5892,6 +6886,12 @@
             "$ref": "#/parameters/rowFilter.messages.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.messages.audience_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.messages.audience_label"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -5973,6 +6973,12 @@
             "$ref": "#/parameters/rowFilter.messages.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.messages.audience_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.messages.audience_label"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -6006,6 +7012,12 @@
             "$ref": "#/parameters/rowFilter.messages.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.messages.audience_key"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.messages.audience_label"
+          },
+          {
             "$ref": "#/parameters/body.messages"
           },
           {
@@ -6019,6 +7031,140 @@
         },
         "tags": [
           "messages"
+        ]
+      }
+    },
+    "/absence_notice_sessions": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.notice_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/absence_notice_sessions"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "absence_notice_sessions"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.absence_notice_sessions"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "absence_notice_sessions"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.notice_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "absence_notice_sessions"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.notice_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.class_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.absence_notice_sessions.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.absence_notice_sessions"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "absence_notice_sessions"
         ]
       }
     },
@@ -7569,6 +8715,81 @@
           "(rpc) is_admin"
         ]
       }
+    },
+    "/rpc/can_current_user_write_stream": {
+      "get": {
+        "parameters": [
+          {
+            "format": "bigint",
+            "in": "query",
+            "name": "target_course_id",
+            "required": true,
+            "type": "integer"
+          },
+          {
+            "format": "text",
+            "in": "query",
+            "name": "action",
+            "required": true,
+            "type": "string"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) can_current_user_write_stream"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "properties": {
+                "action": {
+                  "format": "text",
+                  "type": "string"
+                },
+                "target_course_id": {
+                  "format": "bigint",
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "target_course_id",
+                "action"
+              ],
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) can_current_user_write_stream"
+        ]
+      }
     }
   },
   "definitions": {
@@ -7655,7 +8876,6 @@
     "homework_assignments": {
       "required": [
         "id",
-        "class_id",
         "author_id",
         "title",
         "max_points",
@@ -7707,6 +8927,15 @@
         "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "subject_id": {
+          "description": "Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "grading_due_date": {
+          "format": "date",
           "type": "string"
         }
       },
@@ -7925,7 +9154,6 @@
     "class_files": {
       "required": [
         "id",
-        "class_id",
         "uploader_id",
         "file_type",
         "file_name",
@@ -7974,6 +9202,58 @@
           "type": "integer"
         },
         "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "subject_id": {
+          "description": "Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "absence_notices": {
+      "required": [
+        "id",
+        "student_id",
+        "status",
+        "submitted_at",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "reason": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "submitted",
+          "format": "text",
+          "type": "string"
+        },
+        "submitted_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
           "type": "string"
@@ -8204,6 +9484,10 @@
           "default": "now()",
           "format": "timestamp with time zone",
           "type": "string"
+        },
+        "max_points": {
+          "format": "integer",
+          "type": "integer"
         }
       },
       "type": "object"
@@ -8363,7 +9647,8 @@
         "first_name",
         "last_name",
         "notification_preferences",
-        "preferred_language"
+        "preferred_language",
+        "teaching_course_types"
       ],
       "properties": {
         "id": {
@@ -8421,6 +9706,13 @@
         "phone": {
           "format": "text",
           "type": "string"
+        },
+        "teaching_course_types": {
+          "format": "text[]",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         }
       },
       "type": "object"
@@ -8501,6 +9793,98 @@
         "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "attendance_correction_requests": {
+      "required": [
+        "id",
+        "student_id",
+        "gate",
+        "record_date",
+        "title",
+        "requested_status",
+        "reason",
+        "status",
+        "requested_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "gate": {
+          "format": "text",
+          "type": "string"
+        },
+        "record_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "title": {
+          "format": "text",
+          "type": "string"
+        },
+        "class_id": {
+          "description": "Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "well_week_start": {
+          "format": "date",
+          "type": "string"
+        },
+        "ministry_session_id": {
+          "description": "Note:\nThis is a Foreign Key to `ministry_service_sessions.id`.<fk table='ministry_service_sessions' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "current_status": {
+          "format": "text",
+          "type": "string"
+        },
+        "requested_status": {
+          "format": "text",
+          "type": "string"
+        },
+        "reason": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "pending",
+          "format": "text",
+          "type": "string"
+        },
+        "requested_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "resolved_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "resolved_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "resolution_note": {
+          "format": "text",
           "type": "string"
         }
       },
@@ -8744,6 +10128,60 @@
       },
       "type": "object"
     },
+    "stream_course_settings": {
+      "required": [
+        "course_id",
+        "permission",
+        "updated_at",
+        "require_student_post_approval",
+        "allow_student_attachments",
+        "email_notifications",
+        "pinned_post_limit"
+      ],
+      "properties": {
+        "course_id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "permission": {
+          "default": "students_comment",
+          "format": "text",
+          "type": "string"
+        },
+        "updated_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "require_student_post_approval": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "allow_student_attachments": {
+          "default": false,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "email_notifications": {
+          "default": "staff_and_pinned",
+          "format": "text",
+          "type": "string"
+        },
+        "pinned_post_limit": {
+          "default": 3,
+          "format": "integer",
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
     "announcement_attachments": {
       "required": [
         "id",
@@ -8801,6 +10239,69 @@
           "type": "string"
         },
         "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "google_docs_connections": {
+      "required": [
+        "id",
+        "provider",
+        "connected_email",
+        "refresh_token",
+        "scopes",
+        "connected_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "default": "school_docs",
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "text",
+          "type": "string"
+        },
+        "provider": {
+          "default": "google",
+          "format": "text",
+          "type": "string"
+        },
+        "connected_email": {
+          "format": "text",
+          "type": "string"
+        },
+        "access_token": {
+          "format": "text",
+          "type": "string"
+        },
+        "refresh_token": {
+          "format": "text",
+          "type": "string"
+        },
+        "expires_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "scopes": {
+          "format": "text[]",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
+        },
+        "connected_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "connected_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
           "type": "string"
@@ -9100,6 +10601,23 @@
           "default": "now()",
           "format": "timestamp with time zone",
           "type": "string"
+        },
+        "points": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "grade_comment": {
+          "format": "text",
+          "type": "string"
+        },
+        "graded_at": {
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "graded_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
         }
       },
       "type": "object"
@@ -9188,6 +10706,42 @@
         "thursday_student_id": {
           "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
           "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "book_reading_submission_comments": {
+      "required": [
+        "id",
+        "submission_id",
+        "author_id",
+        "content",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "submission_id": {
+          "description": "Note:\nThis is a Foreign Key to `book_reading_submissions.id`.<fk table='book_reading_submissions' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "author_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "content": {
+          "format": "text",
           "type": "string"
         },
         "created_at": {
@@ -9587,6 +11141,45 @@
         "read_at": {
           "format": "timestamp with time zone",
           "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "audience_key": {
+          "format": "text",
+          "type": "string"
+        },
+        "audience_label": {
+          "format": "text",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "absence_notice_sessions": {
+      "required": [
+        "id",
+        "notice_id",
+        "class_id",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "notice_id": {
+          "description": "Note:\nThis is a Foreign Key to `absence_notices.id`.<fk table='absence_notices' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "class_id": {
+          "description": "Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
         },
         "created_at": {
           "default": "now()",
@@ -10298,6 +11891,18 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.homework_assignments.subject_id": {
+      "name": "subject_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.grading_due_date": {
+      "name": "grading_due_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.books": {
       "name": "books",
       "description": "books",
@@ -10622,6 +12227,63 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.class_files.subject_id": {
+      "name": "subject_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.absence_notices": {
+      "name": "absence_notices",
+      "description": "absence_notices",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/absence_notices"
+      }
+    },
+    "rowFilter.absence_notices.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.reason": {
+      "name": "reason",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.submitted_at": {
+      "name": "submitted_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notices.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.course_students": {
       "name": "course_students",
       "description": "course_students",
@@ -10886,6 +12548,12 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.book_reading_assignments.max_points": {
+      "name": "max_points",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.ministry_rotations": {
       "name": "ministry_rotations",
       "description": "ministry_rotations",
@@ -11129,6 +12797,12 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.profiles.teaching_course_types": {
+      "name": "teaching_course_types",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.ministry_teams": {
       "name": "ministry_teams",
       "description": "ministry_teams",
@@ -11218,6 +12892,117 @@
     },
     "rowFilter.ministry_teams.updated_at": {
       "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.attendance_correction_requests": {
+      "name": "attendance_correction_requests",
+      "description": "attendance_correction_requests",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/attendance_correction_requests"
+      }
+    },
+    "rowFilter.attendance_correction_requests.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.gate": {
+      "name": "gate",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.record_date": {
+      "name": "record_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.title": {
+      "name": "title",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.class_id": {
+      "name": "class_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.well_week_start": {
+      "name": "well_week_start",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.ministry_session_id": {
+      "name": "ministry_session_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.current_status": {
+      "name": "current_status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.requested_status": {
+      "name": "requested_status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.reason": {
+      "name": "reason",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.requested_at": {
+      "name": "requested_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.resolved_at": {
+      "name": "resolved_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.resolved_by": {
+      "name": "resolved_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.attendance_correction_requests.resolution_note": {
+      "name": "resolution_note",
       "required": false,
       "in": "query",
       "type": "string"
@@ -11504,6 +13289,63 @@
       "in": "query",
       "type": "string"
     },
+    "body.stream_course_settings": {
+      "name": "stream_course_settings",
+      "description": "stream_course_settings",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/stream_course_settings"
+      }
+    },
+    "rowFilter.stream_course_settings.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.permission": {
+      "name": "permission",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.updated_by": {
+      "name": "updated_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.require_student_post_approval": {
+      "name": "require_student_post_approval",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.allow_student_attachments": {
+      "name": "allow_student_attachments",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.email_notifications": {
+      "name": "email_notifications",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.stream_course_settings.pinned_post_limit": {
+      "name": "pinned_post_limit",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.announcement_attachments": {
       "name": "announcement_attachments",
       "description": "announcement_attachments",
@@ -11581,6 +13423,75 @@
     },
     "rowFilter.announcement_attachments.created_at": {
       "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.google_docs_connections": {
+      "name": "google_docs_connections",
+      "description": "google_docs_connections",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/google_docs_connections"
+      }
+    },
+    "rowFilter.google_docs_connections.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.provider": {
+      "name": "provider",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.connected_email": {
+      "name": "connected_email",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.access_token": {
+      "name": "access_token",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.refresh_token": {
+      "name": "refresh_token",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.expires_at": {
+      "name": "expires_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.scopes": {
+      "name": "scopes",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.connected_by": {
+      "name": "connected_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.connected_at": {
+      "name": "connected_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.google_docs_connections.updated_at": {
+      "name": "updated_at",
       "required": false,
       "in": "query",
       "type": "string"
@@ -11927,6 +13838,30 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.book_reading_submissions.points": {
+      "name": "points",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.grade_comment": {
+      "name": "grade_comment",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.graded_at": {
+      "name": "graded_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.graded_by": {
+      "name": "graded_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.ministry_team_members": {
       "name": "ministry_team_members",
       "description": "ministry_team_members",
@@ -12024,6 +13959,45 @@
       "type": "string"
     },
     "rowFilter.prayer_schedule.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.book_reading_submission_comments": {
+      "name": "book_reading_submission_comments",
+      "description": "book_reading_submission_comments",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/book_reading_submission_comments"
+      }
+    },
+    "rowFilter.book_reading_submission_comments.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submission_comments.submission_id": {
+      "name": "submission_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submission_comments.author_id": {
+      "name": "author_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submission_comments.content": {
+      "name": "content",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submission_comments.created_at": {
       "name": "created_at",
       "required": false,
       "in": "query",
@@ -12432,6 +14406,51 @@
       "type": "string"
     },
     "rowFilter.messages.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.messages.audience_key": {
+      "name": "audience_key",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.messages.audience_label": {
+      "name": "audience_label",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.absence_notice_sessions": {
+      "name": "absence_notice_sessions",
+      "description": "absence_notice_sessions",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/absence_notice_sessions"
+      }
+    },
+    "rowFilter.absence_notice_sessions.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notice_sessions.notice_id": {
+      "name": "notice_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notice_sessions.class_id": {
+      "name": "class_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.absence_notice_sessions.created_at": {
       "name": "created_at",
       "required": false,
       "in": "query",

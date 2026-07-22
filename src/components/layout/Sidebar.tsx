@@ -26,6 +26,7 @@ import {
   Activity,
   ShieldCheck,
   HeartHandshake,
+  Inbox,
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -300,6 +301,49 @@ export function Sidebar({
     },
   ];
 
+  const classworkItems: NavItem[] = [
+    {
+      id: activeWorkspace === 'student' ? 'my-classwork' : 'classwork',
+      label: 'Classwork',
+      description: 'Assignments and materials',
+      icon: BookOpen,
+      roles: ['administrator', 'teacher', 'student'],
+      workspaces: ['administrator', 'teacher', 'student'],
+    },
+    {
+      id: 'submissions',
+      label: 'Submissions',
+      description: 'Review queue',
+      icon: ClipboardList,
+      roles: ['administrator', 'teacher'],
+      workspaces: ['administrator', 'teacher'],
+    },
+    {
+      id: 'my-assignments',
+      label: 'Assignments',
+      description: 'Homework and reading',
+      icon: ClipboardList,
+      roles: ['student'],
+      workspaces: ['student'],
+    },
+    {
+      id: 'absence-notices',
+      label: 'Absence notices',
+      description: activeWorkspace === 'student' ? 'Tell staff ahead' : 'Student absence plans',
+      icon: Calendar,
+      roles: ['administrator', 'student'],
+      workspaces: ['administrator', 'student'],
+    },
+    {
+      id: activeWorkspace === 'student' ? 'my-grades' : 'grades',
+      label: 'Grades',
+      description: 'Academic record',
+      icon: BarChart2,
+      roles: ['administrator', 'teacher', 'student'],
+      workspaces: ['administrator', 'teacher', 'student'],
+    },
+  ];
+
   const sections: NavSection[] = [
     {
       label: '',
@@ -350,14 +394,6 @@ export function Sidebar({
           roles: ['administrator', 'teacher'],
           workspaces: ['administrator', 'teacher'],
         },
-        {
-          id: 'grades',
-          label: 'Grades',
-          description: 'Academic record',
-          icon: BarChart2,
-          roles: ['administrator', 'teacher'],
-          workspaces: ['administrator', 'teacher'],
-        },
       ],
     },
     {
@@ -393,6 +429,22 @@ export function Sidebar({
           label: t('sidebar.mentorship'),
           description: t('sidebar.mentorship.desc'),
           icon: UserCheck,
+          roles: ['administrator'],
+          workspaces: ['administrator'],
+        },
+        {
+          id: 'inbox',
+          label: 'Inbox',
+          description: 'Emails sent to you',
+          icon: Inbox,
+          roles: ['administrator'],
+          workspaces: ['administrator'],
+        },
+        {
+          id: 'knowledge-base',
+          label: 'Knowledge Base',
+          description: 'Admin platform guide',
+          icon: BookOpen,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
@@ -435,17 +487,9 @@ export function Sidebar({
         },
         {
           id: 'my-classwork',
-          label: 'My Classwork',
+          label: 'Classwork',
           description: 'Homework and materials',
           icon: GraduationCap,
-          roles: ['student'],
-          workspaces: ['student'],
-        },
-        {
-          id: 'my-grades',
-          label: 'My Grades',
-          description: 'Academic record',
-          icon: BarChart2,
           roles: ['student'],
           workspaces: ['student'],
         },
@@ -545,9 +589,27 @@ export function Sidebar({
 
     return hasPermission && fitsWorkspace;
   });
+  const visibleClassworkItems = classworkItems.filter(item => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+
+    return hasPermission && fitsWorkspace;
+  });
   const inAttendanceModule =
     activeView === 'attendance' ||
     activeView.startsWith('attendance-');
+  const inClassworkModule =
+    activeView === 'classwork' ||
+    activeView === 'submissions' ||
+    activeView === 'absence-notices' ||
+    activeView === 'my-assignments' ||
+    activeView === 'grades' ||
+    activeView === 'my-classwork' ||
+    activeView === 'my-grades';
   const inCurriculumModule =
     activeView === 'curriculum' ||
     activeView.startsWith('curriculum-');
@@ -561,11 +623,13 @@ export function Sidebar({
   const inUsersModule =
     activeView === 'users' ||
     activeView.startsWith('users-');
-  const inSubmodule = inAttendanceModule || inCurriculumModule || inMentorshipModule || inMyAttendanceModule || inUsersModule;
+  const inSubmodule = inAttendanceModule || inClassworkModule || inCurriculumModule || inMentorshipModule || inMyAttendanceModule || inUsersModule;
   const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
   const submoduleLabel = inAttendanceModule
     ? t('sidebar.attendance')
-    : inCurriculumModule
+    : inClassworkModule
+      ? 'Classwork'
+      : inCurriculumModule
       ? t('sidebar.curriculum')
       : inMentorshipModule
         ? t('sidebar.mentorship')
@@ -576,7 +640,9 @@ export function Sidebar({
             : workspaceLabel;
   const submoduleDesc = inAttendanceModule
     ? t('sidebar.attendance.desc')
-    : inCurriculumModule
+    : inClassworkModule
+      ? 'Assignments, materials, and grades'
+      : inCurriculumModule
       ? t('sidebar.curriculum.desc')
       : inMentorshipModule
         ? t('sidebar.mentorship.desc')
@@ -681,6 +747,13 @@ export function Sidebar({
             items: visibleAttendanceItems.filter(item => !attendanceGroupIds.has(item.id)),
           },
         ].filter(section => section.items.length > 0)
+      : inClassworkModule && visibleClassworkItems.length > 0
+        ? [
+            {
+              label: 'Classwork',
+              items: visibleClassworkItems,
+            },
+          ]
       : inCurriculumModule && visibleCurriculumItems.length > 0
         ? [
             {

@@ -3,7 +3,7 @@
 # book_reading_submissions
 
 
-Column count: 12
+Column count: 16
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -19,6 +19,10 @@ Column count: 12
 | reviewer_note | string:text | no | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
+| points | number:numeric | no | no |  |  |
+| grade_comment | string:text | no | no |  |  |
+| graded_at | string:timestamp with time zone | no | no |  |  |
+| graded_by | string:uuid | no | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
 
 ## Raw Definition
 
@@ -86,6 +90,23 @@ Column count: 12
     "updated_at": {
       "default": "now()",
       "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "points": {
+      "format": "numeric",
+      "type": "number"
+    },
+    "grade_comment": {
+      "format": "text",
+      "type": "string"
+    },
+    "graded_at": {
+      "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "graded_by": {
+      "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+      "format": "uuid",
       "type": "string"
     }
   },

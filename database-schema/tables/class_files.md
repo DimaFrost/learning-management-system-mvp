@@ -8,8 +8,7 @@ Column count: 11
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | id | integer:bigint | yes | no |  | Note:<br>This is a Primary Key.<pk/> |
-| class_id | integer:bigint | no | yes |  | Optional session context. Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
-| subject_id | integer:bigint | no | yes |  | Subject-level material owner. Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
+| class_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
 | uploader_id | string:uuid | yes | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
 | file_type | string:text | yes | no |  |  |
 | file_name | string:text | yes | no |  |  |
@@ -18,6 +17,7 @@ Column count: 11
 | mime_type | string:text | no | no |  |  |
 | file_size | integer:bigint | no | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
+| subject_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
 
 ## Raw Definition
 
@@ -39,12 +39,7 @@ Column count: 11
       "type": "integer"
     },
     "class_id": {
-      "description": "Optional session context. Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
-      "format": "bigint",
-      "type": "integer"
-    },
-    "subject_id": {
-      "description": "Subject-level material owner. Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+      "description": "Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
       "format": "bigint",
       "type": "integer"
     },
@@ -81,6 +76,11 @@ Column count: 11
       "default": "now()",
       "format": "timestamp with time zone",
       "type": "string"
+    },
+    "subject_id": {
+      "description": "Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+      "format": "bigint",
+      "type": "integer"
     }
   },
   "type": "object"

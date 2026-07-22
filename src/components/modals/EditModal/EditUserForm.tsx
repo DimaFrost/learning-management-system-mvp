@@ -1,6 +1,6 @@
-import { BookOpen, Check, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
+import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Course, CourseStudent, EditingItem, MinistryTeam, User } from '../../../types/lms';
+import type { Course, CourseStudent, CourseType, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
 import { getCourseDisplayName, isCourseActive } from '../../../utils/courseUtils';
 import { RoleChip, UserAvatar } from '../../../views/admin/users/usersShared';
@@ -58,7 +58,7 @@ export function EditUserForm({
   getUserById,
 }: EditUserFormProps) {
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'student' | 'mentor' | 'team_leader' | null>(null);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'student' | 'teacher' | 'mentor' | 'team_leader' | null>(null);
   const [menteeSearch, setMenteeSearch] = useState('');
   const [menteeYearFilter, setMenteeYearFilter] = useState<'first_year' | 'second_year' | 'both'>('both');
   const [menteeDropdownOpen, setMenteeDropdownOpen] = useState(false);
@@ -66,6 +66,7 @@ export function EditUserForm({
   const menteeDropdownRef = useRef<HTMLDivElement | null>(null);
   const editedUser = editingItem.data as User | undefined;
   const hasStudentRole = formData.roles?.includes('student') || false;
+  const hasTeacherRole = formData.roles?.includes('teacher') || false;
   const hasMentorRole = formData.roles?.includes('mentor') || false;
   const hasTeamLeaderRole = formData.roles?.includes('team_leader') || false;
   const roleSettingsTabs = [
@@ -74,6 +75,12 @@ export function EditUserForm({
       label: 'Student',
       icon: BookOpen,
       activeClassName: 'border-[#94a3b8] bg-[#f1f5f9] text-[#334155] shadow-sm ring-1 ring-[#cbd5e1]',
+    } : null,
+    hasTeacherRole ? {
+      id: 'teacher' as const,
+      label: 'Teaching',
+      icon: GraduationCap,
+      activeClassName: 'border-[#93c5fd] bg-[#eff6ff] text-[#1d4ed8] shadow-sm ring-1 ring-[#bfdbfe]',
     } : null,
     hasMentorRole ? {
       id: 'mentor' as const,
@@ -88,7 +95,7 @@ export function EditUserForm({
       activeClassName: 'border-[#fed7aa] bg-[#fff7ed] text-[#ea580c]',
     } : null,
   ].filter(Boolean) as Array<{
-    id: 'student' | 'mentor' | 'team_leader';
+    id: 'student' | 'teacher' | 'mentor' | 'team_leader';
     label: string;
     icon: typeof BookOpen;
     activeClassName: string;
@@ -142,6 +149,9 @@ export function EditUserForm({
     : new Set<number>();
   const selectedLedTeams = activeMinistryTeams.filter(team => ledTeamIds.has(team.id));
   const draftYearGroupId = formData.assignedYearGroupId ?? activeEnrollments[0]?.courseId ?? '';
+  const draftTeachingCourseTypes = Array.isArray(formData.teachingCourseTypes)
+    ? formData.teachingCourseTypes as CourseType[]
+    : editedUser?.teachingCourseTypes ?? [];
   const draftMenteeKeys = Array.isArray(formData.assignedMenteeKeys) ? formData.assignedMenteeKeys as string[] : [];
   const draftLedTeamIds = Array.isArray(formData.ledTeamIds) ? formData.ledTeamIds as number[] : selectedLedTeams.map(team => team.id);
   const selectedDraftTeams = activeMinistryTeams.filter(team => draftLedTeamIds.includes(team.id));
@@ -239,6 +249,13 @@ export function EditUserForm({
     onChange('assignedMenteeKeys', nextKeys);
   };
 
+  const toggleTeachingYearGroup = (courseType: CourseType) => {
+    const nextTypes = draftTeachingCourseTypes.includes(courseType)
+      ? draftTeachingCourseTypes.filter(type => type !== courseType)
+      : [...draftTeachingCourseTypes, courseType];
+    onChange('teachingCourseTypes', nextTypes);
+  };
+
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
@@ -318,12 +335,13 @@ export function EditUserForm({
                 type="button"
                 onClick={() => {
                   const currentRoles = formData.roles || [];
-                  onChange(
-                    'roles',
-                    selected
-                      ? currentRoles.filter((item: string) => item !== role)
-                      : [...currentRoles, role]
-                  );
+                  const nextRoles = selected
+                    ? currentRoles.filter((item: string) => item !== role)
+                    : [...currentRoles, role];
+                  onChange('roles', nextRoles);
+                  if (role === 'teacher' && selected) {
+                    onChange('teachingCourseTypes', []);
+                  }
                 }}
                 className={`rounded-xl border p-2 text-left transition ${
                   selected ? 'border-[#171717] bg-[#fafafa]' : 'border-[#e5e5e5] bg-white hover:bg-[#fafafa]'
@@ -400,6 +418,51 @@ export function EditUserForm({
                   );
                 })}
               </div>
+            </AssignmentPanel>
+          )}
+
+          {activeSettingsTab === 'teacher' && (
+            <AssignmentPanel icon={GraduationCap} title="Teaching year groups" detail="Choose which active year groups this teacher can teach and plan for. This saves when you press Update.">
+              <div className="grid gap-2 sm:grid-cols-2">
+                {activeYearGroupChoices.map(choice => {
+                  const selected = draftTeachingCourseTypes.includes(choice.key as CourseType);
+                  return (
+                    <button
+                      key={choice.key}
+                      type="button"
+                      disabled={!choice.course}
+                      onClick={() => toggleTeachingYearGroup(choice.key as CourseType)}
+                      className={`relative flex min-h-[82px] items-center gap-3 rounded-xl border p-3 text-left transition ${
+                        selected ? choice.selectedTone : choice.tone
+                      } disabled:cursor-not-allowed disabled:opacity-50`}
+                    >
+                      {selected && (
+                        <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-[#171717] text-white shadow-sm">
+                          <Check className="h-3.5 w-3.5" />
+                        </span>
+                      )}
+                      <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/80 text-lg font-semibold">
+                        {choice.numeral}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold">{choice.label}</span>
+                        <span className="mt-0.5 block text-xs text-[#737373]">
+                          {choice.course
+                            ? selected
+                              ? 'Visible in planning dropdowns'
+                              : 'Hide from this year group'
+                            : 'No active year group found'}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {draftTeachingCourseTypes.length === 0 && (
+                <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">
+                  No teaching year group selected yet.
+                </p>
+              )}
             </AssignmentPanel>
           )}
 

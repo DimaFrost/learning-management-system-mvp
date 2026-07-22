@@ -7,6 +7,8 @@ export type UserRole =
   | 'student'
   | 'dev';
 
+export type CourseType = 'first_year' | 'second_year';
+
 export interface User {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ export interface User {
   lastName: string;
   avatarUrl: string | null;
   preferredLanguage: 'en' | 'bg';
+  teachingCourseTypes: CourseType[];
   notificationPreferences: {
     announcements: boolean;
     roleChange: boolean;
@@ -53,7 +56,7 @@ export interface Subject {
 
 export interface Course {
   id: number;
-  courseType: 'first_year' | 'second_year';
+  courseType: CourseType;
   graduationYear: number;
   startDate: string;
   endDate: string;
@@ -254,6 +257,7 @@ export interface HomeworkAssignment {
   title: string;
   description: string | null;
   dueDate: string | null;
+  gradingDueDate?: string | null;
   maxPoints: number;
   driveFolderId: string | null;
   createdAt: string;
@@ -385,12 +389,18 @@ export interface Message {
   content: string;
   readAt: string | null;
   createdAt: string;
+  audienceKey: string | null;
+  audienceLabel: string | null;
 }
 
 export interface Conversation {
+  conversationKey: string;
   otherUserId: string;
   otherUserName: string;
   otherUserRoles: string[];
+  audienceKey: string | null;
+  audienceLabel: string | null;
+  recipientIds: string[];
   lastMessage: string;
   lastMessageAt: string;
   lastMessageSenderId: string;

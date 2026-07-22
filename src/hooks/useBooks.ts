@@ -14,6 +14,7 @@ import type {
   User,
 } from '../types/lms';
 import { isCourseActive } from '../utils/courseUtils';
+import { getAdminIds, queueWorkflowEmail } from '../utils/notificationJobs';
 
 type BookRow = {
   id: number;
@@ -312,7 +313,7 @@ export function getStudentActiveCourseIds(studentId: string, courseStudents: Cou
     .map(enrollment => enrollment.courseId);
 }
 
-export function useBooks(currentUser: User, courses: Course[], courseStudents: CourseStudent[]) {
+export function useBooks(currentUser: User, courses: Course[], courseStudents: CourseStudent[], users: User[] = []) {
   const [assignments, setAssignments] = useState<BookReadingAssignment[]>([]);
   const [submissions, setSubmissions] = useState<BookReadingSubmission[]>([]);
   const [loading, setLoading] = useState(true);
@@ -422,8 +423,21 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       });
 
     if (assignmentError) throw assignmentError;
+    if (draft.status === 'assigned') {
+      const recipientIds = courseStudents
+        .filter(row => row.courseId === draft.courseId && row.status === 'active')
+        .map(row => row.studentId);
+      void queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds,
+        subject: `New reading assignment: ${draft.title || draft.book.title}`,
+        title: draft.title || draft.book.title,
+        body: `${currentUser.name} assigned a new reading assignment.${draft.dueDate ? `\n\nDue: ${draft.dueDate}` : ''}`,
+        kind: 'assignment',
+      });
+    }
     await refetchBooks();
-  }, [currentUser.id, refetchBooks]);
+  }, [courseStudents, currentUser.id, currentUser.name, refetchBooks]);
 
   const createReadingAssignments = useCallback(async (
     draft: Omit<ReadingAssignmentDraft, 'courseId'> & { courseIds: number[] }
@@ -453,8 +467,22 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       })));
 
     if (assignmentError) throw assignmentError;
+    if (draft.status === 'assigned') {
+      const courseSet = new Set(draft.courseIds);
+      const recipientIds = courseStudents
+        .filter(row => courseSet.has(row.courseId) && row.status === 'active')
+        .map(row => row.studentId);
+      void queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds,
+        subject: `New reading assignment: ${draft.title || draft.book.title}`,
+        title: draft.title || draft.book.title,
+        body: `${currentUser.name} assigned a new reading assignment.${draft.dueDate ? `\n\nDue: ${draft.dueDate}` : ''}`,
+        kind: 'assignment',
+      });
+    }
     await refetchBooks();
-  }, [currentUser.id, refetchBooks]);
+  }, [courseStudents, currentUser.id, currentUser.name, refetchBooks]);
 
   const uploadBookCover = useCallback(async (file: File) => {
     const extension = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -526,8 +554,19 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       }, { onConflict: 'assignment_id,student_id' });
 
     if (upsertError) throw upsertError;
+    if (input.status === 'submitted' || input.status === 'completed') {
+      const assignment = assignments.find(item => item.id === assignmentId);
+      void queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds: getAdminIds(users),
+        subject: `Reading submitted: ${assignment?.title ?? 'Reading assignment'}`,
+        title: `${currentUser.name} submitted reading work`,
+        body: `${currentUser.name} submitted ${assignment?.title ?? 'a reading assignment'}.`,
+        kind: 'assignment',
+      });
+    }
     await refetchBooks();
-  }, [currentUser.id, refetchBooks]);
+  }, [assignments, currentUser.id, currentUser.name, refetchBooks, users]);
 
   const gradeReadingSubmission = useCallback(async (
     submissionId: number,
@@ -553,8 +592,22 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       .eq('id', submissionId);
 
     if (updateError) throw updateError;
+    const submission = submissions.find(item => item.id === submissionId);
+    const assignment = submission ? assignments.find(item => item.id === submission.assignmentId) : null;
+    if (submission) {
+      void queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds: [submission.studentId],
+        subject: input.status === 'returned'
+          ? `Reading returned: ${assignment?.title ?? 'Reading assignment'}`
+          : `Reading completed: ${assignment?.title ?? 'Reading assignment'}`,
+        title: input.status === 'returned' ? 'Reading work returned' : 'Reading work reviewed',
+        body: input.gradeComment?.trim() || 'Your reading work has been reviewed.',
+        kind: 'assignment',
+      });
+    }
     await refetchBooks();
-  }, [currentUser.id, refetchBooks]);
+  }, [assignments, currentUser.id, refetchBooks, submissions]);
 
   const addReadingSubmissionComment = useCallback(async (submissionId: number, content: string) => {
     const trimmed = content.trim();
@@ -565,10 +618,22 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
         submission_id: submissionId,
         author_id: currentUser.id,
         content: trimmed,
-      });
+    });
     if (insertError) throw insertError;
+    const submission = submissions.find(item => item.id === submissionId);
+    if (submission) {
+      const isStudentAuthor = currentUser.id === submission.studentId;
+      void queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds: isStudentAuthor ? getAdminIds(users) : [submission.studentId],
+        subject: 'Private reading comment',
+        title: `${currentUser.name} added a private comment`,
+        body: trimmed,
+        kind: 'assignment',
+      });
+    }
     await refetchBooks();
-  }, [currentUser.id, refetchBooks]);
+  }, [currentUser.id, currentUser.name, refetchBooks, submissions, users]);
 
   const deleteReadingSubmissionComment = useCallback(async (commentId: number) => {
     const { error: deleteError } = await supabase

@@ -8,6 +8,7 @@ export type HomeworkRow = {
   title: string;
   description: string | null;
   due_date: string | null;
+  grading_due_date?: string | null;
   max_points: number;
   class_id: number | null;
   subject_id: number | null;

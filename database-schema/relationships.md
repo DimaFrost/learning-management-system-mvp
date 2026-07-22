@@ -8,6 +8,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 
 | Table | Column |
 | --- | --- |
+| absence_notice_sessions | id |
+| absence_notices | id |
 | announcement_attachments | id |
 | announcement_comments | id |
 | announcement_reactions | id |
@@ -15,6 +17,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | attendance_correction_requests | id |
 | attendance_settings | id |
 | book_reading_assignments | id |
+| book_reading_submission_comments | id |
 | book_reading_submissions | id |
 | books | id |
 | class_attendance | id |
@@ -41,6 +44,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | prayer_schedule | id |
 | profiles | id |
 | settings | key |
+| stream_course_settings | course_id |
 | subject_notes | id |
 | subjects | id |
 | sunday_attendance | id |
@@ -54,6 +58,9 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 
 | From | To |
 | --- | --- |
+| absence_notice_sessions.class_id | classes.id |
+| absence_notice_sessions.notice_id | absence_notices.id |
+| absence_notices.student_id | profiles.id |
 | announcement_attachments.announcement_id | announcements.id |
 | announcement_attachments.uploader_id | profiles.id |
 | announcement_comments.announcement_id | announcements.id |
@@ -70,7 +77,10 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | book_reading_assignments.assigned_by | profiles.id |
 | book_reading_assignments.book_id | books.id |
 | book_reading_assignments.course_id | courses.id |
+| book_reading_submission_comments.author_id | profiles.id |
+| book_reading_submission_comments.submission_id | book_reading_submissions.id |
 | book_reading_submissions.assignment_id | book_reading_assignments.id |
+| book_reading_submissions.graded_by | profiles.id |
 | book_reading_submissions.reviewed_by | profiles.id |
 | book_reading_submissions.student_id | profiles.id |
 | books.created_by | profiles.id |
@@ -125,6 +135,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | notification_jobs.created_by | profiles.id |
 | prayer_schedule.thursday_student_id | profiles.id |
 | prayer_schedule.tuesday_student_id | profiles.id |
+| stream_course_settings.course_id | courses.id |
+| stream_course_settings.updated_by | profiles.id |
 | subject_notes.author_id | profiles.id |
 | subject_notes.subject_id | subjects.id |
 | subjects.course_id | courses.id |

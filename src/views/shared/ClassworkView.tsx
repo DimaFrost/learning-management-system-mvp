@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AlertTriangle, ArrowLeft, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, MessageCircle, Minus, Search, Send, X } from 'lucide-react';
+import { AlertCircle, ArrowLeft, BookOpen, CalendarClock, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, CircleDot, CircleEllipsis, Clock, Edit3, ExternalLink, FileText, MessageCircle, MinusCircle, Search, Send, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, User } from '../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
@@ -32,6 +32,26 @@ import {
 
 type ContentFilter = 'all' | 'homework' | 'materials' | 'extras' | 'none';
 type ClassworkKindFilter = 'all' | 'session' | 'homework' | 'reading' | 'material';
+type TeacherSubjectFilter = 'teaching' | 'year_group';
+type HomeworkCommentRow = {
+  id: number;
+  submission_id: number;
+  author_id?: string | null;
+  content: string;
+  created_at: string;
+  author?: { id: string; name: string } | null;
+};
+
+function mapHomeworkComment(row: HomeworkCommentRow) {
+  return {
+    id: row.id,
+    submissionId: row.submission_id,
+    authorId: row.author?.id ?? row.author_id ?? '',
+    authorName: row.author?.name ?? 'Unknown',
+    content: row.content,
+    createdAt: row.created_at,
+  };
+}
 
 interface ClassworkViewProps {
   scope: ClassworkScope;
@@ -52,6 +72,8 @@ interface ClassworkViewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onNavigate?: (view: string) => void;
   resetKey?: number;
+  initialSubjectTarget?: { courseId: number; subjectId: number } | null;
+  onInitialSubjectTargetHandled?: () => void;
 }
 
 const SUBJECTS_PER_PAGE = 6;
@@ -88,19 +110,24 @@ function SubjectAssignmentStatusIcon({
   status: ReturnType<typeof getSubjectAssignmentStatus>;
   collapsed: boolean;
 }) {
-  const className = 'h-4 w-4';
+  const className = 'h-5 w-5';
   const Icon =
     status.icon === 'complete' ? CheckCircle2 :
-    status.icon === 'review' ? Clock3 :
-    status.icon === 'action' ? AlertTriangle :
-    status.icon === 'upcoming' ? CalendarDays :
-    Minus;
+    status.icon === 'review' ? Clock :
+    status.icon === 'action' ? AlertCircle :
+    status.icon === 'action-dot' ? CircleDot :
+    status.icon === 'action-clock' ? Clock :
+    status.icon === 'action-message' ? MessageCircle :
+    status.icon === 'action-edit' ? Edit3 :
+    status.icon === 'action-ellipsis' ? CircleEllipsis :
+    status.icon === 'upcoming' ? CalendarClock :
+    MinusCircle;
 
   return (
     <span
       title={status.title}
       aria-label={status.label}
-      className={`inline-flex h-7 w-7 items-center justify-center rounded-full bg-white ${collapsed ? '' : 'border-l border-[#d4d4d4]'} ${status.textClass}`}
+      className={`inline-flex h-7 w-7 items-center justify-center ${status.textClass}`}
     >
       <Icon className={className} />
     </span>
@@ -276,6 +303,8 @@ export function ClassworkView({
   onOpenClass,
   onNavigate,
   resetKey = 0,
+  initialSubjectTarget = null,
+  onInitialSubjectTargetHandled,
 }: ClassworkViewProps) {
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
@@ -283,6 +312,7 @@ export function ClassworkView({
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<ClassworkKindFilter>('all');
   const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
+  const [teacherSubjectFilter, setTeacherSubjectFilter] = useState<TeacherSubjectFilter>('teaching');
   const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
   const [detailAssignment, setDetailAssignment] = useState<BookReadingAssignment | null>(null);
   const [selectedSubjectRun, setSelectedSubjectRun] = useState<SubjectRun | null>(null);
@@ -297,28 +327,28 @@ export function ClassworkView({
     [courseStudents, courses, currentUser, scope]
   );
 
-  const scopedClassIds = useMemo(() => {
+  const teacherCanSeeYearGroupFilter = scope === 'teacher';
+  const teacherTaughtSubjectIds = useMemo(() => {
     const ids = new Set<number>();
     courses.filter(course => scopedCourseIds.includes(course.id)).forEach(course => {
       course.subjects.forEach(subject => {
-        subject.classes.forEach(cls => {
-          if (scope !== 'teacher' || cls.teacherId === currentUser.id) ids.add(cls.id);
-        });
+        if (subject.classes.some(cls => cls.teacherId === currentUser.id)) {
+          ids.add(subject.id);
+        }
       });
     });
-    return Array.from(ids);
-  }, [courses, currentUser.id, scope, scopedCourseIds]);
+    return ids;
+  }, [courses, currentUser.id, scopedCourseIds]);
 
   const scopedSubjectIds = useMemo(() => {
     const ids = new Set<number>();
     courses.filter(course => scopedCourseIds.includes(course.id)).forEach(course => {
       course.subjects.forEach(subject => {
-        if (scope === 'teacher' && !subject.classes.some(cls => cls.teacherId === currentUser.id)) return;
         ids.add(subject.id);
       });
     });
     return Array.from(ids);
-  }, [courses, currentUser.id, scope, scopedCourseIds]);
+  }, [courses, scopedCourseIds]);
 
   useEffect(() => {
     let cancelled = false;
@@ -331,7 +361,7 @@ export function ClassworkView({
       }
       const { data, error } = await supabase
         .from('homework_assignments')
-        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
         .in('subject_id', scopedSubjectIds)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (cancelled) return;
@@ -360,7 +390,11 @@ export function ClassworkView({
         drive_view_url, file_name, google_doc_id, google_doc_url,
         status, submitted_at, points, grade_comment, graded_at,
         graded_by, created_at, updated_at,
-        student:profiles!student_id(id, name)
+        student:profiles!student_id(id, name),
+        comments:homework_comments(
+          id, submission_id, author_id, content, created_at,
+          author:profiles!author_id(id, name)
+        )
       `)
       .in('assignment_id', assignmentIds);
     if (scope === 'student') {
@@ -390,6 +424,7 @@ export function ClassworkView({
         gradedBy: row.graded_by,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
+        comments: (row.comments ?? []).map(mapHomeworkComment),
       })) as HomeworkSubmission[]);
     }
   }, [currentUser.id, homeworkRows, scope]);
@@ -410,9 +445,10 @@ export function ClassworkView({
           title: data.title,
           description: data.description,
           due_date: data.dueDate,
+          grading_due_date: data.gradingDueDate,
           max_points: data.maxPoints,
         })
-        .select('id, title, description, due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
         .single();
 
       if (error) throw error;
@@ -429,8 +465,12 @@ export function ClassworkView({
 
     courses.filter(course => scopedCourseIds.includes(course.id)).forEach(course => {
       course.subjects.forEach(subject => {
+        if (
+          scope === 'teacher' &&
+          teacherSubjectFilter === 'teaching' &&
+          !subject.classes.some(cls => cls.teacherId === currentUser.id)
+        ) return;
         subject.classes.forEach(cls => {
-          if (scope === 'teacher' && cls.teacherId !== currentUser.id) return;
           const classHomework = homeworkRows.filter(homework => homework.class_id === cls.id);
           rows.push({
             id: `session-${cls.id}`,
@@ -496,7 +536,7 @@ export function ClassworkView({
       })
       .filter(item => !normalized || `${item.title} ${item.subtitle} ${item.course ? getCourseDisplayName(item.course) : ''}`.toLowerCase().includes(normalized))
       .sort((a, b) => (a.dueDate ?? '9999-99-99').localeCompare(b.dueDate ?? '9999-99-99') || a.title.localeCompare(b.title));
-  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, query, scope, scopedCourseIds]);
+  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, query, scope, scopedCourseIds, teacherSubjectFilter]);
   const stats = {
     homework: homeworkRows.length,
     reading: items.filter(item => item.kind === 'reading').length,
@@ -504,6 +544,7 @@ export function ClassworkView({
     sessions: items.filter(item => item.kind === 'session').length,
   };
   const subjectRuns = buildSubjectRuns(items);
+  const teacherTaughtSubjectCount = subjectRuns.filter(run => run.subjectId != null && teacherTaughtSubjectIds.has(run.subjectId)).length;
   const totalSubjectPages = Math.max(1, Math.ceil(subjectRuns.length / SUBJECTS_PER_PAGE));
   const currentSubjectPage = Math.min(subjectPage, totalSubjectPages - 1);
   const pagedSubjectRuns = subjectRuns.slice(
@@ -531,6 +572,18 @@ export function ClassworkView({
     setManuallyToggledRuns(new Set());
   }, [contentFilter, kind, query, resetKey, subjectRuns.length]);
 
+  useEffect(() => {
+    if (!initialSubjectTarget || subjectRuns.length === 0) return;
+    const run = subjectRuns.find(item =>
+      item.subjectId === initialSubjectTarget.subjectId &&
+      item.course?.id === initialSubjectTarget.courseId
+    );
+    if (!run) return;
+    setSelectedSubjectInitialTab('sessions');
+    setSelectedSubjectRun(run);
+    onInitialSubjectTargetHandled?.();
+  }, [initialSubjectTarget, onInitialSubjectTargetHandled, subjectRuns]);
+
   const isRunCollapsed = (run: SubjectRun) => {
     const defaultCollapsed = getRunTimelineState(run) === 'past';
     return manuallyToggledRuns.has(run.key) ? !defaultCollapsed : defaultCollapsed;
@@ -553,6 +606,78 @@ export function ClassworkView({
       return;
     }
   };
+  const homeworkStatusPreview = [
+    {
+      label: 'Complete',
+      icon: 'complete' as const,
+      containerClass: 'bg-[#ecfdf5] ring-[#bbf7d0]',
+      textClass: 'text-[#047857]',
+      title: 'Assignments are complete on the student and staff side.',
+    },
+    {
+      label: 'Action needed',
+      icon: 'action' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'At least one assignment still needs your attention.',
+    },
+    {
+      label: 'Pending dot',
+      icon: 'action-dot' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'Alternative: soft dot for pending student work.',
+    },
+    {
+      label: 'Pending clock',
+      icon: 'action-clock' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'Alternative: clock for pending student work.',
+    },
+    {
+      label: 'Pending message',
+      icon: 'action-message' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'Alternative: message icon for pending student work.',
+    },
+    {
+      label: 'Pending edit',
+      icon: 'action-edit' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'Alternative: edit icon for pending student work.',
+    },
+    {
+      label: 'Pending ellipsis',
+      icon: 'action-ellipsis' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: 'Alternative: ellipsis icon for pending student work.',
+    },
+    {
+      label: 'Review pending',
+      icon: 'review' as const,
+      containerClass: 'bg-[#fffbeb] ring-[#fde68a]',
+      textClass: 'text-[#b45309]',
+      title: 'Students have nothing more to do on some work, but staff review or final grading is not complete.',
+    },
+    {
+      label: 'Upcoming assignments',
+      icon: 'upcoming' as const,
+      containerClass: 'bg-[#eff6ff] ring-[#bfdbfe]',
+      textClass: 'text-[#2563eb]',
+      title: 'Assignments are attached, but this subject has not started yet.',
+    },
+    {
+      label: 'No assignments',
+      icon: 'none' as const,
+      containerClass: 'bg-[#fafafa] ring-[#e5e5e5]',
+      textClass: 'text-[#a3a3a3]',
+      title: 'There are no assignments attached to this subject yet.',
+    },
+  ];
 
   if (selectedHomeworkDetail) {
     return (
@@ -619,7 +744,7 @@ export function ClassworkView({
       </div>
 
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
-        <div className="grid gap-3 lg:grid-cols-[minmax(240px,1fr)_auto_auto] lg:items-center">
+        <div className={`grid gap-3 lg:items-center ${teacherCanSeeYearGroupFilter ? 'lg:grid-cols-[minmax(240px,1fr)_auto_auto_auto]' : 'lg:grid-cols-[minmax(240px,1fr)_auto_auto]'}`}>
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
           <input
@@ -629,6 +754,20 @@ export function ClassworkView({
             className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717] placeholder:text-[#a3a3a3]"
           />
         </div>
+          {teacherCanSeeYearGroupFilter && (
+            <label className="tbo-focus flex h-10 cursor-pointer items-center gap-2 border-l border-[#d4d4d4] pl-3 text-sm font-semibold text-[#171717]">
+              <input
+                type="checkbox"
+                checked={teacherSubjectFilter === 'teaching'}
+                onChange={event => setTeacherSubjectFilter(event.target.checked ? 'teaching' : 'year_group')}
+                className="h-4 w-4 rounded border-[#d4d4d4] text-[#171717] focus:ring-[#171717]"
+              />
+              <span>My subjects</span>
+              <span className="rounded-full bg-[#fafafa] px-1.5 py-0.5 text-[10px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
+                {teacherSubjectFilter === 'teaching' ? teacherTaughtSubjectCount : scopedSubjectIds.length}
+              </span>
+            </label>
+          )}
           <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
             <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Type</span>
             <select
@@ -661,6 +800,15 @@ export function ClassworkView({
           </label>
         </div>
       </div>
+
+      {false && (
+        <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-2">
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Homework status preview</span>
+          {homeworkStatusPreview.map(status => (
+            <SubjectAssignmentStatusIcon key={status.label} status={status} collapsed={false} />
+          ))}
+        </div>
+      )}
 
       {loading ? (
         <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">Loading classwork...</div>
@@ -769,8 +917,7 @@ export function ClassworkView({
                     </span>
                   </button>
                 </div>
-                <div className={collapsed ? 'flex flex-wrap items-center gap-2 md:justify-end' : 'grid items-stretch gap-2 md:grid-cols-[minmax(0,1fr)_44px]'}>
-                  <div className={collapsed ? 'contents' : 'grid gap-1.5'}>
+                <div className={collapsed ? 'flex flex-wrap items-center gap-2 md:justify-end' : 'grid gap-1.5'}>
                     <div className={collapsed ? 'contents' : 'flex flex-wrap items-center justify-end gap-2'}>
                   {!collapsed && runTeachers.length > 0 && (
                     <span className="flex -space-x-2 pr-1">
@@ -789,6 +936,16 @@ export function ClassworkView({
                         </span>
                       )}
                     </span>
+                  )}
+                  {!collapsed && (
+                    <button
+                      type="button"
+                      onClick={() => openSubject('sessions')}
+                      className="tbo-focus inline-flex h-7 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-2.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5] hover:text-[#2563eb]"
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                      Open subject
+                    </button>
                   )}
                     </div>
                     <div className={collapsed ? 'contents' : 'flex flex-wrap items-center justify-end gap-2'}>
@@ -815,18 +972,6 @@ export function ClassworkView({
                     {run.items.length} item{run.items.length === 1 ? '' : 's'}
                   </span>
                     </div>
-                  </div>
-                  {!collapsed && (
-                    <button
-                      type="button"
-                      onClick={() => openSubject('sessions')}
-                      title="Open subject"
-                      aria-label="Open subject"
-                      className="tbo-focus grid h-full min-h-[44px] w-11 place-items-center rounded-xl border border-[#d4d4d4] bg-white text-[#171717] hover:bg-[#f5f5f5] hover:text-[#2563eb]"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </button>
-                  )}
                 </div>
               </div>
               {!collapsed && <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">

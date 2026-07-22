@@ -20,6 +20,13 @@ export function getScopedCourseIds(scope: ClassworkScope, currentUser: User, cou
       .filter(row => row.studentId === currentUser.id && row.status === 'active')
       .map(row => row.courseId);
   }
+  const teachingCourseTypes = currentUser.teachingCourseTypes ?? [];
+  if (teachingCourseTypes.length > 0) {
+    return courses
+      .filter(isCourseActive)
+      .filter(course => teachingCourseTypes.includes(course.courseType))
+      .map(course => course.id);
+  }
   return courses
     .filter(isCourseActive)
     .filter(course => course.subjects.some(subject =>
@@ -197,6 +204,7 @@ export function getSubjectAssignmentStatus(params: {
     return {
       label: 'No assignments',
       icon: 'none' as const,
+      containerClass: 'bg-[#fafafa] ring-[#e5e5e5]',
       textClass: 'text-[#a3a3a3]',
       title: 'There are no assignments attached to this subject yet.',
     };
@@ -210,6 +218,7 @@ export function getSubjectAssignmentStatus(params: {
       return {
         label: 'Upcoming assignments',
         icon: 'upcoming' as const,
+        containerClass: 'bg-[#eff6ff] ring-[#bfdbfe]',
         textClass: 'text-[#2563eb]',
         title: 'Assignments are attached, but this subject has not started yet.',
       };
@@ -223,7 +232,8 @@ export function getSubjectAssignmentStatus(params: {
       return {
         label: 'Action needed',
         icon: 'action' as const,
-        textClass: 'text-[#b91c1c]',
+        containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+        textClass: 'text-[#be5b65]',
         title: 'At least one assignment still needs your attention.',
       };
     }
@@ -234,6 +244,7 @@ export function getSubjectAssignmentStatus(params: {
     return {
       label: 'Review pending',
       icon: 'review' as const,
+      containerClass: 'bg-[#fffbeb] ring-[#fde68a]',
       textClass: 'text-[#b45309]',
       title: 'Students have nothing more to do on some work, but staff review or final grading is not complete.',
     };
@@ -242,6 +253,7 @@ export function getSubjectAssignmentStatus(params: {
   return {
     label: 'Complete',
     icon: 'complete' as const,
+    containerClass: 'bg-[#ecfdf5] ring-[#bbf7d0]',
     textClass: 'text-[#047857]',
     title: 'Assignments are complete on the student and staff side.',
   };

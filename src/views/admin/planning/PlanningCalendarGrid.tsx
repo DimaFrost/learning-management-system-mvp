@@ -20,12 +20,16 @@ import type {
   SlotLocation,
   PlanningBreak,
 } from '../../../hooks/useSchoolYearPlanning';
-import type { User } from '../../../types/lms';
+import type { CourseType, User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { isDateInBreak } from '../../../utils/scheduling';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 
 type CourseSide = 'firstYear' | 'secondYear';
+const COURSE_TYPE_BY_SIDE: Record<CourseSide, CourseType> = {
+  firstYear: 'first_year',
+  secondYear: 'second_year',
+};
 type BreakResult = { ok: true } | { ok: false; error: string };
 
 type CalendarEntry =
@@ -72,6 +76,16 @@ function slotPreview(slot: PlanningSlot, users: User[]) {
     teacherName: users.find(u => u.id === slot.teacherId)?.name ?? null,
     translatorName: users.find(u => u.id === slot.translatorId)?.name ?? null,
   };
+}
+
+function teacherMatchesCourseType(user: User, courseType?: CourseType | 'joint'): boolean {
+  if (!hasRole(user, 'teacher')) return false;
+  const scopedTypes = user.teachingCourseTypes ?? [];
+  if (scopedTypes.length === 0) return true;
+  if (courseType === 'joint') {
+    return scopedTypes.includes('first_year') || scopedTypes.includes('second_year');
+  }
+  return courseType ? scopedTypes.includes(courseType) : true;
 }
 
 function cellHighlightClass(
@@ -519,7 +533,7 @@ function SlotHourFields({
   plannerMode,
 }: SlotHourFieldsProps) {
   const filled = !!slot.subjectTitle.trim();
-  const teachers = users.filter(u => hasRole(u, 'teacher'));
+  const teachers = users.filter(u => teacherMatchesCourseType(u, COURSE_TYPE_BY_SIDE[side]));
   const translators = users.filter(u => hasRole(u, 'translator'));
   const datalistId = `subjects-${side}`;
   const tint = sideTint(side);
@@ -1074,7 +1088,7 @@ function JointSlotFields({
   const slot = row.jointSlot;
   const slotKey: PlanningSlotKey = 'jointSlot';
   const filled = !!slot.subjectTitle.trim();
-  const teachers = users.filter(u => hasRole(u, 'teacher'));
+  const teachers = users.filter(u => teacherMatchesCourseType(u, 'joint'));
   const translators = users.filter(u => hasRole(u, 'translator'));
   const emptyCell = filled ? '' : 'border-dashed border-gray-300';
   const cellBase = `border-b border-r border-gray-200 px-2 py-2 align-top bg-amber-50/60 ${emptyCell}`;

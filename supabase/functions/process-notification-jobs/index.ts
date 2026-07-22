@@ -37,6 +37,15 @@ type NotificationJob = {
   payload: Record<string, unknown>;
 };
 
+type WorkflowEmailPayload = {
+  recipientIds?: string[];
+  subject?: string;
+  title?: string;
+  body?: string;
+  kind?: 'announcement' | 'assignment' | 'attendance' | 'system';
+  actionUrl?: string | null;
+};
+
 type TodoItem = {
   id: number;
   title: string;
@@ -46,6 +55,34 @@ type TodoItem = {
   priority: 'none' | 'priority';
   status: 'open' | 'completed';
   assigned?: Profile | null;
+};
+
+type AbsenceNotice = {
+  id: number;
+  student_id: string;
+  reason: string | null;
+  status: 'submitted' | 'acknowledged' | 'archived';
+  submitted_at: string;
+  student?: Profile | null;
+  sessions?: {
+    id: number;
+    class_id: number;
+    class?: {
+      id: number;
+      title: string;
+      date: string;
+      hour: string;
+      subject?: {
+        id: number;
+        title: string;
+        course?: {
+          id: number;
+          course_type: string;
+          graduation_year: number;
+        } | null;
+      } | null;
+    } | null;
+  }[] | null;
 };
 
 const corsHeaders = {
@@ -161,6 +198,12 @@ async function processJob(job: NotificationJob) {
       if (!todoId) throw new Error('Missing todo id');
       const reminderKind = job.payload?.reminderKind === 'day_before' ? 'day_before' : 'due_day';
       result = await sendTodoReminderEmail(job.id, todoId, reminderKind);
+    } else if (job.type === 'absence_notice_email') {
+      const noticeId = Number(job.payload?.noticeId);
+      if (!noticeId) throw new Error('Missing absence notice id');
+      result = await sendAbsenceNoticeEmails(job.id, noticeId);
+    } else if (job.type === 'workflow_email') {
+      result = await sendWorkflowEmails(job.id, job.payload as WorkflowEmailPayload);
     } else {
       throw new Error(`Unsupported notification job type: ${job.type}`);
     }
@@ -189,6 +232,130 @@ async function processJob(job: NotificationJob) {
 
     return { jobId: job.id, status: nextStatus, error: message };
   }
+}
+
+async function sendWorkflowEmails(jobId: number, payload: WorkflowEmailPayload) {
+  const recipientIds = Array.isArray(payload.recipientIds) ? payload.recipientIds.filter(Boolean) : [];
+  if (recipientIds.length === 0) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'No recipients' };
+
+  const { data: recipients, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, roles, preferred_language, notification_preferences')
+    .in('id', Array.from(new Set(recipientIds)));
+  if (error) throw error;
+
+  const profiles = ((recipients ?? []) as Profile[]).filter(profile => Boolean(profile.email));
+  let sent = 0;
+  let failed = 0;
+  for (const recipient of profiles) {
+    const delivery = await createDelivery(jobId, recipient);
+    try {
+      const response = await sendBrevoEmail({
+        to: recipient,
+        subject: payload.subject || payload.title || 'Portal update',
+        html: renderWorkflowEmail(payload),
+        text: `${payload.title || 'Portal update'}\n\n${payload.body || ''}\n\nOpen: ${payload.actionUrl || APP_URL}`,
+        tags: [payload.kind ?? 'system', 'portal'],
+      });
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'sent',
+          provider_message_id: response.messageId ?? null,
+          sent_at: new Date().toISOString(),
+        })
+        .eq('id', delivery.id);
+      sent += 1;
+    } catch (sendError) {
+      const message = sendError instanceof Error ? sendError.message : String(sendError);
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'failed',
+          error_message: message,
+        })
+        .eq('id', delivery.id);
+      failed += 1;
+    }
+  }
+
+  return { sent, failed, recipientCount: profiles.length };
+}
+
+async function sendAbsenceNoticeEmails(jobId: number, noticeId: number) {
+  const { data: notice, error: noticeError } = await supabase
+    .from('absence_notices')
+    .select(`
+      id, student_id, reason, status, submitted_at,
+      student:profiles!student_id(id, name, email, roles, preferred_language, notification_preferences),
+      sessions:absence_notice_sessions(
+        id, class_id,
+        class:classes(
+          id, title, date, hour,
+          subject:subjects(
+            id, title,
+            course:courses(id, course_type, graduation_year)
+          )
+        )
+      )
+    `)
+    .eq('id', noticeId)
+    .single();
+
+  if (noticeError) throw noticeError;
+  const typedNotice = notice as AbsenceNotice;
+  const recipients = await resolveAbsenceNoticeRecipients(typedNotice);
+  let sent = 0;
+  let failed = 0;
+
+  for (const recipient of recipients) {
+    const delivery = await createDelivery(jobId, recipient);
+    try {
+      const response = await sendBrevoEmail({
+        to: recipient,
+        subject: `Absence notice: ${typedNotice.student?.name ?? 'Student'}`,
+        html: renderAbsenceNoticeEmail(typedNotice, recipient),
+        text: renderAbsenceNoticeText(typedNotice),
+        tags: ['attendance', 'absence-notice', 'portal'],
+      });
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'sent',
+          provider_message_id: response.messageId ?? null,
+          sent_at: new Date().toISOString(),
+        })
+        .eq('id', delivery.id);
+      sent += 1;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      await supabase
+        .from('notification_deliveries')
+        .update({
+          status: 'failed',
+          error_message: message,
+        })
+        .eq('id', delivery.id);
+      failed += 1;
+    }
+  }
+
+  return { sent, failed, recipientCount: recipients.length };
+}
+
+async function resolveAbsenceNoticeRecipients(notice: AbsenceNotice) {
+  const { data: admins, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, roles, preferred_language, notification_preferences')
+    .contains('roles', ['administrator']);
+  if (error) throw error;
+
+  const recipients = new Map<string, Profile>();
+  if (notice.student?.email) recipients.set(notice.student.id, notice.student);
+  for (const admin of (admins ?? []) as Profile[]) {
+    if (admin.email) recipients.set(admin.id, admin);
+  }
+  return [...recipients.values()];
 }
 
 async function sendAnnouncementEmails(jobId: number, announcementId: number) {
@@ -741,6 +908,171 @@ function renderTodoReminderEmail(todo: TodoItem, reminderKind: 'day_before' | 'd
 </html>`;
 }
 
+function renderAbsenceNoticeEmail(notice: AbsenceNotice, recipient: Profile) {
+  const theme = getNotificationTheme('attendance');
+  const studentName = escapeHtml(notice.student?.name ?? 'Student');
+  const recipientName = escapeHtml(recipient.name ?? 'there');
+  const reason = notice.reason?.trim()
+    ? escapeHtml(truncateText(notice.reason, 420)).replace(/\n/g, '<br>')
+    : 'No reason was provided.';
+  const submittedDate = escapeHtml(formatDateTimeLabel(notice.submitted_at));
+  const appUrl = escapeHtml(APP_URL);
+  const logoUrl = escapeHtml(LOGO_URL);
+  const brandMark = logoUrl
+    ? `<img src="${logoUrl}" width="36" height="36" alt="The Burning Ones" style="display:block;width:36px;height:36px;margin:6px auto;object-fit:contain;border:0;">`
+    : `<div style="width:36px;height:36px;margin:6px auto;border-radius:50%;background:${theme.accent};color:#ffffff;font-size:11px;font-weight:700;line-height:36px;text-align:center;letter-spacing:.02em;">TBO</div>`;
+  const sessionRows = (notice.sessions ?? []).map(item => {
+    const cls = item.class;
+    const date = cls?.date ? escapeHtml(formatDateLabel(cls.date)) : 'Date not set';
+    const title = escapeHtml(cls?.title ?? 'Session');
+    const subject = escapeHtml(cls?.subject?.title ?? 'Subject');
+    const year = escapeHtml(getCourseTypeLabel(cls?.subject?.course?.course_type));
+    const hour = escapeHtml(getHourLabel(cls?.hour ?? 'first'));
+    return `
+      <tr>
+        <td style="padding:12px 0;border-top:1px solid #eeeeee;">
+          <div style="font-size:14px;font-weight:700;color:#202124;">${title}</div>
+          <div style="margin-top:4px;font-size:12px;color:#5f6368;">${date} · ${hour} · ${subject} · ${year}</div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>Absence notice</title>
+  </head>
+  <body style="margin:0;padding:0;background:#f8fafd;font-family:Roboto,Arial,'Segoe UI',sans-serif;color:#202124;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8fafd;">
+      <tr>
+        <td align="center" style="padding:28px 14px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:620px;background:#ffffff;border:1px solid #dadce0;border-radius:24px;overflow:hidden;box-shadow:0 1px 2px rgba(60,64,67,.12),0 2px 6px rgba(60,64,67,.08);">
+            <tr>
+              <td style="height:10px;background:${theme.accent};font-size:0;line-height:0;">&nbsp;</td>
+            </tr>
+            <tr>
+              <td style="padding:24px 28px 10px;text-align:center;">
+                ${brandMark}
+                <div style="margin-top:8px;display:inline-block;border-radius:999px;background:${theme.tint};border:1px solid ${theme.border};padding:6px 10px;color:${theme.accent};font-size:12px;font-weight:700;">Absence notice</div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:8px 28px 26px;">
+                <h1 style="margin:0;font-size:26px;line-height:1.2;font-weight:500;color:#202124;">${studentName} submitted an absence notice</h1>
+                <p style="margin:12px 0 0;font-size:15px;line-height:1.6;color:#5f6368;">Hi ${recipientName}, this is a copy of the absence notice submitted through the portal.</p>
+                <div style="margin-top:20px;border-radius:18px;background:#fffaf0;border:1px solid ${theme.border};padding:16px;">
+                  <div style="font-size:12px;font-weight:700;color:${theme.accent};text-transform:uppercase;letter-spacing:.08em;">Reason</div>
+                  <div style="margin-top:8px;font-size:14px;line-height:1.6;color:#3c4043;">${reason}</div>
+                </div>
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:18px;">
+                  ${sessionRows || '<tr><td style="padding:12px 0;font-size:14px;color:#5f6368;">No sessions were attached.</td></tr>'}
+                </table>
+                <div style="margin-top:20px;font-size:12px;color:#80868b;">Submitted ${submittedDate}</div>
+                <div style="margin-top:22px;">
+                  <a href="${appUrl}" style="display:inline-block;border-radius:999px;background:#202124;color:#ffffff;text-decoration:none;font-size:14px;font-weight:700;padding:12px 18px;">Open</a>
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
+function renderAbsenceNoticeText(notice: AbsenceNotice) {
+  const sessions = (notice.sessions ?? [])
+    .map(item => {
+      const cls = item.class;
+      return `- ${cls?.date ? formatDateLabel(cls.date) : 'Date not set'} · ${cls?.title ?? 'Session'} · ${cls?.subject?.title ?? 'Subject'} · ${getHourLabel(cls?.hour ?? 'first')}`;
+    })
+    .join('\n');
+  return `Absence notice from ${notice.student?.name ?? 'Student'}\n\nReason:\n${notice.reason?.trim() || 'No reason was provided.'}\n\nSessions:\n${sessions || 'No sessions were attached.'}\n\nOpen: ${APP_URL}`;
+}
+
+function renderWorkflowEmail(payload: WorkflowEmailPayload) {
+  const theme = getNotificationTheme(payload.kind ?? 'system');
+  const title = escapeHtml(payload.title || 'Portal update');
+  const body = escapeHtml(truncateText(payload.body || '', 900)).replace(/\n/g, '<br>');
+  const appUrl = escapeHtml(payload.actionUrl || APP_URL);
+  const logoUrl = escapeHtml(LOGO_URL);
+  const brandMark = logoUrl
+    ? `<img src="${logoUrl}" width="36" height="36" alt="The Burning Ones" style="display:block;width:36px;height:36px;margin:6px auto;object-fit:contain;border:0;">`
+    : `<div style="width:36px;height:36px;margin:6px auto;border-radius:50%;background:${theme.accent};color:#ffffff;font-size:11px;font-weight:700;line-height:36px;text-align:center;letter-spacing:.02em;">TBO</div>`;
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>${title}</title>
+  </head>
+  <body style="margin:0;background:#f8faf7;padding:0;font-family:Roboto,Arial,'Segoe UI',sans-serif;color:#202124;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8faf7;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;margin:0 auto;">
+            <tr>
+              <td style="padding:0 4px 14px;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="width:48px;height:48px;border-radius:14px;background:#ffffff;border:1px solid ${theme.border};text-align:center;vertical-align:middle;">${brandMark}</td>
+                    <td style="padding-left:12px;">
+                      <div style="font-size:15px;font-weight:600;line-height:1.2;color:#202124;">The Burning Ones</div>
+                      <div style="padding-top:3px;font-size:12px;line-height:1.3;color:#5f6368;">Portal update</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #dadce0;border-radius:24px;background:#ffffff;box-shadow:0 1px 2px rgba(60,64,67,.12),0 2px 6px rgba(60,64,67,.08);overflow:hidden;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="height:10px;background:${theme.accent};font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:18px;">
+                        <tr>
+                          <td style="width:34px;height:34px;border-radius:50%;background:${theme.tint};text-align:center;vertical-align:middle;">
+                            <img src="${theme.groupIconUrl}" width="18" height="18" alt="" style="display:block;width:18px;height:18px;margin:8px auto;border:0;object-fit:contain;">
+                          </td>
+                          <td style="padding-left:10px;font-size:13px;line-height:1.4;color:#5f6368;">A portal workflow needs your attention.</td>
+                        </tr>
+                      </table>
+                      <h1 style="margin:0;font-size:24px;line-height:1.25;font-weight:500;color:#202124;">${title}</h1>
+                      ${body ? `<div style="margin-top:16px;font-size:14px;line-height:1.7;color:#3c4043;border-left:4px solid ${theme.tint};padding-left:14px;">${body}</div>` : ''}
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:26px;">
+                        <tr>
+                          <td style="border-radius:999px;background:${theme.accent};">
+                            <a href="${appUrl}" style="display:inline-block;padding:12px 22px;border-radius:999px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;line-height:1;">Open</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 function getNotificationTheme(kind: 'announcement' | 'assignment' | 'attendance' | 'system') {
   const iconBaseUrl = 'https://theburningones.bg/wp-content/uploads/2026/07';
   const themes = {
@@ -779,6 +1111,29 @@ function formatDateLabel(value: string) {
     day: 'numeric',
     year: 'numeric',
   }).format(new Date(`${value}T00:00:00`));
+}
+
+function formatDateTimeLabel(value: string) {
+  return new Intl.DateTimeFormat('en', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(value));
+}
+
+function getHourLabel(value: string) {
+  if (value === 'both') return 'Joint session';
+  if (value === 'first') return 'First session';
+  if (value === 'second') return 'Second session';
+  return value;
+}
+
+function getCourseTypeLabel(value: string | null | undefined) {
+  if (value === 'first_year') return 'First Year';
+  if (value === 'second_year') return 'Second Year';
+  return 'Year group';
 }
 
 function getAnnouncementScopeLabel(announcement: Announcement) {

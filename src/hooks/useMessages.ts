@@ -10,6 +10,8 @@ type SupabaseMessageRow = {
   content: string;
   read_at: string | null;
   created_at: string;
+  audience_key: string | null;
+  audience_label: string | null;
   sender: SupabaseProfileJoin;
   recipient: SupabaseProfileJoin;
 };
@@ -28,7 +30,7 @@ export function useMessages(currentUser: User, users: User[]) {
       const { data, error } = await supabase
         .from('messages')
         .select(`
-          id, content, read_at, created_at,
+          id, content, read_at, created_at, audience_key, audience_label,
           sender:profiles!sender_id (id, name),
           recipient:profiles!recipient_id (id, name)
         `)
@@ -47,6 +49,8 @@ export function useMessages(currentUser: User, users: User[]) {
         content: row.content,
         readAt: row.read_at,
         createdAt: row.created_at,
+        audienceKey: row.audience_key,
+        audienceLabel: row.audience_label,
       })));
     } catch (err) {
       setError('Failed to load messages');
@@ -63,20 +67,31 @@ export function useMessages(currentUser: User, users: User[]) {
     const convMap = new Map<string, Conversation>();
 
     for (const msg of messages) {
-      const otherUserId = msg.senderId === currentUser.id
+      const isMine = msg.senderId === currentUser.id;
+      const isAudienceSend = isMine && msg.audienceKey && msg.audienceKey !== `user:${msg.recipientId}`;
+      const otherUserId = isMine
         ? msg.recipientId
         : msg.senderId;
-      const otherUserName = msg.senderId === currentUser.id
+      const otherUserName = isAudienceSend
+        ? (msg.audienceLabel ?? 'Selected audience')
+        : isMine
         ? msg.recipientName
         : msg.senderName;
 
       const otherUser = users.find(u => u.id === otherUserId);
+      const conversationKey = isAudienceSend
+        ? `audience:${msg.audienceKey}:${msg.senderId}`
+        : `user:${otherUserId}`;
 
-      if (!convMap.has(otherUserId)) {
-        convMap.set(otherUserId, {
+      if (!convMap.has(conversationKey)) {
+        convMap.set(conversationKey, {
+          conversationKey,
           otherUserId,
           otherUserName,
           otherUserRoles: otherUser?.roles ?? [],
+          audienceKey: isAudienceSend ? msg.audienceKey : null,
+          audienceLabel: isAudienceSend ? msg.audienceLabel : null,
+          recipientIds: [],
           lastMessage: msg.content,
           lastMessageAt: msg.createdAt,
           lastMessageSenderId: msg.senderId,
@@ -85,8 +100,15 @@ export function useMessages(currentUser: User, users: User[]) {
         });
       }
 
-      const conv = convMap.get(otherUserId)!;
-      conv.messages.push(msg);
+      const conv = convMap.get(conversationKey)!;
+      if (!conv.recipientIds.includes(msg.recipientId)) conv.recipientIds.push(msg.recipientId);
+      const duplicateAudienceCopy = isAudienceSend && conv.messages.some(existing =>
+        existing.senderId === msg.senderId &&
+        existing.audienceKey === msg.audienceKey &&
+        existing.content === msg.content &&
+        existing.createdAt === msg.createdAt
+      );
+      if (!duplicateAudienceCopy && !conv.messages.some(existing => existing.id === msg.id)) conv.messages.push(msg);
       conv.lastMessage = msg.content;
       conv.lastMessageAt = msg.createdAt;
       conv.lastMessageSenderId = msg.senderId;
@@ -113,34 +135,41 @@ export function useMessages(currentUser: User, users: User[]) {
   );
 
   const sendMessage = async (
-    recipientId: string,
-    content: string
+    recipientIds: string | string[],
+    content: string,
+    audience?: { key: string; label: string }
   ): Promise<void> => {
     if (!content.trim()) return;
+    const normalizedRecipientIds = Array.from(new Set((Array.isArray(recipientIds) ? recipientIds : [recipientIds]).filter(Boolean)));
+    if (normalizedRecipientIds.length === 0) return;
     setSending(true);
     setError(null);
     try {
-      const { error } = await supabase.from('messages').insert({
+      const { error } = await supabase.from('messages').insert(normalizedRecipientIds.map(recipientId => ({
         sender_id: currentUser.id,
         recipient_id: recipientId,
         content: content.trim(),
-      });
+        audience_key: audience?.key ?? `user:${recipientId}`,
+        audience_label: audience?.label ?? null,
+      })));
       if (error) throw error;
 
       // Send email notification
-      const recipient = users.find(u => u.id === recipientId);
-      if (
-        recipient &&
-        recipient.notificationPreferences?.messages !== false
-      ) {
-        sendNotification('direct_message', {
-          recipientId,
-          recipientEmail: recipient.email,
-          recipientName: recipient.name,
-          senderName: currentUser.name,
-          preview: content.trim().slice(0, 100) +
-            (content.length > 100 ? '...' : ''),
-        }).catch(console.error);
+      for (const recipientId of normalizedRecipientIds) {
+        const recipient = users.find(u => u.id === recipientId);
+        if (
+          recipient &&
+          recipient.notificationPreferences?.messages !== false
+        ) {
+          sendNotification('direct_message', {
+            recipientId,
+            recipientEmail: recipient.email,
+            recipientName: recipient.name,
+            senderName: currentUser.name,
+            preview: content.trim().slice(0, 100) +
+              (content.length > 100 ? '...' : ''),
+          }).catch(console.error);
+        }
       }
 
       await fetchMessages();

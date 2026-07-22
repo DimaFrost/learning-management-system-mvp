@@ -173,6 +173,7 @@ export function AuthenticatedApp({
   const [selectedAdminStudentId, setSelectedAdminStudentId] = useState<string | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [classworkResetKey, setClassworkResetKey] = useState(0);
+  const [submissionsResetKey, setSubmissionsResetKey] = useState(0);
   const [sidebarMode, setSidebarMode] = useState<'locked' | 'collapsed'>(() => {
     const storedMode = localStorage.getItem('tbo-sidebar-mode');
     return storedMode === 'collapsed' || storedMode === 'auto-hide' ? 'collapsed' : 'locked';
@@ -285,6 +286,9 @@ export function AuthenticatedApp({
     if (view === 'classwork' || view === 'my-classwork') {
       setClassworkResetKey(key => key + 1);
     }
+    if (view === 'submissions') {
+      setSubmissionsResetKey(key => key + 1);
+    }
     setActiveView(view);
   };
 
@@ -339,6 +343,7 @@ export function AuthenticatedApp({
               activeView={activeView}
               setActiveView={setActiveView}
               classworkResetKey={classworkResetKey}
+              submissionsResetKey={submissionsResetKey}
               selectedClassId={selectedClassId}
               previousView={previousView}
               openClassDetail={openClassDetail}

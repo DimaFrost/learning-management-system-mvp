@@ -52,6 +52,7 @@ src/main.tsx
 - Follow existing patterns: one domain hook per area, relative imports (no path aliases), `EditingItem`-style unions for edit modals, `useConfirmation` for destructive actions.
 - UI: Tailwind utilities + `tbo-*` tokens in `src/index.css`, Reshaped where already used. Do not introduce a new design system or card-heavy layouts that fight existing screens.
 - i18n: EN/BG via `src/i18n/LanguageContext.tsx`. When adding user-facing copy, update both languages.
+- Admin Knowledge Base: `src/views/admin/KnowledgeBaseView.tsx` is the in-app admin documentation. Whenever a feature is added, renamed, removed, or meaningfully changed, update the Knowledge Base in the same change set so admins can still understand where the feature lives and how it behaves.
 - Keep diffs focused. Do not refactor the `AuthenticatedApp` prop bag, invent react-router, or add a global state library unless the task explicitly requires it.
 - Prefer extending the matching domain hook/view over scattering Supabase calls in random components.
 
@@ -60,7 +61,7 @@ src/main.tsx
 - **Source of truth:** the live Supabase project. This repo has **incremental** SQL only under `supabase/migrations/` (no full baseline dump). Helpers such as `is_admin()` may exist remotely but not in-repo.
 - **New migration:** `supabase/migrations/YYYYMMDDHHMMSS_short_snake_description.sql`. Prefer idempotent DDL (`create table if not exists`, `drop policy if exists` … `create policy`, `add column if not exists`).
 - **RLS:** enable on new public tables; `grant` to `authenticated` as needed; check `profiles.roles` with `@>` (contains) or `&&` (overlap); scope with `auth.uid()` / `course_students`. Reuse helpers like `can_current_user_write_stream()` for stream writes.
-- **After schema or Data API exposure changes:** run `npm run db:schema:sync` in the same change set. Culture and limits: `database-schema/README.md`.
+- **After schema or Data API exposure changes:** run `npm run db:schema:sync` in the same change set. Whenever you apply a DB migration, sync `database-schema/` before committing so the generated docs match the live Supabase project. Culture and limits: `database-schema/README.md`.
 - **Do not hand-edit generated files:** `database-schema/overview.md`, `relationships.md`, `openapi.json`, `database-schema/tables/*`. Put human notes in `database-schema/README.md` or other hand-written docs (e.g. `notification-system.md`).
 - The OpenAPI snapshot omits non-exposed tables, RLS, triggers, and indexes — read migrations (or MCP) when those matter. Tables not exposed to the REST API will not appear in the snapshot.
 - **Storage:** bucket `tbo-lms` via `src/utils/storageOperations.ts`. Class materials may store a storage path in columns still named like `drive_file_id` — preserve that semantics.

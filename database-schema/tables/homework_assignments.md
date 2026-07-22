@@ -3,13 +3,12 @@
 # homework_assignments
 
 
-Column count: 11
+Column count: 12
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
 | id | integer:bigint | yes | no |  | Note:<br>This is a Primary Key.<pk/> |
-| class_id | integer:bigint | no | yes |  | Optional session context. Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
-| subject_id | integer:bigint | no | yes |  | Subject-level assignment owner. Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
+| class_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `classes.id`.<fk table='classes' column='id'/> |
 | author_id | string:uuid | yes | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
 | title | string:text | yes | no |  |  |
 | description | string:text | no | no |  |  |
@@ -18,6 +17,8 @@ Column count: 11
 | drive_folder_id | string:text | no | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
+| subject_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
+| grading_due_date | string:date | no | no |  |  |
 
 ## Raw Definition
 
@@ -38,12 +39,7 @@ Column count: 11
       "type": "integer"
     },
     "class_id": {
-      "description": "Optional session context. Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
-      "format": "bigint",
-      "type": "integer"
-    },
-    "subject_id": {
-      "description": "Subject-level assignment owner. Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+      "description": "Note:\nThis is a Foreign Key to `classes.id`.<fk table='classes' column='id'/>",
       "format": "bigint",
       "type": "integer"
     },
@@ -81,6 +77,15 @@ Column count: 11
     "updated_at": {
       "default": "now()",
       "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "subject_id": {
+      "description": "Note:\nThis is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/>",
+      "format": "bigint",
+      "type": "integer"
+    },
+    "grading_due_date": {
+      "format": "date",
       "type": "string"
     }
   },
