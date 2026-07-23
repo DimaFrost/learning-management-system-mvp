@@ -609,8 +609,7 @@ export function AppRouter({
           bookSubmissions={books.mySubmissions}
           booksLoading={books.loading}
           onNavigate={setActiveView}
-          onOpenClass={openClassDetail}
-          onOpenSubject={openSubjectInClasswork}
+          onOpenClass={openSessionInClasswork}
           onOpenHomeworkAssignment={openHomeworkAssignment}
         />
       );
@@ -1053,8 +1052,7 @@ export function AppRouter({
         bookSubmissions={books.mySubmissions}
         booksLoading={books.loading}
         onNavigate={setActiveView}
-        onOpenClass={openClassDetail}
-        onOpenSubject={openSubjectInClasswork}
+        onOpenClass={openSessionInClasswork}
         onOpenHomeworkAssignment={openHomeworkAssignment}
       />
     );
@@ -1112,8 +1110,7 @@ export function AppRouter({
             bookSubmissions={books.mySubmissions}
             booksLoading={books.loading}
             onNavigate={setActiveView}
-            onOpenClass={openClassDetail}
-            onOpenSubject={openSubjectInClasswork}
+            onOpenClass={openSessionInClasswork}
             onOpenHomeworkAssignment={openHomeworkAssignment}
           />
         );

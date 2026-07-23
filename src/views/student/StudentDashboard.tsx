@@ -85,7 +85,6 @@ interface StudentDashboardProps {
   booksLoading: boolean;
   onNavigate: (view: string) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
-  onOpenSubject: (courseId: number, subjectId: number) => void;
   onOpenHomeworkAssignment: (assignmentId: number) => void;
 }
 
@@ -253,7 +252,6 @@ export function StudentDashboard({
   booksLoading,
   onNavigate,
   onOpenClass,
-  onOpenSubject,
   onOpenHomeworkAssignment,
 }: StudentDashboardProps) {
   const [expandedTodoGroup, setExpandedTodoGroup] = useState<TodoItem[] | null>(null);
@@ -689,7 +687,7 @@ export function StudentDashboard({
                         <button
                           key={session.id}
                           type="button"
-                          onClick={() => onOpenSubject(session.courseId, session.subjectId)}
+                          onClick={() => onOpenClass(session.classId, session.subjectId, session.courseId)}
                           className="tbo-focus flex w-full items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-left hover:bg-white"
                         >
                           <span className={`grid h-8 w-8 place-items-center rounded-lg ${
