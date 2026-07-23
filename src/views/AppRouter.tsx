@@ -1004,7 +1004,7 @@ export function AppRouter({
             staffWorkspace={activeWorkspace as 'teacher' | 'translator'}
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
-            onOpenClass={openClassDetail}
+            onOpenClass={openSessionInClasswork}
           />
         );
     }
