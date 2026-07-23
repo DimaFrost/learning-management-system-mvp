@@ -652,7 +652,7 @@ export function StudentDashboard({
           progress={upcomingSessions.length > 0 ? 100 : 40}
           icon={Calendar}
           tone="green"
-          onClick={() => onNavigate('my-course')}
+          onClick={() => onNavigate('my-classwork')}
         />
       </div>
 
@@ -660,7 +660,7 @@ export function StudentDashboard({
         <SectionCard
           title="Upcoming"
           subtitle="Next 7 days"
-          action={<GhostButton onClick={() => onNavigate('my-course')}>My course</GhostButton>}
+          action={<GhostButton onClick={() => onNavigate('my-classwork')}>My course</GhostButton>}
           className="xl:min-h-[420px]"
           bodyClassName="min-h-0 flex-1"
         >
@@ -768,7 +768,7 @@ export function StudentDashboard({
           <SectionCard title="Quick links" subtitle="Jump to your student tools">
             <div className="grid grid-cols-2 gap-2">
               {([
-                { label: 'My course', icon: GraduationCap, view: 'my-course', tone: 'blue' as const },
+                { label: 'My course', icon: GraduationCap, view: 'my-classwork', tone: 'blue' as const },
                 { label: 'Books', icon: BookOpen, view: 'my-books', tone: 'orange' as const, badge: incompleteBooks.length },
                 { label: 'Attendance', icon: BarChart3, view: 'my-attendance-overview', tone: 'green' as const },
                 { label: 'Messages', icon: MessageSquare, view: 'messages', tone: 'violet' as const, badge: totalUnread },
