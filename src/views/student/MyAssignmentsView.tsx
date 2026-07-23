@@ -49,6 +49,8 @@ interface MyAssignmentsViewProps {
   bookAssignments: BookReadingAssignment[];
   bookSubmissions: BookReadingSubmission[];
   onNavigate?: (view: string) => void;
+  initialHomeworkId?: number | null;
+  onInitialHomeworkHandled?: () => void;
 }
 
 function getStudentCourseIds(currentUser: User, courseStudents: CourseStudent[]) {
@@ -101,6 +103,8 @@ export function MyAssignmentsView({
   bookAssignments,
   bookSubmissions,
   onNavigate,
+  initialHomeworkId = null,
+  onInitialHomeworkHandled,
 }: MyAssignmentsViewProps) {
   const [homeworkAssignments, setHomeworkAssignments] = useState<HomeworkAssignmentRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
@@ -197,6 +201,14 @@ export function MyAssignmentsView({
     void load();
     return () => { cancelled = true; };
   }, [currentUser.id, currentUser.name, refreshKey, subjectIds]);
+
+  useEffect(() => {
+    if (initialHomeworkId == null || loading) return;
+    const homework = homeworkAssignments.find(item => item.id === initialHomeworkId);
+    if (!homework) return;
+    setSelectedHomework(homeworkToSelection(homework, courses));
+    onInitialHomeworkHandled?.();
+  }, [courses, homeworkAssignments, initialHomeworkId, loading, onInitialHomeworkHandled]);
 
   const rows = useMemo(() => {
     const normalized = query.trim().toLowerCase();

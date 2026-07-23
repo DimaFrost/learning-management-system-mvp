@@ -274,6 +274,7 @@ export function AppRouter({
   nextScheduledDuty,
 }: AppRouterProps) {
   const [classworkSubjectTarget, setClassworkSubjectTarget] = useState<{ courseId: number; subjectId: number } | null>(null);
+  const [assignmentsHomeworkTarget, setAssignmentsHomeworkTarget] = useState<number | null>(null);
   const books = useBooks(currentUser, courses, courseStudents, users);
   const streamSettings = useStreamSettings(currentUser, courses, courseStudents);
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
@@ -281,6 +282,10 @@ export function AppRouter({
   const openSubjectInClasswork = (courseId: number, subjectId: number) => {
     setClassworkSubjectTarget({ courseId, subjectId });
     setActiveView(activeWorkspace === 'student' ? 'my-classwork' : 'classwork');
+  };
+  const openHomeworkAssignment = (assignmentId: number) => {
+    setAssignmentsHomeworkTarget(assignmentId);
+    setActiveView('my-assignments');
   };
 
   if (activeView === 'class-detail' && selectedClassId !== null) {
@@ -490,6 +495,8 @@ export function AppRouter({
         bookAssignments={books.myAssignments}
         bookSubmissions={books.mySubmissions}
         onNavigate={setActiveView}
+        initialHomeworkId={assignmentsHomeworkTarget}
+        onInitialHomeworkHandled={() => setAssignmentsHomeworkTarget(null)}
       />
     );
   }
@@ -597,6 +604,7 @@ export function AppRouter({
           onNavigate={setActiveView}
           onOpenClass={openClassDetail}
           onOpenSubject={openSubjectInClasswork}
+          onOpenHomeworkAssignment={openHomeworkAssignment}
         />
       );
     }
@@ -997,6 +1005,7 @@ export function AppRouter({
         onNavigate={setActiveView}
         onOpenClass={openClassDetail}
         onOpenSubject={openSubjectInClasswork}
+        onOpenHomeworkAssignment={openHomeworkAssignment}
       />
     );
   }
@@ -1055,6 +1064,7 @@ export function AppRouter({
             onNavigate={setActiveView}
             onOpenClass={openClassDetail}
             onOpenSubject={openSubjectInClasswork}
+            onOpenHomeworkAssignment={openHomeworkAssignment}
           />
         );
     }

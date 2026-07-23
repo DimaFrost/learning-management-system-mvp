@@ -86,6 +86,7 @@ interface StudentDashboardProps {
   onNavigate: (view: string) => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onOpenSubject: (courseId: number, subjectId: number) => void;
+  onOpenHomeworkAssignment: (assignmentId: number) => void;
 }
 
 type UpcomingSession = {
@@ -100,17 +101,6 @@ type UpcomingSession = {
   isActivation: boolean;
   teacher?: { name: string; avatarUrl: string | null };
 };
-
-function findClassNavIds(classId: number, courses: Course[]) {
-  for (const course of courses) {
-    for (const subject of course.subjects.filter(item => item.courseId == null || item.courseId === course.id)) {
-      if (subject.classes.some(cls => cls.id === classId)) {
-        return { subjectId: subject.id, courseId: course.id };
-      }
-    }
-  }
-  return null;
-}
 
 function startOfToday() {
   const today = new Date();
@@ -264,6 +254,7 @@ export function StudentDashboard({
   onNavigate,
   onOpenClass,
   onOpenSubject,
+  onOpenHomeworkAssignment,
 }: StudentDashboardProps) {
   const [expandedTodoGroup, setExpandedTodoGroup] = useState<TodoItem[] | null>(null);
   const todayKey = getTodayDateString();
@@ -643,7 +634,7 @@ export function StudentDashboard({
           progress={homeworkAttention.length === 0 ? 100 : clampPercent(Math.max(20, 100 - homeworkAttention.length * 15))}
           icon={BookOpen}
           tone={overdueHomework.length > 0 ? 'orange' : 'blue'}
-          onClick={() => onNavigate('my-course')}
+          onClick={() => onNavigate('my-assignments')}
         />
         <MiniMetric
           label="To-dos"
@@ -743,7 +734,7 @@ export function StudentDashboard({
         <SectionCard
           title="Homework"
           subtitle="Needs your attention"
-          action={<GhostButton onClick={() => onNavigate('my-course')}>View all</GhostButton>}
+          action={<GhostButton onClick={() => onNavigate('my-assignments')}>View all</GhostButton>}
         >
             {homeworkLoading ? (
               <p className="text-sm text-[#737373]">Loading homework...</p>
@@ -758,10 +749,7 @@ export function StudentDashboard({
                   <button
                     key={item.assignmentId}
                     type="button"
-                    onClick={() => {
-                      const nav = findClassNavIds(item.classId, courses);
-                      if (nav) onOpenClass(item.classId, nav.subjectId, nav.courseId);
-                    }}
+                    onClick={() => onOpenHomeworkAssignment(item.assignmentId)}
                     className="tbo-focus w-full rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-left hover:bg-[#fafafa]"
                   >
                     <p className="truncate text-sm font-semibold text-[#171717]">{item.assignmentTitle}</p>
