@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   ArrowUpRight,
   ArrowLeftRight,
+  Banknote,
   BarChart3,
   BookOpen,
   Calendar,
@@ -37,10 +38,12 @@ import type {
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
 import type { useAttendance } from '../../hooks/useAttendance';
+import type { useTuition } from '../../hooks/useTuition';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { supabase } from '../../lib/supabase';
 
 type AttendanceController = ReturnType<typeof useAttendance>;
+type TuitionController = ReturnType<typeof useTuition>;
 
 interface AdminDashboardProps {
   courses: Course[];
@@ -53,6 +56,7 @@ interface AdminDashboardProps {
   todosToday: TodoItem[];
   todosLoading: boolean;
   attendance: AttendanceController;
+  tuition: TuitionController;
   currentUser: User;
   activeWorkspace: WorkspaceId | null;
   getCourseDisplayName: (course: Course) => string;
@@ -228,6 +232,14 @@ function formatRelativeDueDate(dueDate: string, today: string) {
   return diffDays > 0
     ? `In ${formatUnit(diffDays)}`
     : `${formatUnit(absDays)} overdue`;
+}
+
+function formatTuitionAmount(amount: number, currencyCode = 'EUR') {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(amount || 0);
 }
 
 function startOfMonth(date: Date) {
@@ -707,6 +719,7 @@ export function AdminDashboard({
   todosToday,
   todosLoading,
   attendance,
+  tuition,
   currentUser,
   activeWorkspace,
   getCourseDisplayName,
@@ -1104,6 +1117,7 @@ export function AdminDashboard({
       return a.dueDate.localeCompare(b.dueDate);
     })
     .slice(0, 2);
+  const tuitionCurrency = tuition.plans.find(plan => plan.status === 'active')?.currency ?? tuition.plans[0]?.currency ?? 'EUR';
   const currentDutyRows = attendance.dutySchedule.filter(duty => {
     if (duty.status !== 'active' && duty.status !== 'transferred') return false;
     const weekStart = duty.weekStart.slice(0, 10);
@@ -1581,6 +1595,34 @@ export function AdminDashboard({
           </div>
         </div>
       </section>
+
+      <button
+        type="button"
+        onClick={() => onNavigate('tuition-students')}
+        className="tbo-focus grid w-full gap-3 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-4 text-left shadow-[0_12px_36px_rgba(22,163,74,0.06)] transition hover:border-[#86efac] hover:bg-white md:grid-cols-[minmax(0,1fr)_auto] md:items-center"
+      >
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-xl bg-white text-[#15803d] ring-1 ring-[#bbf7d0]">
+            <Banknote className="h-5 w-5" />
+          </span>
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">Tuition</p>
+            <p className="mt-1 text-sm font-semibold text-[#171717]">
+              {tuition.summary.unpaidStudents} unpaid · {tuition.summary.overdueStudents} overdue
+            </p>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-2 md:min-w-[20rem]">
+          <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-[#bbf7d0]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">Collected</p>
+            <p className="mt-1 text-sm font-semibold text-[#171717]">{formatTuitionAmount(tuition.summary.collected, tuitionCurrency)}</p>
+          </div>
+          <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-[#fed7aa]">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Remaining</p>
+            <p className="mt-1 text-sm font-semibold text-[#171717]">{formatTuitionAmount(tuition.summary.remaining, tuitionCurrency)}</p>
+          </div>
+        </div>
+      </button>
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric

@@ -20,6 +20,7 @@ import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
 import { useBooks } from '../hooks/useBooks';
 import { useStreamSettings } from '../hooks/useStreamSettings';
+import type { useTuition } from '../hooks/useTuition';
 import { MyCourseView } from './student/MyCourseView';
 import { StudentDashboard } from './student/StudentDashboard';
 import { MyAttendanceView } from './student/MyAttendanceView';
@@ -38,6 +39,7 @@ import { UsersHubView } from './admin/users/UsersHubView';
 import { AdminStudentDashboard } from './admin/AdminStudentDashboard';
 import { MentorshipHubView } from './admin/MentorshipHubView';
 import { AttendanceView } from './admin/AttendanceView';
+import { TuitionView } from './admin/TuitionView';
 import { MentorDashboard } from './mentor/MentorDashboard';
 import { MinistryReportView } from './teamLeader/MinistryReportView';
 import { AnnouncementsView } from './shared/AnnouncementsView';
@@ -189,6 +191,7 @@ export interface AppRouterProps {
   onAddCourse: (course: Partial<Course>) => Promise<boolean>;
   onRefetchCourses: () => Promise<Course[]>;
   attendance: ReturnType<typeof useAttendance>;
+  tuition: ReturnType<typeof useTuition>;
   effectiveCurrentDuties: DutyScheduleEntry[];
   nextScheduledDuty?: DutyScheduleEntry;
 }
@@ -270,18 +273,22 @@ export function AppRouter({
   onAddCourse,
   onRefetchCourses,
   attendance,
+  tuition,
   effectiveCurrentDuties,
   nextScheduledDuty,
 }: AppRouterProps) {
-  const [classworkSubjectTarget, setClassworkSubjectTarget] = useState<{ courseId: number; subjectId: number } | null>(null);
+  const [classworkSubjectTarget, setClassworkSubjectTarget] = useState<{ courseId: number; subjectId: number; classId?: number } | null>(null);
   const [assignmentsHomeworkTarget, setAssignmentsHomeworkTarget] = useState<number | null>(null);
   const books = useBooks(currentUser, courses, courseStudents, users);
   const streamSettings = useStreamSettings(currentUser, courses, courseStudents);
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
-  const openSubjectInClasswork = (courseId: number, subjectId: number) => {
-    setClassworkSubjectTarget({ courseId, subjectId });
+  const openSubjectInClasswork = (courseId: number, subjectId: number, classId?: number) => {
+    setClassworkSubjectTarget({ courseId, subjectId, classId });
     setActiveView(activeWorkspace === 'student' ? 'my-classwork' : 'classwork');
+  };
+  const openSessionInClasswork = (classId: number, subjectId: number, courseId: number) => {
+    openSubjectInClasswork(courseId, subjectId, classId);
   };
   const openHomeworkAssignment = (assignmentId: number) => {
     setAssignmentsHomeworkTarget(assignmentId);
@@ -864,6 +871,48 @@ export function AppRouter({
             markMinistryAttendance={attendance.markMinistryAttendance}
           />
         );
+      case 'tuition':
+      case 'tuition-overview':
+      case 'tuition-students':
+      case 'tuition-payments':
+      case 'tuition-installments':
+      case 'tuition-reminders':
+      case 'tuition-settings':
+        return (
+          <TuitionView
+            activeSection={
+              activeView === 'tuition-students'
+                ? 'students'
+                : activeView === 'tuition-payments'
+                  ? 'payments'
+                  : activeView === 'tuition-installments'
+                    ? 'installments'
+                    : activeView === 'tuition-reminders'
+                      ? 'reminders'
+                      : activeView === 'tuition-settings'
+                        ? 'settings'
+                        : 'overview'
+            }
+            users={users}
+            courses={courses}
+            plans={tuition.plans}
+            installments={tuition.installments}
+            accounts={tuition.accounts}
+            payments={tuition.payments}
+            reminders={tuition.reminders}
+            activeStudents={tuition.activeStudents}
+            activeStudentsByCourseType={tuition.activeStudentsByCourseType}
+            paymentTotalsByAccount={tuition.paymentTotalsByAccount}
+            summary={tuition.summary}
+            loading={tuition.loading}
+            error={tuition.error}
+            onCreatePlan={tuition.createPlan}
+            onUpsertInstallment={tuition.upsertInstallment}
+            onEnrollStudent={tuition.enrollStudent}
+            onRecordPayment={tuition.recordPayment}
+            onSendReminder={tuition.sendReminder}
+          />
+        );
       case 'dashboard':
         return (
           <AdminDashboard
@@ -877,6 +926,7 @@ export function AppRouter({
             todosToday={todosToday}
             todosLoading={todosLoading}
             attendance={attendance}
+            tuition={tuition}
             currentUser={currentUser}
             activeWorkspace={activeWorkspace}
             getCourseDisplayName={getCourseDisplayName}
@@ -942,7 +992,7 @@ export function AppRouter({
             courses={courses}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
-            onOpenClass={openClassDetail}
+            onOpenClass={openSessionInClasswork}
           />
         );
       case 'dashboard':
@@ -970,7 +1020,7 @@ export function AppRouter({
             courses={courses}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
-            onOpenClass={openClassDetail}
+            onOpenClass={openSessionInClasswork}
           />
         );
     }

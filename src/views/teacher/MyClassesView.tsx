@@ -1,8 +1,26 @@
-import { useState } from 'react';
-import { Calendar, User as UserIcon, MessageSquare, ChevronDown } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import {
+  CalendarDays,
+  CheckCircle2,
+  ChevronDown,
+  Clock3,
+  Languages,
+  Search,
+  User as UserIcon,
+} from 'lucide-react';
 import type { User, Class, Course, Subject } from '../../types/lms';
-import { getRoleBadgeColor } from '../../utils/statusStyles';
 import { getClassDisplayTitle } from '../../utils/courseUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
+import { UserAvatar } from '../admin/users/usersShared';
+
+type SessionRow = Class & {
+  courseName: string;
+  subjectTitle: string;
+  courseId: number;
+  subjectId: number;
+  subject: Subject;
+  role: 'Teacher' | 'Translator';
+};
 
 interface MyClassesViewProps {
   currentUser: User;
@@ -12,6 +30,45 @@ interface MyClassesViewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
+function dayLabel(date: string) {
+  const parsed = new Date(`${date}T00:00:00`);
+  if (Number.isNaN(parsed.getTime())) return '';
+  return parsed.toLocaleDateString('en-GB', { weekday: 'short' });
+}
+
+function relativeDate(date: string, today: string) {
+  const target = new Date(`${date}T00:00:00`).getTime();
+  const current = new Date(`${today}T00:00:00`).getTime();
+  const diff = Math.round((target - current) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff > 1 && diff < 7) return `In ${diff} days`;
+  if (diff < -1 && diff > -7) return `${Math.abs(diff)} days ago`;
+  return formatPlatformDate(date);
+}
+
+function hourLabel(hour: Class['hour']) {
+  if (hour === 'both') return 'Joint';
+  return hour === 'first' ? 'First session' : 'Second session';
+}
+
+function groupByDate(rows: SessionRow[]) {
+  const groups = new Map<string, SessionRow[]>();
+  rows.forEach(row => {
+    const existing = groups.get(row.date) ?? [];
+    existing.push(row);
+    groups.set(row.date, existing);
+  });
+  return Array.from(groups.entries()).map(([date, items]) => ({
+    date,
+    items: items.sort((a, b) => {
+      const hourOrder = { first: 0, second: 1, both: 2 };
+      return hourOrder[a.hour] - hourOrder[b.hour] || a.subjectTitle.localeCompare(b.subjectTitle);
+    }),
+  }));
+}
+
 export function MyClassesView({
   currentUser,
   courses,
@@ -19,173 +76,216 @@ export function MyClassesView({
   getCourseDisplayName,
   onOpenClass,
 }: MyClassesViewProps) {
+  const [query, setQuery] = useState('');
+  const [timeframe, setTimeframe] = useState<'upcoming' | 'all' | 'past'>('upcoming');
+  const [pastExpanded, setPastExpanded] = useState(false);
+  const today = new Date().toISOString().split('T')[0];
   const isTeacher = currentUser.roles.includes('teacher');
   const isTranslator = currentUser.roles.includes('translator');
 
-  const getMyClasses = () => {
+  const sessions = useMemo<SessionRow[]>(() => {
     if (!isTeacher && !isTranslator) return [];
 
-    return courses.flatMap(course =>
-      course.subjects.flatMap(subject =>
-        subject.classes.filter((cls: Class) =>
-          (isTeacher && cls.teacherId === currentUser.id) ||
-          (isTranslator && cls.translatorId === currentUser.id)
-        ).map((cls: Class) => ({
-          ...cls,
-          courseName: getCourseDisplayName(course),
-          subjectTitle: subject.title,
-          courseId: course.id,
-          subjectId: subject.id,
-          subject,
-        }))
+    return courses
+      .flatMap(course =>
+        course.subjects.flatMap(subject =>
+          subject.classes
+            .filter(cls =>
+              (isTeacher && cls.teacherId === currentUser.id) ||
+              (isTranslator && cls.translatorId === currentUser.id)
+            )
+            .map(cls => ({
+              ...cls,
+              courseName: getCourseDisplayName(course),
+              subjectTitle: subject.title,
+              courseId: course.id,
+              subjectId: subject.id,
+              subject,
+              role: cls.teacherId === currentUser.id ? 'Teacher' as const : 'Translator' as const,
+            }))
+        )
       )
-    );
-  };
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [courses, currentUser.id, getCourseDisplayName, isTeacher, isTranslator]);
 
-  const myClasses = getMyClasses();
-  const today = new Date().toISOString().split('T')[0];
+  const upcomingSessions = sessions.filter(session => session.date >= today);
+  const pastSessions = sessions.filter(session => session.date < today);
+  const nextSession = upcomingSessions[0] ?? null;
 
-  // Separate upcoming and past classes
-  const upcomingClasses = myClasses.filter(cls => cls.date >= today);
-  const pastClasses = myClasses.filter(cls => cls.date < today);
+  const filteredSessions = sessions.filter(session => {
+    if (timeframe === 'upcoming' && session.date < today) return false;
+    if (timeframe === 'past' && session.date >= today) return false;
+    const text = `${session.subjectTitle} ${session.title} ${session.courseName}`.toLowerCase();
+    return text.includes(query.trim().toLowerCase());
+  });
 
-  // Sort upcoming classes by date (ascending), past classes by date (descending)
-  upcomingClasses.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-  pastClasses.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  const visibleGroups = groupByDate(filteredSessions);
+  const pastPreviewGroups = groupByDate(pastSessions.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8));
 
-  const [upcomingExpanded, setUpcomingExpanded] = useState(true);
-  const [pastExpanded, setPastExpanded] = useState(false);
-
-  const getMyRoleInClass = (cls: any) => {
-    // A person can only have one role per class (teacher OR translator, not both)
-    if (cls.teacherId === currentUser.id) return ['Teacher'];
-    if (cls.translatorId === currentUser.id) return ['Translator'];
-    return [];
-  };
-
-  const ClassCard = ({ cls, isUpcoming }: { cls: any, isUpcoming: boolean }) => {
-    const myRoles = getMyRoleInClass(cls);
-    const isPast = !isUpcoming;
+  const renderSessionRow = (session: SessionRow) => {
+    const teacher = getUserById(session.teacherId);
+    const translator = getUserById(session.translatorId);
+    const isPast = session.date < today;
+    const title = getClassDisplayTitle(session, session.subject, currentUser.roles);
 
     return (
-      <div className={`bg-white rounded-lg shadow border border-gray-200 p-6 ${isPast ? 'opacity-75' : ''}`}>
-        <div className="flex justify-between items-start mb-4">
-          <div className="flex-1">
-            <div className="flex items-center space-x-3 mb-2">
-              <button
-                type="button"
-                onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-                className="p-0 border-0 bg-transparent text-left hover:underline cursor-pointer"
-              >
-                <h3 className="text-lg font-semibold text-gray-900">{getClassDisplayTitle(cls, cls.subject as Subject, currentUser.roles)}</h3>
-              </button>
-              {myRoles.map(role => (
-                <span key={role} className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${getRoleBadgeColor(role)}`}>
-                  {role}
-                </span>
-              ))}
-            </div>
-            <p className="text-sm text-gray-600 mb-3">{cls.courseName} • {cls.subjectTitle}</p>
-
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <div className="flex items-center space-x-1">
-                <Calendar className="w-4 h-4" />
-                <span className={isPast ? 'text-gray-400' : ''}>{cls.date}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <UserIcon className="w-4 h-4" />
-                <span className={isPast ? 'text-gray-400' : ''}>Teacher: {getUserById(cls.teacherId)?.name}</span>
-              </div>
-              <div className="flex items-center space-x-1">
-                <MessageSquare className="w-4 h-4" />
-                <span className={isPast ? 'text-gray-400' : ''}>Translator: {getUserById(cls.translatorId)?.name}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="text-right flex flex-col items-end space-y-2">
-            <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-              isUpcoming ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'
+      <button
+        key={session.id}
+        type="button"
+        onClick={() => onOpenClass(session.id, session.subjectId, session.courseId)}
+        className={`tbo-focus grid w-full gap-3 rounded-xl border px-3 py-3 text-left transition hover:-translate-y-0.5 hover:shadow-[0_14px_34px_rgba(39,30,19,0.08)] md:grid-cols-[minmax(0,1fr)_140px_190px] md:items-center ${
+          isPast
+            ? 'border-[#e5e5e5] bg-[#fafafa] text-[#737373]'
+            : 'border-[#ded7cd] bg-white text-[#171717]'
+        }`}
+      >
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full ${
+              session.role === 'Teacher'
+                ? 'bg-[#dbeafe] text-[#1d4ed8]'
+                : 'bg-[#f3e8ff] text-[#7e22ce]'
             }`}>
-              {isUpcoming ? 'Upcoming' : 'Past'}
+              {session.role === 'Teacher' ? <UserIcon className="h-4 w-4" /> : <Languages className="h-4 w-4" />}
             </span>
-            <button
-              type="button"
-              onClick={() => onOpenClass(cls.id, cls.subjectId, cls.courseId)}
-              className="text-sm text-amber-700 hover:text-amber-900 font-medium"
-            >
-              Open Session
-            </button>
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold">{title}</p>
+              <p className="truncate text-xs text-[#737373]">{session.subjectTitle} · {session.courseName}</p>
+            </div>
           </div>
         </div>
-      </div>
+
+        <div className="flex items-center gap-2 text-xs text-[#57534e] md:justify-center">
+          <Clock3 className="h-4 w-4 text-[#a16207]" />
+          <span className="font-medium">{hourLabel(session.hour)}</span>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 md:justify-end">
+          <div className="flex -space-x-2">
+            {teacher && <UserAvatar user={teacher} size="sm" />}
+            {translator && <UserAvatar user={translator} size="sm" />}
+          </div>
+          <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+            isPast
+              ? 'bg-[#eeeeee] text-[#737373]'
+              : session.date === today
+                ? 'bg-[#ecfdf5] text-[#047857]'
+                : 'bg-[#fff7ed] text-[#c2410c]'
+          }`}>
+            {relativeDate(session.date, today)}
+          </span>
+        </div>
+      </button>
     );
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold text-gray-900">
-          My Sessions
-        </h2>
-        <div className="text-sm text-gray-600">
-          {upcomingClasses.length} upcoming • {pastClasses.length} past
+    <div className="space-y-5">
+      <div className="border-l-2 border-[#171717] pl-4">
+        <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+          <div className="min-w-0">
+            <div className="flex min-w-0 items-center gap-3">
+              <UserAvatar user={currentUser} size="md" />
+              <div className="min-w-0">
+                <h1 className="tbo-display text-3xl text-[#171717]">My Sessions</h1>
+                <p className="truncate text-xs font-semibold text-[#737373]">{currentUser.name}</p>
+              </div>
+            </div>
+            <p className="mt-1 max-w-2xl text-sm text-[#737373]">
+              Sessions assigned to you, grouped by date so your next teaching moments are easy to find.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 lg:items-end">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
+                <span className="text-lg leading-none">{upcomingSessions.length}</span>
+                Upcoming
+              </span>
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
+                <span className="text-lg leading-none">{nextSession ? relativeDate(nextSession.date, today) : '-'}</span>
+                Next
+              </span>
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#78716c] bg-[#f5f5f4] px-3 text-sm font-semibold text-[#57534e]">
+                <span className="text-lg leading-none">{pastSessions.length}</span>
+                Past
+              </span>
+            </div>
+          </div>
         </div>
       </div>
 
-      {/* Upcoming Classes */}
-      {upcomingClasses.length > 0 && (
-        <div>
-          <button
-            type="button"
-            onClick={() => setUpcomingExpanded(prev => !prev)}
-            className="text-lg font-semibold text-gray-900 mb-4 flex items-center w-full text-left"
-          >
-            <ChevronDown
-              className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${upcomingExpanded ? 'rotate-180' : ''}`}
+      <section className="border-y border-[#d4d4d4] bg-white px-4 py-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+          <div className="relative min-w-0 flex-1">
+            <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+            <input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Search my sessions"
+              className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717] placeholder:text-[#a3a3a3]"
             />
-            <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
-            Upcoming Sessions ({upcomingClasses.length})
-          </button>
-          {upcomingExpanded && (
-            <div className="space-y-4">
-              {upcomingClasses.map(cls => (
-                <ClassCard key={cls.id} cls={cls} isUpcoming={true} />
-              ))}
-            </div>
-          )}
+          </div>
+          <select
+            value={timeframe}
+            onChange={event => setTimeframe(event.target.value as typeof timeframe)}
+            className="tbo-focus h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-medium text-[#171717]"
+          >
+            <option value="upcoming">Upcoming</option>
+            <option value="all">All sessions</option>
+            <option value="past">Past</option>
+          </select>
+        </div>
+      </section>
+
+      {visibleGroups.length > 0 ? (
+        <div className="space-y-3">
+          {visibleGroups.map(group => (
+            <section key={group.date} className="grid gap-3 lg:grid-cols-[112px_minmax(0,1fr)]">
+              <div className="rounded-xl border border-[#e5e0d8] bg-[#fbfaf7] px-3 py-3 lg:sticky lg:top-3 lg:self-start">
+                <p className="text-xs font-semibold text-[#2563eb]">{relativeDate(group.date, today)}</p>
+                <p className="mt-1 text-sm font-semibold text-[#171717]">{formatPlatformDate(group.date)}</p>
+                <p className="text-xs text-[#8a7f73]">{dayLabel(group.date)}</p>
+              </div>
+              <div className="space-y-2">
+                {group.items.map(renderSessionRow)}
+              </div>
+            </section>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-[#ded7cd] bg-[#fbfaf7] px-6 py-12 text-center">
+          <CalendarDays className="mx-auto h-10 w-10 text-[#a8a29e]" />
+          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions found</p>
+          <p className="mt-1 text-sm text-[#737373]">Try another filter or search term.</p>
         </div>
       )}
 
-      {/* Past Classes */}
-      {pastClasses.length > 0 && (
-        <div>
+      {timeframe !== 'past' && pastSessions.length > 0 && (
+        <section className="rounded-2xl border border-[#e5e0d8] bg-white">
           <button
             type="button"
             onClick={() => setPastExpanded(prev => !prev)}
-            className="text-lg font-semibold text-gray-900 mb-4 flex items-center w-full text-left"
+            className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left"
           >
-            <ChevronDown
-              className={`w-4 h-4 text-gray-500 mr-2 transition-transform ${pastExpanded ? 'rotate-180' : ''}`}
-            />
-            <div className="w-3 h-3 bg-gray-400 rounded-full mr-2"></div>
-            Past Sessions ({pastClasses.length})
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#44403c]">
+              <CheckCircle2 className="h-4 w-4 text-[#16a34a]" />
+              Recent past sessions
+            </span>
+            <ChevronDown className={`h-4 w-4 text-[#737373] transition ${pastExpanded ? 'rotate-180' : ''}`} />
           </button>
           {pastExpanded && (
-            <div className="space-y-4">
-              {pastClasses.map(cls => (
-                <ClassCard key={cls.id} cls={cls} isUpcoming={false} />
-              ))}
+            <div className="border-t border-[#eeeeee] p-3">
+              <div className="space-y-3">
+                {pastPreviewGroups.map(group => (
+                  <div key={group.date} className="space-y-2">
+                    <p className="px-1 text-xs font-semibold text-[#8a7f73]">{formatPlatformDate(group.date)}</p>
+                    {group.items.map(renderSessionRow)}
+                  </div>
+                ))}
+              </div>
             </div>
           )}
-        </div>
-      )}
-
-      {myClasses.length === 0 && (
-        <div className="text-center py-12">
-          <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-          <p className="text-gray-500">No sessions assigned yet.</p>
-        </div>
+        </section>
       )}
     </div>
   );

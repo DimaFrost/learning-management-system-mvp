@@ -316,7 +316,7 @@ function StaffNotesColumn({
 
       <div className="border-t border-gray-100 pt-6">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-base font-medium text-gray-800">Uploaded Files</h4>
+          <h4 className="text-base font-medium text-gray-800">Drive Files</h4>
           {canManage && (
             <div className="flex items-center gap-2">
               <input
@@ -332,7 +332,7 @@ function StaffNotesColumn({
                 className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
-                Upload File
+                Upload to Drive
               </button>
             </div>
           )}

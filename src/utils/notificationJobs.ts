@@ -15,7 +15,7 @@ export async function queueWorkflowEmail(params: {
   const recipientIds = Array.from(new Set(params.recipientIds.filter(Boolean)));
   if (recipientIds.length === 0) return;
 
-  const { error } = await supabase.from('notification_jobs').insert({
+  const { data, error } = await supabase.from('notification_jobs').insert({
     type: 'workflow_email',
     status: 'pending',
     scheduled_for: new Date().toISOString(),
@@ -28,11 +28,14 @@ export async function queueWorkflowEmail(params: {
       kind: params.kind ?? 'system',
       actionUrl: params.actionUrl ?? null,
     },
-  });
+  }).select('id').single();
 
   if (error) {
     console.error('Failed to queue workflow email', error);
+    return null;
   }
+
+  return data?.id ?? null;
 }
 
 export function getAdminIds(users: User[]) {

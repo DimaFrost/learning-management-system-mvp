@@ -36,6 +36,7 @@ export type ClassworkItem = {
   status: string;
   pointsLabel?: string | null;
   hasMaterials?: boolean;
+  materialCount?: number;
   homeworkCount?: number;
   submission?: BookReadingSubmission;
   assignment?: BookReadingAssignment;

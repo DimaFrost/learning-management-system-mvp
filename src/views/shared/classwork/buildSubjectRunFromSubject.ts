@@ -7,10 +7,12 @@ export function buildSubjectRunFromSubject(
   subject: Subject,
   homeworkRows: HomeworkRow[],
   currentUserRoles: UserRole[],
+  materialCountsByClassId: Map<number, number> = new Map(),
 ): SubjectRun {
   const items = subject.classes
     .map(cls => {
       const classHomework = homeworkRows.filter(homework => homework.class_id === cls.id);
+      const materialCount = materialCountsByClassId.get(cls.id) ?? 0;
       return {
         id: `session-${cls.id}`,
         kind: 'session' as const,
@@ -24,7 +26,8 @@ export function buildSubjectRunFromSubject(
         classInfo: { classId: cls.id, subjectId: subject.id, courseId: course.id },
         status: 'Session',
         pointsLabel: null,
-        hasMaterials: Boolean(cls.materialsFolderId),
+        hasMaterials: materialCount > 0,
+        materialCount,
         homeworkCount: classHomework.length,
       };
     })

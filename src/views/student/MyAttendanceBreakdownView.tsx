@@ -48,6 +48,12 @@ const STATUS_META: Record<AttendanceStatus, { label: string; className: string }
   absent: { label: 'Absent', className: 'bg-[#fee2e2] text-[#b91c1c]' },
 };
 
+const STATUS_FILTER_ICONS: Record<AttendanceStatus, typeof Check> = {
+  present: Check,
+  late: Clock3,
+  absent: X,
+};
+
 function StatusBadge({ status }: { status: AttendanceStatus | null }) {
   if (!status) {
     return (
@@ -83,6 +89,10 @@ function addDays(dateString: string, amount: number) {
   const date = new Date(`${dateString}T00:00:00`);
   date.setDate(date.getDate() + amount);
   return date.toISOString().slice(0, 10);
+}
+
+function formatMonthName(monthKey: string) {
+  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
 }
 
 interface MyAttendanceBreakdownViewProps {
@@ -143,6 +153,7 @@ export function MyAttendanceBreakdownView({
   const [correctionReason, setCorrectionReason] = useState('');
   const [correctionSubmitting, setCorrectionSubmitting] = useState(false);
   const [correctionError, setCorrectionError] = useState<string | null>(null);
+  const [hiddenStatuses, setHiddenStatuses] = useState<AttendanceStatus[]>([]);
 
   const breakdown = useMemo(
     () => buildStudentAttendanceBreakdown({
@@ -177,11 +188,23 @@ export function MyAttendanceBreakdownView({
     () => (gateFilter === 'all' ? breakdown : breakdown.filter(record => record.gate === gateFilter)),
     [breakdown, gateFilter]
   );
+  const statusFilteredBreakdown = useMemo(
+    () => filteredBreakdown.filter(record => !record.status || !hiddenStatuses.includes(record.status)),
+    [filteredBreakdown, hiddenStatuses]
+  );
+  const statusFilterCounts = useMemo(
+    () => ({
+      present: filteredBreakdown.filter(record => record.status === 'present').length,
+      late: filteredBreakdown.filter(record => record.status === 'late').length,
+      absent: filteredBreakdown.filter(record => record.status === 'absent').length,
+    }),
+    [filteredBreakdown]
+  );
   const groupedListBreakdown = useMemo(() => {
-    const weekMap = new Map<string, Map<string, typeof filteredBreakdown>>();
-    filteredBreakdown.forEach(record => {
+    const weekMap = new Map<string, Map<string, typeof statusFilteredBreakdown>>();
+    statusFilteredBreakdown.forEach(record => {
       const weekStart = getWeekStart(record.date);
-      const dateMap = weekMap.get(weekStart) ?? new Map<string, typeof filteredBreakdown>();
+      const dateMap = weekMap.get(weekStart) ?? new Map<string, typeof statusFilteredBreakdown>();
       const records = dateMap.get(record.date) ?? [];
       records.push(record);
       dateMap.set(record.date, records);
@@ -195,9 +218,9 @@ export function MyAttendanceBreakdownView({
         records: records.sort((a, b) => a.gate.localeCompare(b.gate) || a.title.localeCompare(b.title)),
       })),
     }));
-  }, [filteredBreakdown]);
+  }, [statusFilteredBreakdown]);
 
-  const calendarEvents = useMemo(() => breakdownToCalendarEvents(filteredBreakdown), [filteredBreakdown]);
+  const calendarEvents = useMemo(() => breakdownToCalendarEvents(statusFilteredBreakdown), [statusFilteredBreakdown]);
   const gateSummaries = useMemo(() => summarizeBreakdownByGate(breakdown), [breakdown]);
   const attendanceCredit = (status: AttendanceStatus | null) => status === 'present' ? 1 : status === 'late' ? 0.5 : 0;
   const classRecords = useMemo(() => breakdown.filter(record => record.gate === 'classes'), [breakdown]);
@@ -249,6 +272,24 @@ export function MyAttendanceBreakdownView({
     () => wellMonthFilter === 'all' ? wellRecords : wellRecords.filter(record => record.date.startsWith(wellMonthFilter)),
     [wellMonthFilter, wellRecords]
   );
+  const groupedWellMonths = useMemo(() => {
+    const monthMap = new Map<string, typeof visibleWellRecords>();
+    visibleWellRecords.forEach(record => {
+      const monthKey = record.date.slice(0, 7);
+      monthMap.set(monthKey, [...(monthMap.get(monthKey) ?? []), record]);
+    });
+    return Array.from(monthMap.entries())
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([monthKey, records]) => {
+        const credits = records.reduce((total, record) => total + attendanceCredit(record.status), 0);
+        return {
+          monthKey,
+          label: formatMonthName(monthKey),
+          credits,
+          records: records.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
+        };
+      });
+  }, [visibleWellRecords]);
   const visibleWellCredits = visibleWellRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const totalWellCredits = wellRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const wellMonthlyRequired = wellMonthFilter === 'all' ? wellMonthOptions.length * 2 : 2;
@@ -321,6 +362,37 @@ export function MyAttendanceBreakdownView({
     { id: 'summary', label: 'Summary', icon: Check },
   ];
   const hasFocusedGateView = gateFilter !== 'all';
+  const toggleHiddenStatus = (status: AttendanceStatus) => {
+    setHiddenStatuses(current => current.includes(status)
+      ? current.filter(value => value !== status)
+      : [...current, status]
+    );
+  };
+  const StatusFilterButtons = () => (
+    <div className="flex flex-wrap items-center gap-1.5">
+      {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => {
+        const meta = STATUS_META[status];
+        const Icon = STATUS_FILTER_ICONS[status];
+        const hidden = hiddenStatuses.includes(status);
+        return (
+          <button
+            key={status}
+            type="button"
+            onClick={() => toggleHiddenStatus(status)}
+            className={`tbo-focus inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold transition ${meta.className} ${
+              hidden ? 'opacity-45 line-through decoration-2' : 'shadow-[0_1px_0_rgba(0,0,0,0.03)]'
+            }`}
+            aria-pressed={!hidden}
+            title={hidden ? `Show ${meta.label.toLowerCase()} records` : `Hide ${meta.label.toLowerCase()} records`}
+          >
+            <Icon className="h-3.5 w-3.5" />
+            {meta.label}
+            <span className="rounded-full bg-white/65 px-1.5 py-0.5 text-[10px] leading-none">{statusFilterCounts[status]}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
   const pendingCorrectionKeys = useMemo(() => new Set(
     correctionRequests
       .filter(request => request.status === 'pending')
@@ -552,26 +624,44 @@ export function MyAttendanceBreakdownView({
                   <p className="mt-1 text-sm text-[#737373]">Scheduled Well sessions will appear here when they are available.</p>
                 </div>
               ) : (
-                <div className="overflow-hidden rounded-2xl border border-[#dcfce7]">
-                  {visibleWellRecords.map(record => (
-                    <div key={record.id} className="grid gap-3 border-b border-[#dcfce7] bg-white px-3 py-3 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-center">
-                      <div>
-                        <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
-                        <p className="text-[11px] font-medium text-[#a3a3a3]">
-                          {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
-                        </p>
-                      </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                        <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Wednesday gathering'}</p>
-                      </div>
-                      <div className="flex items-center gap-2 sm:justify-end">
-                        <StatusBadge status={record.status} />
-                        <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                          {attendanceCredit(record.status).toFixed(1)} credit
+                <div className="space-y-4">
+                  {groupedWellMonths.map(month => (
+                    <div key={month.monthKey} className="overflow-hidden rounded-2xl border border-[#dcfce7]">
+                      <div className="flex items-center justify-between gap-3 border-b border-[#dcfce7] bg-[#f0fdf4] px-3 py-2">
+                        <div className="flex items-center gap-2">
+                          <span className="grid h-8 w-8 place-items-center rounded-lg bg-white text-[#16a34a] ring-1 ring-[#bbf7d0]">
+                            <Activity className="h-4 w-4" />
+                          </span>
+                          <div>
+                            <p className="text-sm font-semibold text-[#171717]">{month.label}</p>
+                            <p className="text-[11px] font-medium text-[#737373]">{month.records.length} session{month.records.length === 1 ? '' : 's'}</p>
+                          </div>
+                        </div>
+                        <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">
+                          {month.credits.toFixed(1)} / 2.0 credits
                         </span>
-                        <CorrectionAction record={record} />
                       </div>
+                      {month.records.map(record => (
+                        <div key={record.id} className="grid gap-3 border-b border-[#dcfce7] bg-white px-3 py-3 last:border-b-0 sm:grid-cols-[7rem_minmax(0,1fr)_auto] sm:items-center">
+                          <div>
+                            <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
+                            <p className="text-[11px] font-medium text-[#a3a3a3]">
+                              {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                            </p>
+                          </div>
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
+                            <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Wednesday gathering'}</p>
+                          </div>
+                          <div className="flex items-center gap-2 sm:justify-end">
+                            <StatusBadge status={record.status} />
+                            <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                              {attendanceCredit(record.status).toFixed(1)} credit
+                            </span>
+                            <CorrectionAction record={record} />
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   ))}
                 </div>
@@ -780,15 +870,24 @@ export function MyAttendanceBreakdownView({
 
       {gateFilter === 'all' && viewMode === 'calendar' && (
         <SectionCard className="p-4">
-          <StudentMonthCalendar events={calendarEvents} gateFilter={gateFilter} />
+          <StudentMonthCalendar
+            events={calendarEvents}
+            gateFilter={gateFilter}
+            hiddenStatuses={hiddenStatuses}
+            statusCounts={statusFilterCounts}
+            onToggleStatus={toggleHiddenStatus}
+          />
         </SectionCard>
       )}
 
       {gateFilter === 'all' && viewMode === 'list' && (
         <div className="space-y-4">
-          {filteredBreakdown.length === 0 ? (
+          <div className="flex justify-end">
+            <StatusFilterButtons />
+          </div>
+          {statusFilteredBreakdown.length === 0 ? (
             <SectionCard className="p-8 text-center text-sm text-[#737373]">
-              No sessions match this filter.
+              No sessions match the visible status filters.
             </SectionCard>
           ) : groupedListBreakdown.map(week => (
             <SectionCard key={week.weekStart} className="overflow-hidden">

@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { SubjectNote, User } from '../types/lms';
+import { uploadCurriculumPlanGoogleDriveFile } from '../utils/googleDocsV2';
 
 function mapSubjectNoteRow(data: Record<string, unknown>): SubjectNote {
   const author = data.author as { name?: string } | null;
@@ -65,54 +66,10 @@ export function useSubjectCurriculumPlan(subjectId: number, currentUser: User) {
     setSaving(true);
     setError(null);
     try {
-      const path = `subjects/${subjectId}/curriculum-plan/${file.name}`;
-
-      if (plan?.storagePath && plan.storagePath !== path) {
-        await supabase.storage.from('tbo-lms').remove([plan.storagePath]);
-      }
-
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from('tbo-lms')
-        .upload(path, file, {
-          upsert: true,
-          cacheControl: '3600',
-        });
-      if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from('tbo-lms')
-        .getPublicUrl(uploadData.path);
-
-      const fileFields = {
-        content: null,
-        storage_path: uploadData.path,
-        public_url: urlData.publicUrl,
-        file_name: file.name,
-        file_size: file.size,
-        mime_type: file.type || null,
-        updated_at: new Date().toISOString(),
-      };
-
-      if (plan) {
-        const { error: updateError } = await supabase
-          .from('subject_notes')
-          .update(fileFields)
-          .eq('id', plan.id);
-        if (updateError) throw updateError;
-      } else {
-        const { error: insertError } = await supabase.from('subject_notes').insert({
-          subject_id: subjectId,
-          author_id: currentUser.id,
-          note_type: 'curriculum_plan',
-          title: null,
-          ...fileFields,
-        });
-        if (insertError) throw insertError;
-      }
-
+      await uploadCurriculumPlanGoogleDriveFile({ subjectId, file });
       await fetchPlan();
     } catch (err) {
-      setError('Failed to upload curriculum plan.');
+      setError(err instanceof Error ? err.message : 'Failed to upload curriculum plan.');
       console.error(err);
     } finally {
       setSaving(false);
@@ -124,9 +81,6 @@ export function useSubjectCurriculumPlan(subjectId: number, currentUser: User) {
     setSaving(true);
     setError(null);
     try {
-      if (plan.storagePath) {
-        await supabase.storage.from('tbo-lms').remove([plan.storagePath]);
-      }
       const { error: deleteError } = await supabase
         .from('subject_notes')
         .delete()

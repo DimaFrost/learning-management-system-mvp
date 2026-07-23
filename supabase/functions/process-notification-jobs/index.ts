@@ -217,6 +217,16 @@ async function processJob(job: NotificationJob) {
       })
       .eq('id', job.id);
 
+    if (job.type === 'workflow_email') {
+      await supabase
+        .from('tuition_reminder_logs')
+        .update({
+          status: 'sent',
+          sent_at: new Date().toISOString(),
+        })
+        .eq('notification_job_id', job.id);
+    }
+
     return { jobId: job.id, status: 'completed', ...result };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -229,6 +239,15 @@ async function processJob(job: NotificationJob) {
         updated_at: new Date().toISOString(),
       })
       .eq('id', job.id);
+
+    if (job.type === 'workflow_email' && nextStatus === 'failed') {
+      await supabase
+        .from('tuition_reminder_logs')
+        .update({
+          status: 'failed',
+        })
+        .eq('notification_job_id', job.id);
+    }
 
     return { jobId: job.id, status: nextStatus, error: message };
   }

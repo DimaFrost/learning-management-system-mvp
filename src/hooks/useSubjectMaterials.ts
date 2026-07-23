@@ -1,13 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ClassFile, Course, User } from '../types/lms';
-import {
-  buildStoragePath,
-  deleteFileFromStorage,
-  uploadFileToStorage,
-} from '../utils/storageOperations';
 import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
-import { getCourseDisplayName } from '../utils/courseUtils';
 
 function mapClassFile(row: {
   id: number;
@@ -41,7 +35,7 @@ function mapClassFile(row: {
 
 export function useSubjectMaterials(
   subjectId: number | null,
-  currentUser: User,
+  _currentUser: User,
   course: Course | null,
   options?: { studentOnly?: boolean }
 ) {
@@ -87,17 +81,26 @@ export function useSubjectMaterials(
     void fetchFiles();
   }, [fetchFiles]);
 
-  const uploadStudentMaterial = async (file: File, relatedClassId?: number | null) => {
+  const uploadStudentMaterial = async (file: File, relatedClassId?: number | null, displayName?: string | null) => {
     if (!subjectId) return false;
     setSaving(true);
     setError(null);
     try {
-      await uploadMaterialGoogleDriveFile({
+      const uploaded = await uploadMaterialGoogleDriveFile({
         ...(relatedClassId != null
           ? { classId: relatedClassId, subjectId }
           : { subjectId }),
         file,
+        displayName,
       });
+      const cleanDisplayName = displayName?.trim();
+      if (cleanDisplayName && uploaded.fileId) {
+        const { error: renameError } = await supabase
+          .from('class_files')
+          .update({ file_name: cleanDisplayName })
+          .eq('id', uploaded.fileId);
+        if (renameError) throw renameError;
+      }
       await fetchFiles();
       return true;
     } catch (err) {
@@ -109,41 +112,27 @@ export function useSubjectMaterials(
     }
   };
 
-  const uploadStaffNote = async (file: File, relatedClassId?: number | null) => {
+  const uploadStaffNote = async (file: File, relatedClassId?: number | null, displayName?: string | null) => {
     if (!subjectId || !course) return false;
     setSaving(true);
     setError(null);
     try {
-      const courseSlug = getCourseDisplayName(course).toLowerCase().replace(/\s+/g, '-');
-      const subjectSlug = (course.subjects.find(s => s.id === subjectId)?.title ?? `subject-${subjectId}`)
-        .toLowerCase()
-        .replace(/\s+/g, '-');
-      const classSlug = relatedClassId != null ? `session-${relatedClassId}` : 'subject';
-      const storagePath = buildStoragePath({
-        courseSlug,
-        subjectSlug,
-        classSlug,
-        fileType: 'teacher-notes',
-        fileName: file.name,
-      });
-
-      const { storagePath: savedPath, publicUrl } = await uploadFileToStorage({
+      const uploaded = await uploadMaterialGoogleDriveFile({
+        ...(relatedClassId != null
+          ? { classId: relatedClassId, subjectId }
+          : { subjectId }),
         file,
-        path: storagePath,
+        fileType: 'teacher_note',
+        displayName,
       });
-
-      const { error: insertError } = await supabase.from('class_files').insert({
-        class_id: relatedClassId ?? null,
-        subject_id: subjectId,
-        uploader_id: currentUser.id,
-        file_type: 'teacher_note',
-        file_name: file.name,
-        drive_file_id: savedPath,
-        drive_view_url: publicUrl,
-        mime_type: file.type || null,
-        file_size: file.size,
-      });
-      if (insertError) throw insertError;
+      const cleanDisplayName = displayName?.trim();
+      if (cleanDisplayName && uploaded.fileId) {
+        const { error: renameError } = await supabase
+          .from('class_files')
+          .update({ file_name: cleanDisplayName })
+          .eq('id', uploaded.fileId);
+        if (renameError) throw renameError;
+      }
       await fetchFiles();
       return true;
     } catch (err) {
@@ -184,9 +173,6 @@ export function useSubjectMaterials(
 
   const deleteFile = async (file: ClassFile) => {
     try {
-      if (file.mimeType !== 'application/vnd.google-apps.document' && file.fileType === 'teacher_note') {
-        await deleteFileFromStorage(file.storagePath);
-      }
       const { error: deleteError } = await supabase.from('class_files').delete().eq('id', file.id);
       if (deleteError) throw deleteError;
       await fetchFiles();

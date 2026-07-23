@@ -135,9 +135,19 @@ interface StudentMonthCalendarProps {
   events: StudentCalendarEvent[];
   gateFilter?: string;
   onOpenClass?: (classId: number, subjectId: number, courseId: number) => void;
+  hiddenStatuses?: AttendanceStatus[];
+  statusCounts?: Record<AttendanceStatus, number>;
+  onToggleStatus?: (status: AttendanceStatus) => void;
 }
 
-export function StudentMonthCalendar({ events, gateFilter = 'all', onOpenClass }: StudentMonthCalendarProps) {
+export function StudentMonthCalendar({
+  events,
+  gateFilter = 'all',
+  onOpenClass,
+  hiddenStatuses = [],
+  statusCounts,
+  onToggleStatus,
+}: StudentMonthCalendarProps) {
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(startOfToday()));
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
@@ -167,21 +177,67 @@ export function StudentMonthCalendar({ events, gateFilter = 'all', onOpenClass }
   const selectedEvents = selectedDate ? eventsByDate.get(selectedDate) ?? [] : [];
 
   return (
-    <div className={`grid gap-4 transition-all ${selectedDate ? 'lg:grid-cols-[minmax(0,1fr)_320px]' : 'lg:grid-cols-1'}`}>
+    <div className="grid gap-4">
+      {selectedDate ? (
+        <aside className="min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                {selectedEvents.length} event{selectedEvents.length === 1 ? '' : 's'}
+              </p>
+              <h3 className="mt-1 text-lg font-semibold text-[#171717]">
+                {formatPlatformDate(selectedDate)}
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setSelectedDate(null)}
+              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
+              aria-label="Close day details"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="mt-4 grid gap-2 sm:grid-cols-2">
+            {selectedEvents.length === 0 ? (
+              <p className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373] sm:col-span-2">No tracked sessions on this day.</p>
+            ) : (
+              selectedEvents.map(event => (
+                <EventRow key={event.id} event={event} onOpenClass={onOpenClass} />
+              ))
+            )}
+          </div>
+        </aside>
+      ) : (
       <div className="min-w-0 space-y-3">
       <div className="flex flex-wrap items-center justify-end gap-1.5">
-        <span className="hidden items-center gap-1 rounded-full bg-[#dcfce7] px-2 py-1 text-[10px] font-semibold text-[#166534] sm:inline-flex">
-          <Check className="h-3 w-3" />
-          Present
-        </span>
-        <span className="hidden items-center gap-1 rounded-full bg-[#fff7ed] px-2 py-1 text-[10px] font-semibold text-[#c2410c] sm:inline-flex">
-          <Clock3 className="h-3 w-3" />
-          Late
-        </span>
-        <span className="hidden items-center gap-1 rounded-full bg-[#fee2e2] px-2 py-1 text-[10px] font-semibold text-[#b91c1c] sm:inline-flex">
-          <X className="h-3 w-3" />
-          Absent
-        </span>
+        {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => {
+          const meta = STATUS_META[status];
+          const Icon = meta.icon;
+          const hidden = hiddenStatuses.includes(status);
+          const tone = status === 'present'
+            ? 'bg-[#dcfce7] text-[#166534]'
+            : status === 'late'
+              ? 'bg-[#fff7ed] text-[#c2410c]'
+              : 'bg-[#fee2e2] text-[#b91c1c]';
+          return (
+            <button
+              key={status}
+              type="button"
+              onClick={() => onToggleStatus?.(status)}
+              disabled={!onToggleStatus}
+              className={`tbo-focus hidden items-center gap-1 rounded-full px-2 py-1 text-[10px] font-semibold transition sm:inline-flex ${tone} ${
+                hidden ? 'opacity-45 line-through decoration-2' : ''
+              } ${onToggleStatus ? 'hover:brightness-[0.98]' : 'cursor-default'}`}
+              aria-pressed={!hidden}
+              title={hidden ? `Show ${meta.label.toLowerCase()} records` : `Hide ${meta.label.toLowerCase()} records`}
+            >
+              <Icon className="h-3 w-3" />
+              {meta.label}
+              {statusCounts ? <span className="rounded-full bg-white/65 px-1.5 py-0.5 leading-none">{statusCounts[status]}</span> : null}
+            </button>
+          );
+        })}
         <div className="flex items-center gap-1">
           <button
             type="button"
@@ -262,37 +318,6 @@ export function StudentMonthCalendar({ events, gateFilter = 'all', onOpenClass }
         })}
       </div>
       </div>
-
-      {selectedDate && (
-        <aside className="min-w-0 rounded-xl border border-[#e5e5e5] bg-white p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)]">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                {selectedEvents.length} event{selectedEvents.length === 1 ? '' : 's'}
-              </p>
-              <h3 className="mt-1 text-lg font-semibold text-[#171717]">
-                {formatPlatformDate(selectedDate)}
-              </h3>
-            </div>
-            <button
-              type="button"
-              onClick={() => setSelectedDate(null)}
-              className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
-              aria-label="Close day details"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          </div>
-          <div className="mt-4 space-y-2">
-            {selectedEvents.length === 0 ? (
-              <p className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">No tracked sessions on this day.</p>
-            ) : (
-              selectedEvents.map(event => (
-                <EventRow key={event.id} event={event} onOpenClass={onOpenClass} />
-              ))
-            )}
-          </div>
-        </aside>
       )}
     </div>
   );

@@ -7,6 +7,7 @@ import {
   writeSelectedYear,
   readDraft,
   writeDraft,
+  clearDraft,
 } from '../utils/planningDraftCache';
 import { getNextClassDate, isDateInBreak } from '../utils/scheduling';
 import { buildAcademicYearsFromCourses } from '../utils/courseUtils';
@@ -306,6 +307,43 @@ function mergeDbRowsIntoDraft(draft: PlanningRow[], dbRows: PlanningRow[]): Plan
   return [...scheduled, ...unscheduled];
 }
 
+function allSlots(row: PlanningRow): PlanningSlot[] {
+  return [
+    row.firstHourFirstYear,
+    row.secondHourFirstYear,
+    row.firstHourSecondYear,
+    row.secondHourSecondYear,
+    row.jointSlot,
+  ];
+}
+
+function hasPersistedClass(row: PlanningRow): boolean {
+  return allSlots(row).some(slot => slot.classId != null);
+}
+
+function markSlotDeleted(slot: PlanningSlot): PlanningSlot {
+  if (!slot.classId) return emptySlot();
+  return {
+    ...slot,
+    subjectTitle: '',
+    subjectId: null,
+    teacherId: null,
+    translatorId: null,
+    isDeleted: true,
+  };
+}
+
+function markRowDeleted(row: PlanningRow): PlanningRow {
+  return {
+    ...row,
+    firstHourFirstYear: markSlotDeleted(row.firstHourFirstYear),
+    firstHourSecondYear: markSlotDeleted(row.firstHourSecondYear),
+    secondHourFirstYear: markSlotDeleted(row.secondHourFirstYear),
+    secondHourSecondYear: markSlotDeleted(row.secondHourSecondYear),
+    jointSlot: markSlotDeleted(row.jointSlot),
+  };
+}
+
 function countClassesForYear(
   coursesList: Course[],
   fyId: number | null,
@@ -321,6 +359,13 @@ function countClassesForYear(
     }
   }
   return count;
+}
+
+export interface PlanningChangeSummary {
+  newSessions: number;
+  editedSessions: number;
+  removedSessions: number;
+  breakChanges: number;
 }
 
 const initialSelectedYear = readSelectedYear();
@@ -350,6 +395,12 @@ export function useSchoolYearPlanning(courses: Course[]) {
       initialDraft?.secondYearCourseId ?? null
     )
   );
+  const rowsRef = useRef(rows);
+  const loadSequenceRef = useRef(0);
+
+  useEffect(() => {
+    rowsRef.current = rows;
+  }, [rows]);
 
   const syncClassCountRef = useCallback((
     coursesList: Course[],
@@ -378,6 +429,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
 
   useEffect(() => {
     if (!activeYearLabel) return;
+    if (courses.length === 0) return;
     if (academicYears.some(y => y.label === activeYearLabel)) return;
     setActiveYearLabel(null);
     writeSelectedYear(null);
@@ -386,18 +438,30 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setFirstYearCourseId(null);
     setSecondYearCourseId(null);
     setIsDirty(false);
-  }, [activeYearLabel, academicYears]);
+  }, [activeYearLabel, academicYears, courses.length]);
 
   // Load an academic year's existing data into the draft
   const loadSchoolYear = useCallback((
     label: string,
     fyId: number | undefined,
     syId: number | undefined,
-    skipCache = false
+    skipCache = false,
+    coursesOverride?: Course[]
   ) => {
+    const loadSequence = ++loadSequenceRef.current;
+    const sourceCourses = coursesOverride ?? courses;
+    if (sourceCourses.length === 0) {
+      setActiveYearLabel(label);
+      writeSelectedYear(label);
+      setLoading(false);
+      return;
+    }
     setActiveYearLabel(label);
     writeSelectedYear(label);
     setLoading(true);
+    if (skipCache) {
+      clearDraft(label);
+    }
 
     const cached = skipCache ? null : readDraft(label);
     if (cached?.isDirty) {
@@ -407,7 +471,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
       setSecondYearCourseId(cached.secondYearCourseId);
       setIsDirty(true);
       setLoading(false);
-      syncClassCountRef(courses, cached.firstYearCourseId, cached.secondYearCourseId);
+      syncClassCountRef(sourceCourses, cached.firstYearCourseId, cached.secondYearCourseId);
       return;
     }
 
@@ -416,16 +480,24 @@ export function useSchoolYearPlanning(courses: Course[]) {
     setFirstYearCourseId(fy);
     setSecondYearCourseId(sy);
 
-    const fyCourse = courses.find(c => c.id === fyId);
-    const syCourse = courses.find(c => c.id === syId);
+    const fyCourse = sourceCourses.find(c => c.id === fyId);
+    const syCourse = sourceCourses.find(c => c.id === syId);
     const sortedRows = buildRowsFromCourses(fyCourse, syCourse);
 
+    if (loadSequence !== loadSequenceRef.current) return;
     setRows(sortedRows);
     setBreaks([]);
     setIsDirty(false);
     setLoading(false);
-    syncClassCountRef(courses, fy, sy);
+    syncClassCountRef(sourceCourses, fy, sy);
   }, [courses, syncClassCountRef]);
+
+  useEffect(() => {
+    if (!activeYearLabel || rows.length > 0 || isDirty || courses.length === 0) return;
+    const entry = academicYears.find(y => y.label === activeYearLabel);
+    if (!entry) return;
+    loadSchoolYear(activeYearLabel, entry.firstYearId, entry.secondYearId, true, courses);
+  }, [activeYearLabel, academicYears, courses, isDirty, loadSchoolYear, rows.length]);
 
   useEffect(() => {
     if (!activeYearLabel) return;
@@ -438,13 +510,17 @@ export function useSchoolYearPlanning(courses: Course[]) {
 
   useEffect(() => {
     if (!activeYearLabel) return;
-    writeDraft(activeYearLabel, {
-      rows,
-      breaks,
-      firstYearCourseId,
-      secondYearCourseId,
-      isDirty,
-    });
+    if (isDirty) {
+      writeDraft(activeYearLabel, {
+        rows,
+        breaks,
+        firstYearCourseId,
+        secondYearCourseId,
+        isDirty,
+      });
+    } else {
+      clearDraft(activeYearLabel);
+    }
     writeSelectedYear(activeYearLabel);
   }, [activeYearLabel, rows, breaks, isDirty, firstYearCourseId, secondYearCourseId]);
 
@@ -452,18 +528,22 @@ export function useSchoolYearPlanning(courses: Course[]) {
   // ROW / SLOT EDITING (all local, no DB writes)
   // ============================================
   const updateRowDate = useCallback((rowId: string, newDate: string) => {
-    setRows(prev => prev.map(row => {
-      if (row.rowId !== rowId) return row;
-      const dayOfWeek = dayNameFromDate(newDate);
-      return {
-        ...row,
-        date: newDate,
-        dayOfWeek,
-        isSaturday: dayOfWeek === 'Saturday',
-        isValidScheduleDay: ['Tuesday', 'Thursday', 'Saturday']
-          .includes(dayOfWeek) || newDate === '',
-      };
-    }));
+    setRows(prev => {
+      const nextRows = prev.map(row => {
+        if (row.rowId !== rowId) return row;
+        const dayOfWeek = dayNameFromDate(newDate);
+        return {
+          ...row,
+          date: newDate,
+          dayOfWeek,
+          isSaturday: dayOfWeek === 'Saturday',
+          isValidScheduleDay: ['Tuesday', 'Thursday', 'Saturday']
+            .includes(dayOfWeek) || newDate === '',
+        };
+      });
+      rowsRef.current = nextRows;
+      return nextRows;
+    });
     setIsDirty(true);
   }, []);
 
@@ -472,10 +552,14 @@ export function useSchoolYearPlanning(courses: Course[]) {
     slotKey: PlanningSlotKey,
     updates: Partial<PlanningSlot>
   ) => {
-    setRows(prev => prev.map(row => {
-      if (row.rowId !== rowId) return row;
-      return { ...row, [slotKey]: { ...row[slotKey], ...updates } };
-    }));
+    setRows(prev => {
+      const nextRows = prev.map(row => {
+        if (row.rowId !== rowId) return row;
+        return { ...row, [slotKey]: { ...row[slotKey], ...updates } };
+      });
+      rowsRef.current = nextRows;
+      return nextRows;
+    });
     setIsDirty(true);
   }, []);
 
@@ -508,7 +592,10 @@ export function useSchoolYearPlanning(courses: Course[]) {
   }, []);
 
   const removeRow = useCallback((rowId: string) => {
-    setRows(prev => prev.filter(r => r.rowId !== rowId));
+    setRows(prev => prev.flatMap(row => {
+      if (row.rowId !== rowId) return [row];
+      return hasPersistedClass(row) ? [markRowDeleted(row)] : [];
+    }));
     setIsDirty(true);
   }, []);
 
@@ -808,6 +895,27 @@ export function useSchoolYearPlanning(courses: Course[]) {
     };
   }, [rows]);
 
+  const changeSummary = useMemo<PlanningChangeSummary>(() => {
+    const summary: PlanningChangeSummary = {
+      newSessions: 0,
+      editedSessions: isDirty ? 1 : 0,
+      removedSessions: 0,
+      breakChanges: breaks.length,
+    };
+
+    for (const row of rows) {
+      for (const slot of allSlots(row)) {
+        if (slot.classId && (slot.isDeleted || !slot.subjectTitle.trim())) {
+          summary.removedSessions++;
+        } else if (!slot.classId && slot.subjectTitle.trim()) {
+          summary.newSessions++;
+        }
+      }
+    }
+
+    return summary;
+  }, [rows, breaks, isDirty]);
+
   // ============================================
   // COMMIT — write everything to Supabase
   // ============================================
@@ -891,14 +999,21 @@ export function useSchoolYearPlanning(courses: Course[]) {
 
         if (params.classId) {
           // Update existing class
-          const { error } = await supabase.from('classes').update({
-            date: params.date,
-            hour: params.hour,
-            teacher_id: params.teacherId,
-            translator_id: params.translatorId,
-            subject_id: params.subjectId,
-          }).eq('id', params.classId);
+          const { data, error } = await supabase.from('classes')
+            .update({
+              title,
+              date: params.date,
+              hour: params.hour,
+              teacher_id: params.teacherId,
+              translator_id: params.translatorId,
+              subject_id: params.subjectId,
+            })
+            .eq('id', params.classId)
+            .select('id');
           if (error) throw error;
+          if (!data || data.length === 0) {
+            throw new Error(`Could not update class ${params.classId}. Your session may not have permission to edit this session.`);
+          }
           updatedCount++;
         } else {
           // Create new class
@@ -939,11 +1054,30 @@ export function useSchoolYearPlanning(courses: Course[]) {
         }
       }
 
-      for (const row of rows) {
+      async function deleteClass(classId: number | null) {
+        if (!classId) return;
+        const { data, error } = await supabase.from('classes')
+          .delete()
+          .eq('id', classId)
+          .select('id');
+        if (error) throw error;
+        if (!data || data.length === 0) {
+          throw new Error(`Could not remove class ${classId}. Your session may not have permission to edit this session.`);
+        }
+        updatedCount++;
+      }
+
+      const committedRows = rowsRef.current;
+
+      for (const row of committedRows) {
         if (!row.date) continue;
 
         if (row.isSaturday) {
           // Joint class — create/update in BOTH courses
+          if (row.jointSlot.isDeleted || (row.jointSlot.classId && !row.jointSlot.subjectTitle.trim())) {
+            await deleteClass(row.jointSlot.classId);
+            continue;
+          }
           if (row.jointSlot.subjectTitle.trim()) {
             const fySubjectId = await findOrCreateSubject(
               firstYearCourseId, row.jointSlot.subjectTitle.trim()
@@ -986,6 +1120,10 @@ export function useSchoolYearPlanning(courses: Course[]) {
           ];
 
           for (const [slot, courseId, hour] of slots) {
+            if (slot.isDeleted || (slot.classId && !slot.subjectTitle.trim())) {
+              await deleteClass(slot.classId);
+              continue;
+            }
             if (!slot.subjectTitle.trim()) continue;
             const subjectId = await findOrCreateSubject(
               courseId, slot.subjectTitle.trim()
@@ -1004,19 +1142,23 @@ export function useSchoolYearPlanning(courses: Course[]) {
         }
       }
 
+      if (activeYearLabel) {
+        clearDraft(activeYearLabel);
+      }
       setIsDirty(false);
       return { success: true, createdCount, updatedCount };
     } catch (err) {
       console.error('Commit plan failed:', err);
-      setError('Failed to save the plan. Some changes may not have been saved.');
+      const message = err instanceof Error ? err.message : 'Some changes may not have been saved.';
+      setError(`Failed to save the plan. ${message}`);
       return { success: false, createdCount, updatedCount };
     } finally {
       setCommitting(false);
     }
-  }, [rows, firstYearCourseId, secondYearCourseId, courses]);
+  }, [rows, firstYearCourseId, secondYearCourseId, courses, activeYearLabel]);
 
   return {
-    rows, breaks, academicYears, draftSubjects,
+    rows, breaks, academicYears, draftSubjects, changeSummary,
     activeYearLabel,
     firstYearCourseId, secondYearCourseId,
     isDirty, loading, committing, error,

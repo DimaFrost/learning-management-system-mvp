@@ -28,6 +28,7 @@ interface CurriculumDateViewProps {
   onDeleteClass: (courseId: number, subjectId: number, classId: number) => void;
   onNavigate?: (view: string) => void;
   onDetailActiveChange?: (active: boolean) => void;
+  selectedYearGroupIds?: Set<number>;
 }
 
 type SelectedSubject = {
@@ -50,6 +51,13 @@ type HomeworkCommentRow = {
   content: string;
   created_at: string;
   author?: { id: string; name: string } | null;
+};
+
+type ClassFileSummaryRow = {
+  id: number;
+  class_id: number | null;
+  subject_id: number | null;
+  file_type: 'material' | 'teacher_note' | 'translator_note' | 'homework';
 };
 
 function mapHomeworkComment(row: HomeworkCommentRow) {
@@ -105,17 +113,29 @@ export function CurriculumDateView({
   onDeleteClass,
   onNavigate,
   onDetailActiveChange,
+  selectedYearGroupIds,
 }: CurriculumDateViewProps) {
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
+  const [materialRows, setMaterialRows] = useState<ClassFileSummaryRow[]>([]);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [manuallyToggledDates, setManuallyToggledDates] = useState<Set<string>>(new Set());
   const [dateFilter, setDateFilter] = useState<DateFilter>('all');
   const today = todayYmd();
 
-  const activeCourses = courses.filter(isCourseActive);
+  const sortedActiveCourses = useMemo(() => courses.filter(isCourseActive).sort((a, b) => {
+    if (a.graduationYear !== b.graduationYear) {
+      return a.graduationYear - b.graduationYear;
+    }
+    return a.courseType === 'first_year' ? -1 : 1;
+  }), [courses]);
+  const selectedIds = selectedYearGroupIds && selectedYearGroupIds.size > 0
+    ? selectedYearGroupIds
+    : new Set(sortedActiveCourses.map(course => course.id));
+  const activeCourses = sortedActiveCourses.filter(course => selectedIds.has(course.id));
+
   const allClasses = activeCourses.flatMap(course =>
     course.subjects.flatMap(subject =>
       subject.classes.map(cls => ({
@@ -163,8 +183,39 @@ export function CurriculumDateView({
 
   const subjectRun: SubjectRun | null = useMemo(() => {
     if (!selectedCourse || !selectedSubjectEntity) return null;
-    return buildSubjectRunFromSubject(selectedCourse, selectedSubjectEntity, homeworkRows, currentUser.roles);
-  }, [currentUser.roles, homeworkRows, selectedCourse, selectedSubjectEntity]);
+    const materialCountsByClassId = new Map<number, number>();
+    materialRows
+      .filter(file => file.subject_id === selectedSubjectEntity.id && file.class_id != null)
+      .forEach(file => {
+        materialCountsByClassId.set(file.class_id!, (materialCountsByClassId.get(file.class_id!) ?? 0) + 1);
+      });
+    return buildSubjectRunFromSubject(selectedCourse, selectedSubjectEntity, homeworkRows, currentUser.roles, materialCountsByClassId);
+  }, [currentUser.roles, homeworkRows, materialRows, selectedCourse, selectedSubjectEntity]);
+
+  useEffect(() => {
+    const subjectIds = sortedActiveCourses.flatMap(course => course.subjects.map(subject => subject.id));
+    if (subjectIds.length === 0) {
+      setMaterialRows([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('class_files')
+        .select('id, class_id, subject_id, file_type')
+        .in('subject_id', subjectIds)
+        .in('file_type', ['material', 'teacher_note']);
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load curriculum date materials', error);
+        setMaterialRows([]);
+      } else {
+        setMaterialRows((data ?? []) as ClassFileSummaryRow[]);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [sortedActiveCourses]);
 
   useEffect(() => {
     onDetailActiveChange?.(Boolean(selectedSubject) || Boolean(selectedHomeworkDetail));

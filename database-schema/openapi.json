@@ -1383,6 +1383,194 @@
         ]
       }
     },
+    "/tuition_plans": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.academic_year"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.currency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.total_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/tuition_plans"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "tuition_plans"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.tuition_plans"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "tuition_plans"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.academic_year"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.currency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.total_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_plans"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.academic_year"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.currency"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.total_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_plans.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.tuition_plans"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_plans"
+        ]
+      }
+    },
     "/absence_notices": {
       "get": {
         "parameters": [
@@ -1693,6 +1881,185 @@
         },
         "tags": [
           "course_students"
+        ]
+      }
+    },
+    "/student_tuition_accounts": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.expected_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.discount_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/student_tuition_accounts"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "student_tuition_accounts"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.student_tuition_accounts"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "student_tuition_accounts"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.expected_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.discount_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "student_tuition_accounts"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.expected_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.discount_amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.notes"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_accounts.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.student_tuition_accounts"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "student_tuition_accounts"
         ]
       }
     },
@@ -2914,6 +3281,194 @@
         ]
       }
     },
+    "/student_tuition_payments": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.payment_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.reference"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.note"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.recorded_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/student_tuition_payments"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "student_tuition_payments"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.student_tuition_payments"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "student_tuition_payments"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.payment_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.reference"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.note"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.recorded_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "student_tuition_payments"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.payment_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.reference"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.note"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.recorded_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.student_tuition_payments.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.student_tuition_payments"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "student_tuition_payments"
+        ]
+      }
+    },
     "/ministry_teams": {
       "get": {
         "parameters": [
@@ -3511,6 +4066,185 @@
         },
         "tags": [
           "settings"
+        ]
+      }
+    },
+    "/tuition_installments": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.reminder_days_before"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/tuition_installments"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "tuition_installments"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.tuition_installments"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "tuition_installments"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.reminder_days_before"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_installments"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.plan_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.title"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.amount"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.reminder_days_before"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_installments.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.tuition_installments"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_installments"
         ]
       }
     },
@@ -4523,6 +5257,203 @@
         },
         "tags": [
           "announcement_attachments"
+        ]
+      }
+    },
+    "/tuition_reminder_logs": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.installment_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.subject"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.body"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.notification_job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/tuition_reminder_logs"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "tuition_reminder_logs"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.tuition_reminder_logs"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "tuition_reminder_logs"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.installment_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.subject"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.body"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.notification_job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_reminder_logs"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.account_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.installment_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.student_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.subject"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.body"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.status"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.notification_job_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.sent_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.tuition_reminder_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/body.tuition_reminder_logs"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "tuition_reminder_logs"
         ]
       }
     },
@@ -9214,6 +10145,68 @@
       },
       "type": "object"
     },
+    "tuition_plans": {
+      "required": [
+        "id",
+        "name",
+        "currency",
+        "total_amount",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "name": {
+          "format": "text",
+          "type": "string"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "academic_year": {
+          "format": "text",
+          "type": "string"
+        },
+        "currency": {
+          "default": "EUR",
+          "format": "text",
+          "type": "string"
+        },
+        "total_amount": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "status": {
+          "default": "active",
+          "format": "text",
+          "type": "string"
+        },
+        "created_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "absence_notices": {
       "required": [
         "id",
@@ -9298,6 +10291,65 @@
         "status": {
           "default": "active",
           "format": "text",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "student_tuition_accounts": {
+      "required": [
+        "id",
+        "student_id",
+        "plan_id",
+        "expected_amount",
+        "discount_amount",
+        "status",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "plan_id": {
+          "description": "Note:\nThis is a Foreign Key to `tuition_plans.id`.<fk table='tuition_plans' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "expected_amount": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "discount_amount": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "status": {
+          "default": "open",
+          "format": "text",
+          "type": "string"
+        },
+        "notes": {
+          "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
           "type": "string"
         }
       },
@@ -9717,6 +10769,67 @@
       },
       "type": "object"
     },
+    "student_tuition_payments": {
+      "required": [
+        "id",
+        "account_id",
+        "student_id",
+        "amount",
+        "payment_date",
+        "method",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "account_id": {
+          "description": "Note:\nThis is a Foreign Key to `student_tuition_accounts.id`.<fk table='student_tuition_accounts' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "amount": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "payment_date": {
+          "default": "CURRENT_DATE",
+          "format": "date",
+          "type": "string"
+        },
+        "method": {
+          "default": "cash",
+          "format": "text",
+          "type": "string"
+        },
+        "reference": {
+          "format": "text",
+          "type": "string"
+        },
+        "note": {
+          "format": "text",
+          "type": "string"
+        },
+        "recorded_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "ministry_teams": {
       "required": [
         "id",
@@ -9904,6 +11017,65 @@
         },
         "value": {
           "format": "jsonb"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "tuition_installments": {
+      "required": [
+        "id",
+        "plan_id",
+        "title",
+        "amount",
+        "due_date",
+        "reminder_days_before",
+        "sort_order",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "plan_id": {
+          "description": "Note:\nThis is a Foreign Key to `tuition_plans.id`.<fk table='tuition_plans' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "title": {
+          "format": "text",
+          "type": "string"
+        },
+        "amount": {
+          "default": 0,
+          "format": "numeric",
+          "type": "number"
+        },
+        "due_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "reminder_days_before": {
+          "default": 7,
+          "format": "integer",
+          "type": "integer"
+        },
+        "sort_order": {
+          "default": 0,
+          "format": "integer",
+          "type": "integer"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
         },
         "updated_at": {
           "default": "now()",
@@ -10236,6 +11408,71 @@
         },
         "link_title": {
           "format": "text",
+          "type": "string"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "tuition_reminder_logs": {
+      "required": [
+        "id",
+        "student_id",
+        "subject",
+        "body",
+        "status",
+        "created_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "account_id": {
+          "description": "Note:\nThis is a Foreign Key to `student_tuition_accounts.id`.<fk table='student_tuition_accounts' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "installment_id": {
+          "description": "Note:\nThis is a Foreign Key to `tuition_installments.id`.<fk table='tuition_installments' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "student_id": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "sent_by": {
+          "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
+          "format": "uuid",
+          "type": "string"
+        },
+        "subject": {
+          "format": "text",
+          "type": "string"
+        },
+        "body": {
+          "format": "text",
+          "type": "string"
+        },
+        "status": {
+          "default": "queued",
+          "format": "text",
+          "type": "string"
+        },
+        "notification_job_id": {
+          "description": "Note:\nThis is a Foreign Key to `notification_jobs.id`.<fk table='notification_jobs' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "sent_at": {
+          "format": "timestamp with time zone",
           "type": "string"
         },
         "created_at": {
@@ -12233,6 +13470,75 @@
       "in": "query",
       "type": "string"
     },
+    "body.tuition_plans": {
+      "name": "tuition_plans",
+      "description": "tuition_plans",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/tuition_plans"
+      }
+    },
+    "rowFilter.tuition_plans.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.name": {
+      "name": "name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.academic_year": {
+      "name": "academic_year",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.currency": {
+      "name": "currency",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.total_amount": {
+      "name": "total_amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.created_by": {
+      "name": "created_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_plans.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.absence_notices": {
       "name": "absence_notices",
       "description": "absence_notices",
@@ -12325,6 +13631,69 @@
     },
     "rowFilter.course_students.status": {
       "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.student_tuition_accounts": {
+      "name": "student_tuition_accounts",
+      "description": "student_tuition_accounts",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/student_tuition_accounts"
+      }
+    },
+    "rowFilter.student_tuition_accounts.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.plan_id": {
+      "name": "plan_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.expected_amount": {
+      "name": "expected_amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.discount_amount": {
+      "name": "discount_amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.notes": {
+      "name": "notes",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_accounts.updated_at": {
+      "name": "updated_at",
       "required": false,
       "in": "query",
       "type": "string"
@@ -12803,6 +14172,75 @@
       "in": "query",
       "type": "string"
     },
+    "body.student_tuition_payments": {
+      "name": "student_tuition_payments",
+      "description": "student_tuition_payments",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/student_tuition_payments"
+      }
+    },
+    "rowFilter.student_tuition_payments.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.account_id": {
+      "name": "account_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.amount": {
+      "name": "amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.payment_date": {
+      "name": "payment_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.method": {
+      "name": "method",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.reference": {
+      "name": "reference",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.note": {
+      "name": "note",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.recorded_by": {
+      "name": "recorded_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.student_tuition_payments.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.ministry_teams": {
       "name": "ministry_teams",
       "description": "ministry_teams",
@@ -13029,6 +14467,69 @@
       "type": "string"
     },
     "rowFilter.settings.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.tuition_installments": {
+      "name": "tuition_installments",
+      "description": "tuition_installments",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/tuition_installments"
+      }
+    },
+    "rowFilter.tuition_installments.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.plan_id": {
+      "name": "plan_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.title": {
+      "name": "title",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.amount": {
+      "name": "amount",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.due_date": {
+      "name": "due_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.reminder_days_before": {
+      "name": "reminder_days_before",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.sort_order": {
+      "name": "sort_order",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_installments.updated_at": {
       "name": "updated_at",
       "required": false,
       "in": "query",
@@ -13422,6 +14923,81 @@
       "type": "string"
     },
     "rowFilter.announcement_attachments.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.tuition_reminder_logs": {
+      "name": "tuition_reminder_logs",
+      "description": "tuition_reminder_logs",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/tuition_reminder_logs"
+      }
+    },
+    "rowFilter.tuition_reminder_logs.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.account_id": {
+      "name": "account_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.installment_id": {
+      "name": "installment_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.student_id": {
+      "name": "student_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.sent_by": {
+      "name": "sent_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.subject": {
+      "name": "subject",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.body": {
+      "name": "body",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.status": {
+      "name": "status",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.notification_job_id": {
+      "name": "notification_job_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.sent_at": {
+      "name": "sent_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.tuition_reminder_logs.created_at": {
       "name": "created_at",
       "required": false,
       "in": "query",

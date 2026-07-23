@@ -13,6 +13,7 @@ import { useMentorshipLogs } from './hooks/useMentorshipLogs';
 import { useAnnouncements } from './hooks/useAnnouncements';
 import { useMessages } from './hooks/useMessages';
 import { useTodos } from './hooks/useTodos';
+import { useTuition } from './hooks/useTuition';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
 import { useAttendance } from './hooks/useAttendance';
 import { getCurrentWeekStart } from './utils/attendanceUtils';
@@ -94,6 +95,7 @@ export function AuthenticatedApp({
     toggleReaction,
   } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
   const todos = useTodos(effectiveUser, users, courseStudents, courses);
+  const tuition = useTuition(effectiveUser, users, courseStudents, courses);
   const {
     conversations,
     totalUnread,
@@ -421,6 +423,7 @@ export function AuthenticatedApp({
               onAddCourse={addCourse}
               onRefetchCourses={refetchCourses}
               attendance={attendance}
+              tuition={tuition}
               effectiveCurrentDuties={effectiveCurrentDuties}
               nextScheduledDuty={nextScheduledDuty}
             />

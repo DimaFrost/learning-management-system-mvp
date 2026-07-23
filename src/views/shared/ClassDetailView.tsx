@@ -224,7 +224,7 @@ export function ClassDetailView({
               Google Drive folders are not set up for this session.
             </p>
             <p className="text-sm text-amber-800 mt-1">
-              File uploads (materials, staff notes, homework) require Drive folders.
+              Session materials and staff notes are saved in Google Drive folders.
             </p>
             {provisionError && (
               <p className="text-sm text-red-700 mt-2">{provisionError}</p>

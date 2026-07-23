@@ -45,6 +45,8 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | profiles | id |
 | settings | key |
 | stream_course_settings | course_id |
+| student_tuition_accounts | id |
+| student_tuition_payments | id |
 | subject_notes | id |
 | subjects | id |
 | sunday_attendance | id |
@@ -52,6 +54,9 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | the_well_session_attendance | id |
 | todo_batches | id |
 | todo_items | id |
+| tuition_installments | id |
+| tuition_plans | id |
+| tuition_reminder_logs | id |
 | well_schedule | id |
 
 ## Foreign Keys
@@ -137,6 +142,11 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | prayer_schedule.tuesday_student_id | profiles.id |
 | stream_course_settings.course_id | courses.id |
 | stream_course_settings.updated_by | profiles.id |
+| student_tuition_accounts.plan_id | tuition_plans.id |
+| student_tuition_accounts.student_id | profiles.id |
+| student_tuition_payments.account_id | student_tuition_accounts.id |
+| student_tuition_payments.recorded_by | profiles.id |
+| student_tuition_payments.student_id | profiles.id |
 | subject_notes.author_id | profiles.id |
 | subject_notes.subject_id | subjects.id |
 | subjects.course_id | courses.id |
@@ -151,4 +161,12 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | todo_items.assigned_to | profiles.id |
 | todo_items.batch_id | todo_batches.id |
 | todo_items.created_by | profiles.id |
+| tuition_installments.plan_id | tuition_plans.id |
+| tuition_plans.course_id | courses.id |
+| tuition_plans.created_by | profiles.id |
+| tuition_reminder_logs.account_id | student_tuition_accounts.id |
+| tuition_reminder_logs.installment_id | tuition_installments.id |
+| tuition_reminder_logs.notification_job_id | notification_jobs.id |
+| tuition_reminder_logs.sent_by | profiles.id |
+| tuition_reminder_logs.student_id | profiles.id |
 | well_schedule.course_id | courses.id |

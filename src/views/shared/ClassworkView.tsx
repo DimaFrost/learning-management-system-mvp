@@ -4,7 +4,7 @@ import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, User } from '../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { ReviewReadingModal } from '../admin/BooksView';
-import { getClassDisplayTitle } from '../../utils/courseUtils';
+import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
 import {
@@ -43,6 +43,13 @@ type HomeworkCommentRow = {
   author?: { id: string; name: string } | null;
 };
 
+type ClassFileSummaryRow = {
+  id: number;
+  class_id: number | null;
+  subject_id: number | null;
+  file_type: 'material' | 'teacher_note' | 'translator_note' | 'homework';
+};
+
 function mapHomeworkComment(row: HomeworkCommentRow) {
   return {
     id: row.id,
@@ -73,7 +80,7 @@ interface ClassworkViewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onNavigate?: (view: string) => void;
   resetKey?: number;
-  initialSubjectTarget?: { courseId: number; subjectId: number } | null;
+  initialSubjectTarget?: { courseId: number; subjectId: number; classId?: number } | null;
   onInitialSubjectTargetHandled?: () => void;
 }
 
@@ -310,6 +317,7 @@ export function ClassworkView({
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loadingHomework, setLoadingHomework] = useState(true);
+  const [materialRows, setMaterialRows] = useState<ClassFileSummaryRow[]>([]);
   const [query, setQuery] = useState('');
   const [kind, setKind] = useState<ClassworkKindFilter>('all');
   const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
@@ -318,15 +326,45 @@ export function ClassworkView({
   const [detailAssignment, setDetailAssignment] = useState<BookReadingAssignment | null>(null);
   const [selectedSubjectRun, setSelectedSubjectRun] = useState<SubjectRun | null>(null);
   const [selectedSubjectInitialTab, setSelectedSubjectInitialTab] = useState<SubjectTab>('sessions');
+  const [selectedSubjectInitialClassId, setSelectedSubjectInitialClassId] = useState<number | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
   const [subjectPage, setSubjectPage] = useState(0);
   const [manuallyToggledRuns, setManuallyToggledRuns] = useState<Set<string>>(new Set());
+  const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<Set<number>>(new Set());
 
-  const scopedCourseIds = useMemo(
+  const allowedCourseIds = useMemo(
     () => getScopedCourseIds(scope, currentUser, courses, courseStudents),
     [courseStudents, courses, currentUser, scope]
   );
+  const yearGroupOptions = useMemo(
+    () => courses
+      .filter(isCourseActive)
+      .filter(course => allowedCourseIds.includes(course.id))
+      .sort((a, b) => a.courseType === b.courseType ? a.graduationYear - b.graduationYear : a.courseType === 'first_year' ? -1 : 1),
+    [allowedCourseIds, courses]
+  );
+  const yearGroupFilterVisible = scope !== 'student' && yearGroupOptions.length > 0;
+  const scopedCourseIds = useMemo(() => {
+    if (scope === 'student' || selectedYearGroupIds.size === 0) return allowedCourseIds;
+    return allowedCourseIds.filter(id => selectedYearGroupIds.has(id));
+  }, [allowedCourseIds, scope, selectedYearGroupIds]);
+
+  useEffect(() => {
+    setSelectedYearGroupIds(new Set(yearGroupOptions.map(course => course.id)));
+  }, [yearGroupOptions]);
+
+  const toggleYearGroup = (courseId: number) => {
+    setSelectedYearGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        if (next.size > 1) next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+      return next;
+    });
+  };
 
   const teacherCanSeeYearGroupFilter = scope === 'teacher';
   const teacherTaughtSubjectIds = useMemo(() => {
@@ -377,6 +415,33 @@ export function ClassworkView({
     void load();
     return () => { cancelled = true; };
   }, [scopedSubjectIds]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      if (scopedSubjectIds.length === 0) {
+        setMaterialRows([]);
+        return;
+      }
+      let query = supabase
+        .from('class_files')
+        .select('id, class_id, subject_id, file_type')
+        .in('subject_id', scopedSubjectIds);
+      query = scope === 'student'
+        ? query.eq('file_type', 'material')
+        : query.in('file_type', ['material', 'teacher_note']);
+      const { data, error } = await query;
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load classwork materials', error);
+        setMaterialRows([]);
+      } else {
+        setMaterialRows((data ?? []) as ClassFileSummaryRow[]);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [scope, scopedSubjectIds]);
 
   const loadHomeworkSubmissions = useCallback(async () => {
     const assignmentIds = homeworkRows.map(homework => homework.id);
@@ -473,6 +538,9 @@ export function ClassworkView({
         ) return;
         subject.classes.forEach(cls => {
           const classHomework = homeworkRows.filter(homework => homework.class_id === cls.id);
+          const classMaterialCount = materialRows.filter(file =>
+            file.subject_id === subject.id && file.class_id === cls.id
+          ).length;
           rows.push({
             id: `session-${cls.id}`,
             kind: 'session',
@@ -486,7 +554,8 @@ export function ClassworkView({
             classInfo: { classId: cls.id, subjectId: subject.id, courseId: course.id },
             status: 'Session',
             pointsLabel: null,
-            hasMaterials: Boolean(cls.materialsFolderId),
+            hasMaterials: classMaterialCount > 0,
+            materialCount: classMaterialCount,
             homeworkCount: classHomework.length,
           });
         });
@@ -537,11 +606,11 @@ export function ClassworkView({
       })
       .filter(item => !normalized || `${item.title} ${item.subtitle} ${item.course ? getCourseDisplayName(item.course) : ''}`.toLowerCase().includes(normalized))
       .sort((a, b) => (a.dueDate ?? '9999-99-99').localeCompare(b.dueDate ?? '9999-99-99') || a.title.localeCompare(b.title));
-  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, query, scope, scopedCourseIds, teacherSubjectFilter]);
+  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, materialRows, query, scope, scopedCourseIds, teacherSubjectFilter]);
   const stats = {
     homework: homeworkRows.length,
     reading: items.filter(item => item.kind === 'reading').length,
-    materials: items.filter(hasSessionMaterials).length,
+    materials: materialRows.length,
     sessions: items.filter(item => item.kind === 'session').length,
   };
   const subjectRuns = buildSubjectRuns(items);
@@ -581,6 +650,7 @@ export function ClassworkView({
     );
     if (!run) return;
     setSelectedSubjectInitialTab('sessions');
+    setSelectedSubjectInitialClassId(initialSubjectTarget.classId ?? null);
     setSelectedSubjectRun(run);
     onInitialSubjectTargetHandled?.();
   }, [initialSubjectTarget, onInitialSubjectTargetHandled, subjectRuns]);
@@ -700,6 +770,7 @@ export function ClassworkView({
       <SubjectDetailPage
         run={selectedSubjectRun}
         initialTab={selectedSubjectInitialTab}
+        initialClassId={selectedSubjectInitialClassId}
         onBack={() => setSelectedSubjectRun(null)}
         onOpenAssignment={(homework, session) => setSelectedHomeworkDetail({ homework, session, run: selectedSubjectRun })}
         homeworkRows={homeworkRows}
@@ -727,26 +798,54 @@ export function ClassworkView({
             <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{title}</h1>
             <p className="mt-1 max-w-2xl text-sm text-[#737373]">Review upcoming sessions, reading, homework, and materials.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
-              <span className="text-lg leading-none">{stats.homework}</span>
-              Homework
-            </span>
-            <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
-              <span className="text-lg leading-none">{stats.reading}</span>
-              Reading
-            </span>
-            <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
-              <span className="text-lg leading-none">{stats.materials}</span>
-              Materials
-            </span>
+          <div className="flex flex-col gap-2 lg:items-end">
+            {yearGroupFilterVisible && (
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                {yearGroupOptions.map(course => {
+                  const selected = selectedYearGroupIds.has(course.id);
+                  const isSecond = course.courseType === 'second_year';
+                  return (
+                    <label
+                      key={course.id}
+                      className={`tbo-focus inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-xs font-semibold transition ${
+                        selected
+                          ? 'border-[#d4d4d4] bg-[#f5f5f5] text-[#171717] shadow-sm'
+                          : 'border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#fafafa] hover:text-[#171717]'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleYearGroup(course.id)}
+                        className="h-3.5 w-3.5 rounded border-current text-[#171717] accent-[#171717]"
+                      />
+                      {isSecond ? 'Second Year' : 'First Year'}
+                    </label>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
+                <span className="text-lg leading-none">{stats.homework}</span>
+                Homework
+              </span>
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
+                <span className="text-lg leading-none">{stats.reading}</span>
+                Reading
+              </span>
+              <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
+                <span className="text-lg leading-none">{stats.materials}</span>
+                Materials
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
-        <div className={`grid gap-3 lg:items-center ${teacherCanSeeYearGroupFilter ? 'lg:grid-cols-[minmax(240px,1fr)_auto_auto_auto]' : 'lg:grid-cols-[minmax(240px,1fr)_auto_auto]'}`}>
-        <div className="relative flex-1">
+        <div className="flex flex-wrap items-center gap-3">
+        <div className="relative min-w-[240px] flex-1">
           <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
           <input
             value={query}
@@ -852,7 +951,7 @@ export function ClassworkView({
           {pagedSubjectRuns.map(run => {
             const runTeachers = getRunTeachers(run, courses, users);
             const runHomeworkCount = homeworkRows.filter(homework => homework.subject_id === run.subjectId).length;
-            const runMaterialsCount = run.items.filter(hasSessionMaterials).length;
+            const runMaterialsCount = materialRows.filter(file => file.subject_id === run.subjectId).length;
             const runHasHomework = runHomeworkCount > 0;
             const runHasMaterials = runMaterialsCount > 0;
             const runGridTemplate = '72px 28px minmax(220px,1fr) 96px 76px 88px 104px';

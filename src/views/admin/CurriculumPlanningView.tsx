@@ -35,6 +35,7 @@ export function CurriculumPlanningView({
     breaks,
     academicYears,
     draftSubjects,
+    changeSummary,
     activeYearLabel,
     firstYearCourseId,
     secondYearCourseId,
@@ -60,6 +61,20 @@ export function CurriculumPlanningView({
   const [subjectModalOpen, setSubjectModalOpen] = useState(false);
   const [wellBusy, setWellBusy] = useState(false);
   const [planningTab, setPlanningTab] = useState<'schoolYear' | 'well'>('schoolYear');
+
+  const unsavedSummaryItems = React.useMemo(() => {
+    if (!isDirty) return [];
+    const items: string[] = [];
+    if (changeSummary.newSessions > 0) items.push(`${changeSummary.newSessions} new`);
+    if (changeSummary.removedSessions > 0) items.push(`${changeSummary.removedSessions} removed`);
+    if (changeSummary.breakChanges > 0) {
+      items.push(`${changeSummary.breakChanges} break${changeSummary.breakChanges === 1 ? '' : 's'}`);
+    }
+    if (items.length === 0 && changeSummary.editedSessions > 0) {
+      items.push('session details changed');
+    }
+    return items;
+  }, [changeSummary, isDirty]);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -93,7 +108,7 @@ export function CurriculumPlanningView({
     );
     const fresh = await onRefetchCourses();
     const entry = findAcademicYearEntry(fresh, activeYearLabel);
-    loadSchoolYear(activeYearLabel, entry?.firstYearId, entry?.secondYearId, true);
+    loadSchoolYear(activeYearLabel, entry?.firstYearId, entry?.secondYearId, true, fresh);
   }, [activeYearLabel, commitPlan, onRefetchCourses, loadSchoolYear]);
 
   const handleCreateYear = useCallback(async (startYear: number) => {
@@ -166,7 +181,15 @@ export function CurriculumPlanningView({
         <div className="space-y-3 min-w-0">
           <h3 className="text-xl font-bold text-gray-900">Planning</h3>
           {isDirty && (
-            <p className="text-sm text-amber-700 font-medium">● Unsaved changes</p>
+            <div className="flex flex-wrap items-center gap-2 text-sm">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-800">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+                Unsaved changes
+              </span>
+              {unsavedSummaryItems.length > 0 && (
+                <span className="text-[#737373]">{unsavedSummaryItems.join(' · ')}</span>
+              )}
+            </div>
           )}
         </div>
 

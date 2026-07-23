@@ -35,6 +35,10 @@ type SubjectTeacherRow = {
   teacher_id: string | null;
 };
 
+type SubjectTranslatorRow = {
+  translator_id: string | null;
+};
+
 type Assignment = {
   id: number;
   title: string;
@@ -134,12 +138,20 @@ serve(async req => {
       return json(await createHomeworkDoc(user, body));
     }
 
+    if (action === 'upload-homework-file') {
+      return json(await uploadHomeworkFile(user, body));
+    }
+
     if (action === 'create-material-doc') {
       return json(await createMaterialDoc(user, body));
     }
 
     if (action === 'upload-material-file') {
       return json(await uploadMaterialFile(user, body));
+    }
+
+    if (action === 'upload-curriculum-plan') {
+      return json(await uploadCurriculumPlan(user, body));
     }
 
     if (action === 'upload-stream-attachment') {
@@ -503,12 +515,131 @@ async function createHomeworkDoc(profile: Profile, body: Record<string, unknown>
   };
 }
 
+async function getAssignmentContext(assignmentId: number) {
+  const { data: assignmentData, error: assignmentError } = await adminClient
+    .from('homework_assignments')
+    .select(`
+      id, title, description, due_date, max_points, class_id, subject_id,
+      class:classes(
+        id, title, date, hour, subject_id,
+        subject:subjects(
+          id, title, course_id,
+          course:courses(id, course_type, graduation_year)
+        )
+      ),
+      subject:subjects(
+        id, title, course_id,
+        course:courses(id, course_type, graduation_year)
+      )
+    `)
+    .eq('id', assignmentId)
+    .single();
+
+  if (assignmentError || !assignmentData) {
+    throw new HttpError('Assignment not found', 404);
+  }
+
+  const assignment = assignmentData as Assignment;
+  const classRow = firstItem(assignment.class);
+  const subject = firstItem(classRow?.subject) ?? firstItem(assignment.subject);
+  const course = firstItem(subject?.course);
+
+  if (!subject || !course) {
+    throw new HttpError('Assignment is missing subject/year group context', 400);
+  }
+
+  return { assignment, classRow, subject, course };
+}
+
+async function assertCanAccessAssignment(profile: Profile, courseId: number) {
+  if (isAdmin(profile)) return;
+  const { data: enrollment, error: enrollmentError } = await adminClient
+    .from('course_students')
+    .select('course_id')
+    .eq('student_id', profile.id)
+    .eq('course_id', courseId)
+    .eq('status', 'active')
+    .maybeSingle();
+
+  if (enrollmentError) throw enrollmentError;
+  if (!enrollment) {
+    throw new HttpError('This assignment is not assigned to your active year group', 403);
+  }
+}
+
+async function uploadHomeworkFile(profile: Profile, body: Record<string, unknown>) {
+  const assignmentId = Number(body.assignmentId);
+  const fileName = String(body.fileName ?? '').trim();
+  const mimeType = String(body.mimeType ?? 'application/octet-stream');
+  const base64 = String(body.base64 ?? '');
+  const fileSize = Number(body.fileSize ?? 0);
+
+  if (!Number.isFinite(assignmentId)) {
+    throw new HttpError('Valid assignmentId is required', 400);
+  }
+  if (!fileName || !base64) {
+    throw new HttpError('A file name and file content are required', 400);
+  }
+
+  const { assignment, subject, course } = await getAssignmentContext(assignmentId);
+  await assertCanAccessAssignment(profile, course.id);
+
+  const token = await getGoogleAccessToken();
+  const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
+  const assignmentFolderId = await ensureDriveFolderPath(token, folderId, [
+    'Assignments',
+    subject.title,
+    assignment.title,
+  ]);
+  const studentFolderId = await ensureDriveFolderPath(token, assignmentFolderId, [
+    sanitizeDocName(profile.name),
+  ]);
+
+  const uploaded = await uploadDriveFile(token, {
+    folderId: studentFolderId,
+    fileName: sanitizeDocName(fileName),
+    mimeType,
+    bytes: base64ToBytes(base64),
+  });
+
+  await shareFile(token, uploaded.id, profile.email, 'writer');
+
+  const { data: submission, error: submissionError } = await adminClient
+    .from('homework_submissions')
+    .upsert({
+      assignment_id: assignmentId,
+      student_id: profile.id,
+      submission_type: 'file',
+      drive_file_id: uploaded.id,
+      drive_view_url: uploaded.webViewLink,
+      file_name: fileName,
+      google_doc_id: null,
+      google_doc_url: null,
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'assignment_id,student_id' })
+    .select('id')
+    .single();
+
+  if (submissionError) throw submissionError;
+
+  return {
+    submissionId: submission.id,
+    googleDriveFileId: uploaded.id,
+    googleDriveUrl: uploaded.webViewLink,
+    folderId: studentFolderId,
+  };
+}
+
 async function createMaterialDoc(profile: Profile, body: Record<string, unknown>) {
   const classId = body.classId == null || body.classId === '' ? NaN : Number(body.classId);
   const subjectIdParam = body.subjectId == null || body.subjectId === '' ? NaN : Number(body.subjectId);
   const requestedTitle = String(body.title ?? '').trim();
   const rawFileType = String(body.fileType ?? 'material').trim();
-  const fileType = rawFileType === 'teacher_note' ? 'teacher_note' : 'material';
+  const fileType = rawFileType === 'teacher_note' || rawFileType === 'translator_note'
+    ? rawFileType
+    : 'material';
   const hasClassId = Number.isFinite(classId);
   const hasSubjectId = Number.isFinite(subjectIdParam);
 
@@ -540,16 +671,21 @@ async function createMaterialDoc(profile: Profile, body: Record<string, unknown>
   }
 
   const subjectTeachers = await getSubjectTeacherIds(subject.id);
+  const subjectTranslators = await getSubjectTranslatorIds(subject.id);
   const canCreate =
     isAdmin(profile) ||
-    (profile.roles.includes('teacher') && subjectTeachers.includes(profile.id));
+    (profile.roles.includes('teacher') && subjectTeachers.includes(profile.id)) ||
+    (fileType === 'translator_note' && profile.roles.includes('translator') && subjectTranslators.includes(profile.id));
   if (!canCreate) {
     throw new HttpError('Only administrators or teachers assigned to this subject can create material docs', 403);
   }
 
   const token = await getGoogleAccessToken();
   const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
-  const rootFolderName = fileType === 'teacher_note' ? 'Teacher Notes' : 'Materials';
+  const rootFolderName =
+    fileType === 'teacher_note' ? 'Teacher Notes' :
+    fileType === 'translator_note' ? 'Translator Notes' :
+    'Materials';
   const folderPath = [rootFolderName, subject.title];
   if (classRow) {
     const classFolderName = [
@@ -564,6 +700,10 @@ async function createMaterialDoc(profile: Profile, body: Record<string, unknown>
 
   const teacherEmails = await getProfileEmails(subjectTeachers);
   await shareFileBatch(token, created.id, teacherEmails, 'writer');
+  if (fileType === 'translator_note') {
+    const translatorEmails = await getProfileEmails(subjectTranslators);
+    await shareFileBatch(token, created.id, translatorEmails, 'writer');
+  }
   if (fileType === 'material') {
     const studentEmails = await getActiveCourseStudentEmails(course.id);
     await shareFileBatch(token, created.id, studentEmails, 'reader');
@@ -599,9 +739,14 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
   const classId = body.classId == null || body.classId === '' ? NaN : Number(body.classId);
   const subjectIdParam = body.subjectId == null || body.subjectId === '' ? NaN : Number(body.subjectId);
   const fileName = String(body.fileName ?? '').trim();
+  const displayName = String(body.displayName ?? '').trim();
   const mimeType = String(body.mimeType ?? 'application/octet-stream');
   const base64 = String(body.base64 ?? '');
   const fileSize = Number(body.fileSize ?? 0);
+  const rawFileType = String(body.fileType ?? 'material').trim();
+  const fileType = rawFileType === 'teacher_note' || rawFileType === 'translator_note'
+    ? rawFileType
+    : 'material';
   const hasClassId = Number.isFinite(classId);
   const hasSubjectId = Number.isFinite(subjectIdParam);
 
@@ -628,19 +773,29 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
       ctx.classRow.date ?? 'No date',
       ctx.classRow.title,
     ].filter(Boolean).join(' - ');
-    folderPath = ['Materials', subject.title, classFolderName];
+    const rootFolderName =
+      fileType === 'teacher_note' ? 'Teacher Notes' :
+      fileType === 'translator_note' ? 'Translator Notes' :
+      'Materials';
+    folderPath = [rootFolderName, subject.title, classFolderName];
   } else {
     const ctx = await getSubjectContext(subjectIdParam);
     subject = ctx.subject;
     course = ctx.course;
     insertSubjectId = subject.id;
-    folderPath = ['Materials', subject.title];
+    const rootFolderName =
+      fileType === 'teacher_note' ? 'Teacher Notes' :
+      fileType === 'translator_note' ? 'Translator Notes' :
+      'Materials';
+    folderPath = [rootFolderName, subject.title];
   }
 
   const subjectTeachers = await getSubjectTeacherIds(subject.id);
+  const subjectTranslators = await getSubjectTranslatorIds(subject.id);
   const canUpload =
     isAdmin(profile) ||
-    (profile.roles.includes('teacher') && subjectTeachers.includes(profile.id));
+    (profile.roles.includes('teacher') && subjectTeachers.includes(profile.id)) ||
+    (fileType === 'translator_note' && profile.roles.includes('translator') && subjectTranslators.includes(profile.id));
   if (!canUpload) {
     throw new HttpError('Only administrators or teachers assigned to this subject can upload material files', 403);
   }
@@ -657,9 +812,15 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
   });
 
   const teacherEmails = await getProfileEmails(subjectTeachers);
-  const studentEmails = await getActiveCourseStudentEmails(course.id);
   await shareFileBatch(token, uploaded.id, teacherEmails, 'writer');
-  await shareFileBatch(token, uploaded.id, studentEmails, 'reader');
+  if (fileType === 'translator_note') {
+    const translatorEmails = await getProfileEmails(subjectTranslators);
+    await shareFileBatch(token, uploaded.id, translatorEmails, 'writer');
+  }
+  if (fileType === 'material') {
+    const studentEmails = await getActiveCourseStudentEmails(course.id);
+    await shareFileBatch(token, uploaded.id, studentEmails, 'reader');
+  }
 
   const { data: file, error: fileError } = await adminClient
     .from('class_files')
@@ -667,8 +828,8 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
       class_id: insertClassId,
       subject_id: insertSubjectId,
       uploader_id: profile.id,
-      file_type: 'material',
-      file_name: fileName,
+      file_type: fileType,
+      file_name: displayName || fileName,
       drive_file_id: uploaded.id,
       drive_view_url: uploaded.webViewLink,
       mime_type: mimeType,
@@ -684,6 +845,88 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
     googleDriveFileId: uploaded.id,
     googleDriveUrl: uploaded.webViewLink,
     folderId: materialsFolderId,
+  };
+}
+
+async function uploadCurriculumPlan(profile: Profile, body: Record<string, unknown>) {
+  const subjectId = Number(body.subjectId);
+  const fileName = String(body.fileName ?? '').trim();
+  const mimeType = String(body.mimeType ?? 'application/octet-stream');
+  const base64 = String(body.base64 ?? '');
+  const fileSize = Number(body.fileSize ?? 0);
+
+  if (!Number.isFinite(subjectId)) {
+    throw new HttpError('Valid subjectId is required', 400);
+  }
+  if (!fileName || !base64) {
+    throw new HttpError('A file name and file content are required', 400);
+  }
+
+  const { subject, course } = await getSubjectContext(subjectId);
+  const subjectTeachers = await getSubjectTeacherIds(subject.id);
+  const canUpload =
+    isAdmin(profile) ||
+    (profile.roles.includes('teacher') && subjectTeachers.includes(profile.id));
+  if (!canUpload) {
+    throw new HttpError('Only administrators or teachers assigned to this subject can upload curriculum plans', 403);
+  }
+
+  const token = await getGoogleAccessToken();
+  const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
+  const planFolderId = await ensureDriveFolderPath(token, folderId, [
+    'Curriculum Plans',
+    subject.title,
+  ]);
+
+  const uploaded = await uploadDriveFile(token, {
+    folderId: planFolderId,
+    fileName: sanitizeDocName(fileName),
+    mimeType,
+    bytes: base64ToBytes(base64),
+  });
+
+  const teacherEmails = await getProfileEmails(subjectTeachers);
+  await shareFileBatch(token, uploaded.id, teacherEmails, 'writer');
+
+  const fileFields = {
+    content: null,
+    storage_path: uploaded.id,
+    public_url: uploaded.webViewLink,
+    file_name: fileName,
+    file_size: Number.isFinite(fileSize) ? fileSize : null,
+    mime_type: mimeType,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data: existing, error: existingError } = await adminClient
+    .from('subject_notes')
+    .select('id')
+    .eq('subject_id', subject.id)
+    .eq('note_type', 'curriculum_plan')
+    .maybeSingle();
+  if (existingError) throw existingError;
+
+  if (existing) {
+    const { error: updateError } = await adminClient
+      .from('subject_notes')
+      .update(fileFields)
+      .eq('id', existing.id);
+    if (updateError) throw updateError;
+  } else {
+    const { error: insertError } = await adminClient.from('subject_notes').insert({
+      subject_id: subject.id,
+      author_id: profile.id,
+      note_type: 'curriculum_plan',
+      title: null,
+      ...fileFields,
+    });
+    if (insertError) throw insertError;
+  }
+
+  return {
+    googleDriveFileId: uploaded.id,
+    googleDriveUrl: uploaded.webViewLink,
+    folderId: planFolderId,
   };
 }
 
@@ -845,6 +1088,17 @@ async function getSubjectTeacherIds(subjectId: number) {
   if (error) throw error;
   return Array.from(new Set((data ?? [])
     .map((row: SubjectTeacherRow) => row.teacher_id)
+    .filter((id): id is string => Boolean(id))));
+}
+
+async function getSubjectTranslatorIds(subjectId: number) {
+  const { data, error } = await adminClient
+    .from('classes')
+    .select('translator_id')
+    .eq('subject_id', subjectId);
+  if (error) throw error;
+  return Array.from(new Set((data ?? [])
+    .map((row: SubjectTranslatorRow) => row.translator_id)
     .filter((id): id is string => Boolean(id))));
 }
 

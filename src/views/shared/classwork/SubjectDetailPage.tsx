@@ -4,6 +4,8 @@ import {
   BookOpen,
   CalendarDays,
   CheckCircle2,
+  ChevronLeft,
+  ChevronRight,
   ClipboardList,
   ExternalLink,
   File as FileIcon,
@@ -12,6 +14,7 @@ import {
   Image,
   Pencil,
   Plus,
+  ShieldCheck,
   Trash2,
   TrendingUp,
   Upload,
@@ -62,6 +65,7 @@ function getMaterialFileIcon(mimeType: string | null) {
 export function SubjectDetailPage({
   run,
   initialTab,
+  initialClassId,
   onBack,
   onOpenAssignment,
   homeworkRows,
@@ -80,6 +84,7 @@ export function SubjectDetailPage({
 }: {
   run: SubjectRun;
   initialTab?: SubjectTab;
+  initialClassId?: number | null;
   onBack: () => void;
   onOpenAssignment: (homework: HomeworkRow, session?: ClassworkItem) => void;
   homeworkRows: HomeworkRow[];
@@ -104,16 +109,26 @@ export function SubjectDetailPage({
   const [materialsUploadOpen, setMaterialsUploadOpen] = useState(false);
   const [materialUploadKind, setMaterialUploadKind] = useState<MaterialUploadKind>('student');
   const [pendingMaterialFiles, setPendingMaterialFiles] = useState<File[]>([]);
+  const [materialUploadTitle, setMaterialUploadTitle] = useState('');
   const [materialDocTitle, setMaterialDocTitle] = useState('');
   const [isCreatingMaterialDoc, setIsCreatingMaterialDoc] = useState(false);
   const [relatedClassId, setRelatedClassId] = useState<number | null>(null);
   const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
+  const [sessionsPage, setSessionsPage] = useState(0);
+  const highlightedSessionRef = useRef<HTMLDivElement | null>(null);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
 
   const sessionItems = run.items.filter(item => item.classInfo);
   const canSeeStaffNotes = scope !== 'student';
+  const userTeachesSubject = run.items.some(item => {
+    if (!item.classInfo) return false;
+    return run.course?.subjects
+      .find(subject => subject.id === item.classInfo?.subjectId)
+      ?.classes.some(cls => cls.id === item.classInfo?.classId && cls.teacherId === currentUser.id);
+  });
   const canManageMaterials =
-    scope !== 'student' && (hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher'));
+    scope === 'admin' ||
+    (scope === 'teacher' && hasRole(currentUser, 'teacher') && userTeachesSubject);
   const {
     files: subjectFiles,
     loading: materialsLoading,
@@ -138,6 +153,18 @@ export function SubjectDetailPage({
   const sessionClassIds = sessionItems
     .map(item => item.classInfo?.classId)
     .filter((id): id is number => typeof id === 'number');
+  const sessionWeekGroups = groupByCalendarWeek(sessionItems, item => item.dueDate);
+  const sessionWeeksPerPage = 2;
+  const highlightedSessionWeekIndex = initialClassId
+    ? sessionWeekGroups.findIndex(group =>
+        group.items.some(item => item.classInfo?.classId === initialClassId)
+      )
+    : -1;
+  const sessionPageCount = Math.max(1, Math.ceil(sessionWeekGroups.length / sessionWeeksPerPage));
+  const visibleSessionWeekGroups = sessionWeekGroups.slice(
+    sessionsPage * sessionWeeksPerPage,
+    sessionsPage * sessionWeeksPerPage + sessionWeeksPerPage
+  );
   const homeworkItems = homeworkRows
     .filter(homework => homework.subject_id === run.subjectId || (homework.class_id != null && sessionClassIds.includes(homework.class_id)))
     .map(homework => {
@@ -255,6 +282,7 @@ export function SubjectDetailPage({
     setMaterialsUploadOpen(true);
     setMaterialUploadKind('student');
     setPendingMaterialFiles([]);
+    setMaterialUploadTitle('');
     setMaterialDocTitle('');
     setIsCreatingMaterialDoc(false);
     setRelatedClassId(null);
@@ -272,6 +300,7 @@ export function SubjectDetailPage({
   const closeMaterialsUpload = () => {
     setMaterialsUploadOpen(false);
     setPendingMaterialFiles([]);
+    setMaterialUploadTitle('');
     setMaterialDocTitle('');
     setIsCreatingMaterialDoc(false);
     setRelatedClassId(null);
@@ -288,18 +317,24 @@ export function SubjectDetailPage({
   const uploadPendingMaterials = async () => {
     if (pendingMaterialFiles.length === 0) return;
     const filesToUpload = [...pendingMaterialFiles];
+    const displayTitle = materialUploadTitle.trim();
     setPendingMaterialFiles([]);
     for (const file of filesToUpload) {
+      const fileDisplayName = displayTitle
+        ? filesToUpload.length === 1
+          ? displayTitle
+          : `${displayTitle} - ${file.name}`
+        : null;
       const ok = materialUploadKind === 'student'
-        ? await uploadStudentMaterial(file, relatedClassId)
-        : await uploadStaffNote(file, relatedClassId);
+        ? await uploadStudentMaterial(file, relatedClassId, fileDisplayName)
+        : await uploadStaffNote(file, relatedClassId, fileDisplayName);
       if (!ok) return;
     }
     closeMaterialsUpload();
   };
 
   const handleCreateSubjectMaterialDoc = async () => {
-    const title = materialDocTitle.trim();
+    const title = (materialDocTitle.trim() || materialUploadTitle.trim());
     if (!title) return;
     const ok = await createGoogleDoc(
       materialUploadKind === 'staff' ? 'staff' : 'student',
@@ -313,7 +348,24 @@ export function SubjectDetailPage({
 
   useEffect(() => {
     setActiveTab(initialTab ?? 'sessions');
-  }, [initialTab, run.key]);
+    setSessionsPage(
+      highlightedSessionWeekIndex >= 0
+        ? Math.floor(highlightedSessionWeekIndex / sessionWeeksPerPage)
+        : 0
+    );
+  }, [highlightedSessionWeekIndex, initialTab, run.key]);
+
+  useEffect(() => {
+    if (!initialClassId || activeTab !== 'sessions') return;
+    const timer = window.setTimeout(() => {
+      highlightedSessionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 120);
+    return () => window.clearTimeout(timer);
+  }, [activeTab, initialClassId, sessionsPage]);
+
+  useEffect(() => {
+    setSessionsPage(page => Math.min(page, sessionPageCount - 1));
+  }, [sessionPageCount]);
 
   useEffect(() => {
     if (activeTab !== 'materials') {
@@ -362,7 +414,18 @@ export function SubjectDetailPage({
             <p className="mt-1 text-sm text-[#737373]">{getRunDateRange(run)}</p>
           </div>
           <div className="flex flex-col gap-2 lg:items-end">
-            {run.course ? <ActiveYearGroupBadge course={run.course} size="sm" /> : null}
+            <div className="flex flex-col gap-2 lg:items-end">
+              {run.course ? <ActiveYearGroupBadge course={run.course} size="sm" /> : null}
+              {nextSession && (
+                <span
+                  className="inline-flex h-8 max-w-[280px] items-center gap-2 border-l-2 border-[#171717] bg-white px-3 text-xs font-semibold text-[#171717] ring-1 ring-[#e5e5e5]"
+                  title={`${nextSession.title}${nextSession.dueDate ? ` · ${formatPlatformDate(nextSession.dueDate)}` : ''}`}
+                >
+                  <CalendarDays className="h-3.5 w-3.5 flex-shrink-0 text-[#737373]" />
+                  <span className="truncate">{nextSession.title}</span>
+                </span>
+              )}
+            </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               {curriculumActions && (
                 <>
@@ -383,15 +446,6 @@ export function SubjectDetailPage({
                     Add session
                   </button>
                 </>
-              )}
-              {nextSession && (
-                <span
-                  className="inline-flex h-9 max-w-[260px] items-center gap-2 border-l-2 border-[#171717] bg-white px-3 text-sm font-semibold text-[#171717] ring-1 ring-[#e5e5e5]"
-                  title={`${nextSession.title}${nextSession.dueDate ? ` · ${formatPlatformDate(nextSession.dueDate)}` : ''}`}
-                >
-                  <CalendarDays className="h-4 w-4 flex-shrink-0 text-[#737373]" />
-                  <span className="truncate">{nextSession.title}</span>
-                </span>
               )}
               <button type="button" onClick={() => setActiveTab('sessions')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]">
                 <span className="text-lg leading-none">{sessionItems.length}</span>
@@ -492,6 +546,93 @@ export function SubjectDetailPage({
                     </button>
                   </div>
 
+                  <div className="hidden">
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                      Related session (optional)
+                    </label>
+                    <select
+                      value={relatedClassId ?? ''}
+                      onChange={event => {
+                        const value = event.target.value;
+                        setRelatedClassId(value ? Number(value) : null);
+                      }}
+                      className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
+                    >
+                      <option value="">Subject level</option>
+                      {sessionItems.map(item => (
+                        <option key={item.id} value={item.classInfo!.classId}>
+                          {item.title}
+                          {item.dueDate ? ` · ${formatPlatformDate(item.dueDate)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {(
+                      [
+                        {
+                          id: 'student' as const,
+                          label: 'Student Materials',
+                          hint: 'Visible to students in this year group.',
+                          icon: FileText,
+                          activeClass: 'border-[#c2410c] border-l-[#c2410c] bg-[#fff7ed] text-[#9a3412] shadow-[inset_0_0_0_1px_#c2410c]',
+                          idleClass: 'border-[#fed7aa] border-l-[#c2410c] bg-white text-[#9a3412] hover:bg-[#fff7ed]',
+                        },
+                        {
+                          id: 'staff' as const,
+                          label: 'Staff Notes',
+                          hint: 'Private to staff working with this subject.',
+                          icon: ShieldCheck,
+                          activeClass: 'border-[#1d4ed8] border-l-[#1d4ed8] bg-[#eff6ff] text-[#1d4ed8] shadow-[inset_0_0_0_1px_#1d4ed8]',
+                          idleClass: 'border-[#bfdbfe] border-l-[#1d4ed8] bg-white text-[#1d4ed8] hover:bg-[#eff6ff]',
+                        },
+                      ] as const
+                    ).map(option => {
+                      const active = materialUploadKind === option.id;
+                      const OptionIcon = option.icon;
+                      return (
+                        <button
+                          key={option.id}
+                          type="button"
+                          onClick={() => {
+                            setMaterialUploadKind(option.id);
+                            setIsCreatingMaterialDoc(false);
+                            setPendingMaterialFiles([]);
+                          }}
+                          className={`tbo-focus border border-l-2 px-3 py-3 text-left transition ${
+                            active ? option.activeClass : option.idleClass
+                          }`}
+                        >
+                          <span className="flex items-center gap-2 text-sm font-semibold">
+                            <OptionIcon className="h-4 w-4" />
+                            {option.label}
+                            {active && (
+                              <CheckCircle2 className="ml-auto h-4 w-4" />
+                            )}
+                          </span>
+                          <span className="mt-1 block text-xs font-medium opacity-75">{option.hint}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <div className="mt-4">
+                    <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                      Title
+                    </label>
+                    <input
+                      type="text"
+                      value={materialUploadTitle}
+                      onChange={event => setMaterialUploadTitle(event.target.value)}
+                      placeholder={materialUploadKind === 'staff' ? 'Staff discussion guide' : 'Reading handout'}
+                      className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
+                    />
+                    <p className="mt-1 text-xs text-[#737373]">
+                      Leave empty to use the original file name. For multiple files, the file name is added after this title.
+                    </p>
+                  </div>
+
                   <div className="mt-4">
                     <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
                       Related session (optional)
@@ -504,43 +645,14 @@ export function SubjectDetailPage({
                       }}
                       className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
                     >
-                      <option value="">None</option>
+                      <option value="">Subject level</option>
                       {sessionItems.map(item => (
                         <option key={item.id} value={item.classInfo!.classId}>
                           {item.title}
-                          {item.dueDate ? ` · ${formatPlatformDate(item.dueDate)}` : ''}
+                          {item.dueDate ? ` - ${formatPlatformDate(item.dueDate)}` : ''}
                         </option>
                       ))}
                     </select>
-                  </div>
-
-                  <div className="mt-4 flex flex-wrap gap-2">
-                    {(
-                      [
-                        { id: 'student' as const, label: 'Student Materials' },
-                        { id: 'staff' as const, label: 'Staff Notes' },
-                      ] as const
-                    ).map(option => {
-                      const active = materialUploadKind === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => {
-                            setMaterialUploadKind(option.id);
-                            setIsCreatingMaterialDoc(false);
-                            setPendingMaterialFiles([]);
-                          }}
-                          className={`tbo-focus inline-flex h-9 items-center border px-3 text-sm font-semibold transition ${
-                            active
-                              ? 'border-[#171717] bg-[#171717] text-white'
-                              : 'border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5]'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -562,7 +674,10 @@ export function SubjectDetailPage({
                     </button>
                     <button
                       type="button"
-                      onClick={() => setIsCreatingMaterialDoc(true)}
+                      onClick={() => {
+                        setMaterialDocTitle(current => current || materialUploadTitle);
+                        setIsCreatingMaterialDoc(true);
+                      }}
                       disabled={materialsSaving}
                       className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
                     >
@@ -589,7 +704,7 @@ export function SubjectDetailPage({
                         <button
                           type="button"
                           onClick={() => void handleCreateSubjectMaterialDoc()}
-                          disabled={materialsSaving || !materialDocTitle.trim()}
+                          disabled={materialsSaving || !(materialDocTitle.trim() || materialUploadTitle.trim())}
                           className="tbo-focus inline-flex h-9 items-center rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
                         >
                           Create
@@ -610,7 +725,11 @@ export function SubjectDetailPage({
                   )}
 
                   {pendingMaterialFiles.length > 0 && (
-                    <div className="mt-3 space-y-2 border-l-2 border-[#171717] bg-[#fafafa] p-3">
+                    <div className={`mt-3 space-y-2 border-l-2 p-3 ${
+                      materialUploadKind === 'staff'
+                        ? 'border-[#1d4ed8] bg-[#eff6ff]'
+                        : 'border-[#c2410c] bg-[#fff7ed]'
+                    }`}>
                       <p className="text-sm font-semibold text-[#171717]">
                         Ready to upload ({pendingMaterialFiles.length})
                       </p>
@@ -632,7 +751,7 @@ export function SubjectDetailPage({
                         type="button"
                         onClick={() => void uploadPendingMaterials()}
                         disabled={materialsSaving}
-                        className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
+                        className="hidden"
                       >
                         <Upload className="h-4 w-4" />
                         {materialsSaving ? 'Uploading…' : 'Upload'}
@@ -643,6 +762,35 @@ export function SubjectDetailPage({
                   {materialsError && (
                     <p className="mt-3 text-sm font-semibold text-[#dc2626]">{materialsError}</p>
                   )}
+
+                  <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#e5e5e5] pt-4">
+                    <p className="text-xs text-[#737373]">
+                      {materialsSaving
+                        ? 'Uploading to Google Drive...'
+                        : pendingMaterialFiles.length > 0
+                          ? `${pendingMaterialFiles.length} file${pendingMaterialFiles.length === 1 ? '' : 's'} selected`
+                          : 'Select files or create a Google Doc.'}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={closeMaterialsUpload}
+                        disabled={materialsSaving}
+                        className="tbo-focus inline-flex h-10 items-center rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => void uploadPendingMaterials()}
+                        disabled={materialsSaving || pendingMaterialFiles.length === 0}
+                        className="tbo-focus inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
+                      >
+                        <Upload className={`h-4 w-4 ${materialsSaving ? 'animate-pulse' : ''}`} />
+                        {materialsSaving ? 'Uploading...' : 'Upload files'}
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -685,15 +833,47 @@ export function SubjectDetailPage({
           )}
 
           {activeTab === 'sessions' && (
-            <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
-              {groupByCalendarWeek(sessionItems, item => item.dueDate).map(weekGroup => (
-                <Fragment key={weekGroup.weekStart}>
+            <div className="border-y border-[#d4d4d4] bg-white">
+              {sessionPageCount > 1 && (
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#171717]">Session weeks</p>
+                    <p className="text-xs text-[#737373]">
+                      Page {sessionsPage + 1} of {sessionPageCount} · {sessionItems.length} sessions
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSessionsPage(page => Math.max(0, page - 1))}
+                      disabled={sessionsPage === 0}
+                      className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
+                      aria-label="Previous session weeks"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSessionsPage(page => Math.min(sessionPageCount - 1, page + 1))}
+                      disabled={sessionsPage >= sessionPageCount - 1}
+                      className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
+                      aria-label="Next session weeks"
+                    >
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+              )}
+              <div className="divide-y divide-[#e5e5e5] px-4">
+                {visibleSessionWeekGroups.map(weekGroup => (
+                  <Fragment key={weekGroup.weekStart}>
                   <div className="-mx-4 w-[calc(100%+2rem)] bg-[#fafafa] px-4 py-2">
                     <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
                       {weekGroup.weekLabel}
                     </p>
                   </div>
                   {weekGroup.items.map(item => {
+                const isHighlightedSession = initialClassId != null && item.classInfo?.classId === initialClassId;
                 const compactDate = getCompactDateParts(item.dueDate);
                 const sessionDate = item.dueDate ? new Date(item.dueDate) : null;
                 sessionDate?.setHours(0, 0, 0, 0);
@@ -713,7 +893,12 @@ export function SubjectDetailPage({
                 return (
                   <div
                     key={item.id}
-                    className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left md:grid-cols-[72px_28px_minmax(0,1fr)_auto_auto]"
+                    ref={isHighlightedSession ? highlightedSessionRef : undefined}
+                    className={`-mx-4 grid w-[calc(100%+2rem)] items-center gap-4 px-4 py-3 text-left transition md:grid-cols-[72px_28px_minmax(0,1fr)_auto_auto] ${
+                      isHighlightedSession
+                        ? 'bg-[#fff7ed] ring-1 ring-inset ring-[#fed7aa]'
+                        : ''
+                    }`}
                   >
                     <span>
                       {compactDate ? (
@@ -809,8 +994,9 @@ export function SubjectDetailPage({
                   </div>
                 );
                   })}
-                </Fragment>
-              ))}
+                  </Fragment>
+                ))}
+              </div>
             </div>
           )}
 
@@ -888,18 +1074,23 @@ export function SubjectDetailPage({
                         const relatedSession = getRelatedSessionLabel(file.classId);
                         return (
                           <div
+                            role="button"
+                            tabIndex={0}
                             key={file.id}
-                            className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 md:grid-cols-[28px_minmax(0,1fr)_auto]"
+                            onClick={() => openMaterialFile(file)}
+                            onKeyDown={event => {
+                              if (event.key === 'Enter' || event.key === ' ') {
+                                event.preventDefault();
+                                openMaterialFile(file);
+                              }
+                            }}
+                            className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 text-left hover:bg-[#fff7ed]/50 md:grid-cols-[28px_minmax(0,1fr)_auto]"
                           >
                             <FileGlyph className="h-4 w-4 text-[#c2410c]" />
                             <div className="min-w-0">
-                              <button
-                                type="button"
-                                onClick={() => openMaterialFile(file)}
-                                className="tbo-focus block max-w-full truncate text-left text-sm font-semibold text-[#171717] hover:underline"
-                              >
+                              <span className="block max-w-full truncate text-left text-sm font-semibold text-[#171717]">
                                 {file.fileName}
-                              </button>
+                              </span>
                               <p className="mt-1 text-xs text-[#737373]">
                                 {formatPlatformDate(file.createdAt)}
                                 {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
@@ -911,6 +1102,7 @@ export function SubjectDetailPage({
                                 href={file.driveViewUrl}
                                 target="_blank"
                                 rel="noreferrer"
+                                onClick={event => event.stopPropagation()}
                                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                                 title="Open in new tab"
                               >
@@ -919,7 +1111,10 @@ export function SubjectDetailPage({
                               {canManageMaterials && (
                                 <button
                                   type="button"
-                                  onClick={() => void deleteSubjectFile(file)}
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    void deleteSubjectFile(file);
+                                  }}
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
                                   title="Delete"
                                 >
@@ -934,7 +1129,7 @@ export function SubjectDetailPage({
                   </section>
 
                   {canSeeStaffNotes && (
-                    <section className="border-l-2 border-[#171717] pl-4">
+                    <section className="border-l-2 border-[#1d4ed8] pl-4">
                       <div className="mb-2 flex items-center justify-between gap-2">
                         <h3 className="text-sm font-semibold text-[#171717]">Staff Notes</h3>
                         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
@@ -949,18 +1144,23 @@ export function SubjectDetailPage({
                           const relatedSession = getRelatedSessionLabel(file.classId);
                           return (
                             <div
+                              role="button"
+                              tabIndex={0}
                               key={file.id}
-                              className="-mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 md:grid-cols-[28px_minmax(0,1fr)_auto]"
+                              onClick={() => openMaterialFile(file)}
+                              onKeyDown={event => {
+                                if (event.key === 'Enter' || event.key === ' ') {
+                                  event.preventDefault();
+                                  openMaterialFile(file);
+                                }
+                              }}
+                              className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 text-left hover:bg-[#eff6ff]/60 md:grid-cols-[28px_minmax(0,1fr)_auto]"
                             >
-                              <FileGlyph className="h-4 w-4 text-[#525252]" />
+                              <FileGlyph className="h-4 w-4 text-[#1d4ed8]" />
                               <div className="min-w-0">
-                                <button
-                                  type="button"
-                                  onClick={() => openMaterialFile(file)}
-                                  className="tbo-focus block max-w-full truncate text-left text-sm font-semibold text-[#171717] hover:underline"
-                                >
+                                <span className="block max-w-full truncate text-left text-sm font-semibold text-[#171717]">
                                   {file.fileName}
-                                </button>
+                                </span>
                                 <p className="mt-1 text-xs text-[#737373]">
                                   {formatPlatformDate(file.createdAt)}
                                   {file.fileSize != null ? ` · ${formatFileSize(file.fileSize)}` : ''}
@@ -972,6 +1172,7 @@ export function SubjectDetailPage({
                                   href={file.driveViewUrl}
                                   target="_blank"
                                   rel="noreferrer"
+                                  onClick={event => event.stopPropagation()}
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                                   title="Open in new tab"
                                 >
@@ -980,7 +1181,10 @@ export function SubjectDetailPage({
                                 {canManageMaterials && (
                                   <button
                                     type="button"
-                                    onClick={() => void deleteSubjectFile(file)}
+                                    onClick={event => {
+                                      event.stopPropagation();
+                                      void deleteSubjectFile(file);
+                                    }}
                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
                                     title="Delete"
                                   >

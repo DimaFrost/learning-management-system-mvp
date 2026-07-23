@@ -40,6 +40,7 @@ interface CurriculumOverviewProps {
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onNavigate?: (view: string) => void;
   onDetailActiveChange?: (active: boolean) => void;
+  selectedYearGroupIds?: Set<number>;
 }
 
 const SESSION_GRID = '72px 28px minmax(180px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
@@ -51,6 +52,13 @@ type HomeworkCommentRow = {
   content: string;
   created_at: string;
   author?: { id: string; name: string } | null;
+};
+
+type ClassFileSummaryRow = {
+  id: number;
+  class_id: number | null;
+  subject_id: number | null;
+  file_type: 'material' | 'teacher_note' | 'translator_note' | 'homework';
 };
 
 function mapHomeworkComment(row: HomeworkCommentRow) {
@@ -95,20 +103,25 @@ export function CurriculumOverview({
   onDeleteClass,
   onNavigate,
   onDetailActiveChange,
+  selectedYearGroupIds,
 }: CurriculumOverviewProps) {
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
+  const [materialRows, setMaterialRows] = useState<ClassFileSummaryRow[]>([]);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
 
-  const activeCourses = courses.filter(isCourseActive);
-  const sortedCourses = [...activeCourses].sort((a, b) => {
+  const sortedActiveCourses = useMemo(() => courses.filter(isCourseActive).sort((a, b) => {
     if (a.graduationYear !== b.graduationYear) {
       return a.graduationYear - b.graduationYear;
     }
     return a.courseType === 'first_year' ? -1 : 1;
-  });
+  }), [courses]);
+  const selectedIds = selectedYearGroupIds && selectedYearGroupIds.size > 0
+    ? selectedYearGroupIds
+    : new Set(sortedActiveCourses.map(course => course.id));
+  const sortedCourses = sortedActiveCourses.filter(course => selectedIds.has(course.id));
 
   const selectedCourse = selectedSubject
     ? courses.find(course => course.id === selectedSubject.courseId) ?? null
@@ -119,8 +132,39 @@ export function CurriculumOverview({
 
   const subjectRun: SubjectRun | null = useMemo(() => {
     if (!selectedCourse || !selectedSubjectEntity) return null;
-    return buildSubjectRunFromSubject(selectedCourse, selectedSubjectEntity, homeworkRows, currentUser.roles);
-  }, [currentUser.roles, homeworkRows, selectedCourse, selectedSubjectEntity]);
+    const materialCountsByClassId = new Map<number, number>();
+    materialRows
+      .filter(file => file.subject_id === selectedSubjectEntity.id && file.class_id != null)
+      .forEach(file => {
+        materialCountsByClassId.set(file.class_id!, (materialCountsByClassId.get(file.class_id!) ?? 0) + 1);
+      });
+    return buildSubjectRunFromSubject(selectedCourse, selectedSubjectEntity, homeworkRows, currentUser.roles, materialCountsByClassId);
+  }, [currentUser.roles, homeworkRows, materialRows, selectedCourse, selectedSubjectEntity]);
+
+  useEffect(() => {
+    const subjectIds = sortedActiveCourses.flatMap(course => course.subjects.map(subject => subject.id));
+    if (subjectIds.length === 0) {
+      setMaterialRows([]);
+      return;
+    }
+    let cancelled = false;
+    const load = async () => {
+      const { data, error } = await supabase
+        .from('class_files')
+        .select('id, class_id, subject_id, file_type')
+        .in('subject_id', subjectIds)
+        .in('file_type', ['material', 'teacher_note']);
+      if (cancelled) return;
+      if (error) {
+        console.error('Failed to load curriculum materials', error);
+        setMaterialRows([]);
+      } else {
+        setMaterialRows((data ?? []) as ClassFileSummaryRow[]);
+      }
+    };
+    void load();
+    return () => { cancelled = true; };
+  }, [sortedActiveCourses]);
 
   useEffect(() => {
     onDetailActiveChange?.(Boolean(selectedSubject) || Boolean(selectedHomeworkDetail));
@@ -429,7 +473,13 @@ export function CurriculumOverview({
                 ) : (
                   <div className="space-y-4">
                     {course.subjects.map(subject => {
-                      const run = buildSubjectRunFromSubject(course, subject, [], currentUser.roles);
+                      const materialCountsByClassId = new Map<number, number>();
+                      materialRows
+                        .filter(file => file.subject_id === subject.id && file.class_id != null)
+                        .forEach(file => {
+                          materialCountsByClassId.set(file.class_id!, (materialCountsByClassId.get(file.class_id!) ?? 0) + 1);
+                        });
+                      const run = buildSubjectRunFromSubject(course, subject, [], currentUser.roles, materialCountsByClassId);
                       const dateRange = getRunDateRange(run);
                       const timelineState = getRunTimelineState(run);
                       const subjectKey = `${course.id}-${subject.id}`;
@@ -438,7 +488,7 @@ export function CurriculumOverview({
                         ? !defaultCollapsed
                         : defaultCollapsed;
                       const sessionCount = subject.classes.length;
-                      const materialsCount = subject.classes.filter(cls => Boolean(cls.materialsFolderId)).length;
+                      const materialsCount = materialRows.filter(file => file.subject_id === subject.id).length;
                       const openSubjectPage = () => setSelectedSubject({ courseId: course.id, subjectId: subject.id });
                       const timelineLabel =
                         timelineState === 'current' ? 'Current - ' :

@@ -150,6 +150,8 @@ export async function uploadMaterialGoogleDriveFile(params: {
   classId?: number;
   subjectId?: number;
   file: File;
+  fileType?: 'material' | 'teacher_note' | 'translator_note';
+  displayName?: string | null;
 }): Promise<{
   fileId: number;
   googleDriveFileId: string;
@@ -160,6 +162,45 @@ export async function uploadMaterialGoogleDriveFile(params: {
     action: 'upload-material-file',
     ...(params.classId != null ? { classId: params.classId } : {}),
     ...(params.subjectId != null ? { subjectId: params.subjectId } : {}),
+    fileName: params.file.name,
+    displayName: params.displayName ?? null,
+    mimeType: params.file.type || 'application/octet-stream',
+    fileSize: params.file.size,
+    fileType: params.fileType ?? 'material',
+    base64: await readFileAsBase64(params.file),
+  });
+}
+
+export async function uploadHomeworkGoogleDriveFile(params: {
+  assignmentId: number;
+  file: File;
+}): Promise<{
+  submissionId: number;
+  googleDriveFileId: string;
+  googleDriveUrl: string;
+  folderId: string;
+}> {
+  return callGoogleDocsV2({
+    action: 'upload-homework-file',
+    assignmentId: params.assignmentId,
+    fileName: params.file.name,
+    mimeType: params.file.type || 'application/octet-stream',
+    fileSize: params.file.size,
+    base64: await readFileAsBase64(params.file),
+  });
+}
+
+export async function uploadCurriculumPlanGoogleDriveFile(params: {
+  subjectId: number;
+  file: File;
+}): Promise<{
+  googleDriveFileId: string;
+  googleDriveUrl: string;
+  folderId: string;
+}> {
+  return callGoogleDocsV2({
+    action: 'upload-curriculum-plan',
+    subjectId: params.subjectId,
     fileName: params.file.name,
     mimeType: params.file.type || 'application/octet-stream',
     fileSize: params.file.size,

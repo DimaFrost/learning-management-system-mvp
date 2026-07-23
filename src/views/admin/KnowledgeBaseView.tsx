@@ -173,6 +173,7 @@ const topics: KnowledgeTopic[] = [
     essentials: [
       'Classwork is organized around subjects, not isolated session pages.',
       'Sessions can have assignments and materials attached, but assignments can also belong directly to a subject.',
+      'Student materials and staff notes are stored in the school Google Drive; staff notes remain private to staff.',
       'Teachers see year groups they are allowed to teach, with a filter for Teaching vs Year group.',
       'Students see only their own active year group work.',
       'Submissions is the teacher/admin review queue for work that needs grading.',

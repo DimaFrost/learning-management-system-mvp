@@ -2,14 +2,14 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-22T14:38:24.008Z
+Generated at: 2026-07-23T13:35:55.287Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 45
+Exposed tables/views: 50
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -50,6 +50,8 @@ Exposed tables/views: 45
 | profiles | 13 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | stream_course_settings | 8 | [stream_course_settings](./tables/stream_course_settings.md) |
+| student_tuition_accounts | 9 | [student_tuition_accounts](./tables/student_tuition_accounts.md) |
+| student_tuition_payments | 10 | [student_tuition_payments](./tables/student_tuition_payments.md) |
 | subject_notes | 13 | [subject_notes](./tables/subject_notes.md) |
 | subjects | 9 | [subjects](./tables/subjects.md) |
 | sunday_attendance | 8 | [sunday_attendance](./tables/sunday_attendance.md) |
@@ -57,6 +59,9 @@ Exposed tables/views: 45
 | the_well_session_attendance | 7 | [the_well_session_attendance](./tables/the_well_session_attendance.md) |
 | todo_batches | 12 | [todo_batches](./tables/todo_batches.md) |
 | todo_items | 12 | [todo_items](./tables/todo_items.md) |
+| tuition_installments | 9 | [tuition_installments](./tables/tuition_installments.md) |
+| tuition_plans | 10 | [tuition_plans](./tables/tuition_plans.md) |
+| tuition_reminder_logs | 11 | [tuition_reminder_logs](./tables/tuition_reminder_logs.md) |
 | well_schedule | 5 | [well_schedule](./tables/well_schedule.md) |
 
 ## Notes For AI

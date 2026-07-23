@@ -1,6 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
 import type { Course, CourseStudent, User, Subject, Class, WellScheduleEntry } from '../../types/lms';
+import { isCourseActive } from '../../utils/courseUtils';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
 import { CurriculumArchiveView } from './CurriculumArchiveView';
@@ -67,10 +68,36 @@ export function CurriculumView({
 }: CurriculumViewProps) {
   const [overviewDetailActive, setOverviewDetailActive] = useState(false);
   const [dateViewDetailActive, setDateViewDetailActive] = useState(false);
+  const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<Set<number>>(new Set());
   const showShellHeader = !(
     (activeCurriculumSection === 'overview' && overviewDetailActive) ||
     (activeCurriculumSection === 'date-view' && dateViewDetailActive)
   );
+  const sortedActiveCourses = useMemo(() => courses.filter(isCourseActive).sort((a, b) => {
+    if (a.graduationYear !== b.graduationYear) {
+      return a.graduationYear - b.graduationYear;
+    }
+    return a.courseType === 'first_year' ? -1 : 1;
+  }), [courses]);
+  const yearGroupFilterVisible =
+    (activeCurriculumSection === 'overview' || activeCurriculumSection === 'date-view') &&
+    sortedActiveCourses.length > 0;
+
+  useEffect(() => {
+    setSelectedYearGroupIds(new Set(sortedActiveCourses.map(course => course.id)));
+  }, [sortedActiveCourses]);
+
+  const toggleYearGroup = (courseId: number) => {
+    setSelectedYearGroupIds(prev => {
+      const next = new Set(prev);
+      if (next.has(courseId)) {
+        if (next.size > 1) next.delete(courseId);
+      } else {
+        next.add(courseId);
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (activeCurriculumSection !== 'overview') {
@@ -94,13 +121,40 @@ export function CurriculumView({
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+              {yearGroupFilterVisible && (
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  {sortedActiveCourses.map(course => {
+                    const selected = selectedYearGroupIds.has(course.id);
+                    const label = course.courseType === 'second_year' ? 'Second Year' : 'First Year';
+                    return (
+                      <label
+                        key={course.id}
+                        className={`tbo-focus inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-xs font-semibold transition ${
+                          selected
+                            ? 'border-[#d4d4d4] bg-[#f5f5f5] text-[#171717] shadow-sm'
+                            : 'border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#fafafa] hover:text-[#171717]'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={selected}
+                          onChange={() => toggleYearGroup(course.id)}
+                          className="h-3.5 w-3.5 rounded border-current text-[#171717] accent-[#171717]"
+                        />
+                        {label}
+                      </label>
+                    );
+                  })}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => onEditCourse()}
-                className="tbo-focus inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040] sm:w-auto"
+                className="tbo-focus inline-grid h-9 w-9 place-items-center rounded-lg border border-[#171717] bg-[#171717] text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040]"
+                aria-label="Add year group"
+                title="Add year group"
               >
                 <Plus className="h-4 w-4" />
-                <span>Add Year Group</span>
               </button>
             </div>
           </div>
@@ -129,6 +183,7 @@ export function CurriculumView({
           onOpenClass={onOpenClass}
           onNavigate={onNavigate}
           onDetailActiveChange={setOverviewDetailActive}
+          selectedYearGroupIds={selectedYearGroupIds}
         />
       )}
       {activeCurriculumSection === 'date-view' && (
@@ -146,6 +201,7 @@ export function CurriculumView({
           onDeleteClass={onDeleteClass}
           onNavigate={onNavigate}
           onDetailActiveChange={setDateViewDetailActive}
+          selectedYearGroupIds={selectedYearGroupIds}
         />
       )}
       {activeCurriculumSection === 'archived' && (

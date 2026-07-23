@@ -10,11 +10,7 @@ import type {
 import {
   createAssignmentFolder,
 } from '../utils/driveOperations';
-import { createHomeworkGoogleDoc } from '../utils/googleDocsV2';
-import {
-  uploadFileToStorage,
-  buildStoragePath,
-} from '../utils/storageOperations';
+import { createHomeworkGoogleDoc, uploadHomeworkGoogleDriveFile } from '../utils/googleDocsV2';
 import { sendNotification } from '../utils/notifications';
 import { findClassCourseContext } from '../utils/courseUtils';
 import { formatPlatformDate } from '../utils/dateUtils';
@@ -271,32 +267,10 @@ export function useHomework(
     setSaving(true);
     setError(null);
     try {
-      const storagePath = buildStoragePath({
-        courseSlug: params.courseSlug,
-        subjectSlug: params.subjectSlug,
-        classSlug: params.classSlug,
-        fileType: 'homework',
-        fileName: params.file.name,
-        studentName: currentUser.name,
+      await uploadHomeworkGoogleDriveFile({
+        assignmentId: params.assignmentId,
+        file: params.file,
       });
-
-      const { storagePath: savedPath, publicUrl } =
-        await uploadFileToStorage({ file: params.file, path: storagePath });
-
-      await supabase.from('homework_submissions').upsert({
-        assignment_id: params.assignmentId,
-        student_id: currentUser.id,
-        submission_type: 'file',
-        drive_file_id: savedPath,
-        drive_view_url: publicUrl,
-        file_name: params.file.name,
-        google_doc_id: null,
-        google_doc_url: null,
-        status: 'submitted',
-        submitted_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'assignment_id,student_id' });
-
       await fetchHomework();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');

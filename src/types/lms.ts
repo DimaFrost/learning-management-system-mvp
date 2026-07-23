@@ -204,6 +204,74 @@ export interface TodoAssignmentCategory {
   tone: 'blue' | 'green' | 'orange' | 'violet' | 'gray';
 }
 
+export type TuitionPlanStatus = 'draft' | 'active' | 'archived';
+export type TuitionAccountStatus = 'open' | 'part_paid' | 'paid' | 'overdue' | 'waived';
+export type TuitionReminderStatus = 'queued' | 'sent' | 'failed' | 'canceled';
+
+export interface TuitionPlan {
+  id: number;
+  name: string;
+  courseId: number | null;
+  academicYear: string | null;
+  currency: string;
+  totalAmount: number;
+  status: TuitionPlanStatus;
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface TuitionInstallment {
+  id: number;
+  planId: number;
+  title: string;
+  amount: number;
+  dueDate: string;
+  reminderDaysBefore: number;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentTuitionAccount {
+  id: number;
+  studentId: string;
+  planId: number;
+  expectedAmount: number;
+  discountAmount: number;
+  status: TuitionAccountStatus;
+  notes: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface StudentTuitionPayment {
+  id: number;
+  accountId: number;
+  studentId: string;
+  amount: number;
+  paymentDate: string;
+  method: string;
+  reference: string | null;
+  note: string | null;
+  recordedBy: string | null;
+  createdAt: string;
+}
+
+export interface TuitionReminderLog {
+  id: number;
+  accountId: number | null;
+  installmentId: number | null;
+  studentId: string;
+  sentBy: string | null;
+  subject: string;
+  body: string;
+  status: TuitionReminderStatus;
+  notificationJobId: number | null;
+  sentAt: string | null;
+  createdAt: string;
+}
+
 export interface ClassNote {
   id: number;
   classId: number;

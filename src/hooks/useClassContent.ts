@@ -1,11 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '../lib/supabase';
 import type { ClassNote, ClassFile, User, Course } from '../types/lms';
-import {
-  uploadFileToStorage,
-  deleteFileFromStorage,
-  buildStoragePath,
-} from '../utils/storageOperations';
 import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
 import { sendNotification } from '../utils/notifications';
 import { findClassCourseContext } from '../utils/courseUtils';
@@ -126,40 +121,12 @@ export function useClassContent(
     setSaving(true);
     setError(null);
     try {
-      const storagePath = buildStoragePath({
-        courseSlug: params.courseSlug,
-        subjectSlug: params.subjectSlug,
-        classSlug: params.classSlug,
-        fileType: params.fileType === 'teacher_note' ? 'teacher-notes' :
-          params.fileType === 'translator_note' ? 'translator-notes' :
-          'materials',
-        fileName: params.file.name,
+      if (!classId) return false;
+      await uploadMaterialGoogleDriveFile({
+        classId,
+        file: params.file,
+        fileType: params.fileType,
       });
-
-      if (params.fileType === 'material') {
-        await uploadMaterialGoogleDriveFile({
-          classId: classId!,
-          file: params.file,
-        });
-        await fetchContent();
-        return true;
-      }
-
-      const { storagePath: savedPath, publicUrl } =
-        await uploadFileToStorage({ file: params.file, path: storagePath });
-
-      const { error } = await supabase.from('class_files').insert({
-        class_id: classId,
-        subject_id: classId != null ? findClassCourseContext(classId, courses)?.subject.id ?? null : null,
-        uploader_id: currentUser.id,
-        file_type: params.fileType,
-        file_name: params.file.name,
-        drive_file_id: savedPath,
-        drive_view_url: publicUrl,
-        mime_type: params.file.type || null,
-        file_size: params.file.size,
-      });
-      if (error) throw error;
       await fetchContent();
       return true;
     } catch (err) {
@@ -195,9 +162,6 @@ export function useClassContent(
 
   const deleteFile = async (file: ClassFile) => {
     try {
-      if (file.mimeType !== 'application/vnd.google-apps.document') {
-        await deleteFileFromStorage(file.storagePath);
-      }
       await supabase.from('class_files').delete().eq('id', file.id);
       await fetchContent();
     } catch (err) {
