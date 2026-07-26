@@ -9,6 +9,7 @@ import {
   AlertCircle,
   Circle,
   Save,
+  Wifi,
 } from 'lucide-react';
 import type {
   User,
@@ -25,6 +26,18 @@ import type {
 import { getCourseDisplayName, getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { sortByFirstName, getWellDateForWeek, isActivationSaturdayClass } from '../../utils/attendanceUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
+
+function OnlineChip() {
+  return (
+    <span
+      className="inline-flex items-center gap-1 rounded-md border border-[#7dd3fc] bg-[#f0f9ff] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#0369a1]"
+      title="Online student — joins sessions remotely"
+    >
+      <Wifi className="h-3 w-3" />
+      Online
+    </span>
+  );
+}
 
 interface DutyMarkingViewProps {
   currentUser: User;
@@ -507,7 +520,10 @@ export function DutyMarkingView({
           {orderedStudents.map(student => (
             <tr key={student.id} className="border-b border-gray-100">
               <td className="py-2.5 pr-4 font-medium text-gray-900">
-                {student.name}
+                <span className="flex items-center gap-1.5">
+                  {student.name}
+                  {student.isOnlineStudent && <OnlineChip />}
+                </span>
               </td>
               {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => (
                 <td key={status} className="py-2.5 px-2 text-center">
@@ -577,7 +593,10 @@ export function DutyMarkingView({
                     {student.avatarUrl ? <img src={student.avatarUrl} alt="" className="h-full w-full object-cover" /> : getInitials(student.name)}
                   </span>
                   <div className="min-w-0">
-                    <p className="truncate font-semibold text-[#171717]">{student.name}</p>
+                    <p className="flex items-center gap-1.5 truncate font-semibold text-[#171717]">
+                      <span className="truncate">{student.name}</span>
+                      {student.isOnlineStudent && <OnlineChip />}
+                    </p>
                     <p className="text-xs capitalize text-[#737373]">{selectedStatus}</p>
                   </div>
                 </div>

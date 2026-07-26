@@ -21,6 +21,7 @@ function mapProfileToUser(row: {
   avatar_url?: string | null;
   preferred_language?: string | null;
   teaching_course_types?: string[] | null;
+  is_online_student?: boolean | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
 }): User {
   const teachingCourseTypes = (row.teaching_course_types ?? [])
@@ -37,6 +38,7 @@ function mapProfileToUser(row: {
     avatarUrl: row.avatar_url ?? null,
     preferredLanguage: row.preferred_language === 'bg' ? 'bg' : 'en',
     teachingCourseTypes,
+    isOnlineStudent: row.is_online_student ?? false,
     notificationPreferences: {
       announcements: true,
       roleChange: true,
@@ -106,6 +108,7 @@ export function useUsers() {
           ...(user.firstName !== undefined && { first_name: user.firstName }),
           ...(user.lastName !== undefined && { last_name: user.lastName }),
           ...(user.teachingCourseTypes !== undefined && { teaching_course_types: user.teachingCourseTypes }),
+          ...(user.isOnlineStudent !== undefined && { is_online_student: user.isOnlineStudent }),
         })
         .eq('id', user.id);
 
@@ -133,6 +136,7 @@ export function useUsers() {
           ...(updates.firstName !== undefined && { first_name: updates.firstName }),
           ...(updates.lastName !== undefined && { last_name: updates.lastName }),
           ...(updates.teachingCourseTypes !== undefined && { teaching_course_types: updates.teachingCourseTypes }),
+          ...(updates.isOnlineStudent !== undefined && { is_online_student: updates.isOnlineStudent }),
         })
         .eq('id', id);
 

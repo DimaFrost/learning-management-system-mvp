@@ -20,6 +20,7 @@ export interface User {
   avatarUrl: string | null;
   preferredLanguage: 'en' | 'bg';
   teachingCourseTypes: CourseType[];
+  isOnlineStudent: boolean;
   notificationPreferences: {
     announcements: boolean;
     roleChange: boolean;

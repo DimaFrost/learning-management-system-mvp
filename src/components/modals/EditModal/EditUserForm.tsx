@@ -1,4 +1,4 @@
-import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
+import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, Wifi, X } from 'lucide-react';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Course, CourseStudent, CourseType, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
@@ -377,6 +377,7 @@ export function EditUserForm({
           </div>
 
           {activeSettingsTab === 'student' && (
+            <div className="space-y-3">
             <AssignmentPanel icon={BookOpen} title="Student year group" detail="Choose the active year group for this student. This saves when you press Update.">
               <div className="grid gap-2 sm:grid-cols-2">
                 {activeYearGroupChoices.map(choice => {
@@ -419,6 +420,38 @@ export function EditUserForm({
                 })}
               </div>
             </AssignmentPanel>
+
+            <AssignmentPanel icon={Wifi} title="Online student" detail="Online students join sessions remotely and are graded against the online attendance requirements. This saves when you press Update.">
+              <button
+                type="button"
+                onClick={() => onChange('isOnlineStudent', !(formData.isOnlineStudent ?? false))}
+                className={`relative flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
+                  formData.isOnlineStudent
+                    ? 'border-[#0ea5e9] bg-[#f0f9ff] text-[#0369a1] shadow-sm ring-2 ring-[#bae6fd]'
+                    : 'border-[#d4d4d4] bg-[#fafafa] text-[#404040] hover:border-[#94a3b8] hover:bg-[#f8fafc]'
+                }`}
+              >
+                {formData.isOnlineStudent && (
+                  <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-[#171717] text-white shadow-sm">
+                    <Check className="h-3.5 w-3.5" />
+                  </span>
+                )}
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/80">
+                  <Wifi className="h-5 w-5" />
+                </span>
+                <span className="min-w-0">
+                  <span className="block text-sm font-semibold">
+                    {formData.isOnlineStudent ? 'Online student' : 'In-person student'}
+                  </span>
+                  <span className="mt-0.5 block text-xs text-[#737373]">
+                    {formData.isOnlineStudent
+                      ? 'Sees the join link for live sessions and uses online attendance requirements'
+                      : 'Attends on site and uses the regular attendance requirements'}
+                  </span>
+                </span>
+              </button>
+            </AssignmentPanel>
+            </div>
           )}
 
           {activeSettingsTab === 'teacher' && (

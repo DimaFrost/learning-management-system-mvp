@@ -16,7 +16,6 @@ import type {
 } from '../../types/lms';
 import { formatPercent } from '../../utils/attendanceUtils';
 import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
-
 interface MyAttendanceViewProps {
   currentUser: User;
   courses: Course[];

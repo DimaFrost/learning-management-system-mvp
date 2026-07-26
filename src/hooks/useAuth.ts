@@ -20,6 +20,8 @@ async function fetchProfileFromDb(userId: string): Promise<User> {
     lastName: data.last_name ?? '',
     avatarUrl: data.avatar_url ?? null,
     preferredLanguage: data.preferred_language === 'bg' ? 'bg' : 'en',
+    teachingCourseTypes: data.teaching_course_types ?? [],
+    isOnlineStudent: data.is_online_student ?? false,
     notificationPreferences: data.notification_preferences ?? {
       announcements: true,
       roleChange: true,

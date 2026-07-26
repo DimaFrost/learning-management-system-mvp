@@ -29,6 +29,9 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | duty_schedule | id |
 | duty_transfer_requests | id |
 | google_docs_connections | id |
+| grade_categories | id |
+| grade_settings | id |
+| grading_periods | id |
 | homework_assignments | id |
 | homework_comments | id |
 | homework_submissions | id |
@@ -111,8 +114,13 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | duty_transfer_requests.resolved_by | profiles.id |
 | duty_transfer_requests.to_student_id | profiles.id |
 | google_docs_connections.connected_by | profiles.id |
+| grade_categories.course_id | courses.id |
+| grade_settings.course_id | courses.id |
+| grading_periods.course_id | courses.id |
 | homework_assignments.author_id | profiles.id |
 | homework_assignments.class_id | classes.id |
+| homework_assignments.grade_category_id | grade_categories.id |
+| homework_assignments.grading_period_id | grading_periods.id |
 | homework_assignments.subject_id | subjects.id |
 | homework_comments.author_id | profiles.id |
 | homework_comments.submission_id | homework_submissions.id |

@@ -103,12 +103,13 @@ const topics: KnowledgeTopic[] = [
     summary: 'Directory, pending access, enrollments, roles, responsibilities, mentors, team leaders, and staff assignments.',
     icon: Users,
     tone: 'green',
-    keywords: ['users', 'people', 'roles', 'students', 'teachers', 'mentors', 'team leaders', 'directory', 'enrollments'],
+    keywords: ['users', 'people', 'roles', 'students', 'teachers', 'mentors', 'team leaders', 'directory', 'enrollments', 'online students'],
     essentials: [
       'People is the visible name for users and profiles.',
       'Roles control workspaces: administrator, teacher, translator, mentor, team leader, and student.',
       'Student year groups use the roman numeral year badge. Active First Year and Second Year have distinct visual styles.',
       'Edit person can assign roles, student year group, teacher year-group scope, mentor/mentee links, and ministry teams led.',
+      'The student tab in Edit person has an Online student toggle. Online students get an Online badge in the directory and attendance rosters, see the Join live session button on My Classwork, and are scored against the online attendance requirements.',
     ],
     steps: [
       'Use Pending access when a new Google-authenticated user needs a real role.',
@@ -236,19 +237,21 @@ const topics: KnowledgeTopic[] = [
     summary: 'Four independent graduation gates: Classes, The Well, Ministry, and Activation Saturday, with late counting as half credit.',
     icon: ClipboardList,
     tone: 'amber',
-    keywords: ['attendance', 'classes', 'the well', 'ministry', 'activation saturday', 'on duty', 'corrections'],
+    keywords: ['attendance', 'classes', 'the well', 'ministry', 'activation saturday', 'on duty', 'corrections', 'online students', 'meet link', 'live session'],
     essentials: [
       'Weekly classes require 80% attendance credit.',
       'The Well officially requires two credits per month, with a yearly fallback score.',
       'Ministry is based on team leader reports and configurable team requirements.',
       'Activation Saturday allows at most one lost credit.',
       'Two late records equal one absent everywhere attendance is scored.',
+      'Online students (flagged in People) have their own requirements row: use the Regular/Online switcher in Settings to configure each audience. Online requirements start identical to the regular ones.',
+      'The school-wide Google Meet link lives at the top of Attendance Settings. Online students see a Join live session button on My Classwork that opens this link in a new tab; marking stays manual.',
     ],
     steps: [
       'Use Overview for graduation readiness across all gates.',
       'Use each gate page for the records and progress specific to that activity.',
       'Use On Duty Schedule for attendance keepers, not ministry team leaders.',
-      'Use Settings to adjust rules without code changes.',
+      'Use Settings to adjust rules without code changes, including the online student requirements and the live session Meet link.',
     ],
     visual: [
       { label: 'Classes', icon: CalendarDays, hint: 'Tue/Thu sessions' },

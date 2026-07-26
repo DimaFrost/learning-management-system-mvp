@@ -2,14 +2,14 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-23T13:35:55.287Z
+Generated at: 2026-07-26T18:52:14.144Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 50
+Exposed tables/views: 53
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -20,7 +20,7 @@ Exposed tables/views: 50
 | announcement_reactions | 5 | [announcement_reactions](./tables/announcement_reactions.md) |
 | announcements | 16 | [announcements](./tables/announcements.md) |
 | attendance_correction_requests | 17 | [attendance_correction_requests](./tables/attendance_correction_requests.md) |
-| attendance_settings | 41 | [attendance_settings](./tables/attendance_settings.md) |
+| attendance_settings | 42 | [attendance_settings](./tables/attendance_settings.md) |
 | book_reading_assignments | 11 | [book_reading_assignments](./tables/book_reading_assignments.md) |
 | book_reading_submission_comments | 5 | [book_reading_submission_comments](./tables/book_reading_submission_comments.md) |
 | book_reading_submissions | 16 | [book_reading_submissions](./tables/book_reading_submissions.md) |
@@ -34,9 +34,12 @@ Exposed tables/views: 50
 | duty_schedule | 7 | [duty_schedule](./tables/duty_schedule.md) |
 | duty_transfer_requests | 11 | [duty_transfer_requests](./tables/duty_transfer_requests.md) |
 | google_docs_connections | 10 | [google_docs_connections](./tables/google_docs_connections.md) |
-| homework_assignments | 12 | [homework_assignments](./tables/homework_assignments.md) |
+| grade_categories | 10 | [grade_categories](./tables/grade_categories.md) |
+| grade_settings | 6 | [grade_settings](./tables/grade_settings.md) |
+| grading_periods | 8 | [grading_periods](./tables/grading_periods.md) |
+| homework_assignments | 17 | [homework_assignments](./tables/homework_assignments.md) |
 | homework_comments | 5 | [homework_comments](./tables/homework_comments.md) |
-| homework_submissions | 17 | [homework_submissions](./tables/homework_submissions.md) |
+| homework_submissions | 19 | [homework_submissions](./tables/homework_submissions.md) |
 | mentorship_logs | 11 | [mentorship_logs](./tables/mentorship_logs.md) |
 | messages | 8 | [messages](./tables/messages.md) |
 | ministry_rotations | 11 | [ministry_rotations](./tables/ministry_rotations.md) |
@@ -47,7 +50,7 @@ Exposed tables/views: 50
 | notification_deliveries | 10 | [notification_deliveries](./tables/notification_deliveries.md) |
 | notification_jobs | 13 | [notification_jobs](./tables/notification_jobs.md) |
 | prayer_schedule | 6 | [prayer_schedule](./tables/prayer_schedule.md) |
-| profiles | 13 | [profiles](./tables/profiles.md) |
+| profiles | 14 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | stream_course_settings | 8 | [stream_course_settings](./tables/stream_course_settings.md) |
 | student_tuition_accounts | 9 | [student_tuition_accounts](./tables/student_tuition_accounts.md) |

@@ -3,7 +3,7 @@
 # homework_assignments
 
 
-Column count: 12
+Column count: 17
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -19,6 +19,11 @@ Column count: 12
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
 | subject_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `subjects.id`.<fk table='subjects' column='id'/> |
 | grading_due_date | string:date | no | no |  |  |
+| work_type | string:text | yes | no | assignment |  |
+| question_type | string:text | no | no |  |  |
+| question_options | unknown:jsonb | yes | no |  |  |
+| grade_category_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `grade_categories.id`.<fk table='grade_categories' column='id'/> |
+| grading_period_id | integer:bigint | no | no |  | Note:<br>This is a Foreign Key to `grading_periods.id`.<fk table='grading_periods' column='id'/> |
 
 ## Raw Definition
 
@@ -30,7 +35,9 @@ Column count: 12
     "title",
     "max_points",
     "created_at",
-    "updated_at"
+    "updated_at",
+    "work_type",
+    "question_options"
   ],
   "properties": {
     "id": {
@@ -87,6 +94,28 @@ Column count: 12
     "grading_due_date": {
       "format": "date",
       "type": "string"
+    },
+    "work_type": {
+      "default": "assignment",
+      "format": "text",
+      "type": "string"
+    },
+    "question_type": {
+      "format": "text",
+      "type": "string"
+    },
+    "question_options": {
+      "format": "jsonb"
+    },
+    "grade_category_id": {
+      "description": "Note:\nThis is a Foreign Key to `grade_categories.id`.<fk table='grade_categories' column='id'/>",
+      "format": "bigint",
+      "type": "integer"
+    },
+    "grading_period_id": {
+      "description": "Note:\nThis is a Foreign Key to `grading_periods.id`.<fk table='grading_periods' column='id'/>",
+      "format": "bigint",
+      "type": "integer"
     }
   },
   "type": "object"

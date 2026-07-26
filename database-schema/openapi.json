@@ -40,6 +40,194 @@
         ]
       }
     },
+    "/grade_categories": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.default_points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.weight_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.color"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/grade_categories"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "grade_categories"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.grade_categories"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "grade_categories"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.default_points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.weight_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.color"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grade_categories"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.default_points"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.weight_percent"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.color"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.sort_order"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_categories.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.grade_categories"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grade_categories"
+        ]
+      }
+    },
     "/the_well_session_attendance": {
       "get": {
         "parameters": [
@@ -384,6 +572,21 @@
             "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_assignments.work_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_options"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grade_category_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_period_id"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -483,6 +686,21 @@
             "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_assignments.work_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_options"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grade_category_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_period_id"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -532,6 +750,21 @@
           },
           {
             "$ref": "#/parameters/rowFilter.homework_assignments.grading_due_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.work_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_type"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.question_options"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grade_category_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_assignments.grading_period_id"
           },
           {
             "$ref": "#/parameters/body.homework_assignments"
@@ -3109,6 +3342,9 @@
             "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.is_online_student"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -3211,6 +3447,9 @@
             "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.is_online_student"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -3263,6 +3502,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.profiles.teaching_course_types"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.profiles.is_online_student"
           },
           {
             "$ref": "#/parameters/body.profiles"
@@ -4069,6 +4311,176 @@
         ]
       }
     },
+    "/grading_periods": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/grading_periods"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "grading_periods"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.grading_periods"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "grading_periods"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grading_periods"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.name"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.start_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.end_date"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.active"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grading_periods.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.grading_periods"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grading_periods"
+        ]
+      }
+    },
     "/tuition_installments": {
       "get": {
         "parameters": [
@@ -4688,6 +5100,12 @@
             "$ref": "#/parameters/rowFilter.homework_submissions.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_submissions.response_text"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_submissions.selected_option"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -4802,6 +5220,12 @@
             "$ref": "#/parameters/rowFilter.homework_submissions.updated_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.homework_submissions.response_text"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_submissions.selected_option"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -4866,6 +5290,12 @@
           },
           {
             "$ref": "#/parameters/rowFilter.homework_submissions.updated_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_submissions.response_text"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.homework_submissions.selected_option"
           },
           {
             "$ref": "#/parameters/body.homework_submissions"
@@ -7124,6 +7554,9 @@
             "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
           },
           {
+            "$ref": "#/parameters/rowFilter.attendance_settings.audience"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -7310,6 +7743,9 @@
             "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
           },
           {
+            "$ref": "#/parameters/rowFilter.attendance_settings.audience"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -7446,6 +7882,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.attendance_settings.remind_missing_ministry_attendance"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.attendance_settings.audience"
           },
           {
             "$ref": "#/parameters/body.attendance_settings"
@@ -8886,6 +9325,158 @@
         ]
       }
     },
+    "/grade_settings": {
+      "get": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.calculation_method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.show_overall_grade_to_students"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/order"
+          },
+          {
+            "$ref": "#/parameters/range"
+          },
+          {
+            "$ref": "#/parameters/rangeUnit"
+          },
+          {
+            "$ref": "#/parameters/offset"
+          },
+          {
+            "$ref": "#/parameters/limit"
+          },
+          {
+            "$ref": "#/parameters/preferCount"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "items": {
+                "$ref": "#/definitions/grade_settings"
+              },
+              "type": "array"
+            }
+          },
+          "206": {
+            "description": "Partial Content"
+          }
+        },
+        "tags": [
+          "grade_settings"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/body.grade_settings"
+          },
+          {
+            "$ref": "#/parameters/select"
+          },
+          {
+            "$ref": "#/parameters/preferPost"
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created"
+          }
+        },
+        "tags": [
+          "grade_settings"
+        ]
+      },
+      "delete": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.calculation_method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.show_overall_grade_to_students"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grade_settings"
+        ]
+      },
+      "patch": {
+        "parameters": [
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.course_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.calculation_method"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.show_overall_grade_to_students"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.grade_settings.updated_at"
+          },
+          {
+            "$ref": "#/parameters/body.grade_settings"
+          },
+          {
+            "$ref": "#/parameters/preferReturn"
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "grade_settings"
+        ]
+      }
+    },
     "/duty_transfer_requests": {
       "get": {
         "parameters": [
@@ -9724,6 +10315,69 @@
     }
   },
   "definitions": {
+    "grade_categories": {
+      "required": [
+        "id",
+        "name",
+        "default_points",
+        "color",
+        "sort_order",
+        "active",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "name": {
+          "format": "text",
+          "type": "string"
+        },
+        "default_points": {
+          "default": 100,
+          "format": "integer",
+          "type": "integer"
+        },
+        "weight_percent": {
+          "format": "numeric",
+          "type": "number"
+        },
+        "color": {
+          "default": "#1a73e8",
+          "format": "text",
+          "type": "string"
+        },
+        "sort_order": {
+          "default": 0,
+          "format": "integer",
+          "type": "integer"
+        },
+        "active": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "the_well_session_attendance": {
       "required": [
         "id",
@@ -9811,7 +10465,9 @@
         "title",
         "max_points",
         "created_at",
-        "updated_at"
+        "updated_at",
+        "work_type",
+        "question_options"
       ],
       "properties": {
         "id": {
@@ -9868,6 +10524,28 @@
         "grading_due_date": {
           "format": "date",
           "type": "string"
+        },
+        "work_type": {
+          "default": "assignment",
+          "format": "text",
+          "type": "string"
+        },
+        "question_type": {
+          "format": "text",
+          "type": "string"
+        },
+        "question_options": {
+          "format": "jsonb"
+        },
+        "grade_category_id": {
+          "description": "Note:\nThis is a Foreign Key to `grade_categories.id`.<fk table='grade_categories' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "grading_period_id": {
+          "description": "Note:\nThis is a Foreign Key to `grading_periods.id`.<fk table='grading_periods' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
         }
       },
       "type": "object"
@@ -10700,7 +11378,8 @@
         "last_name",
         "notification_preferences",
         "preferred_language",
-        "teaching_course_types"
+        "teaching_course_types",
+        "is_online_student"
       ],
       "properties": {
         "id": {
@@ -10765,6 +11444,11 @@
             "type": "string"
           },
           "type": "array"
+        },
+        "is_online_student": {
+          "default": false,
+          "format": "boolean",
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -11017,6 +11701,57 @@
         },
         "value": {
           "format": "jsonb"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "grading_periods": {
+      "required": [
+        "id",
+        "name",
+        "start_date",
+        "end_date",
+        "active",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "name": {
+          "format": "text",
+          "type": "string"
+        },
+        "start_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "end_date": {
+          "format": "date",
+          "type": "string"
+        },
+        "active": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
         },
         "updated_at": {
           "default": "now()",
@@ -11295,6 +12030,14 @@
         "updated_at": {
           "default": "now()",
           "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "response_text": {
+          "format": "text",
+          "type": "string"
+        },
+        "selected_option": {
+          "format": "text",
           "type": "string"
         }
       },
@@ -12031,7 +12774,8 @@
         "show_fallback_scores",
         "remind_missing_class_attendance",
         "remind_missing_well_attendance",
-        "remind_missing_ministry_attendance"
+        "remind_missing_ministry_attendance",
+        "audience"
       ],
       "properties": {
         "id": {
@@ -12241,6 +12985,11 @@
           "default": true,
           "format": "boolean",
           "type": "boolean"
+        },
+        "audience": {
+          "default": "regular",
+          "format": "text",
+          "type": "string"
         }
       },
       "type": "object"
@@ -12652,6 +13401,48 @@
       },
       "type": "object"
     },
+    "grade_settings": {
+      "required": [
+        "id",
+        "calculation_method",
+        "show_overall_grade_to_students",
+        "created_at",
+        "updated_at"
+      ],
+      "properties": {
+        "id": {
+          "description": "Note:\nThis is a Primary Key.<pk/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "course_id": {
+          "description": "Note:\nThis is a Foreign Key to `courses.id`.<fk table='courses' column='id'/>",
+          "format": "bigint",
+          "type": "integer"
+        },
+        "calculation_method": {
+          "default": "total_points",
+          "format": "text",
+          "type": "string"
+        },
+        "show_overall_grade_to_students": {
+          "default": true,
+          "format": "boolean",
+          "type": "boolean"
+        },
+        "created_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "updated_at": {
+          "default": "now()",
+          "format": "timestamp with time zone",
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
     "duty_transfer_requests": {
       "required": [
         "id",
@@ -12969,6 +13760,75 @@
       "in": "query",
       "type": "string"
     },
+    "body.grade_categories": {
+      "name": "grade_categories",
+      "description": "grade_categories",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/grade_categories"
+      }
+    },
+    "rowFilter.grade_categories.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.name": {
+      "name": "name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.default_points": {
+      "name": "default_points",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.weight_percent": {
+      "name": "weight_percent",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.color": {
+      "name": "color",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.sort_order": {
+      "name": "sort_order",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.active": {
+      "name": "active",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_categories.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.the_well_session_attendance": {
       "name": "the_well_session_attendance",
       "description": "the_well_session_attendance",
@@ -13136,6 +13996,36 @@
     },
     "rowFilter.homework_assignments.grading_due_date": {
       "name": "grading_due_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.work_type": {
+      "name": "work_type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.question_type": {
+      "name": "question_type",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.question_options": {
+      "name": "question_options",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.grade_category_id": {
+      "name": "grade_category_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_assignments.grading_period_id": {
+      "name": "grading_period_id",
       "required": false,
       "in": "query",
       "type": "string"
@@ -14172,6 +15062,12 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.profiles.is_online_student": {
+      "name": "is_online_student",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.student_tuition_payments": {
       "name": "student_tuition_payments",
       "description": "student_tuition_payments",
@@ -14467,6 +15363,63 @@
       "type": "string"
     },
     "rowFilter.settings.updated_at": {
+      "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.grading_periods": {
+      "name": "grading_periods",
+      "description": "grading_periods",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/grading_periods"
+      }
+    },
+    "rowFilter.grading_periods.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.name": {
+      "name": "name",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.start_date": {
+      "name": "start_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.end_date": {
+      "name": "end_date",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.active": {
+      "name": "active",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grading_periods.updated_at": {
       "name": "updated_at",
       "required": false,
       "in": "query",
@@ -14786,6 +15739,18 @@
     },
     "rowFilter.homework_submissions.updated_at": {
       "name": "updated_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_submissions.response_text": {
+      "name": "response_text",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.homework_submissions.selected_option": {
+      "name": "selected_option",
       "required": false,
       "in": "query",
       "type": "string"
@@ -15834,6 +16799,12 @@
       "in": "query",
       "type": "string"
     },
+    "rowFilter.attendance_settings.audience": {
+      "name": "audience",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
     "body.ministry_service_attendance": {
       "name": "ministry_service_attendance",
       "description": "ministry_service_attendance",
@@ -16271,6 +17242,51 @@
     },
     "rowFilter.announcement_comments.created_at": {
       "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "body.grade_settings": {
+      "name": "grade_settings",
+      "description": "grade_settings",
+      "required": false,
+      "in": "body",
+      "schema": {
+        "$ref": "#/definitions/grade_settings"
+      }
+    },
+    "rowFilter.grade_settings.id": {
+      "name": "id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_settings.course_id": {
+      "name": "course_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_settings.calculation_method": {
+      "name": "calculation_method",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_settings.show_overall_grade_to_students": {
+      "name": "show_overall_grade_to_students",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_settings.created_at": {
+      "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.grade_settings.updated_at": {
+      "name": "updated_at",
       "required": false,
       "in": "query",
       "type": "string"

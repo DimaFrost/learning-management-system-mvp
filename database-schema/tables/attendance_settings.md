@@ -3,7 +3,7 @@
 # attendance_settings
 
 
-Column count: 41
+Column count: 42
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -48,6 +48,7 @@ Column count: 41
 | remind_missing_class_attendance | boolean:boolean | yes | no | true |  |
 | remind_missing_well_attendance | boolean:boolean | yes | no | true |  |
 | remind_missing_ministry_attendance | boolean:boolean | yes | no | true |  |
+| audience | string:text | yes | no | regular |  |
 
 ## Raw Definition
 
@@ -94,7 +95,8 @@ Column count: 41
     "show_fallback_scores",
     "remind_missing_class_attendance",
     "remind_missing_well_attendance",
-    "remind_missing_ministry_attendance"
+    "remind_missing_ministry_attendance",
+    "audience"
   ],
   "properties": {
     "id": {
@@ -304,6 +306,11 @@ Column count: 41
       "default": true,
       "format": "boolean",
       "type": "boolean"
+    },
+    "audience": {
+      "default": "regular",
+      "format": "text",
+      "type": "string"
     }
   },
   "type": "object"

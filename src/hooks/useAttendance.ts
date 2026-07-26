@@ -198,6 +198,7 @@ export function useAttendance(
   users: User[]
 ) {
   const [settings, setSettings] = useState<AttendanceSettings>(DEFAULT_ATTENDANCE_SETTINGS);
+  const [onlineSettings, setOnlineSettings] = useState<AttendanceSettings>(DEFAULT_ATTENDANCE_SETTINGS);
   const [dutySchedule, setDutySchedule] = useState<DutyScheduleEntry[]>([]);
   const [prayerSchedule, setPrayerSchedule] = useState<PrayerScheduleEntry[]>([]);
   const [wellSchedule, setWellSchedule] = useState<WellScheduleEntry[]>([]);
@@ -230,7 +231,7 @@ export function useAttendance(
       const [settingsRes, dutyRes, prayerRes, wellScheduleRes, transferRes, correctionRes,
         classAttRes, wellRes, wellSessionRes, sundayRes,
         ministryTeamsRes, ministryMembersRes, ministryRotationsRes, ministrySessionsRes, ministryAttendanceRes] = await Promise.all([
-        supabase.from('attendance_settings').select('*').single(),
+        supabase.from('attendance_settings').select('*').order('id', { ascending: true }),
         supabase.from('duty_schedule').select(`
           id, course_id, student_id, week_start, week_end, status,
           student:profiles!student_id(id, name)
@@ -313,8 +314,14 @@ export function useAttendance(
         if (ministryAttendanceRes.error) throw ministryAttendanceRes.error;
       }
 
-      if (settingsRes.data) {
-        setSettings(mapAttendanceSettings(settingsRes.data as AttendanceSettingsRow));
+      const settingsRows = (settingsRes.data ?? []) as AttendanceSettingsRow[];
+      const regularRow = settingsRows.find(row => row.audience === 'regular' || row.id === 1) ?? settingsRows[0];
+      const onlineRow = settingsRows.find(row => row.audience === 'online' || row.id === 2) ?? regularRow;
+      if (regularRow) {
+        setSettings(mapAttendanceSettings(regularRow));
+      }
+      if (onlineRow) {
+        setOnlineSettings(mapAttendanceSettings(onlineRow));
       }
 
       setDutySchedule((dutyRes.data ?? []).map(row => ({
@@ -1237,53 +1244,55 @@ export function useAttendance(
   // SETTINGS UPDATE
   // ============================================
   const updateSettings = async (
-    newSettings: Partial<AttendanceSettings>
+    newSettings: Partial<AttendanceSettings>,
+    audience: 'regular' | 'online' = 'regular'
   ): Promise<void> => {
+    const current = audience === 'online' ? onlineSettings : settings;
     const { error: updateError } = await supabase
       .from('attendance_settings')
       .update({
-        present_credit: newSettings.presentCredit ?? settings.presentCredit,
-        late_credit: newSettings.lateCredit ?? settings.lateCredit,
-        absent_credit: newSettings.absentCredit ?? settings.absentCredit,
-        late_uses_global_credit: newSettings.lateUsesGlobalCredit ?? settings.lateUsesGlobalCredit,
-        late_class_weight: newSettings.lateCredit ?? settings.lateCredit,
-        late_saturday_weight: newSettings.lateCredit ?? settings.lateCredit,
-        late_well_weight: newSettings.lateCredit ?? settings.lateCredit,
-        graduation_threshold: newSettings.graduationThreshold ?? settings.graduationThreshold,
-        class_required_percent: newSettings.classRequiredPercent ?? settings.classRequiredPercent,
-        class_included_weekdays: newSettings.classIncludedWeekdays ?? settings.classIncludedWeekdays,
-        class_sessions_per_day: newSettings.classSessionsPerDay ?? settings.classSessionsPerDay,
-        class_joint_counts_once: newSettings.classJointCountsOnce ?? settings.classJointCountsOnce,
-        the_well_enabled: newSettings.theWellEnabled ?? settings.theWellEnabled,
-        the_well_weekday: newSettings.theWellWeekday ?? settings.theWellWeekday,
-        the_well_required_per_month: newSettings.theWellRequiredPerMonth ?? settings.theWellRequiredPerMonth,
-        the_well_fallback_enabled: newSettings.theWellFallbackEnabled ?? settings.theWellFallbackEnabled,
-        the_well_fallback_percent: newSettings.theWellFallbackPercent ?? settings.theWellFallbackPercent,
-        activation_enabled: newSettings.activationEnabled ?? settings.activationEnabled,
-        activation_frequency: newSettings.activationFrequency ?? settings.activationFrequency,
-        activation_max_lost_credits: newSettings.activationMaxLostCredits ?? settings.activationMaxLostCredits,
-        activation_detection_rule: newSettings.activationDetectionRule ?? settings.activationDetectionRule,
-        ministry_enabled: newSettings.ministryEnabled ?? settings.ministryEnabled,
-        ministry_sunday_required_credits: newSettings.ministrySundayRequiredCredits ?? settings.ministrySundayRequiredCredits,
-        ministry_sunday_period_months: newSettings.ministrySundayPeriodMonths ?? settings.ministrySundayPeriodMonths,
-        ministry_first_year_rotation_months: newSettings.ministryFirstYearRotationMonths ?? settings.ministryFirstYearRotationMonths,
-        ministry_second_year_rotation_months: newSettings.ministrySecondYearRotationMonths ?? settings.ministrySecondYearRotationMonths,
-        ministry_team_leaders_can_mark: newSettings.ministryTeamLeadersCanMark ?? settings.ministryTeamLeadersCanMark,
-        ministry_admins_can_override_rotations: newSettings.ministryAdminsCanOverrideRotations ?? settings.ministryAdminsCanOverrideRotations,
-        status_on_track_threshold: newSettings.statusOnTrackThreshold ?? settings.statusOnTrackThreshold,
-        status_at_risk_threshold: newSettings.statusAtRiskThreshold ?? settings.statusAtRiskThreshold,
-        status_failing_threshold: newSettings.statusFailingThreshold ?? settings.statusFailingThreshold,
-        show_classes_on_student_view: newSettings.showClassesOnStudentView ?? settings.showClassesOnStudentView,
-        show_the_well_on_student_view: newSettings.showTheWellOnStudentView ?? settings.showTheWellOnStudentView,
-        show_activation_on_student_view: newSettings.showActivationOnStudentView ?? settings.showActivationOnStudentView,
-        show_ministry_on_student_view: newSettings.showMinistryOnStudentView ?? settings.showMinistryOnStudentView,
-        show_fallback_scores: newSettings.showFallbackScores ?? settings.showFallbackScores,
-        remind_missing_class_attendance: newSettings.remindMissingClassAttendance ?? settings.remindMissingClassAttendance,
-        remind_missing_well_attendance: newSettings.remindMissingWellAttendance ?? settings.remindMissingWellAttendance,
-        remind_missing_ministry_attendance: newSettings.remindMissingMinistryAttendance ?? settings.remindMissingMinistryAttendance,
-        sunday_required_per_month: newSettings.ministrySundayRequiredCredits ?? settings.ministrySundayRequiredCredits,
+        present_credit: newSettings.presentCredit ?? current.presentCredit,
+        late_credit: newSettings.lateCredit ?? current.lateCredit,
+        absent_credit: newSettings.absentCredit ?? current.absentCredit,
+        late_uses_global_credit: newSettings.lateUsesGlobalCredit ?? current.lateUsesGlobalCredit,
+        late_class_weight: newSettings.lateCredit ?? current.lateCredit,
+        late_saturday_weight: newSettings.lateCredit ?? current.lateCredit,
+        late_well_weight: newSettings.lateCredit ?? current.lateCredit,
+        graduation_threshold: newSettings.graduationThreshold ?? current.graduationThreshold,
+        class_required_percent: newSettings.classRequiredPercent ?? current.classRequiredPercent,
+        class_included_weekdays: newSettings.classIncludedWeekdays ?? current.classIncludedWeekdays,
+        class_sessions_per_day: newSettings.classSessionsPerDay ?? current.classSessionsPerDay,
+        class_joint_counts_once: newSettings.classJointCountsOnce ?? current.classJointCountsOnce,
+        the_well_enabled: newSettings.theWellEnabled ?? current.theWellEnabled,
+        the_well_weekday: newSettings.theWellWeekday ?? current.theWellWeekday,
+        the_well_required_per_month: newSettings.theWellRequiredPerMonth ?? current.theWellRequiredPerMonth,
+        the_well_fallback_enabled: newSettings.theWellFallbackEnabled ?? current.theWellFallbackEnabled,
+        the_well_fallback_percent: newSettings.theWellFallbackPercent ?? current.theWellFallbackPercent,
+        activation_enabled: newSettings.activationEnabled ?? current.activationEnabled,
+        activation_frequency: newSettings.activationFrequency ?? current.activationFrequency,
+        activation_max_lost_credits: newSettings.activationMaxLostCredits ?? current.activationMaxLostCredits,
+        activation_detection_rule: newSettings.activationDetectionRule ?? current.activationDetectionRule,
+        ministry_enabled: newSettings.ministryEnabled ?? current.ministryEnabled,
+        ministry_sunday_required_credits: newSettings.ministrySundayRequiredCredits ?? current.ministrySundayRequiredCredits,
+        ministry_sunday_period_months: newSettings.ministrySundayPeriodMonths ?? current.ministrySundayPeriodMonths,
+        ministry_first_year_rotation_months: newSettings.ministryFirstYearRotationMonths ?? current.ministryFirstYearRotationMonths,
+        ministry_second_year_rotation_months: newSettings.ministrySecondYearRotationMonths ?? current.ministrySecondYearRotationMonths,
+        ministry_team_leaders_can_mark: newSettings.ministryTeamLeadersCanMark ?? current.ministryTeamLeadersCanMark,
+        ministry_admins_can_override_rotations: newSettings.ministryAdminsCanOverrideRotations ?? current.ministryAdminsCanOverrideRotations,
+        status_on_track_threshold: newSettings.statusOnTrackThreshold ?? current.statusOnTrackThreshold,
+        status_at_risk_threshold: newSettings.statusAtRiskThreshold ?? current.statusAtRiskThreshold,
+        status_failing_threshold: newSettings.statusFailingThreshold ?? current.statusFailingThreshold,
+        show_classes_on_student_view: newSettings.showClassesOnStudentView ?? current.showClassesOnStudentView,
+        show_the_well_on_student_view: newSettings.showTheWellOnStudentView ?? current.showTheWellOnStudentView,
+        show_activation_on_student_view: newSettings.showActivationOnStudentView ?? current.showActivationOnStudentView,
+        show_ministry_on_student_view: newSettings.showMinistryOnStudentView ?? current.showMinistryOnStudentView,
+        show_fallback_scores: newSettings.showFallbackScores ?? current.showFallbackScores,
+        remind_missing_class_attendance: newSettings.remindMissingClassAttendance ?? current.remindMissingClassAttendance,
+        remind_missing_well_attendance: newSettings.remindMissingWellAttendance ?? current.remindMissingWellAttendance,
+        remind_missing_ministry_attendance: newSettings.remindMissingMinistryAttendance ?? current.remindMissingMinistryAttendance,
+        sunday_required_per_month: newSettings.ministrySundayRequiredCredits ?? current.ministrySundayRequiredCredits,
       })
-      .eq('id', 1);
+      .eq('id', audience === 'online' ? 2 : 1);
     if (updateError) throw updateError;
     await fetchAll();
   };
@@ -1309,6 +1318,9 @@ export function useAttendance(
     return enrolledIds.map(studentId => {
       const student = users.find(u => u.id === studentId);
       if (!student) return null;
+
+      // Online students are scored against their own requirements row.
+      const effectiveSettings = student.isOnlineStudent ? onlineSettings : settings;
 
       const myClassAtt = classAttendance.filter(
         a => a.studentId === studentId &&
@@ -1341,14 +1353,14 @@ export function useAttendance(
       );
 
       const classScore = calculateClassScore(
-        myClassAtt, regularClasses.length, settings
+        myClassAtt, regularClasses.length, effectiveSettings
       );
       const satScore = calculateSaturdayScore(
-        mySatAtt, saturdayClasses.length, settings
+        mySatAtt, saturdayClasses.length, effectiveSettings
       );
-      const wellScore = calculateTheWellScore(myWell, settings);
-      const sunScore = calculateSundayScore(mySunday, settings);
-      const ministryCredits = calculateAttendanceCredits(myMinistryAttendance, settings);
+      const wellScore = calculateTheWellScore(myWell, effectiveSettings);
+      const sunScore = calculateSundayScore(mySunday, effectiveSettings);
+      const ministryCredits = calculateAttendanceCredits(myMinistryAttendance, effectiveSettings);
       const ministryRequiredCredits = myMinistryRotations.reduce((total, rotation) => {
         const team = ministryTeams.find(t => t.id === rotation.teamId);
         if (!team) return total;
@@ -1361,21 +1373,21 @@ export function useAttendance(
         return total + (Math.ceil(months / team.requirementPeriodMonths) * team.requiredCredits);
       }, 0);
       const ministryScore = ministryRequiredCredits === 0 ? 1 : Math.min(1, ministryCredits / ministryRequiredCredits);
-      const classCredits = calculateAttendanceCredits(myClassAtt, settings);
-      const classRequiredCredits = regularClasses.length * settings.classRequiredPercent;
-      const saturdayCredits = calculateAttendanceCredits(mySatAtt, settings);
+      const classCredits = calculateAttendanceCredits(myClassAtt, effectiveSettings);
+      const classRequiredCredits = regularClasses.length * effectiveSettings.classRequiredPercent;
+      const saturdayCredits = calculateAttendanceCredits(mySatAtt, effectiveSettings);
       const saturdayLostCredits = Math.max(0, saturdayClasses.length - saturdayCredits);
       const wellCredits = myWell.reduce((sum, record) =>
-        sum + record.timesAttended + (record.timesLate * settings.lateCredit),
+        sum + record.timesAttended + (record.timesLate * effectiveSettings.lateCredit),
         0
       );
-      const wellRequiredCredits = myWell.length * settings.theWellRequiredPerMonth;
-      const wellFallbackRequiredCredits = settings.theWellFallbackEnabled
-        ? Math.max(0, Math.round(course.subjects.flatMap(s => s.classes).length * 0) || myWell.length * 4 * settings.theWellFallbackPercent)
+      const wellRequiredCredits = myWell.length * effectiveSettings.theWellRequiredPerMonth;
+      const wellFallbackRequiredCredits = effectiveSettings.theWellFallbackEnabled
+        ? Math.max(0, Math.round(course.subjects.flatMap(s => s.classes).length * 0) || myWell.length * 4 * effectiveSettings.theWellFallbackPercent)
         : wellRequiredCredits;
       const wellPassing = wellRequiredCredits === 0
         ? true
-        : wellCredits >= wellRequiredCredits || (settings.theWellFallbackEnabled && wellCredits >= wellFallbackRequiredCredits);
+        : wellCredits >= wellRequiredCredits || (effectiveSettings.theWellFallbackEnabled && wellCredits >= wellFallbackRequiredCredits);
       const gates: AttendanceGateSummary[] = [
         {
           key: 'classes',
@@ -1384,7 +1396,7 @@ export function useAttendance(
           requiredCredits: classRequiredCredits,
           possibleCredits: regularClasses.length,
           score: classScore,
-          status: classCredits >= classRequiredCredits ? 'passing' : classScore >= settings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          status: classCredits >= classRequiredCredits ? 'passing' : classScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
           detail: `${classCredits.toFixed(1)} of ${classRequiredCredits.toFixed(1)} required credits`,
         },
         {
@@ -1392,21 +1404,21 @@ export function useAttendance(
           label: 'The Well',
           earnedCredits: wellCredits,
           requiredCredits: wellRequiredCredits,
-          possibleCredits: myWell.length * settings.theWellRequiredPerMonth,
+          possibleCredits: myWell.length * effectiveSettings.theWellRequiredPerMonth,
           score: wellScore,
-          status: wellPassing ? 'passing' : wellScore >= settings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          status: wellPassing ? 'passing' : wellScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
           detail: `${wellCredits.toFixed(1)} monthly credits recorded`,
-          fallbackDetail: settings.theWellFallbackEnabled ? `${wellFallbackRequiredCredits.toFixed(1)} yearly fallback credits required` : undefined,
+          fallbackDetail: effectiveSettings.theWellFallbackEnabled ? `${wellFallbackRequiredCredits.toFixed(1)} yearly fallback credits required` : undefined,
         },
         {
           key: 'activation',
           label: 'Activation Saturday',
           earnedCredits: saturdayCredits,
-          requiredCredits: Math.max(0, saturdayClasses.length - settings.activationMaxLostCredits),
+          requiredCredits: Math.max(0, saturdayClasses.length - effectiveSettings.activationMaxLostCredits),
           possibleCredits: saturdayClasses.length,
           score: satScore,
-          status: saturdayLostCredits <= settings.activationMaxLostCredits ? 'passing' : 'failing',
-          detail: `${saturdayLostCredits.toFixed(1)} lost credits; max ${settings.activationMaxLostCredits}`,
+          status: saturdayLostCredits <= effectiveSettings.activationMaxLostCredits ? 'passing' : 'failing',
+          detail: `${saturdayLostCredits.toFixed(1)} lost credits; max ${effectiveSettings.activationMaxLostCredits}`,
         },
         {
           key: 'ministry',
@@ -1415,7 +1427,7 @@ export function useAttendance(
           requiredCredits: ministryRequiredCredits,
           possibleCredits: Math.max(ministryRequiredCredits, myMinistryAttendance.length),
           score: ministryScore,
-          status: ministryCredits >= ministryRequiredCredits ? 'passing' : ministryScore >= settings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          status: ministryCredits >= ministryRequiredCredits ? 'passing' : ministryScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
           detail: ministryRequiredCredits === 0 ? 'No ministry rotation assigned' : `${ministryCredits.toFixed(1)} of ${ministryRequiredCredits.toFixed(1)} service credits`,
         },
       ];
@@ -1449,10 +1461,10 @@ export function useAttendance(
     }).filter((s): s is StudentAttendanceSummary => s !== null);
   }, [courses, courseStudents, users, classAttendance,
     theWellAttendance, sundayAttendance, ministryRotations, ministrySessions,
-    ministryAttendance, ministryTeams, settings]);
+    ministryAttendance, ministryTeams, settings, onlineSettings]);
 
   return {
-    settings, dutySchedule, prayerSchedule, wellSchedule, transferRequests, correctionRequests,
+    settings, onlineSettings, dutySchedule, prayerSchedule, wellSchedule, transferRequests, correctionRequests,
     classAttendance, theWellAttendance, theWellSessionAttendance, sundayAttendance,
     ministryTeams, ministryRotations, ministrySessions, ministryAttendance,
     loading, error,

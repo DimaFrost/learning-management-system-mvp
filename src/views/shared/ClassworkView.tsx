@@ -7,6 +7,7 @@ import { ReviewReadingModal } from '../admin/BooksView';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
+import { JoinLiveSessionBanner } from '../../components/student/JoinLiveSessionBanner';
 import {
   buildSubjectRuns,
   findClass,
@@ -842,6 +843,8 @@ export function ClassworkView({
           </div>
         </div>
       </div>
+
+      {scope === 'student' && <JoinLiveSessionBanner currentUser={currentUser} />}
 
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">

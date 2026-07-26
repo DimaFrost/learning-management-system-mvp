@@ -20,6 +20,7 @@ import type { WorkspaceId } from '../types/workspace';
 import { useAttendance } from '../hooks/useAttendance';
 import { useBooks } from '../hooks/useBooks';
 import { useStreamSettings } from '../hooks/useStreamSettings';
+import { useOnlineSessionSettings } from '../hooks/useOnlineSessionSettings';
 import type { useTuition } from '../hooks/useTuition';
 import { MyCourseView } from './student/MyCourseView';
 import { StudentDashboard } from './student/StudentDashboard';
@@ -281,6 +282,7 @@ export function AppRouter({
   const [assignmentsHomeworkTarget, setAssignmentsHomeworkTarget] = useState<number | null>(null);
   const books = useBooks(currentUser, courses, courseStudents, users);
   const streamSettings = useStreamSettings(currentUser, courses, courseStudents);
+  const { onlineSessionSettings, setOnlineSessionSettings } = useOnlineSessionSettings();
   const openCheckin = (studentId: string, log?: MentorshipLog) =>
     setEditingItem(log ? { type: 'log', data: log, studentId } : { type: 'log', studentId });
   const openSubjectInClasswork = (courseId: number, subjectId: number, classId?: number) => {
@@ -840,6 +842,9 @@ export function AppRouter({
             courseStudents={courseStudents}
             users={users}
             settings={attendance.settings}
+            onlineSettings={attendance.onlineSettings}
+            onlineSessionSettings={onlineSessionSettings}
+            onSaveOnlineSessionSettings={setOnlineSessionSettings}
             dutySchedule={attendance.dutySchedule}
             prayerSchedule={attendance.prayerSchedule}
             wellSchedule={attendance.wellSchedule}

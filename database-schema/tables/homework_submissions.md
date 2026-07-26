@@ -3,7 +3,7 @@
 # homework_submissions
 
 
-Column count: 17
+Column count: 19
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -24,6 +24,8 @@ Column count: 17
 | graded_by | string:uuid | no | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
+| response_text | string:text | no | no |  |  |
+| selected_option | string:text | no | no |  |  |
 
 ## Raw Definition
 
@@ -111,6 +113,14 @@ Column count: 17
     "updated_at": {
       "default": "now()",
       "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "response_text": {
+      "format": "text",
+      "type": "string"
+    },
+    "selected_option": {
+      "format": "text",
       "type": "string"
     }
   },

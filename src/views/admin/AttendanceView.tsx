@@ -16,6 +16,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
   Users,
+  Video,
+  Wifi,
   X,
 } from 'lucide-react';
 import type {
@@ -56,6 +58,7 @@ import {
   getSchoolYearWeeks,
 } from '../../utils/attendanceUtils';
 import { ActiveYearGroupBadge } from './users/usersShared';
+import type { OnlineSessionSettings } from '../../hooks/useOnlineSessionSettings';
 
 type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
 type MinistrySortKey =
@@ -120,6 +123,9 @@ export interface AttendanceViewProps {
   courseStudents: CourseStudent[];
   users: User[];
   settings: AttendanceSettings;
+  onlineSettings: AttendanceSettings;
+  onlineSessionSettings: OnlineSessionSettings;
+  onSaveOnlineSessionSettings: (settings: OnlineSessionSettings) => void;
   dutySchedule: DutyScheduleEntry[];
   prayerSchedule: PrayerScheduleEntry[];
   wellSchedule: WellScheduleEntry[];
@@ -143,7 +149,7 @@ export interface AttendanceViewProps {
   resolveTransferRequest: (requestId: number, approved: boolean) => Promise<void>;
   resolveAttendanceCorrection: (requestId: number, approved: boolean, resolutionNote?: string) => Promise<void>;
   upsertSundayAttendance: (studentId: string, courseId: number, year: number, month: number, timesServed: number) => Promise<void>;
-  updateSettings: (newSettings: Partial<AttendanceSettings>) => Promise<void>;
+  updateSettings: (newSettings: Partial<AttendanceSettings>, audience?: 'regular' | 'online') => Promise<void>;
   upsertMinistryTeam: (input: Partial<MinistryTeam> & { name: string }) => Promise<void>;
   upsertMinistryRotation: (input: Partial<MinistryRotation> & {
     courseId: number;
@@ -771,12 +777,19 @@ export function AttendanceView({
   resolveTransferRequest,
   resolveAttendanceCorrection,
   updateSettings,
+  onlineSettings,
+  onlineSessionSettings,
+  onSaveOnlineSessionSettings,
   upsertMinistryTeam,
   upsertMinistryRotation,
   createMinistrySession,
   markMinistryAttendance,
 }: AttendanceViewProps) {
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
+  const onlineStudentIds = useMemo(
+    () => new Set(users.filter(user => user.isOnlineStudent).map(user => user.id)),
+    [users]
+  );
   const courseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
   const defaultCourseId = courseOptions[0]?.id ?? 0;
   const [courseId, setCourseId] = useState(defaultCourseId);
@@ -790,7 +803,11 @@ export function AttendanceView({
   const [reportDateText, setReportDateText] = useState(() => formatPlatformDate(latestSunday()));
   const reportDatePickerRef = useRef<HTMLInputElement | null>(null);
   const [savingSettings, setSavingSettings] = useState(false);
+  const [settingsAudience, setSettingsAudience] = useState<'regular' | 'online'>('regular');
   const [settingsDraft, setSettingsDraft] = useState(settings);
+  const [meetLinkDraft, setMeetLinkDraft] = useState(onlineSessionSettings.meetLink);
+  const [meetLinkError, setMeetLinkError] = useState<string | null>(null);
+  const [meetLinkSaved, setMeetLinkSaved] = useState(false);
   const [teamDraft, setTeamDraft] = useState({
     name: '',
     nameBg: '',
@@ -848,7 +865,12 @@ export function AttendanceView({
     [activeCourses, courseStudents, users]
   );
 
-  useEffect(() => setSettingsDraft(settings), [settings]);
+  useEffect(
+    () => setSettingsDraft(settingsAudience === 'online' ? onlineSettings : settings),
+    [settings, onlineSettings, settingsAudience]
+  );
+
+  useEffect(() => setMeetLinkDraft(onlineSessionSettings.meetLink), [onlineSessionSettings.meetLink]);
 
   useEffect(() => {
     if (courseOptions.length === 0) {
@@ -1261,10 +1283,31 @@ export function AttendanceView({
   const saveSettings = async () => {
     setSavingSettings(true);
     try {
-      await updateSettings(settingsDraft);
+      await updateSettings(settingsDraft, settingsAudience);
     } finally {
       setSavingSettings(false);
     }
+  };
+
+  const saveMeetLink = () => {
+    const trimmed = meetLinkDraft.trim();
+    if (trimmed) {
+      let valid = false;
+      try {
+        const parsed = new URL(trimmed);
+        valid = parsed.protocol === 'https:' || parsed.protocol === 'http:';
+      } catch {
+        valid = false;
+      }
+      if (!valid) {
+        setMeetLinkError('Enter a full link starting with https:// (e.g. https://meet.google.com/abc-defg-hij).');
+        setMeetLinkSaved(false);
+        return;
+      }
+    }
+    setMeetLinkError(null);
+    onSaveOnlineSessionSettings({ ...onlineSessionSettings, meetLink: trimmed });
+    setMeetLinkSaved(true);
   };
 
   const saveTeam = async () => {
@@ -1512,13 +1555,27 @@ export function AttendanceView({
     );
   };
 
+  const renderOnlineStudentChip = (studentId: string) =>
+    onlineStudentIds.has(studentId) ? (
+      <span
+        className="inline-flex items-center gap-1 rounded-md border border-[#7dd3fc] bg-[#f0f9ff] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#0369a1]"
+        title="Online student — joins sessions remotely"
+      >
+        <Wifi className="h-3 w-3" />
+        Online
+      </span>
+    ) : null;
+
   const renderSummaryStudentCell = (summary: StudentAttendanceSummaryRow) => (
     <div className="flex items-center gap-3">
       <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
         {getInitials(summary.studentName)}
       </span>
       <div className="min-w-0">
-        <p className="truncate font-semibold text-[#171717]">{summary.studentName}</p>
+        <p className="flex items-center gap-1.5 truncate font-semibold text-[#171717]">
+          <span className="truncate">{summary.studentName}</span>
+          {renderOnlineStudentChip(summary.studentId)}
+        </p>
         {selectedYearGroupCourses.length > 1 && (
           <div className="mt-1">
             <ActiveYearGroupBadge course={summary.course} />
@@ -2107,7 +2164,10 @@ export function AttendanceView({
                   const value = attendanceDrafts[selectedSession.id]?.[student.id] ?? existing?.status ?? 'present';
                   return (
                     <div key={student.id} className="flex items-center justify-between gap-3 rounded-lg border border-[#e5e5e5] px-3 py-2">
-                      <span className="font-medium text-[#171717]">{student.name}</span>
+                      <span className="flex items-center gap-1.5 font-medium text-[#171717]">
+                        {student.name}
+                        {renderOnlineStudentChip(student.id)}
+                      </span>
                       <select
                         value={value}
                         onChange={event => setAttendanceDrafts(prev => ({
@@ -2718,6 +2778,77 @@ export function AttendanceView({
   const renderSettings = () => (
     <div className="space-y-4">
       <SectionCard className="p-4">
+        <div className="flex items-start gap-3">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#f0f9ff] text-[#0369a1]">
+            <Video className="h-4 w-4" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h3 className="font-semibold text-[#171717]">Online session link</h3>
+            <p className="mt-0.5 text-sm text-[#737373]">
+              The permanent Google Meet link online students use to join live sessions. Shown on their dashboard and attendance page.
+            </p>
+            <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+              <input
+                type="url"
+                value={meetLinkDraft}
+                onChange={event => {
+                  setMeetLinkDraft(event.target.value);
+                  setMeetLinkError(null);
+                  setMeetLinkSaved(false);
+                }}
+                placeholder="https://meet.google.com/abc-defg-hij"
+                className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
+              />
+              <button
+                type="button"
+                onClick={saveMeetLink}
+                disabled={meetLinkDraft.trim() === onlineSessionSettings.meetLink}
+                className="h-10 shrink-0 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                Save link
+              </button>
+            </div>
+            {meetLinkError && <p className="mt-1.5 text-sm text-red-600">{meetLinkError}</p>}
+            {meetLinkSaved && !meetLinkError && (
+              <p className="mt-1.5 text-sm text-[#15803d]">Link saved.</p>
+            )}
+          </div>
+        </div>
+      </SectionCard>
+
+      <div className="flex flex-wrap items-center gap-2">
+        {([
+          { id: 'regular' as const, label: 'Regular students', icon: Users },
+          { id: 'online' as const, label: 'Online students', icon: Wifi },
+        ]).map(option => {
+          const Icon = option.icon;
+          const selected = settingsAudience === option.id;
+          return (
+            <button
+              key={option.id}
+              type="button"
+              onClick={() => setSettingsAudience(option.id)}
+              className={`flex items-center gap-2 rounded-xl border px-3 py-2 text-sm font-semibold transition ${
+                selected
+                  ? option.id === 'online'
+                    ? 'border-[#0ea5e9] bg-[#f0f9ff] text-[#0369a1] shadow-sm ring-1 ring-[#bae6fd]'
+                    : 'border-[#171717] bg-[#171717] text-white shadow-sm'
+                  : 'border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#fafafa]'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {option.label}
+            </button>
+          );
+        })}
+        <p className="text-sm text-[#737373]">
+          {settingsAudience === 'online'
+            ? 'These requirements apply only to students marked as online students.'
+            : 'These requirements apply to all students who are not marked as online students.'}
+        </p>
+      </div>
+
+      <SectionCard className="p-4">
         <h3 className="font-semibold text-[#171717]">Global scoring</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
           <Field label="Present credit"><NumberInput value={settingsDraft.presentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, presentCredit: value }))} /></Field>
@@ -2822,7 +2953,11 @@ export function AttendanceView({
       </SectionCard>
 
       <button type="button" onClick={saveSettings} disabled={savingSettings} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
-        {savingSettings ? 'Saving...' : 'Save settings'}
+        {savingSettings
+          ? 'Saving...'
+          : settingsAudience === 'online'
+            ? 'Save online student settings'
+            : 'Save settings'}
       </button>
     </div>
   );

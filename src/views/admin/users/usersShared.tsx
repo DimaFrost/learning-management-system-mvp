@@ -1,4 +1,4 @@
-import { BookOpen, GraduationCap, HeartHandshake, Languages, Shield, UserCheck, Users } from 'lucide-react';
+import { BookOpen, GraduationCap, HeartHandshake, Languages, Shield, UserCheck, Users, Wifi } from 'lucide-react';
 import type { Course, User, UserRole } from '../../../types/lms';
 import { formatRoleLabel } from '../../../utils/userManagementUtils';
 
@@ -87,6 +87,18 @@ export function ActiveYearGroupBadge({ course }: { course: Course }) {
     >
       <span className="font-serif">{isSecond ? 'II' : 'I'}</span>
       <span>{label}</span>
+    </span>
+  );
+}
+
+export function OnlineStudentBadge() {
+  return (
+    <span
+      className="inline-flex items-center gap-1.5 rounded-md border border-[#7dd3fc] bg-white px-2 py-1 text-[11px] font-semibold leading-none text-[#0369a1]"
+      title="Online student — joins sessions remotely"
+    >
+      <Wifi className="h-3.5 w-3.5" />
+      Online
     </span>
   );
 }

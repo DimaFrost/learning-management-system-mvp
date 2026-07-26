@@ -61,7 +61,10 @@ type TranslationKey =
   | 'announcements.draft'
   | 'announcements.scheduled'
   | 'announcements.trash'
-  | 'announcements.pinned';
+  | 'announcements.pinned'
+  | 'onlineSession.title'
+  | 'onlineSession.description'
+  | 'onlineSession.join';
 
 const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
   en: {
@@ -124,6 +127,9 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'announcements.scheduled': 'Scheduled',
     'announcements.trash': 'Trash',
     'announcements.pinned': 'Pinned',
+    'onlineSession.title': 'Live session',
+    'onlineSession.description': 'Join the class online once the meeting has been started.',
+    'onlineSession.join': 'Join live session',
   },
   bg: {
     'app.brand': 'The Burning Ones',
@@ -185,6 +191,9 @@ const translations: Record<AppLanguage, Record<TranslationKey, string>> = {
     'announcements.scheduled': 'Планирано',
     'announcements.trash': 'Кошче',
     'announcements.pinned': 'Закачено',
+    'onlineSession.title': 'Сесия на живо',
+    'onlineSession.description': 'Присъединете се към часа онлайн, след като срещата е започната.',
+    'onlineSession.join': 'Влез в сесията на живо',
   },
 };
 

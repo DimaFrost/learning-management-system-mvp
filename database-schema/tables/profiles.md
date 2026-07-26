@@ -3,7 +3,7 @@
 # profiles
 
 
-Column count: 13
+Column count: 14
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -20,6 +20,7 @@ Column count: 13
 | preferred_language | string:text | yes | no | en |  |
 | phone | string:text | no | no |  |  |
 | teaching_course_types | array:text[] | yes | no |  |  |
+| is_online_student | boolean:boolean | yes | no | false |  |
 
 ## Raw Definition
 
@@ -36,7 +37,8 @@ Column count: 13
     "last_name",
     "notification_preferences",
     "preferred_language",
-    "teaching_course_types"
+    "teaching_course_types",
+    "is_online_student"
   ],
   "properties": {
     "id": {
@@ -101,6 +103,11 @@ Column count: 13
         "type": "string"
       },
       "type": "array"
+    },
+    "is_online_student": {
+      "default": false,
+      "format": "boolean",
+      "type": "boolean"
     }
   },
   "type": "object"

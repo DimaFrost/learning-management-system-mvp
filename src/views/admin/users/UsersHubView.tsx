@@ -38,6 +38,7 @@ import { FilterChip, SearchField } from '../mentorshipShared';
 import {
   AccessBadge,
   ActiveYearGroupBadge,
+  OnlineStudentBadge,
   RoleBadges,
   SectionCard,
   StatPill,
@@ -352,7 +353,12 @@ function UserDetailModal({
             <DetailLine icon={ShieldCheck} label="Access" value={<AccessBadge status={row.access} />} />
             <DetailLine icon={Phone} label="Phone" value={user.phone || <span className="text-[#737373]">Not added</span>} />
             <DetailLine icon={Languages} label="Language" value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
-            <DetailLine icon={BadgeCheck} label="Roles" value={<RoleBadges roles={row.realRoles} yearGroups={row.courses} />} />
+            <DetailLine icon={BadgeCheck} label="Roles" value={
+              <div className="flex flex-wrap items-center gap-1">
+                <RoleBadges roles={row.realRoles} yearGroups={row.courses} />
+                {user.isOnlineStudent && <OnlineStudentBadge />}
+              </div>
+            } />
             <DetailLine icon={GraduationCap} label="Year groups" value={row.courses.length > 0 ? (
               <div className="flex flex-wrap gap-1">{row.courses.map(course => <ActiveYearGroupBadge key={course.id} course={course} />)}</div>
             ) : <span className="text-[#737373]">None</span>} />
@@ -608,7 +614,10 @@ function DirectoryPanel({
                       </div>
                     </td>
                     <td className="px-4 py-3 align-top">
-                      <RoleBadges roles={row.realRoles} yearGroups={row.courses} />
+                      <div className="flex flex-wrap items-center gap-1">
+                        <RoleBadges roles={row.realRoles} yearGroups={row.courses} />
+                        {row.user.isOnlineStudent && <OnlineStudentBadge />}
+                      </div>
                     </td>
                     <td className="px-4 py-3 align-top">
                       <ResponsibilitiesBadges row={row} />
