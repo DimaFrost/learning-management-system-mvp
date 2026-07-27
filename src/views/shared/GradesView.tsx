@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Award, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, GraduationCap, MessageSquare, MinusCircle, Paperclip, Search, ShieldCheck, X } from 'lucide-react';
+import { ArrowUpRight, Award, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, GraduationCap, MessageSquare, MinusCircle, Paperclip, Plus, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, StudentAttendanceSummary, User } from '../../types/lms';
+import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
@@ -22,6 +23,8 @@ type HomeworkGradeRow = {
   drive_view_url: string | null;
   file_name: string | null;
   google_doc_url: string | null;
+  response_text: string | null;
+  selected_option: string | null;
   status: string;
   comments?: HomeworkCommentRow[] | null;
   assignment: {
@@ -33,6 +36,11 @@ type HomeworkGradeRow = {
     class_id: number | null;
     subject_id: number | null;
     max_points: number;
+    work_type?: 'assignment' | 'quick_check';
+    question_type?: 'short_answer' | 'multiple_choice' | null;
+    question_options?: Array<string | { prompt: string; options: string[] }>;
+    grade_category_id?: number | null;
+    grading_period_id?: number | null;
     class: {
       id: number;
       teacher_id: string | null;
@@ -70,6 +78,11 @@ type HomeworkAssignmentRow = {
   class_id: number | null;
   subject_id: number | null;
   max_points: number;
+  work_type?: 'assignment' | 'quick_check';
+  question_type?: 'short_answer' | 'multiple_choice' | null;
+  question_options?: Array<string | { prompt: string; options: string[] }>;
+  grade_category_id?: number | null;
+  grading_period_id?: number | null;
   class: {
     id: number;
     teacher_id: string | null;
@@ -87,6 +100,7 @@ interface GradesViewProps {
   bookSubmissions: BookReadingSubmission[];
   getCourseSummaries: (courseId: number) => StudentAttendanceSummary[];
   onNavigate?: (view: string) => void;
+  gradebookConfig: ReturnType<typeof useGradebookConfig>;
 }
 
 function getScopedCourseIds(scope: GradesScope, currentUser: User, courses: Course[], courseStudents: CourseStudent[]) {
@@ -174,6 +188,11 @@ function toHomeworkRow(assignment: HomeworkAssignmentRow | HomeworkGradeRow['ass
     max_points: assignment.max_points,
     class_id: assignment.class_id,
     subject_id: assignment.subject_id,
+    work_type: assignment.work_type,
+    question_type: assignment.question_type,
+    question_options: assignment.question_options ?? [],
+    grade_category_id: assignment.grade_category_id ?? null,
+    grading_period_id: assignment.grading_period_id ?? null,
   };
 }
 
@@ -189,6 +208,8 @@ function toHomeworkSubmission(row: HomeworkGradeRow, studentName: string): Homew
     fileName: row.file_name,
     googleDocId: null,
     googleDocUrl: row.google_doc_url,
+    responseText: row.response_text ?? null,
+    selectedOption: row.selected_option ?? null,
     status: row.status as HomeworkSubmission['status'],
     submittedAt: null,
     points: row.points,
@@ -211,6 +232,7 @@ export function GradesView({
   bookSubmissions,
   getCourseSummaries,
   onNavigate,
+  gradebookConfig,
 }: GradesViewProps) {
   const [homeworkAssignments, setHomeworkAssignments] = useState<HomeworkAssignmentRow[]>([]);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkGradeRow[]>([]);
@@ -224,6 +246,11 @@ export function GradesView({
   const [selectedGradeWorkId, setSelectedGradeWorkId] = useState<string | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [gradeSettingsOpen, setGradeSettingsOpen] = useState(false);
+  const [configCourseId, setConfigCourseId] = useState('');
+  const [calculationMethod, setCalculationMethod] = useState<'no_overall_grade' | 'total_points' | 'weighted_by_category'>('total_points');
+  const [categoryDraft, setCategoryDraft] = useState({ name: '', defaultPoints: '100', weightPercent: '', color: '#2563eb' });
+  const [periodDraft, setPeriodDraft] = useState({ name: '', startDate: '', endDate: '' });
 
   const scopedCourseIds = useMemo(
     () => getScopedCourseIds(scope, currentUser, courses, courseStudents),
@@ -235,6 +262,29 @@ export function GradesView({
       .filter(row => scopedCourseIds.includes(row.courseId) && row.status === 'active')
       .map(row => row.studentId));
   }, [courseStudents, currentUser.id, scope, scopedCourseIds]);
+  const configCourses = useMemo(
+    () => courses.filter(course => scopedCourseIds.includes(course.id) && course.status === 'active'),
+    [courses, scopedCourseIds]
+  );
+  const selectedConfigCourseId = configCourseId ? Number(configCourseId) : (configCourses[0]?.id ?? null);
+  const selectedConfigCourse = selectedConfigCourseId ? courses.find(course => course.id === selectedConfigCourseId) ?? null : null;
+  const selectedGradeSetting = gradebookConfig.settings.find(setting => setting.courseId === selectedConfigCourseId)
+    ?? gradebookConfig.settings.find(setting => setting.courseId == null)
+    ?? null;
+  const visibleGradeCategories = gradebookConfig.categories.filter(category =>
+    category.courseId == null || category.courseId === selectedConfigCourseId
+  );
+  const visibleGradingPeriods = gradebookConfig.periods.filter(period =>
+    period.courseId == null || period.courseId === selectedConfigCourseId
+  );
+
+  useEffect(() => {
+    if (!configCourseId && configCourses[0]) setConfigCourseId(String(configCourses[0].id));
+  }, [configCourseId, configCourses]);
+
+  useEffect(() => {
+    setCalculationMethod(selectedGradeSetting?.calculationMethod ?? 'total_points');
+  }, [selectedGradeSetting?.calculationMethod]);
 
   useEffect(() => {
     let cancelled = false;
@@ -243,13 +293,13 @@ export function GradesView({
       const { data, error } = await supabase
         .from('homework_submissions')
         .select(`
-          id, assignment_id, student_id, points, grade_comment, graded_at, submission_type, drive_view_url, file_name, google_doc_url, status,
+          id, assignment_id, student_id, points, grade_comment, graded_at, submission_type, drive_view_url, file_name, google_doc_url, response_text, selected_option, status,
           comments:homework_comments(
             id, submission_id, author_id, content, created_at,
             author:profiles!author_id(id, name)
           ),
           assignment:homework_assignments (
-            id, title, description, due_date, grading_due_date, class_id, subject_id, max_points,
+            id, title, description, due_date, grading_due_date, class_id, subject_id, max_points, work_type, question_type, question_options, grade_category_id, grading_period_id,
             class:classes (
               id, teacher_id,
               subject:subjects ( id, title, course_id )
@@ -285,7 +335,7 @@ export function GradesView({
       const { data, error } = await supabase
         .from('homework_assignments')
         .select(`
-          id, title, description, due_date, grading_due_date, class_id, subject_id, max_points,
+          id, title, description, due_date, grading_due_date, class_id, subject_id, max_points, work_type, question_type, question_options, grade_category_id, grading_period_id,
           class:classes (
             id, teacher_id,
             subject:subjects ( id, title, course_id )
@@ -342,6 +392,27 @@ export function GradesView({
       const attendance = course ? getCourseSummaries(course.id).find(summary => summary.studentId === studentId) ?? null : null;
       const earned = homeworkEarned + bookEarned;
       const possible = homeworkPossible + bookPossible;
+      const setting = gradebookConfig.settings.find(item => item.courseId === course?.id)
+        ?? gradebookConfig.settings.find(item => item.courseId == null);
+      let academicPercent = percent(earned, possible);
+      if (setting?.calculationMethod === 'no_overall_grade') {
+        academicPercent = 0;
+      } else if (setting?.calculationMethod === 'weighted_by_category') {
+        const categoryScores = gradebookConfig.categories
+          .filter(category => category.active && category.weightPercent != null && (category.courseId == null || category.courseId === course?.id))
+          .map(category => {
+            const categoryHomework = homework.filter(row => row.assignment?.grade_category_id === category.id);
+            const categoryEarned = categoryHomework.reduce((sum, row) => sum + (row.points ?? 0), 0);
+            const categoryPossible = categoryHomework.reduce((sum, row) => sum + (row.assignment?.max_points ?? 0), 0);
+            return categoryPossible > 0
+              ? (categoryEarned / categoryPossible) * (category.weightPercent ?? 0)
+              : 0;
+          });
+        const weightTotal = gradebookConfig.categories
+          .filter(category => category.active && category.weightPercent != null && (category.courseId == null || category.courseId === course?.id))
+          .reduce((sum, category) => sum + (category.weightPercent ?? 0), 0);
+        if (weightTotal > 0) academicPercent = Math.round(categoryScores.reduce((sum, value) => sum + value, 0) / weightTotal * 100);
+      }
       return {
         student,
         course,
@@ -354,7 +425,7 @@ export function GradesView({
         bookItems,
         earned,
         possible,
-        academicPercent: percent(earned, possible),
+        academicPercent,
         attendance,
       };
     })
@@ -365,7 +436,7 @@ export function GradesView({
         return `${row.student?.name ?? ''} ${row.student?.email ?? ''}`.toLowerCase().includes(normalized);
       })
       .sort((a, b) => (a.student?.name ?? '').localeCompare(b.student?.name ?? ''));
-  }, [bookAssignments, bookSubmissions, courseStudents, courses, currentUser.id, getCourseSummaries, homeworkAssignments, homeworkRows, query, scope, scopedCourseIds, scopedStudentIds, users]);
+  }, [bookAssignments, bookSubmissions, courseStudents, courses, currentUser.id, getCourseSummaries, gradebookConfig.categories, gradebookConfig.settings, homeworkAssignments, homeworkRows, query, scope, scopedCourseIds, scopedStudentIds, users]);
 
   const totals = rows.reduce((acc, row) => {
     acc.earned += row.earned;
@@ -453,6 +524,37 @@ export function GradesView({
   const selectedGradeWorkItem = selectedGradeWorkId
     ? studentWorkItems.find(item => item.id === selectedGradeWorkId) ?? null
     : null;
+  const saveGradeSetting = async () => {
+    if (!selectedConfigCourseId) return;
+    await gradebookConfig.saveSetting({
+      courseId: selectedConfigCourseId,
+      calculationMethod,
+      showOverallGradeToStudents: calculationMethod !== 'no_overall_grade',
+    });
+  };
+  const saveGradeCategory = async () => {
+    if (!selectedConfigCourseId || !categoryDraft.name.trim()) return;
+    await gradebookConfig.saveCategory({
+      courseId: selectedConfigCourseId,
+      name: categoryDraft.name.trim(),
+      weightPercent: categoryDraft.weightPercent.trim() ? Number(categoryDraft.weightPercent) : null,
+      defaultPoints: categoryDraft.defaultPoints.trim() ? Number(categoryDraft.defaultPoints) : null,
+      color: categoryDraft.color,
+      active: true,
+    });
+    setCategoryDraft({ name: '', defaultPoints: '100', weightPercent: '', color: '#2563eb' });
+  };
+  const saveGradingPeriod = async () => {
+    if (!selectedConfigCourseId || !periodDraft.name.trim() || !periodDraft.startDate || !periodDraft.endDate) return;
+    await gradebookConfig.savePeriod({
+      courseId: selectedConfigCourseId,
+      name: periodDraft.name.trim(),
+      startDate: periodDraft.startDate,
+      endDate: periodDraft.endDate,
+      active: true,
+    });
+    setPeriodDraft({ name: '', startDate: '', endDate: '' });
+  };
   const toggleGradeSubject = (subject: string) => {
     setCollapsedGradeSubjects(prev => {
       const next = new Set(prev);
@@ -850,9 +952,23 @@ export function GradesView({
   return (
     <div className="space-y-5">
       <div className="rounded-2xl border border-[#e5e5e5] bg-white p-5 shadow-sm">
-        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Academic record</p>
-        <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{scope === 'student' ? 'My Grades' : 'Grades'}</h1>
-        <p className="mt-1 text-sm text-[#737373]">Academic grades stay separate from graduation readiness.</p>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Academic record</p>
+            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{scope === 'student' ? 'My Grades' : 'Grades'}</h1>
+            <p className="mt-1 text-sm text-[#737373]">Academic grades stay separate from graduation readiness.</p>
+          </div>
+          {scope !== 'student' ? (
+            <button
+              type="button"
+              onClick={() => setGradeSettingsOpen(prev => !prev)}
+              className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717] hover:bg-white"
+            >
+              <SlidersHorizontal className="h-4 w-4 text-[#2563eb]" />
+              Grade settings
+            </button>
+          ) : null}
+        </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-3">
@@ -874,15 +990,122 @@ export function GradesView({
       </div>
 
       {scope !== 'student' ? (
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
-          <input
-            value={query}
-            onChange={event => setQuery(event.target.value)}
-            placeholder="Search people"
-            className="tbo-focus h-11 w-full rounded-2xl border border-[#e5e5e5] bg-white pl-10 pr-3 text-sm"
-          />
-        </div>
+        <>
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
+            <input
+              value={query}
+              onChange={event => setQuery(event.target.value)}
+              placeholder="Search people"
+              className="tbo-focus h-11 w-full rounded-2xl border border-[#e5e5e5] bg-white pl-10 pr-3 text-sm"
+            />
+          </div>
+          {gradeSettingsOpen ? (
+            <section className="rounded-2xl border border-[#d4d4d4] bg-white p-4 shadow-sm">
+              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] pb-3">
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Grade setup</p>
+                  <h2 className="mt-1 text-lg font-semibold text-[#171717]">{selectedConfigCourse?.name ?? 'Year group'} grading</h2>
+                </div>
+                <select
+                  value={configCourseId}
+                  onChange={event => setConfigCourseId(event.target.value)}
+                  className="tbo-focus h-10 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717]"
+                >
+                  {configCourses.map(course => (
+                    <option key={course.id} value={course.id}>{course.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="mt-4 grid gap-4 xl:grid-cols-3">
+                <div className="rounded-xl border border-[#e5e5e5] bg-[#f8fbff] p-3">
+                  <div className="flex items-start gap-2">
+                    <Award className="mt-0.5 h-4 w-4 text-[#2563eb]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#171717]">Overall grade</p>
+                      <p className="text-xs text-[#737373]">Choose how the academic percentage is calculated.</p>
+                    </div>
+                  </div>
+                  <select
+                    value={calculationMethod}
+                    onChange={event => setCalculationMethod(event.target.value as typeof calculationMethod)}
+                    className="tbo-focus mt-3 h-10 w-full rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]"
+                  >
+                    <option value="total_points">Total points</option>
+                    <option value="weighted_by_category">Weighted categories</option>
+                    <option value="no_overall_grade">No overall grade</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={saveGradeSetting}
+                    className="tbo-focus mt-3 inline-flex h-9 items-center rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#2f2f2f]"
+                  >
+                    Save method
+                  </button>
+                </div>
+
+                <div className="rounded-xl border border-[#e5e5e5] bg-[#fffaf5] p-3">
+                  <div className="flex items-start gap-2">
+                    <BookOpen className="mt-0.5 h-4 w-4 text-[#c2410c]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#171717]">Grade categories</p>
+                      <p className="text-xs text-[#737373]">Use weights when the method is weighted.</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    <input value={categoryDraft.name} onChange={event => setCategoryDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Category name" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                    <div className="grid grid-cols-3 gap-2">
+                      <input value={categoryDraft.defaultPoints} onChange={event => setCategoryDraft(prev => ({ ...prev, defaultPoints: event.target.value }))} placeholder="Points" type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <input value={categoryDraft.weightPercent} onChange={event => setCategoryDraft(prev => ({ ...prev, weightPercent: event.target.value }))} placeholder="Weight %" type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <input value={categoryDraft.color} onChange={event => setCategoryDraft(prev => ({ ...prev, color: event.target.value }))} type="color" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white p-1" aria-label="Category color" />
+                    </div>
+                    <button type="button" onClick={saveGradeCategory} className="tbo-focus inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#fed7aa] bg-white px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#fff7ed]">
+                      <Plus className="h-4 w-4" />
+                      Add category
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {visibleGradeCategories.length ? visibleGradeCategories.map(category => (
+                      <span key={category.id} className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                        <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
+                        {category.name}{category.weightPercent != null ? ` · ${category.weightPercent}%` : ''}
+                      </span>
+                    )) : <span className="text-xs text-[#737373]">No categories yet.</span>}
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-[#e5e5e5] bg-[#f7fdf9] p-3">
+                  <div className="flex items-start gap-2">
+                    <CalendarDays className="mt-0.5 h-4 w-4 text-[#047857]" />
+                    <div>
+                      <p className="text-sm font-semibold text-[#171717]">Grading periods</p>
+                      <p className="text-xs text-[#737373]">Group work by month, term, or school phase.</p>
+                    </div>
+                  </div>
+                  <div className="mt-3 grid gap-2">
+                    <input value={periodDraft.name} onChange={event => setPeriodDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Period name" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                    <div className="grid grid-cols-2 gap-2">
+                      <input value={periodDraft.startDate} onChange={event => setPeriodDraft(prev => ({ ...prev, startDate: event.target.value }))} type="date" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <input value={periodDraft.endDate} onChange={event => setPeriodDraft(prev => ({ ...prev, endDate: event.target.value }))} type="date" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                    </div>
+                    <button type="button" onClick={saveGradingPeriod} className="tbo-focus inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#bbf7d0] bg-white px-3 text-sm font-semibold text-[#047857] hover:bg-[#ecfdf5]">
+                      <Plus className="h-4 w-4" />
+                      Add period
+                    </button>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {visibleGradingPeriods.length ? visibleGradingPeriods.map(period => (
+                      <span key={period.id} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                        {period.name}
+                      </span>
+                    )) : <span className="text-xs text-[#737373]">No grading periods yet.</span>}
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
+        </>
       ) : null}
 
       <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-sm">

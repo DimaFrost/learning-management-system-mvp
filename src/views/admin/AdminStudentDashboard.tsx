@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import {
   ArrowUpRight,
   BookOpen,
@@ -6,18 +6,23 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardCheck,
+  CreditCard,
   GraduationCap,
   HeartHandshake,
   ShieldCheck,
   User as UserIcon,
 } from 'lucide-react';
+import type { useTuition } from '../../hooks/useTuition';
 import type {
   BookReadingAssignment,
   BookReadingSubmission,
+  ClassAttendanceRecord,
   Course,
   CourseStudent,
   HomeworkSubmission,
   MentorshipLog,
+  MinistryServiceAttendanceRecord,
+  MinistryServiceSession,
   MinistryRotation,
   MinistryTeam,
   StudentAttendanceSummary,
@@ -68,6 +73,10 @@ interface AdminStudentDashboardProps {
   getCourseSummaries: (courseId: number) => StudentAttendanceSummary[];
   bookAssignments: BookReadingAssignment[];
   bookSubmissions: BookReadingSubmission[];
+  classAttendance: ClassAttendanceRecord[];
+  ministryAttendance: MinistryServiceAttendanceRecord[];
+  ministrySessions: MinistryServiceSession[];
+  tuition: ReturnType<typeof useTuition>;
   onBack: () => void;
   onEditUser: (user: User) => void;
   onNavigate: (view: string) => void;
@@ -121,6 +130,14 @@ function SourceButton({ children, onClick }: { children: React.ReactNode; onClic
       <ArrowUpRight className="h-3.5 w-3.5" />
     </button>
   );
+}
+
+function currency(amount: number, currencyCode = 'EUR') {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: currencyCode,
+    maximumFractionDigits: 0,
+  }).format(amount);
 }
 
 function parseLocalDate(dateString: string): Date {
@@ -205,6 +222,10 @@ export function AdminStudentDashboard({
   getCourseSummaries,
   bookAssignments,
   bookSubmissions,
+  classAttendance,
+  ministryAttendance,
+  ministrySessions,
+  tuition,
   onBack,
   onEditUser,
   onNavigate,
@@ -212,6 +233,9 @@ export function AdminStudentDashboard({
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkLoading, setHomeworkLoading] = useState(false);
   const [sessionWeekPage, setSessionWeekPage] = useState(0);
+  const [activeTab, setActiveTab] = useState<'overview' | 'attendance' | 'classwork' | 'reading' | 'mentorship' | 'sessions' | 'service' | 'tuition'>('overview');
+  const [attendanceMonthFilter, setAttendanceMonthFilter] = useState('all');
+  const [attendanceCategoryFilter, setAttendanceCategoryFilter] = useState<'all' | 'classes' | 'activation' | 'ministry'>('all');
   const student = users.find(user => user.id === studentId);
 
   const activeEnrollments = useMemo(() => {
@@ -310,6 +334,10 @@ export function AdminStudentDashboard({
   const maxSessionWeekPage = Math.max(0, sessionWeeks.length - 1);
 
   useEffect(() => {
+    setSessionWeekPage(0);
+  }, [studentId, sessionWeeks.length]);
+
+  useEffect(() => {
     if (!student) {
       setHomeworkRows([]);
       return;
@@ -386,6 +414,77 @@ export function AdminStudentDashboard({
   const gateCount = attendanceSummary?.gates.length ?? 0;
   const submittedHomework = homeworkRows.filter(row => row.status === 'submitted' || row.status === 'graded').length;
   const gradedHomework = homeworkRows.filter(row => row.status === 'graded').length;
+  const tuitionAccounts = student ? tuition.accounts.filter(account => account.studentId === student.id) : [];
+  const tuitionPayments = student ? tuition.payments.filter(payment => payment.studentId === student.id) : [];
+  const tuitionReminders = student ? tuition.reminders.filter(reminder => reminder.studentId === student.id) : [];
+  const activeTuitionAccount = tuitionAccounts.find(account => account.status !== 'paid' && account.status !== 'waived') ?? tuitionAccounts[0];
+  const activeTuitionPlan = activeTuitionAccount ? tuition.plans.find(plan => plan.id === activeTuitionAccount.planId) : undefined;
+  const activeTuitionInstallments = activeTuitionPlan
+    ? tuition.installments.filter(installment => installment.planId === activeTuitionPlan.id).sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+    : [];
+  const paidTuition = tuitionPayments
+    .filter(payment => !activeTuitionAccount || payment.accountId === activeTuitionAccount.id)
+    .reduce((sum, payment) => sum + payment.amount, 0);
+  const expectedTuition = activeTuitionAccount?.expectedAmount ?? activeTuitionPlan?.totalAmount ?? 0;
+  const tuitionCurrency = activeTuitionPlan?.currency ?? 'EUR';
+  const remainingTuition = Math.max(0, expectedTuition - paidTuition - (activeTuitionAccount?.discountAmount ?? 0));
+  const tabItems = [
+    { id: 'overview', label: 'Overview', count: null, icon: UserIcon },
+    { id: 'attendance', label: 'Attendance', count: gateCount || null, icon: CheckCircle2 },
+    { id: 'classwork', label: 'Homework', count: homeworkRows.length || null, icon: ClipboardCheck },
+    { id: 'reading', label: 'Reading', count: studentBookAssignments.length || null, icon: BookOpen },
+    { id: 'mentorship', label: 'Mentorship', count: studentLogs.length || null, icon: HeartHandshake },
+    { id: 'sessions', label: 'Sessions', count: sessionWeeks.length || null, icon: GraduationCap },
+    { id: 'service', label: 'Duty & service', count: activeRotation ? 1 : null, icon: ShieldCheck },
+    { id: 'tuition', label: 'Tuition', count: tuitionAccounts.length || null, icon: CreditCard },
+  ] as const;
+  const latestMentor = activeEnrollments.map(item => item.mentor).find(Boolean);
+  const attendanceEvents = useMemo(() => {
+    if (!student) return [];
+    const classEvents = classAttendance
+      .filter(record => record.studentId === student.id)
+      .map(record => {
+        let found: { cls: Course['subjects'][number]['classes'][number]; subjectTitle: string } | null = null;
+        for (const course of courses) {
+          for (const subject of course.subjects) {
+            const cls = subject.classes.find(item => item.id === record.classId);
+            if (cls) found = { cls, subjectTitle: subject.title };
+          }
+        }
+        if (!found) return null;
+        return {
+          id: `class-${record.id}`,
+          date: found.cls.date,
+          title: found.cls.title,
+          category: found.cls.hour === 'both' ? 'activation' as const : 'classes' as const,
+          detail: found.subjectTitle,
+          status: record.status,
+        };
+      })
+      .filter((event): event is NonNullable<typeof event> => Boolean(event));
+    const ministryEvents = ministryAttendance
+      .filter(record => record.studentId === student.id)
+      .map(record => {
+        const session = ministrySessions.find(item => item.id === record.sessionId);
+        if (!session) return null;
+        const team = ministryTeams.find(item => item.id === session.teamId);
+        return {
+          id: `ministry-${record.id}`,
+          date: session.serviceDate,
+          title: session.title,
+          category: 'ministry' as const,
+          detail: team?.name ?? 'Ministry service',
+          status: record.status,
+        };
+      })
+      .filter((event): event is NonNullable<typeof event> => Boolean(event));
+    return [...classEvents, ...ministryEvents].sort((a, b) => b.date.localeCompare(a.date));
+  }, [classAttendance, courses, ministryAttendance, ministrySessions, ministryTeams, student]);
+  const attendanceMonths = Array.from(new Set(attendanceEvents.map(event => event.date.slice(0, 7)))).sort().reverse();
+  const visibleAttendanceEvents = attendanceEvents.filter(event =>
+    (attendanceMonthFilter === 'all' || event.date.startsWith(attendanceMonthFilter)) &&
+    (attendanceCategoryFilter === 'all' || event.category === attendanceCategoryFilter)
+  );
 
   return (
     <div className="space-y-5">
@@ -422,7 +521,265 @@ export function AdminStudentDashboard({
         <StatCard label="Ministry team" value={activeTeam?.name ?? '-'} detail={activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : 'No active rotation'} />
       </div>
 
+      <div className="overflow-x-auto border-b border-[#d4d4d4]">
+        <div className="flex min-w-max gap-1">
+          {tabItems.map(tab => (
+            (() => {
+              const Icon = tab.icon;
+              return (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setActiveTab(tab.id)}
+              className={`tbo-focus inline-flex h-11 items-center gap-2 border-b-2 px-3 text-sm font-semibold transition ${
+                activeTab === tab.id
+                  ? 'border-[#171717] text-[#171717]'
+                  : 'border-transparent text-[#737373] hover:text-[#171717]'
+              }`}
+            >
+              <Icon className="h-4 w-4" />
+              {tab.label}
+              {tab.count != null && <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] text-[#525252]">{tab.count}</span>}
+            </button>
+              );
+            })()
+          ))}
+        </div>
+      </div>
+
+      {activeTab === 'attendance' && (
+        <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Attendance readiness</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Graduation gates</h3>
+              <p className="mt-1 text-sm text-[#737373]">Each gate is checked separately, so one weak area is easy to spot.</p>
+            </div>
+            <div className="text-right">
+              <p className="text-3xl font-semibold text-[#171717]">{attendanceSummary?.overallScore != null ? `${Math.round(attendanceSummary.overallScore * 100)}%` : '-'}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Overall</p>
+            </div>
+          </div>
+          {attendanceSummary ? (
+            <>
+              <div className="mt-4 grid gap-3 lg:grid-cols-2">
+                {attendanceSummary.gates.map(gate => {
+                  const score = gate.requiredCredits > 0 ? Math.min(100, Math.round((gate.earnedCredits / gate.requiredCredits) * 100)) : 0;
+                  return (
+                    <div key={gate.key} className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <p className="font-semibold text-[#171717]">{gate.label}</p>
+                          <p className="mt-1 text-sm text-[#737373]">{gate.detail}</p>
+                        </div>
+                        <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${gate.status === 'passing' ? 'bg-[#dcfce7] text-[#15803d]' : gate.status === 'at_risk' ? 'bg-[#fff7ed] text-[#ea580c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
+                          {gate.status.replace('_', ' ')}
+                        </span>
+                      </div>
+                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                        <div className="h-full rounded-full bg-[#171717]" style={{ width: `${score}%` }} />
+                      </div>
+                      <p className="mt-2 text-xs font-semibold text-[#525252]">{gate.earnedCredits}/{gate.requiredCredits} credits</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-5 border-t border-[#e5e5e5] pt-4">
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-semibold text-[#171717]">Attendance history</p>
+                    <p className="text-xs text-[#737373]">Dated class, Activation, and ministry records.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <select value={attendanceCategoryFilter} onChange={event => setAttendanceCategoryFilter(event.target.value as typeof attendanceCategoryFilter)} className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]">
+                      <option value="all">All categories</option>
+                      <option value="classes">Classes</option>
+                      <option value="activation">Activation</option>
+                      <option value="ministry">Ministry</option>
+                    </select>
+                    <select value={attendanceMonthFilter} onChange={event => setAttendanceMonthFilter(event.target.value)} className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]">
+                      <option value="all">All months</option>
+                      {attendanceMonths.map(month => (
+                        <option key={month} value={month}>{new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div className="mt-3 divide-y divide-[#eeeeee] overflow-hidden rounded-2xl border border-[#e5e5e5]">
+                  {visibleAttendanceEvents.map(event => (
+                    <div key={event.id} className="grid gap-3 px-4 py-3 md:grid-cols-[96px_minmax(0,1fr)_120px_100px] md:items-center">
+                      <span className="text-sm font-semibold text-[#171717]">{formatPlatformDate(event.date)}</span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-sm font-semibold text-[#171717]">{event.title}</span>
+                        <span className="block truncate text-xs text-[#737373]">{event.detail}</span>
+                      </span>
+                      <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold capitalize text-[#525252]">{event.category}</span>
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${event.status === 'present' ? 'bg-[#dcfce7] text-[#15803d]' : event.status === 'late' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>{event.status}</span>
+                    </div>
+                  ))}
+                  {visibleAttendanceEvents.length === 0 && <p className="px-4 py-6 text-sm text-[#737373]">No attendance records match these filters.</p>}
+                </div>
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-[#737373]">No attendance summary is available for this student yet.</p>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'classwork' && (
+        <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Homework record</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Submitted work</h3>
+              <p className="mt-1 text-sm text-[#737373]">A compact history of homework status, grades, and submission dates.</p>
+            </div>
+            <SourceButton onClick={() => onNavigate('classwork-submissions')}>Open submissions</SourceButton>
+          </div>
+          {homeworkLoading ? (
+            <p className="mt-4 text-sm text-[#737373]">Loading homework...</p>
+          ) : homeworkRows.length > 0 ? (
+            <div className="mt-4 overflow-hidden rounded-2xl border border-[#e5e5e5]">
+              <div className="grid grid-cols-[minmax(0,1fr)_120px_120px_100px] gap-3 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                <span>Homework</span>
+                <span>Status</span>
+                <span>Submitted</span>
+                <span className="text-right">Grade</span>
+              </div>
+              <div className="divide-y divide-[#eeeeee]">
+                {homeworkRows.map(row => (
+                  <div key={row.id} className="grid grid-cols-[minmax(0,1fr)_120px_120px_100px] items-center gap-3 px-4 py-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#171717]">{row.assignmentTitle}</p>
+                      <p className="truncate text-xs text-[#737373]">{row.classTitle}</p>
+                    </div>
+                    <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold capitalize text-[#525252]">{row.status.replace('_', ' ')}</span>
+                    <span className="text-xs font-semibold text-[#737373]">{row.submittedAt ? formatPlatformDate(row.submittedAt) : '-'}</span>
+                    <span className="text-right text-sm font-semibold text-[#171717]">{row.points !== null ? row.points : '-'}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-[#737373]">No homework submissions found yet.</p>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'reading' && (
+        <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Reading work</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Books and assignments</h3>
+              <p className="mt-1 text-sm text-[#737373]">Books assigned to the student's active year group.</p>
+            </div>
+            <SourceButton onClick={() => onNavigate('curriculum-books')}>Open books</SourceButton>
+          </div>
+          {studentBookAssignments.length > 0 ? (
+            <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+              {studentBookAssignments.map(assignment => {
+                const submission = bookSubmissionByAssignment.get(assignment.id);
+                const status = submission?.status ?? 'not_started';
+                return (
+                  <div key={assignment.id} className="flex gap-3 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                    <div className="grid h-24 w-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-white text-[#a3a3a3] ring-1 ring-[#e5e5e5]">
+                      {assignment.book.coverUrl ? <img src={assignment.book.coverUrl} alt="" className="h-full w-full object-cover" /> : <BookOpen className="h-5 w-5" />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="line-clamp-2 text-sm font-semibold text-[#171717]">{assignment.book.title}</p>
+                      <p className="mt-1 truncate text-xs text-[#737373]">{assignment.title}</p>
+                      <div className="mt-3 flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold capitalize text-[#525252] ring-1 ring-[#e5e5e5]">{status.replace('_', ' ')}</span>
+                        <span className="text-xs font-semibold text-[#737373]">{assignment.dueDate ? formatPlatformDate(assignment.dueDate) : 'No due date'}</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <p className="mt-4 text-sm text-[#737373]">No reading assignments are attached to this student's active year group yet.</p>
+          )}
+        </section>
+      )}
+
+      {activeTab === 'mentorship' && (
+        <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Mentorship</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{latestMentor ? latestMentor.name : 'No mentor assigned'}</h3>
+              <p className="mt-1 text-sm text-[#737373]">Mentor connection, mentees, and recent check-ins.</p>
+            </div>
+            <SourceButton onClick={() => onNavigate('mentorship')}>Open mentorship</SourceButton>
+          </div>
+          <div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                <p className="text-sm font-semibold text-[#171717]">Mentees</p>
+                <p className="mt-1 text-sm text-[#525252]">{menteeRows.length > 0 ? menteeRows.map(user => user.name).join(', ') : 'No mentees assigned.'}</p>
+              </div>
+              <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                <p className="text-sm font-semibold text-[#171717]">Active enrollment</p>
+                <p className="mt-1 text-sm text-[#525252]">{activeEnrollments.map(item => item.course.name).join(', ') || 'No active year group'}</p>
+              </div>
+            </div>
+            <div>
+              <p className="mb-2 text-sm font-semibold text-[#171717]">Recent logs</p>
+              {studentLogs.slice(0, 8).map(log => (
+                <div key={log.id} className="mb-2 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+                  <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(log.date)} · {log.type}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#525252]">{log.notes || 'No notes added.'}</p>
+                </div>
+              ))}
+              {studentLogs.length === 0 && <p className="text-sm text-[#737373]">No mentorship logs yet.</p>}
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'service' && (
+        <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Duty and service</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{activeTeam?.name ?? 'No ministry assignment'}</h3>
+              <p className="mt-1 text-sm text-[#737373]">Ministry rotation, attendance duty, and platform service roles.</p>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              <SourceButton onClick={() => onNavigate('attendance-duty')}>On duty</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-ministry')}>Service</SourceButton>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Ministry</p>
+              <p className="mt-2 text-lg font-semibold text-[#171717]">{activeTeam?.name ?? 'Not assigned'}</p>
+              <p className="mt-1 text-sm text-[#737373]">{activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : 'No active rotation'}</p>
+            </div>
+            <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Attendance duty</p>
+              <p className="mt-2 text-lg font-semibold text-[#171717]">On-duty schedule</p>
+              <p className="mt-1 text-sm text-[#737373]">Class and Well keeper assignments are managed separately.</p>
+            </div>
+            <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Platform roles</p>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {student.roles.filter(role => role !== 'dev').map(role => (
+                  <span key={role} className="rounded-full border border-[#e5e5e5] bg-white px-2 py-1 text-xs font-semibold capitalize text-[#525252]">{role.replace('_', ' ')}</span>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {activeTab === 'overview' && (
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        {(activeTab === 'overview' || activeTab === 'attendance') && (
         <SectionCard
           title="Attendance"
           icon={CheckCircle2}
@@ -447,7 +804,9 @@ export function AdminStudentDashboard({
             <p className="text-sm text-[#737373]">No attendance summary is available for this student yet.</p>
           )}
         </SectionCard>
+        )}
 
+        {(activeTab === 'overview') && (
         <SectionCard
           title="Year, mentor, ministry"
           icon={GraduationCap}
@@ -471,9 +830,13 @@ export function AdminStudentDashboard({
             </div>
           </div>
         </SectionCard>
+        )}
       </div>
+      )}
 
+      {activeTab === 'overview' && (
       <div className="grid gap-4 xl:grid-cols-2">
+        {(activeTab === 'overview' || activeTab === 'classwork') && (
         <SectionCard
           title="Homework submitted"
           icon={ClipboardCheck}
@@ -502,7 +865,9 @@ export function AdminStudentDashboard({
             <p className="text-sm text-[#737373]">No homework submissions found yet.</p>
           )}
         </SectionCard>
+        )}
 
+        {(activeTab === 'overview' || activeTab === 'reading') && (
         <SectionCard
           title="Books and reading"
           icon={BookOpen}
@@ -540,7 +905,9 @@ export function AdminStudentDashboard({
             <p className="text-sm text-[#737373]">No reading assignments are attached to this student's active year group yet.</p>
           )}
         </SectionCard>
+        )}
 
+        {(activeTab === 'overview' || activeTab === 'mentorship') && (
         <SectionCard
           title="Mentorship"
           icon={HeartHandshake}
@@ -563,9 +930,13 @@ export function AdminStudentDashboard({
             </div>
           </div>
         </SectionCard>
+        )}
       </div>
+      )}
 
+      {activeTab === 'overview' && (
       <div className="grid gap-4 xl:grid-cols-2">
+        {(activeTab === 'overview' || activeTab === 'sessions') && (
         <SectionCard
           title="Classes and sessions"
           icon={BookOpen}
@@ -645,7 +1016,9 @@ export function AdminStudentDashboard({
             <p className="text-sm text-[#737373]">No classes or sessions found for this student yet.</p>
           )}
         </SectionCard>
+        )}
 
+        {(activeTab === 'overview' || activeTab === 'service') && (
         <SectionCard
           title="Duty and service"
           icon={ShieldCheck}
@@ -705,7 +1078,101 @@ export function AdminStudentDashboard({
             </div>
           </div>
         </SectionCard>
+        )}
       </div>
+      )}
+
+      {activeTab === 'tuition' && (
+        <SectionCard
+          title="Tuition"
+          icon={CreditCard}
+          action={<SourceButton onClick={() => onNavigate('tuition-students')}>Open tuition</SourceButton>}
+        >
+          {activeTuitionAccount ? (
+            <div className="space-y-4">
+              <div className="grid gap-3 md:grid-cols-4">
+                <StatCard label="Plan" value={activeTuitionPlan?.name ?? 'Unknown'} detail={activeTuitionAccount.status.replace('_', ' ')} />
+                <StatCard label="Expected" value={currency(expectedTuition, tuitionCurrency)} detail={`${currency(activeTuitionAccount.discountAmount, tuitionCurrency)} discount`} />
+                <StatCard label="Paid" value={currency(paidTuition, tuitionCurrency)} detail={`${tuitionPayments.length} payment${tuitionPayments.length === 1 ? '' : 's'}`} />
+                <StatCard label="Remaining" value={currency(remainingTuition, tuitionCurrency)} detail={remainingTuition > 0 ? 'Outstanding' : 'Cleared'} />
+              </div>
+
+              <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
+                <div className="rounded-2xl border border-[#e5e5e5] p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="text-sm font-semibold text-[#171717]">Payment history</p>
+                    <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d]">
+                      {tuitionPayments.length}
+                    </span>
+                  </div>
+                  <div className="mt-3 space-y-2">
+                    {tuitionPayments.map(payment => (
+                      <div key={payment.id} className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-3">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <p className="text-sm font-semibold text-[#14532d]">{currency(payment.amount, tuitionCurrency)}</p>
+                            <p className="text-xs text-[#737373]">{formatPlatformDate(payment.paymentDate)} · {payment.method}</p>
+                          </div>
+                          <CheckCircle2 className="h-4 w-4 text-[#16a34a]" />
+                        </div>
+                        {(payment.reference || payment.note) && (
+                          <p className="mt-2 text-xs text-[#525252]">
+                            {[payment.reference, payment.note].filter(Boolean).join(' · ')}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                    {tuitionPayments.length === 0 && (
+                      <p className="rounded-xl bg-[#fafafa] px-3 py-6 text-center text-sm text-[#737373]">
+                        No payments recorded yet.
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="rounded-2xl border border-[#e5e5e5] p-3">
+                    <p className="text-sm font-semibold text-[#171717]">Installments</p>
+                    <div className="mt-3 space-y-2">
+                      {activeTuitionInstallments.map(installment => (
+                        <div key={installment.id} className="flex items-center justify-between gap-3 rounded-xl bg-[#fafafa] px-3 py-2">
+                          <div>
+                            <p className="text-sm font-semibold text-[#171717]">{installment.title}</p>
+                            <p className="text-xs text-[#737373]">Due {formatPlatformDate(installment.dueDate)}</p>
+                          </div>
+                          <span className="text-sm font-semibold text-[#171717]">{currency(installment.amount, tuitionCurrency)}</span>
+                        </div>
+                      ))}
+                      {activeTuitionInstallments.length === 0 && <p className="text-sm text-[#737373]">No installments are set for this plan.</p>}
+                    </div>
+                  </div>
+
+                  <div className="rounded-2xl border border-[#e5e5e5] p-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm font-semibold text-[#171717]">Reminder history</p>
+                      <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#9a3412]">
+                        {tuitionReminders.length}
+                      </span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      {tuitionReminders.map(reminder => (
+                        <div key={`reminder-${reminder.id}`} className="rounded-xl bg-[#fff7ed] px-3 py-2">
+                          <p className="text-sm font-semibold text-[#9a3412]">{reminder.subject}</p>
+                          <p className="text-xs text-[#737373]">{reminder.status} · {formatPlatformDate(reminder.createdAt)}</p>
+                        </div>
+                      ))}
+                      {tuitionReminders.length === 0 && <p className="text-sm text-[#737373]">No reminders recorded yet.</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-[#737373]">This student is not attached to a tuition plan yet.</p>
+          )}
+        </SectionCard>
+      )}
     </div>
   );
 }
+

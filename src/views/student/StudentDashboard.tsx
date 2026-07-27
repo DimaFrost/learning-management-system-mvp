@@ -84,6 +84,7 @@ interface StudentDashboardProps {
   bookSubmissions: BookReadingSubmission[];
   booksLoading: boolean;
   onNavigate: (view: string) => void;
+  onOpenSearch: () => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onOpenHomeworkAssignment: (assignmentId: number) => void;
 }
@@ -251,6 +252,7 @@ export function StudentDashboard({
   bookSubmissions,
   booksLoading,
   onNavigate,
+  onOpenSearch,
   onOpenClass,
   onOpenHomeworkAssignment,
 }: StudentDashboardProps) {
@@ -421,7 +423,12 @@ export function StudentDashboard({
     <div className="space-y-5">
       <PageHeader
         title="Dashboard"
-        action={<GhostButton onClick={() => onNavigate('announcements')}>Announcements</GhostButton>}
+        action={
+          <div className="flex flex-wrap justify-end gap-2">
+            <GhostButton onClick={onOpenSearch}>Search</GhostButton>
+            <GhostButton onClick={() => onNavigate('announcements')}>Announcements</GhostButton>
+          </div>
+        }
       />
 
       <section className="tbo-panel overflow-hidden">

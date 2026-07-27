@@ -1,4 +1,4 @@
-import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   ArrowUpDown,
   ArrowUpRight,
@@ -58,6 +58,8 @@ export interface UsersHubViewProps {
   ministryRotations: MinistryRotation[];
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
+  selectedPersonId?: string | null;
+  onSelectedPersonHandled?: () => void;
   onEditUser: (user?: User) => void;
   onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
@@ -471,6 +473,8 @@ function DirectoryPanel({
   rows,
   courses,
   getCourseDisplayName,
+  selectedPersonId,
+  onSelectedPersonHandled,
   onEditUser,
   onOpenStudentDashboard,
   onDeleteUser,
@@ -478,6 +482,8 @@ function DirectoryPanel({
   rows: UserDirectoryRow[];
   courses: Course[];
   getCourseDisplayName: (course: Course) => string;
+  selectedPersonId?: string | null;
+  onSelectedPersonHandled?: () => void;
   onEditUser: (user?: User) => void;
   onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
@@ -492,6 +498,14 @@ function DirectoryPanel({
   const [selectedRow, setSelectedRow] = useState<UserDirectoryRow | null>(null);
 
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
+
+  useEffect(() => {
+    if (!selectedPersonId) return;
+    const row = rows.find(item => item.user.id === selectedPersonId);
+    if (!row) return;
+    setSelectedRow(row);
+    onSelectedPersonHandled?.();
+  }, [onSelectedPersonHandled, rows, selectedPersonId]);
 
   const filteredRows = useMemo(
     () => sortDirectoryRows(
@@ -959,6 +973,8 @@ export function UsersHubView({
   ministryRotations,
   getUserById,
   getCourseDisplayName,
+  selectedPersonId,
+  onSelectedPersonHandled,
   onEditUser,
   onOpenStudentDashboard,
   onDeleteUser,
@@ -1018,6 +1034,8 @@ export function UsersHubView({
           rows={directoryRows}
           courses={courses}
           getCourseDisplayName={getCourseDisplayName}
+          selectedPersonId={selectedPersonId}
+          onSelectedPersonHandled={onSelectedPersonHandled}
           onEditUser={onEditUser}
           onOpenStudentDashboard={onOpenStudentDashboard}
           onDeleteUser={onDeleteUser}

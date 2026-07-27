@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+﻿import React, { useState, useEffect, useMemo } from 'react';
 import type { EditingItem, User, UserRole } from './types/lms';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions, getTodayDateString } from './utils/courseUtils';
 import { getUserAccessStatus } from './utils/userManagementUtils';
@@ -14,6 +14,10 @@ import { useAnnouncements } from './hooks/useAnnouncements';
 import { useMessages } from './hooks/useMessages';
 import { useTodos } from './hooks/useTodos';
 import { useTuition } from './hooks/useTuition';
+import { useGradebookConfig } from './hooks/useGradebookConfig';
+import { useBooks } from './hooks/useBooks';
+import { useHomeworkSearch } from './hooks/useHomeworkSearch';
+import { useUniversalSearchIndex } from './hooks/useUniversalSearchIndex';
 import { useCadenceSettings } from './hooks/useCadenceSettings';
 import { useAttendance } from './hooks/useAttendance';
 import { getCurrentWeekStart } from './utils/attendanceUtils';
@@ -24,6 +28,7 @@ import { LogCheckinModal } from './components/modals/LogCheckinModal';
 import { EditModal } from './components/modals/EditModal/EditModal';
 import { Header } from './components/layout/Header';
 import { Sidebar } from './components/layout/Sidebar';
+import { UniversalSearchModal } from './components/search/UniversalSearchModal';
 import { OnboardingScreen } from './components/OnboardingScreen';
 import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
@@ -96,6 +101,9 @@ export function AuthenticatedApp({
   } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
   const todos = useTodos(effectiveUser, users, courseStudents, courses);
   const tuition = useTuition(effectiveUser, users, courseStudents, courses);
+  const gradebookConfig = useGradebookConfig();
+  const searchBooks = useBooks(effectiveUser, courses, courseStudents, users);
+  const homeworkSearch = useHomeworkSearch();
   const {
     conversations,
     totalUnread,
@@ -173,6 +181,7 @@ export function AuthenticatedApp({
 
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [selectedAdminStudentId, setSelectedAdminStudentId] = useState<string | null>(null);
+  const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null);
   const [showDevPanel, setShowDevPanel] = useState(false);
   const [classworkResetKey, setClassworkResetKey] = useState(0);
   const [submissionsResetKey, setSubmissionsResetKey] = useState(0);
@@ -181,6 +190,7 @@ export function AuthenticatedApp({
     return storedMode === 'collapsed' || storedMode === 'auto-hide' ? 'collapsed' : 'locked';
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const [universalSearchOpen, setUniversalSearchOpen] = useState(false);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceId | null>(() => {
     const storedWorkspace = localStorage.getItem('tbo-active-workspace');
     return isWorkspaceId(storedWorkspace) ? storedWorkspace : null;
@@ -246,6 +256,78 @@ export function AuthenticatedApp({
     permanentlyDeleteAnnouncement(id, showConfirmation);
   };
 
+  const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
+  const handleNavigate = (view: string) => {
+    if (view === 'classwork' || view === 'my-classwork') {
+      setClassworkResetKey(key => key + 1);
+    }
+    if (view === 'submissions') {
+      setSubmissionsResetKey(key => key + 1);
+    }
+    setActiveView(view);
+  };
+
+  const openSubjectFromSearch = (courseId: number, subjectId: number, classId?: number) => {
+    window.dispatchEvent(new CustomEvent('tbo:open-subject-search-result', {
+      detail: { courseId, subjectId, classId },
+    }));
+  };
+
+  const openHomeworkFromSearch = (assignmentId: number) => {
+    window.dispatchEvent(new CustomEvent('tbo:open-homework-search-result', {
+      detail: { assignmentId },
+    }));
+  };
+
+  const searchIndex = useUniversalSearchIndex({
+    currentUser: effectiveUser,
+    activeWorkspace: selectedWorkspace,
+    users,
+    courses,
+    courseStudents,
+    announcements,
+    conversations,
+    todos: displayTodos,
+    mentorshipLogs,
+    homeworkAssignments: homeworkSearch.assignments,
+    homeworkSubmissions: homeworkSearch.submissions,
+    bookAssignments: searchBooks.assignments,
+    bookSubmissions: searchBooks.submissions,
+    ministryTeams: attendance.ministryTeams,
+    ministryRotations: attendance.ministryRotations,
+    ministrySessions: attendance.ministrySessions,
+    theWellSessionAttendance: attendance.theWellSessionAttendance,
+    tuition,
+    onNavigate: handleNavigate,
+    onOpenSubject: openSubjectFromSearch,
+    onOpenHomeworkAssignment: openHomeworkFromSearch,
+    onOpenPerson: (personId) => {
+      setSelectedPersonId(personId);
+      setActiveView('users-directory');
+    },
+    onOpenAdminStudentDashboard: (studentId) => {
+      setSelectedAdminStudentId(studentId);
+      setActiveView('admin-student-dashboard');
+    },
+  });
+
+  useEffect(() => {
+    const handleShortcut = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      const isTyping =
+        target?.tagName === 'INPUT' ||
+        target?.tagName === 'TEXTAREA' ||
+        target?.isContentEditable;
+      const commandSearch = (event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k';
+      const slashSearch = event.key === '/' && !isTyping;
+      if (!commandSearch && !slashSearch) return;
+      event.preventDefault();
+      setUniversalSearchOpen(true);
+    };
+
+    window.addEventListener('keydown', handleShortcut);
+    return () => window.removeEventListener('keydown', handleShortcut);
+  }, []);
   const hasNoRoles = !currentUser.roles ||
     currentUser.roles.filter(r => r !== 'dev').length === 0;
 
@@ -283,16 +365,6 @@ export function AuthenticatedApp({
     );
   }
 
-  const hasRole = (role: string) => effectiveUser.roles.includes(role as UserRole);
-  const handleNavigate = (view: string) => {
-    if (view === 'classwork' || view === 'my-classwork') {
-      setClassworkResetKey(key => key + 1);
-    }
-    if (view === 'submissions') {
-      setSubmissionsResetKey(key => key + 1);
-    }
-    setActiveView(view);
-  };
 
   return (
     <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#171717]">
@@ -306,6 +378,7 @@ export function AuthenticatedApp({
         availableWorkspaces={availableWorkspaces}
         onWorkspaceChange={handleWorkspaceChange}
         onLanguageChange={handleLanguageChange}
+        onOpenSearch={() => setUniversalSearchOpen(true)}
         onOpenDevPanel={() => setShowDevPanel(true)}
         onOpenMobileMenu={() => setMobileNavOpen(true)}
       />
@@ -344,6 +417,7 @@ export function AuthenticatedApp({
             <AppRouter
               activeView={activeView}
               setActiveView={setActiveView}
+              onOpenSearch={() => setUniversalSearchOpen(true)}
               classworkResetKey={classworkResetKey}
               submissionsResetKey={submissionsResetKey}
               selectedClassId={selectedClassId}
@@ -371,6 +445,8 @@ export function AuthenticatedApp({
               getCourseDisplayName={getCourseDisplayName}
               checkDoubleBooking={checkDoubleBooking}
               setEditingItem={setEditingItem}
+              selectedPersonId={selectedPersonId}
+              onSelectedPersonHandled={() => setSelectedPersonId(null)}
               selectedAdminStudentId={selectedAdminStudentId}
               onOpenAdminStudentDashboard={(studentId) => {
                 setSelectedAdminStudentId(studentId);
@@ -424,6 +500,7 @@ export function AuthenticatedApp({
               onRefetchCourses={refetchCourses}
               attendance={attendance}
               tuition={tuition}
+              gradebookConfig={gradebookConfig}
               effectiveCurrentDuties={effectiveCurrentDuties}
               nextScheduledDuty={nextScheduledDuty}
             />
@@ -464,6 +541,12 @@ export function AuthenticatedApp({
         getUserById={getUserById}
       />
       <ConfirmationModal dialog={confirmationDialog} onClose={closeConfirmation} />
+      <UniversalSearchModal
+        open={universalSearchOpen}
+        index={searchIndex}
+        recentKey={`tbo:search:${effectiveUser.id}:${selectedWorkspace ?? 'workspace'}`}
+        onClose={() => setUniversalSearchOpen(false)}
+      />
       <DevRolePanel
         isOpen={showDevPanel}
         currentPreviewRoles={previewRoles}

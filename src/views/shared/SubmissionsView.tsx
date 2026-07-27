@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, ChevronDown, ChevronRight, FileText, Search } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { Course, CourseStudent, HomeworkSubmission, User } from '../../types/lms';
+import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
+import { queueWorkflowEmail } from '../../utils/notificationJobs';
 import type { HomeworkDetailSelection, HomeworkRow, SubjectRun } from './classwork/types';
 
 type SubmissionsScope = 'admin' | 'teacher';
@@ -25,6 +27,8 @@ type SubmissionQueueRow = {
   drive_view_url: string | null;
   file_name: string | null;
   google_doc_url: string | null;
+  response_text: string | null;
+  selected_option: string | null;
   status: HomeworkSubmission['status'];
   points: number | null;
   grade_comment: string | null;
@@ -40,6 +44,11 @@ type SubmissionQueueRow = {
     class_id: number | null;
     subject_id: number | null;
     max_points: number;
+    work_type?: 'assignment' | 'quick_check';
+    question_type?: 'short_answer' | 'multiple_choice' | null;
+    question_options?: Array<string | { prompt: string; options: string[] }>;
+    grade_category_id?: number | null;
+    grading_period_id?: number | null;
   } | null;
 };
 
@@ -60,6 +69,7 @@ interface SubmissionsViewProps {
   courses: Course[];
   courseStudents: CourseStudent[];
   users: User[];
+  gradebookConfig: ReturnType<typeof useGradebookConfig>;
 }
 
 function getScopedCourseIds(scope: SubmissionsScope, currentUser: User, courses: Course[]) {
@@ -98,6 +108,8 @@ function toHomeworkSubmission(row: SubmissionQueueRow): HomeworkSubmission {
     fileName: row.file_name,
     googleDocId: null,
     googleDocUrl: row.google_doc_url,
+    responseText: row.response_text ?? null,
+    selectedOption: row.selected_option ?? null,
     status: row.status,
     submittedAt: null,
     points: row.points,
@@ -118,6 +130,7 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
   const [selectedReviewSubmissionId, setSelectedReviewSubmissionId] = useState<number | null>(null);
   const [expandedAssignmentIds, setExpandedAssignmentIds] = useState<Set<number>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
+  const [emailingKey, setEmailingKey] = useState<string | null>(null);
 
   const scopedCourseIds = useMemo(() => getScopedCourseIds(scope, currentUser, courses), [courses, currentUser, scope]);
   const scopedStudentIds = useMemo(() => new Set(courseStudents
@@ -136,13 +149,13 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       const { data, error } = await supabase
         .from('homework_submissions')
         .select(`
-          id, assignment_id, student_id, submission_type, drive_view_url, file_name, google_doc_url, status, points, grade_comment, graded_at,
+          id, assignment_id, student_id, submission_type, drive_view_url, file_name, google_doc_url, response_text, selected_option, status, points, grade_comment, graded_at,
           student:profiles!student_id(id, name, avatar_url),
           comments:homework_comments(
             id, submission_id, author_id, content, created_at,
             author:profiles!author_id(id, name)
           ),
-          assignment:homework_assignments(id, title, description, due_date, grading_due_date, class_id, subject_id, max_points)
+          assignment:homework_assignments(id, title, description, due_date, grading_due_date, class_id, subject_id, max_points, work_type, question_type, question_options, grade_category_id, grading_period_id)
         `)
         .in('student_id', Array.from(scopedStudentIds))
         .eq('status', 'submitted');
@@ -209,9 +222,70 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       max_points: row.assignment.max_points,
       class_id: row.assignment.class_id,
       subject_id: row.assignment.subject_id,
+      work_type: row.assignment.work_type,
+      question_type: row.assignment.question_type,
+      question_options: row.assignment.question_options ?? [],
+      grade_category_id: row.assignment.grade_category_id ?? null,
+      grading_period_id: row.assignment.grading_period_id ?? null,
     };
     setSelectedReviewSubmissionId(reviewSubmissionId);
     setSelected({ homework, run });
+  };
+
+  const emailAssignmentStatus = async (
+    group: { assignment: NonNullable<SubmissionQueueRow['assignment']>; rows: SubmissionQueueRow[]; course: Course | null },
+    status: 'submitted' | 'missing' | 'returned'
+  ) => {
+    const key = `${group.assignment.id}-${status}`;
+    setEmailingKey(key);
+    try {
+      const courseStudentIds = group.course
+        ? courseStudents
+          .filter(row => row.courseId === group.course?.id && row.status === 'active')
+          .map(row => row.studentId)
+        : Array.from(scopedStudentIds);
+      let recipientIds: string[] = [];
+      if (status === 'submitted') {
+        recipientIds = group.rows.map(row => row.student_id);
+      } else {
+        const { data } = await supabase
+          .from('homework_submissions')
+          .select('student_id, status')
+          .eq('assignment_id', group.assignment.id)
+          .in('student_id', courseStudentIds);
+        const rows = (data ?? []) as Array<{ student_id: string; status: string }>;
+        if (status === 'returned') {
+          recipientIds = rows.filter(row => row.status === 'returned').map(row => row.student_id);
+        } else {
+          const submitted = new Set(rows.filter(row => row.status !== 'returned').map(row => row.student_id));
+          recipientIds = courseStudentIds.filter(studentId => !submitted.has(studentId));
+        }
+      }
+
+      const uniqueRecipients = Array.from(new Set(recipientIds));
+      if (uniqueRecipients.length === 0) return;
+
+      const statusLabel = status === 'submitted'
+        ? 'submitted work'
+        : status === 'returned'
+          ? 'returned work'
+          : 'missing work';
+      await queueWorkflowEmail({
+        createdBy: currentUser.id,
+        recipientIds: uniqueRecipients,
+        subject: `Assignment reminder: ${group.assignment.title}`,
+        title: group.assignment.title,
+        body: status === 'submitted'
+          ? `This is a note about your submitted work for ${group.assignment.title}.`
+          : status === 'returned'
+            ? `Your work for ${group.assignment.title} was returned for revision. Please review it.`
+            : `You have not submitted ${group.assignment.title} yet. Please complete it as soon as possible.`,
+        kind: 'assignment',
+      });
+      window.alert(`Email queued for ${uniqueRecipients.length} student${uniqueRecipients.length === 1 ? '' : 's'} with ${statusLabel}.`);
+    } finally {
+      setEmailingKey(null);
+    }
   };
 
   const toggleAssignment = (assignmentId: number) => {
@@ -293,6 +367,15 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
                   </span>
                 </button>
                 <div className="flex flex-wrap items-center gap-2 md:justify-end">
+                  <button type="button" onClick={() => void emailAssignmentStatus(group, 'missing')} disabled={emailingKey === `${group.assignment.id}-missing`} className="tbo-focus rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5] disabled:opacity-50">
+                    Remind missing
+                  </button>
+                  <button type="button" onClick={() => void emailAssignmentStatus(group, 'submitted')} disabled={emailingKey === `${group.assignment.id}-submitted`} className="tbo-focus rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1.5 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe] disabled:opacity-50">
+                    Email submitted
+                  </button>
+                  <button type="button" onClick={() => void emailAssignmentStatus(group, 'returned')} disabled={emailingKey === `${group.assignment.id}-returned`} className="tbo-focus rounded-lg border border-[#e5e5e5] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50">
+                    Email returned
+                  </button>
                   <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{submitted} submitted</span>
                   <ArrowUpRight className="h-4 w-4 text-[#a3a3a3]" />
                 </div>

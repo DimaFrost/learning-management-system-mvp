@@ -225,6 +225,7 @@ interface StaffDashboardProps {
   staffWorkspace: Extract<WorkspaceId, 'teacher' | 'translator'>;
   getCourseDisplayName: (course: Course) => string;
   onNavigate: (view: string) => void;
+  onOpenSearch: () => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
@@ -235,6 +236,7 @@ export function StaffDashboard({
   staffWorkspace,
   getCourseDisplayName,
   onNavigate,
+  onOpenSearch,
   onOpenClass,
 }: StaffDashboardProps) {
   const allSessions = useMemo(
@@ -265,7 +267,12 @@ export function StaffDashboard({
     <div className="space-y-5">
       <PageHeader
         title={title}
-        action={<GhostButton onClick={() => onNavigate('my-classes')}>All my sessions</GhostButton>}
+        action={
+          <div className="flex flex-wrap justify-end gap-2">
+            <GhostButton onClick={onOpenSearch}>Search</GhostButton>
+            <GhostButton onClick={() => onNavigate('my-classes')}>All my sessions</GhostButton>
+          </div>
+        }
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

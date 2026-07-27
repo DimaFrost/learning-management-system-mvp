@@ -8,6 +8,7 @@ import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
 import { JoinLiveSessionBanner } from '../../components/student/JoinLiveSessionBanner';
+import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import {
   buildSubjectRuns,
   findClass,
@@ -83,6 +84,7 @@ interface ClassworkViewProps {
   resetKey?: number;
   initialSubjectTarget?: { courseId: number; subjectId: number; classId?: number } | null;
   onInitialSubjectTargetHandled?: () => void;
+  gradebookConfig: ReturnType<typeof useGradebookConfig>;
 }
 
 const SUBJECTS_PER_PAGE = 6;
@@ -314,6 +316,7 @@ export function ClassworkView({
   resetKey = 0,
   initialSubjectTarget = null,
   onInitialSubjectTargetHandled,
+  gradebookConfig,
 }: ClassworkViewProps) {
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
@@ -401,7 +404,7 @@ export function ClassworkView({
       }
       const { data, error } = await supabase
         .from('homework_assignments')
-        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id, work_type, question_type, question_options, grade_category_id, grading_period_id')
         .in('subject_id', scopedSubjectIds)
         .order('due_date', { ascending: true, nullsFirst: false });
       if (cancelled) return;
@@ -454,7 +457,7 @@ export function ClassworkView({
       .from('homework_submissions')
       .select(`
         id, assignment_id, student_id, submission_type, drive_file_id,
-        drive_view_url, file_name, google_doc_id, google_doc_url,
+        drive_view_url, file_name, google_doc_id, google_doc_url, response_text, selected_option,
         status, submitted_at, points, grade_comment, graded_at,
         graded_by, created_at, updated_at,
         student:profiles!student_id(id, name),
@@ -489,6 +492,8 @@ export function ClassworkView({
         gradeComment: row.grade_comment,
         gradedAt: row.graded_at,
         gradedBy: row.graded_by,
+        responseText: row.response_text ?? null,
+        selectedOption: row.selected_option ?? null,
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         comments: (row.comments ?? []).map(mapHomeworkComment),
@@ -514,8 +519,13 @@ export function ClassworkView({
           due_date: data.dueDate,
           grading_due_date: data.gradingDueDate,
           max_points: data.maxPoints,
+          work_type: data.workType,
+          question_type: data.questionType,
+          question_options: data.questionOptions,
+          grade_category_id: data.gradeCategoryId,
+          grading_period_id: data.gradingPeriodId,
         })
-        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id')
+        .select('id, title, description, due_date, grading_due_date, max_points, class_id, subject_id, work_type, question_type, question_options, grade_category_id, grading_period_id')
         .single();
 
       if (error) throw error;
@@ -784,6 +794,7 @@ export function ClassworkView({
         onNavigate={onNavigate}
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
+        gradebookConfig={gradebookConfig}
         backLabel="Back to classwork"
         onOpenClass={onOpenClass}
       />

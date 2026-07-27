@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import type {
   User,
   Class,
@@ -21,6 +21,7 @@ import { useAttendance } from '../hooks/useAttendance';
 import { useBooks } from '../hooks/useBooks';
 import { useStreamSettings } from '../hooks/useStreamSettings';
 import { useOnlineSessionSettings } from '../hooks/useOnlineSessionSettings';
+import type { useGradebookConfig } from '../hooks/useGradebookConfig';
 import type { useTuition } from '../hooks/useTuition';
 import { MyCourseView } from './student/MyCourseView';
 import { StudentDashboard } from './student/StudentDashboard';
@@ -65,6 +66,7 @@ type ShowConfirmation = (
 export interface AppRouterProps {
   activeView: string;
   setActiveView: (view: string) => void;
+  onOpenSearch: () => void;
   classworkResetKey: number;
   submissionsResetKey: number;
   selectedClassId: number | null;
@@ -79,6 +81,7 @@ export interface AppRouterProps {
   showConfirmation: ShowConfirmation;
   hasRole: (role: string) => boolean;
   activeWorkspace: WorkspaceId | null;
+  gradebookConfig: ReturnType<typeof useGradebookConfig>;
   activeCurriculumTab: string;
   onCurriculumTabChange: (tab: string) => void;
   currentUser: User;
@@ -102,6 +105,8 @@ export interface AppRouterProps {
     excludeClassId?: number
   ) => { hasConflict: boolean; conflictingClasses: Class[] };
   setEditingItem: React.Dispatch<React.SetStateAction<EditingItem | null>>;
+  selectedPersonId: string | null;
+  onSelectedPersonHandled: () => void;
   selectedAdminStudentId: string | null;
   onOpenAdminStudentDashboard: (studentId: string) => void;
   setCourseStudents: React.Dispatch<React.SetStateAction<CourseStudent[]>>;
@@ -200,6 +205,7 @@ export interface AppRouterProps {
 export function AppRouter({
   activeView,
   setActiveView,
+  onOpenSearch,
   classworkResetKey,
   submissionsResetKey,
   selectedClassId,
@@ -209,6 +215,7 @@ export function AppRouter({
   showConfirmation,
   hasRole,
   activeWorkspace,
+  gradebookConfig,
   activeCurriculumTab,
   onCurriculumTabChange,
   currentUser,
@@ -226,6 +233,8 @@ export function AppRouter({
   getCourseDisplayName,
   checkDoubleBooking,
   setEditingItem,
+  selectedPersonId,
+  onSelectedPersonHandled,
   selectedAdminStudentId,
   onOpenAdminStudentDashboard,
   setCourseStudents,
@@ -296,6 +305,26 @@ export function AppRouter({
     setAssignmentsHomeworkTarget(assignmentId);
     setActiveView('my-assignments');
   };
+
+  useEffect(() => {
+    const handleOpenSubject = (event: Event) => {
+      const detail = (event as CustomEvent<{ courseId?: number; subjectId?: number; classId?: number }>).detail;
+      if (!detail?.courseId || !detail.subjectId) return;
+      openSubjectInClasswork(detail.courseId, detail.subjectId, detail.classId);
+    };
+    const handleOpenHomework = (event: Event) => {
+      const detail = (event as CustomEvent<{ assignmentId?: number }>).detail;
+      if (!detail?.assignmentId) return;
+      openHomeworkAssignment(detail.assignmentId);
+    };
+
+    window.addEventListener('tbo:open-subject-search-result', handleOpenSubject);
+    window.addEventListener('tbo:open-homework-search-result', handleOpenHomework);
+    return () => {
+      window.removeEventListener('tbo:open-subject-search-result', handleOpenSubject);
+      window.removeEventListener('tbo:open-homework-search-result', handleOpenHomework);
+    };
+  }, [activeWorkspace]);
 
   if (activeView === 'class-detail' && selectedClassId !== null) {
     let foundClass: Class | undefined;
@@ -438,6 +467,7 @@ export function AppRouter({
         resetKey={classworkResetKey}
         initialSubjectTarget={classworkSubjectTarget}
         onInitialSubjectTargetHandled={() => setClassworkSubjectTarget(null)}
+        gradebookConfig={gradebookConfig}
       />
     );
   }
@@ -459,6 +489,7 @@ export function AppRouter({
         bookSubmissions={scope === 'student' ? books.mySubmissions : books.submissions}
         getCourseSummaries={attendance.getCourseSummaries}
         onNavigate={setActiveView}
+        gradebookConfig={gradebookConfig}
       />
     );
   }
@@ -475,6 +506,7 @@ export function AppRouter({
         courses={courses}
         courseStudents={courseStudents}
         users={users}
+        gradebookConfig={gradebookConfig}
       />
     );
   }
@@ -611,6 +643,7 @@ export function AppRouter({
           bookSubmissions={books.mySubmissions}
           booksLoading={books.loading}
           onNavigate={setActiveView}
+          onOpenSearch={onOpenSearch}
           onOpenClass={openSessionInClasswork}
           onOpenHomeworkAssignment={openHomeworkAssignment}
         />
@@ -645,7 +678,7 @@ export function AppRouter({
           <p className="text-sm text-gray-500">
             Your next scheduled duty:{' '}
             {formatPlatformDate(nextScheduledDuty.weekStart)}
-            {' – '}
+            {' â€“ '}
             {formatPlatformDate(nextScheduledDuty.weekEnd)}
           </p>
         )}
@@ -753,6 +786,8 @@ export function AppRouter({
             ministryRotations={attendance.ministryRotations}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
+            selectedPersonId={selectedPersonId}
+            onSelectedPersonHandled={onSelectedPersonHandled}
             onEditUser={(user?) => setEditingItem({ type: 'user', data: user ?? null })}
             onOpenStudentDashboard={onOpenAdminStudentDashboard}
             onDeleteUser={deleteUser}
@@ -772,6 +807,10 @@ export function AppRouter({
             getCourseSummaries={attendance.getCourseSummaries}
             bookAssignments={books.assignments}
             bookSubmissions={books.submissions}
+            classAttendance={attendance.classAttendance}
+            ministryAttendance={attendance.ministryAttendance}
+            ministrySessions={attendance.ministrySessions}
+            tuition={tuition}
             onBack={() => setActiveView('users-directory')}
             onEditUser={(user) => setEditingItem({ type: 'user', data: user })}
             onNavigate={setActiveView}
@@ -873,6 +912,7 @@ export function AppRouter({
             upsertMinistryRotation={attendance.upsertMinistryRotation}
             createMinistrySession={attendance.createMinistrySession}
             markMinistryAttendance={attendance.markMinistryAttendance}
+            onOpenStudentDashboard={onOpenAdminStudentDashboard}
           />
         );
       case 'tuition':
@@ -906,6 +946,7 @@ export function AppRouter({
             reminders={tuition.reminders}
             activeStudents={tuition.activeStudents}
             activeStudentsByCourseType={tuition.activeStudentsByCourseType}
+            onOpenStudentDashboard={onOpenAdminStudentDashboard}
             paymentTotalsByAccount={tuition.paymentTotalsByAccount}
             summary={tuition.summary}
             loading={tuition.loading}
@@ -935,6 +976,7 @@ export function AppRouter({
             activeWorkspace={activeWorkspace}
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
+            onOpenSearch={onOpenSearch}
             onOpenClass={openClassDetail}
             onOpenSubject={openSubjectInClasswork}
           />
@@ -1009,6 +1051,7 @@ export function AppRouter({
             staffWorkspace={activeWorkspace as 'teacher' | 'translator'}
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
+            onOpenSearch={onOpenSearch}
             onOpenClass={openSessionInClasswork}
           />
         );
@@ -1057,6 +1100,7 @@ export function AppRouter({
         bookSubmissions={books.mySubmissions}
         booksLoading={books.loading}
         onNavigate={setActiveView}
+          onOpenSearch={onOpenSearch}
         onOpenClass={openSessionInClasswork}
         onOpenHomeworkAssignment={openHomeworkAssignment}
       />
@@ -1115,6 +1159,7 @@ export function AppRouter({
             bookSubmissions={books.mySubmissions}
             booksLoading={books.loading}
             onNavigate={setActiveView}
+          onOpenSearch={onOpenSearch}
             onOpenClass={openSessionInClasswork}
             onOpenHomeworkAssignment={openHomeworkAssignment}
           />
@@ -1135,10 +1180,12 @@ export function AppRouter({
         todosToday={todosToday}
         todosLoading={todosLoading}
         attendance={attendance}
+        tuition={tuition}
         currentUser={currentUser}
         activeWorkspace={activeWorkspace}
         getCourseDisplayName={getCourseDisplayName}
         onNavigate={setActiveView}
+        onOpenSearch={onOpenSearch}
         onOpenClass={openClassDetail}
         onOpenSubject={openSubjectInClasswork}
       />
@@ -1172,3 +1219,4 @@ export function AppRouter({
 
   return <div>No content available</div>;
 }
+

@@ -160,6 +160,7 @@ export interface AttendanceViewProps {
   }) => Promise<void>;
   createMinistrySession: (input: { teamId: number; serviceDate: string; title: string; serviceType?: 'sunday' | 'non_sunday' }) => Promise<void>;
   markMinistryAttendance: (sessionId: number, records: Array<{ studentId: string; status: AttendanceStatus }>) => Promise<void>;
+  onOpenStudentDashboard?: (studentId: string) => void;
 }
 
 const STATUS_CLASS = {
@@ -784,6 +785,7 @@ export function AttendanceView({
   upsertMinistryRotation,
   createMinistrySession,
   markMinistryAttendance,
+  onOpenStudentDashboard,
 }: AttendanceViewProps) {
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
   const onlineStudentIds = useMemo(
@@ -1572,8 +1574,14 @@ export function AttendanceView({
         {getInitials(summary.studentName)}
       </span>
       <div className="min-w-0">
-        <p className="flex items-center gap-1.5 truncate font-semibold text-[#171717]">
-          <span className="truncate">{summary.studentName}</span>
+        <p className="flex items-center gap-1.5 truncate">
+          <button
+            type="button"
+            onClick={() => onOpenStudentDashboard?.(summary.studentId)}
+            className="tbo-focus truncate text-left font-semibold text-[#171717] hover:text-[#1d4ed8] hover:underline"
+          >
+            {summary.studentName}
+          </button>
           {renderOnlineStudentChip(summary.studentId)}
         </p>
         {selectedYearGroupCourses.length > 1 && (
@@ -1684,34 +1692,29 @@ export function AttendanceView({
               const isSecond = course?.courseType === 'second_year';
               const yearLabel = isSecond ? 'Second Year' : 'First Year';
               return (
-                <button
+                <label
                   key={option.id}
-                  type="button"
-                  onClick={() => setSelectedYearGroupIds(prev => {
-                    if (prev.includes(option.id)) {
-                      return prev.length > 1 ? prev.filter(id => id !== option.id) : prev;
-                    }
-                    return [...prev, option.id];
-                  })}
-                  className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[11px] font-semibold leading-none transition ${
+                  className={`tbo-focus inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-xs font-semibold transition ${
                     isActive
-                      ? isSecond
-                        ? 'border-[#737373] bg-[#d4d4d4] text-[#171717] shadow-[inset_3px_0_0_#525252]'
-                        : 'border-[#a3a3a3] bg-[#eeeeee] text-[#262626] shadow-[inset_3px_0_0_#a855f7]'
-                      : isSecond
-                        ? 'border-[#a3a3a3] bg-[#e5e5e5] text-[#262626] hover:border-[#737373] hover:bg-[#d4d4d4]'
-                        : 'border-[#d4d4d4] bg-[#fafafa] text-[#525252] hover:border-[#a3a3a3] hover:bg-[#eeeeee]'
+                      ? 'border-[#d4d4d4] bg-[#f5f5f5] text-[#171717] shadow-sm'
+                      : 'border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#fafafa] hover:text-[#171717]'
                   }`}
-                  aria-pressed={isActive}
                 >
-                  <span className={`h-2 w-2 rounded-full ${isActive ? (isSecond ? 'bg-[#525252]' : 'bg-[#a855f7]') : 'bg-transparent ring-1 ring-[#d4d4d4]'}`} />
+                  <input
+                    type="checkbox"
+                    checked={isActive}
+                    onChange={() => setSelectedYearGroupIds(prev => {
+                      if (prev.includes(option.id)) {
+                        return prev.length > 1 ? prev.filter(id => id !== option.id) : prev;
+                      }
+                      return [...prev, option.id];
+                    })}
+                    className="h-3.5 w-3.5 rounded border-current text-[#171717] accent-[#171717]"
+                  />
                   {course ? (
-                    <>
-                      <span className="font-serif">{isSecond ? 'II' : 'I'}</span>
-                      <span>{yearLabel}</span>
-                    </>
+                    yearLabel
                   ) : option.displayName}
-                </button>
+                </label>
               );
             })()
           ))}

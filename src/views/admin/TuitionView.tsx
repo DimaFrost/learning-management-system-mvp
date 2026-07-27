@@ -44,6 +44,7 @@ type TuitionViewProps = {
   summary: TuitionSummary;
   loading: boolean;
   error: string | null;
+  onOpenStudentDashboard?: (studentId: string) => void;
   onCreatePlan: (input: {
     name: string;
     courseId?: number | null;
@@ -115,6 +116,7 @@ export function TuitionView({
   summary,
   loading,
   error,
+  onOpenStudentDashboard,
   onCreatePlan,
   onUpsertInstallment,
   onEnrollStudent,
@@ -127,6 +129,7 @@ export function TuitionView({
   const [installmentFormOpen, setInstallmentFormOpen] = useState(false);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [confirmOutstandingOpen, setConfirmOutstandingOpen] = useState(false);
+  const [confirmReminderAccountId, setConfirmReminderAccountId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const defaultPlan = plans.find(plan => plan.status === 'active') ?? plans[0] ?? null;
   const activeCurrency = defaultPlan?.currency ?? 'EUR';
@@ -160,6 +163,9 @@ export function TuitionView({
     }
   };
   const outstandingAccountIds = accountRows.filter(row => row.remaining > 0).map(row => row.account.id);
+  const confirmReminderRow = confirmReminderAccountId
+    ? accountRows.find(row => row.account.id === confirmReminderAccountId) ?? null
+    : null;
 
   const Header = (
     <div className="rounded-3xl border border-[#e5e5e5] bg-[#fafafa] p-5 shadow-[0_18px_50px_rgba(23,23,23,0.06)]">
@@ -248,7 +254,7 @@ export function TuitionView({
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
-                  <button type="button" onClick={() => void run(() => onSendReminder([row.account.id], null))} className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
+                  <button type="button" onClick={() => setConfirmReminderAccountId(row.account.id)} className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
                     <Bell className="h-3.5 w-3.5" />
                     Send
                   </button>
@@ -468,6 +474,41 @@ export function TuitionView({
           </div>
         </TuitionModal>
       ) : null}
+      {confirmReminderRow ? (
+        <TuitionModal title="Send tuition reminder?" onClose={() => setConfirmReminderAccountId(null)}>
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-4 text-sm leading-6 text-[#7c2d12]">
+              <p className="font-semibold text-[#9a3412]">
+                This will queue a tuition reminder email for {confirmReminderRow.student?.name ?? 'this student'}.
+              </p>
+              <p className="mt-2">
+                Remaining balance: {currency(confirmReminderRow.remaining, confirmReminderRow.plan?.currency)}. The email will include the tuition reminder text and current balance information.
+              </p>
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmReminderAccountId(null)}
+                className="tbo-focus rounded-xl border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={saving}
+                onClick={() => void run(async () => {
+                  await onSendReminder([confirmReminderRow.account.id], null);
+                  setConfirmReminderAccountId(null);
+                })}
+                className="tbo-focus inline-flex items-center gap-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Bell className="h-4 w-4" />
+                Send reminder
+              </button>
+            </div>
+          </div>
+        </TuitionModal>
+      ) : null}
     </div>
   );
 }
@@ -637,7 +678,13 @@ function TuitionAccountForm({
                   </span>
                   <UserAvatar user={student} size="sm" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate font-semibold">{student.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => onOpenStudentDashboard?.(student.id)}
+                      className="tbo-focus block truncate text-left font-semibold hover:text-[#1d4ed8] hover:underline"
+                    >
+                      {student.name}
+                    </button>
                     <span className="block truncate text-xs text-[#737373]">{student.email}</span>
                   </span>
                 </button>

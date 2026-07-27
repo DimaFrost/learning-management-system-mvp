@@ -70,6 +70,11 @@ export function useHomework(
         subjectId: row.subject_id,
         authorId: row.author_id,
         authorName: row.author?.name ?? 'Unknown',
+        workType: row.work_type ?? 'assignment',
+        questionType: row.question_type ?? null,
+        questionOptions: Array.isArray(row.question_options) ? row.question_options : [],
+        gradeCategoryId: row.grade_category_id ?? null,
+        gradingPeriodId: row.grading_period_id ?? null,
         title: row.title,
         description: row.description,
         dueDate: row.due_date,
@@ -112,6 +117,8 @@ export function useHomework(
           gradeComment: row.grade_comment,
           gradedAt: row.graded_at,
           gradedBy: row.graded_by,
+          responseText: row.response_text ?? null,
+          selectedOption: row.selected_option ?? null,
           createdAt: row.created_at,
           updatedAt: row.updated_at,
           comments: (row.comments ?? []).map((c: SupabaseCommentRow) =>
@@ -137,6 +144,11 @@ export function useHomework(
     dueDate: string | null;
     gradingDueDate?: string | null;
     maxPoints: number;
+    workType?: 'assignment' | 'quick_check';
+    questionType?: 'short_answer' | 'multiple_choice' | null;
+    questionOptions?: string[];
+    gradeCategoryId?: number | null;
+    gradingPeriodId?: number | null;
     classHomeworkFolderId: string | null;
   }) => {
     if (!classId) return;
@@ -153,6 +165,11 @@ export function useHomework(
           due_date: data.dueDate,
           grading_due_date: data.gradingDueDate ?? null,
           max_points: data.maxPoints,
+          work_type: data.workType ?? 'assignment',
+          question_type: data.questionType ?? null,
+          question_options: data.questionOptions ?? [],
+          grade_category_id: data.gradeCategoryId ?? null,
+          grading_period_id: data.gradingPeriodId ?? null,
         })
         .select()
         .single();
@@ -187,7 +204,7 @@ export function useHomework(
           content += `\n\n${data.description}`;
         }
 
-        const title = `New Homework: ${data.title}`;
+        const title = `${data.workType === 'quick_check' ? 'New Quick Check' : 'New Homework'}: ${data.title}`;
 
         const { error: announcementError } = await supabase.from('announcements').insert({
           title,
@@ -234,6 +251,11 @@ export function useHomework(
     if ('dueDate' in updates) updatePayload.due_date = updates.dueDate;
     if ('gradingDueDate' in updates) updatePayload.grading_due_date = updates.gradingDueDate;
     if ('maxPoints' in updates) updatePayload.max_points = updates.maxPoints;
+    if ('workType' in updates) updatePayload.work_type = updates.workType;
+    if ('questionType' in updates) updatePayload.question_type = updates.questionType;
+    if ('questionOptions' in updates) updatePayload.question_options = updates.questionOptions;
+    if ('gradeCategoryId' in updates) updatePayload.grade_category_id = updates.gradeCategoryId;
+    if ('gradingPeriodId' in updates) updatePayload.grading_period_id = updates.gradingPeriodId;
 
     const { error } = await supabase
       .from('homework_assignments')
@@ -358,6 +380,33 @@ export function useHomework(
     await fetchHomework();
   };
 
+  const submitQuickCheck = async (params: {
+    assignmentId: number;
+    responseText?: string | null;
+    selectedOption?: string | null;
+  }) => {
+    setSaving(true);
+    setError(null);
+    try {
+      await supabase.from('homework_submissions').upsert({
+        assignment_id: params.assignmentId,
+        student_id: currentUser.id,
+        submission_type: null,
+        response_text: params.responseText ?? null,
+        selected_option: params.selectedOption ?? null,
+        status: 'submitted',
+        submitted_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'assignment_id,student_id' });
+      await fetchHomework();
+    } catch (err) {
+      setError('Failed to submit quick check');
+      console.error(err);
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const returnSubmission = async (submissionId: number) => {
     const { error } = await supabase
       .from('homework_submissions')
@@ -397,6 +446,7 @@ export function useHomework(
     assignments, submissions, loading, saving, error,
     createAssignment, updateAssignment, deleteAssignment,
     submitFile, linkGoogleDoc, createSchoolGoogleDoc, submitGoogleDoc,
+    submitQuickCheck,
     gradeSubmission, returnSubmission,
     addComment, deleteComment,
     getSubmission,

@@ -14,6 +14,51 @@ function getSubmissionUrl(submission: HomeworkSubmission): string | null {
   return submission.driveViewUrl ?? submission.googleDocUrl;
 }
 
+type QuickChoiceQuestion = {
+  id: string;
+  prompt: string;
+  options: string[];
+};
+
+function getQuickChoiceQuestions(homework: HomeworkRow): QuickChoiceQuestion[] {
+  const structured = (homework.question_options ?? []).filter((item): item is { prompt: string; options: string[] } =>
+    typeof item === 'object' && item != null && 'prompt' in item && Array.isArray(item.options)
+  );
+  if (structured.length > 0) {
+    return structured.map((item, index) => ({
+      id: `q-${index}`,
+      prompt: item.prompt,
+      options: item.options,
+    }));
+  }
+  const options = (homework.question_options ?? []).filter((item): item is string => typeof item === 'string');
+  return options.length > 0 ? [{ id: 'q-0', prompt: homework.title, options }] : [];
+}
+
+function parseQuickChoiceAnswers(value: string | null | undefined): Record<string, string> {
+  if (!value) return {};
+  try {
+    const parsed = JSON.parse(value);
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+      return Object.fromEntries(
+        Object.entries(parsed).filter(([, answer]) => typeof answer === 'string')
+      ) as Record<string, string>;
+    }
+  } catch {
+    // Older single-question quick checks stored the selected option directly.
+  }
+  return { 'q-0': value };
+}
+
+function formatQuickChoiceAnswer(homework: HomeworkRow, submission: HomeworkSubmission): string {
+  const questions = getQuickChoiceQuestions(homework);
+  const answers = parseQuickChoiceAnswers(submission.selectedOption);
+  if (questions.length <= 1) return answers['q-0'] || submission.selectedOption || 'No option selected.';
+  return questions
+    .map(question => `${question.prompt}: ${answers[question.id] || 'No answer'}`)
+    .join('\n');
+}
+
 export function HomeworkAssignmentDetailPage({
   selection,
   scope,
@@ -45,13 +90,21 @@ export function HomeworkAssignmentDetailPage({
     : [];
   const submissions = homeworkSubmissions.filter(submission => submission.assignmentId === homework.id);
   const mySubmission = submissions.find(submission => submission.studentId === currentUser.id);
+  const [quickResponseText, setQuickResponseText] = useState(mySubmission?.responseText ?? '');
+  const quickChoiceQuestions = getQuickChoiceQuestions(homework);
+  const [quickSelectedAnswers, setQuickSelectedAnswers] = useState<Record<string, string>>(
+    parseQuickChoiceAnswers(mySubmission?.selectedOption)
+  );
   const activeReviewSubmission = reviewSubmission
     ? submissions.find(submission => submission.id === reviewSubmission.id) ?? reviewSubmission
     : null;
   const submittedCount = submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length;
   const status = scope === 'student' ? (mySubmission?.status ?? 'not_started') : null;
   const openUrl = mySubmission?.googleDocUrl ?? mySubmission?.driveViewUrl ?? null;
-  const reviewableSubmissions = submissions.filter(submission => submission.status === 'submitted' && getSubmissionUrl(submission));
+  const isQuickCheck = homework.work_type === 'quick_check';
+  const reviewableSubmissions = submissions.filter(submission =>
+    submission.status === 'submitted' && (isQuickCheck || getSubmissionUrl(submission))
+  );
   const reviewSubmissionIndex = activeReviewSubmission
     ? reviewableSubmissions.findIndex(submission => submission.id === activeReviewSubmission.id)
     : -1;
@@ -109,6 +162,31 @@ export function HomeworkAssignmentDetailPage({
         body: `${currentUser.name} submitted work for ${run.subjectTitle}.`,
         kind: 'assignment',
       });
+      await onRefresh();
+    }
+    setSaving(false);
+  };
+
+  const submitQuickCheck = async () => {
+    setSaving(true);
+    setError(null);
+    const { error: submitError } = await supabase.from('homework_submissions').upsert({
+      assignment_id: homework.id,
+      student_id: currentUser.id,
+      submission_type: null,
+      response_text: homework.question_type === 'short_answer' ? quickResponseText.trim() : null,
+      selected_option: homework.question_type === 'multiple_choice'
+        ? quickChoiceQuestions.length > 1
+          ? JSON.stringify(quickSelectedAnswers)
+          : quickSelectedAnswers['q-0'] ?? null
+        : null,
+      status: 'submitted',
+      submitted_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'assignment_id,student_id' });
+    if (submitError) {
+      setError('Could not submit the quick check.');
+    } else {
       await onRefresh();
     }
     setSaving(false);
@@ -303,7 +381,10 @@ export function HomeworkAssignmentDetailPage({
               <div className="flex items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-semibold text-[#171717]">Student work</p>
-                  <p className="mt-1 text-xs text-[#737373]">{submittedCount}/{enrolledStudentIds.length || submissions.length} submitted</p>
+                  <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[#737373]">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#1d4ed8]" />
+                    {submittedCount}/{enrolledStudentIds.length || submissions.length}
+                  </p>
                 </div>
                 <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
                   {homework.max_points ? `${homework.max_points} pts` : 'Completion'}
@@ -316,7 +397,7 @@ export function HomeworkAssignmentDetailPage({
                   const student = users.find(user => user.id === studentId);
                   const submission = submissions.find(item => item.studentId === studentId);
                   const studentStatus = submission?.status ?? 'not_started';
-                  const canOpen = Boolean(submission && getSubmissionUrl(submission));
+                  const canOpen = Boolean(submission && (isQuickCheck || getSubmissionUrl(submission)));
                   return (
                     <button
                       key={studentId}
@@ -359,7 +440,12 @@ export function HomeworkAssignmentDetailPage({
               <div className="flex items-center justify-between gap-2">
                 <span>Status</span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(status ?? 'submitted')}`}>
-                  {scope === 'student' ? getHomeworkStatusLabel(status ?? 'not_started') : `${submittedCount} submitted`}
+                  {scope === 'student' ? getHomeworkStatusLabel(status ?? 'not_started') : (
+                    <span className="inline-flex items-center gap-1.5">
+                      <CheckCircle2 className="h-3.5 w-3.5" />
+                      {submittedCount}
+                    </span>
+                  )}
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
@@ -376,19 +462,68 @@ export function HomeworkAssignmentDetailPage({
             {error && <p className="mt-3 rounded-xl border border-[#fecaca] bg-[#fef2f2] px-3 py-2 text-sm font-semibold text-[#b91c1c]">{error}</p>}
             {scope === 'student' && (
               <div className="mt-4 grid gap-2">
-                {!mySubmission && (
+                {isQuickCheck && (
+                  <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-3">
+                    <p className="text-sm font-semibold text-[#14532d]">Quick check response</p>
+                    {homework.question_type === 'multiple_choice' ? (
+                      <div className="mt-3 space-y-4">
+                        {quickChoiceQuestions.map((question, index) => (
+                          <div key={question.id} className="rounded-xl border border-[#bbf7d0] bg-white p-3">
+                            <p className="text-sm font-semibold text-[#14532d]">
+                              {quickChoiceQuestions.length > 1 ? `${index + 1}. ${question.prompt}` : question.prompt}
+                            </p>
+                            <div className="mt-2 grid gap-2">
+                              {question.options.map(option => (
+                                <button
+                                  key={`${question.id}-${option}`}
+                                  type="button"
+                                  onClick={() => setQuickSelectedAnswers(prev => ({ ...prev, [question.id]: option }))}
+                                  className={`tbo-focus rounded-xl border px-3 py-2 text-left text-sm font-semibold ${quickSelectedAnswers[question.id] === option ? 'border-[#86efac] bg-[#f0fdf4] text-[#047857]' : 'border-[#e5e5e5] bg-[#fafafa] text-[#14532d]'}`}
+                                >
+                                  {option}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <textarea
+                        value={quickResponseText}
+                        onChange={event => setQuickResponseText(event.target.value)}
+                        rows={5}
+                        className="tbo-focus mt-3 w-full rounded-xl border border-[#bbf7d0] bg-white px-3 py-2 text-sm"
+                        placeholder="Write your response..."
+                      />
+                    )}
+                  </div>
+                )}
+                {!isQuickCheck && !mySubmission && (
                   <button type="button" onClick={createDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50">
                     <FileText className="h-4 w-4" />
                     Create school Google Doc
                   </button>
                 )}
-                {openUrl && (
+                {!isQuickCheck && openUrl && (
                   <button type="button" onClick={() => window.open(openUrl, '_blank')} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                     <ExternalLink className="h-4 w-4" />
                     Open work
                   </button>
                 )}
-                {mySubmission && mySubmission.status !== 'submitted' && mySubmission.status !== 'graded' && (
+                {isQuickCheck && (!mySubmission || (mySubmission.status !== 'submitted' && mySubmission.status !== 'graded')) && (
+                  <button
+                    type="button"
+                    onClick={submitQuickCheck}
+                    disabled={saving || (homework.question_type === 'multiple_choice'
+                      ? quickChoiceQuestions.some(question => !quickSelectedAnswers[question.id])
+                      : !quickResponseText.trim())}
+                    className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#047857] px-3 text-sm font-semibold text-white hover:bg-[#065f46] disabled:opacity-50"
+                  >
+                    <CheckCircle2 className="h-4 w-4" />
+                    Submit quick check
+                  </button>
+                )}
+                {!isQuickCheck && mySubmission && mySubmission.status !== 'submitted' && mySubmission.status !== 'graded' && (
                   <button type="button" onClick={submitDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#047857] px-3 text-sm font-semibold text-white hover:bg-[#065f46] disabled:opacity-50">
                     <CheckCircle2 className="h-4 w-4" />
                     Submit
@@ -516,7 +651,18 @@ function SubmissionReviewPage({
                 </div>
               </div>
             )}
-            {!preview || previewFailed ? (
+            {homework.work_type === 'quick_check' ? (
+              <div className="flex h-full items-center justify-center p-6">
+                <div className="w-full max-w-2xl rounded-2xl border border-[#d4d4d4] bg-white p-5">
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Quick check answer</p>
+                  <p className="mt-3 whitespace-pre-wrap text-lg leading-7 text-[#171717]">
+                    {homework.question_type === 'multiple_choice'
+                      ? formatQuickChoiceAnswer(homework, submission)
+                      : submission.responseText || 'No response submitted.'}
+                  </p>
+                </div>
+              </div>
+            ) : !preview || previewFailed ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
                 <FileText className="h-8 w-8 text-[#a3a3a3]" />
                 <p className="text-sm font-semibold text-[#171717]">Preview is not available.</p>

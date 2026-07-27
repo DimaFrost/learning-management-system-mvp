@@ -12,6 +12,11 @@ export type HomeworkRow = {
   max_points: number;
   class_id: number | null;
   subject_id: number | null;
+  work_type?: 'assignment' | 'quick_check';
+  question_type?: 'short_answer' | 'multiple_choice' | null;
+  question_options?: Array<string | { prompt: string; options: string[] }>;
+  grade_category_id?: number | null;
+  grading_period_id?: number | null;
 };
 
 export type SubjectAttendanceRow = {

@@ -323,6 +323,11 @@ export interface HomeworkAssignment {
   subjectId: number | null;
   authorId: string;
   authorName: string;
+  workType: 'assignment' | 'quick_check';
+  questionType: 'short_answer' | 'multiple_choice' | null;
+  questionOptions: Array<string | { prompt: string; options: string[] }>;
+  gradeCategoryId: number | null;
+  gradingPeriodId: number | null;
   title: string;
   description: string | null;
   dueDate: string | null;
@@ -353,9 +358,44 @@ export interface HomeworkSubmission {
   gradeComment: string | null;
   gradedAt: string | null;
   gradedBy: string | null;
+  responseText: string | null;
+  selectedOption: string | null;
   createdAt: string;
   updatedAt: string;
   comments?: HomeworkComment[];
+}
+
+export interface GradeCategory {
+  id: number;
+  courseId: number | null;
+  name: string;
+  defaultPoints: number;
+  weightPercent: number | null;
+  color: string;
+  sortOrder: number;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GradingPeriod {
+  id: number;
+  courseId: number | null;
+  name: string;
+  startDate: string;
+  endDate: string;
+  active: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface GradeSetting {
+  id: number;
+  courseId: number | null;
+  calculationMethod: 'no_overall_grade' | 'total_points' | 'weighted_by_category';
+  showOverallGradeToStudents: boolean;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface HomeworkComment {

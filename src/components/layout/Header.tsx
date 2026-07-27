@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { WORKSPACE_LABELS } from '../../types/workspace';
-import { LogOut, Code2, Menu, Briefcase, Check, ChevronsUpDown, ChevronDown, Languages, Users } from 'lucide-react';
+import { LogOut, Code2, Menu, Check, ChevronsUpDown, ChevronDown, CornerDownLeft, Languages, Search, Users } from 'lucide-react';
 import tboLogo from '../../assets/tbo-logo.svg';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
 import { ROLE_META } from '../../views/admin/users/usersShared';
@@ -34,6 +34,7 @@ interface HeaderProps {
   onWorkspaceChange: (workspace: WorkspaceId) => void;
   onLanguageChange: (language: AppLanguage) => void;
   onOpenDevPanel: () => void;
+  onOpenSearch: () => void;
   onOpenMobileMenu?: () => void;
 }
 
@@ -48,6 +49,7 @@ export function Header({
   onWorkspaceChange,
   onLanguageChange,
   onOpenDevPanel,
+  onOpenSearch,
   onOpenMobileMenu,
 }: HeaderProps) {
   const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
@@ -136,6 +138,15 @@ export function Header({
               )}
             </button>
           )}
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            className="tbo-focus rounded-lg p-2.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+            aria-label="Open search"
+            title="Search - Ctrl/Cmd K"
+          >
+            <Search className="h-4 w-4" />
+          </button>
           {avatar}
           <div ref={mobileLanguageMenuRef} className="relative">
             <button
@@ -192,6 +203,18 @@ export function Header({
           </div>
         </div>
         <div className="flex min-w-0 items-center gap-3">
+          <button
+            type="button"
+            onClick={onOpenSearch}
+            className="tbo-focus hidden min-w-[16.5rem] items-center gap-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-left text-sm text-[#737373] hover:border-[#d4d4d4] hover:bg-white xl:flex"
+          >
+            <Search className="h-4 w-4" />
+            <span className="min-w-0 flex-1">Search everything</span>
+            <span className="inline-flex items-center gap-1 rounded-lg bg-white px-1.5 py-1 text-[10px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
+              <span>Ctrl/Cmd K</span>
+              <CornerDownLeft className="h-3 w-3 text-[#a3a3a3]" />
+            </span>
+          </button>
           <div className="flex items-center gap-2 min-w-0">
             {avatar}
             <div className="min-w-0">

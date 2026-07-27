@@ -29,6 +29,7 @@ import { formatFileSize } from '../../../utils/formatFileSize';
 import { hasRole } from '../../../utils/userUtils';
 import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
 import { AssignmentComposer, type AssignmentComposerPayload } from '../../../components/assignments/AssignmentComposer';
+import type { useGradebookConfig } from '../../../hooks/useGradebookConfig';
 import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
 import { SubjectCurriculumPlan } from '../../../components/subject/SubjectCurriculumPlan';
 import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
@@ -78,6 +79,7 @@ export function SubjectDetailPage({
   onNavigate,
   onCreateAssignment,
   assignmentSaving,
+  gradebookConfig,
   backLabel = 'Back to classwork',
   onOpenClass,
   curriculumActions,
@@ -97,6 +99,7 @@ export function SubjectDetailPage({
   onNavigate?: (view: string) => void;
   onCreateAssignment: (subjectId: number, classId: number | null, data: AssignmentComposerPayload) => Promise<void>;
   assignmentSaving: boolean;
+  gradebookConfig: ReturnType<typeof useGradebookConfig>;
   backLabel?: string;
   onOpenClass?: (classId: number, subjectId: number, courseId: number) => void;
   curriculumActions?: CurriculumSubjectActions;
@@ -385,6 +388,7 @@ export function SubjectDetailPage({
         selectedCourse={composerClassContext.course}
         studentCount={enrolledStudentIds.length}
         saving={assignmentSaving}
+        gradebookConfig={gradebookConfig}
         backLabel="Subject homework"
         onCancel={() => setComposerItem(null)}
         onSubmit={async data => {
@@ -498,7 +502,7 @@ export function SubjectDetailPage({
                 className="tbo-focus ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626]"
               >
                 <Plus className="h-4 w-4" />
-                Add assignment
+                Add homework
               </button>
             )}
             {activeTab === 'materials' && canManageMaterials && (
@@ -1027,7 +1031,12 @@ export function SubjectDetailPage({
                     <span className={`rounded-full px-2.5 py-1 ring-1 ${
                       scope === 'student' ? getHomeworkStatusTone(status) : 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]'
                     }`}>
-                      {scope === 'student' ? getHomeworkStatusLabel(status) : status}
+                      {scope === 'student' ? getHomeworkStatusLabel(status) : (
+                        <span className="inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="h-3.5 w-3.5" />
+                          {submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length}/{enrolledStudentIds.length || submissions.length}
+                        </span>
+                      )}
                     </span>
                   </span>
                 </button>
