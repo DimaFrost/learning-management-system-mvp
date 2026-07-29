@@ -81,7 +81,6 @@ export function SubjectDetailPage({
   assignmentSaving,
   gradebookConfig,
   backLabel = 'Back to classwork',
-  onOpenClass,
   curriculumActions,
 }: {
   run: SubjectRun;
@@ -101,7 +100,6 @@ export function SubjectDetailPage({
   assignmentSaving: boolean;
   gradebookConfig: ReturnType<typeof useGradebookConfig>;
   backLabel?: string;
-  onOpenClass?: (classId: number, subjectId: number, courseId: number) => void;
   curriculumActions?: CurriculumSubjectActions;
 }) {
   const [activeTab, setActiveTab] = useState<SubjectTab>(initialTab ?? 'sessions');
@@ -924,17 +922,7 @@ export function SubjectDetailPage({
                       <CalendarDays className="h-4 w-4" />
                     </span>
                     <span className="min-w-0">
-                      {item.classInfo && onOpenClass ? (
-                        <button
-                          type="button"
-                          onClick={() => onOpenClass(item.classInfo!.classId, item.classInfo!.subjectId, item.classInfo!.courseId)}
-                          className="tbo-focus block max-w-full truncate text-left text-sm font-semibold text-[#171717] hover:underline"
-                        >
-                          {item.title}
-                        </button>
-                      ) : (
-                        <span className="block truncate text-sm font-semibold text-[#171717]">{item.title}</span>
-                      )}
+                      <span className="block truncate text-sm font-semibold text-[#171717]">{item.title}</span>
                       {sessionAttention && (sessionAttention.hasConflict || sessionAttention.hasVacantRoles) && (
                         <span className="mt-1 flex flex-wrap gap-1.5">
                           {sessionAttention.hasConflict && (

@@ -79,7 +79,6 @@ interface ClassworkViewProps {
   onAddReadingComment: (submissionId: number, content: string) => Promise<void>;
   onDeleteReadingComment: (commentId: number) => Promise<void>;
   getCourseDisplayName: (course: Course) => string;
-  onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   onNavigate?: (view: string) => void;
   resetKey?: number;
   initialSubjectTarget?: { courseId: number; subjectId: number; classId?: number } | null;
@@ -311,7 +310,6 @@ export function ClassworkView({
   onAddReadingComment,
   onDeleteReadingComment,
   getCourseDisplayName,
-  onOpenClass,
   onNavigate,
   resetKey = 0,
   initialSubjectTarget = null,
@@ -796,7 +794,6 @@ export function ClassworkView({
         assignmentSaving={assignmentSaving}
         gradebookConfig={gradebookConfig}
         backLabel="Back to classwork"
-        onOpenClass={onOpenClass}
       />
     );
   }

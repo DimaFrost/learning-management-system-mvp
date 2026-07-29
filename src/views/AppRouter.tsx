@@ -462,7 +462,6 @@ export function AppRouter({
         onAddReadingComment={books.addReadingSubmissionComment}
         onDeleteReadingComment={books.deleteReadingSubmissionComment}
         getCourseDisplayName={getCourseDisplayName}
-        onOpenClass={openClassDetail}
         onNavigate={setActiveView}
         resetKey={classworkResetKey}
         initialSubjectTarget={classworkSubjectTarget}
@@ -611,7 +610,7 @@ export function AppRouter({
           mentorshipLogs={mentorshipLogs}
           getUserById={getUserById}
           getCourseDisplayName={getCourseDisplayName}
-          onOpenClass={openClassDetail}
+          onOpenClass={openSessionInClasswork}
         />
       );
     }
@@ -1118,7 +1117,7 @@ export function AppRouter({
             mentorshipLogs={mentorshipLogs}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
-            onOpenClass={openClassDetail}
+            onOpenClass={openSessionInClasswork}
           />
         );
       case 'my-books':
@@ -1212,7 +1211,7 @@ export function AppRouter({
         courses={courses}
         getUserById={getUserById}
         getCourseDisplayName={getCourseDisplayName}
-        onOpenClass={openClassDetail}
+        onOpenClass={openSessionInClasswork}
       />
     );
   }
