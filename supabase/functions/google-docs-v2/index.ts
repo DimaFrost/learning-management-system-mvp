@@ -150,6 +150,10 @@ serve(async req => {
       return json(await uploadMaterialFile(user, body));
     }
 
+    if (action === 'ensure-staff-note-access') {
+      return json(await ensureStaffNoteAccess(user, body));
+    }
+
     if (action === 'upload-curriculum-plan') {
       return json(await uploadCurriculumPlan(user, body));
     }
@@ -700,9 +704,14 @@ async function createMaterialDoc(profile: Profile, body: Record<string, unknown>
 
   const teacherEmails = await getProfileEmails(subjectTeachers);
   await shareFileBatch(token, created.id, teacherEmails, 'writer');
-  if (fileType === 'translator_note') {
+  if (fileType === 'teacher_note' || fileType === 'translator_note') {
     const translatorEmails = await getProfileEmails(subjectTranslators);
-    await shareFileBatch(token, created.id, translatorEmails, 'writer');
+    await shareFileBatch(
+      token,
+      created.id,
+      translatorEmails,
+      fileType === 'translator_note' ? 'writer' : 'reader'
+    );
   }
   if (fileType === 'material') {
     const studentEmails = await getActiveCourseStudentEmails(course.id);
@@ -813,9 +822,14 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
 
   const teacherEmails = await getProfileEmails(subjectTeachers);
   await shareFileBatch(token, uploaded.id, teacherEmails, 'writer');
-  if (fileType === 'translator_note') {
+  if (fileType === 'teacher_note' || fileType === 'translator_note') {
     const translatorEmails = await getProfileEmails(subjectTranslators);
-    await shareFileBatch(token, uploaded.id, translatorEmails, 'writer');
+    await shareFileBatch(
+      token,
+      uploaded.id,
+      translatorEmails,
+      fileType === 'translator_note' ? 'writer' : 'reader'
+    );
   }
   if (fileType === 'material') {
     const studentEmails = await getActiveCourseStudentEmails(course.id);
@@ -845,6 +859,53 @@ async function uploadMaterialFile(profile: Profile, body: Record<string, unknown
     googleDriveFileId: uploaded.id,
     googleDriveUrl: uploaded.webViewLink,
     folderId: materialsFolderId,
+  };
+}
+
+async function ensureStaffNoteAccess(profile: Profile, body: Record<string, unknown>) {
+  const classFileId = Number(body.classFileId);
+  if (!Number.isFinite(classFileId)) {
+    throw new HttpError('Valid classFileId is required', 400);
+  }
+  if (!profile.email) {
+    throw new HttpError('Your profile email is required to share Drive files', 400);
+  }
+
+  const { data, error } = await adminClient
+    .from('class_files')
+    .select('id, file_type, drive_file_id, drive_view_url, subject_id')
+    .eq('id', classFileId)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) {
+    throw new HttpError('Staff note not found', 404);
+  }
+  if (data.file_type !== 'teacher_note') {
+    throw new HttpError('Only staff notes can be shared this way', 400);
+  }
+  if (!data.drive_file_id) {
+    throw new HttpError('This staff note has no Google Drive file', 400);
+  }
+  if (data.subject_id == null) {
+    throw new HttpError('This staff note is not linked to a subject', 400);
+  }
+
+  const subjectTranslators = await getSubjectTranslatorIds(data.subject_id);
+  const canAccess =
+    isAdmin(profile) ||
+    (profile.roles.includes('translator') && subjectTranslators.includes(profile.id));
+  if (!canAccess) {
+    throw new HttpError('Only administrators or translators assigned to this subject can open staff notes', 403);
+  }
+
+  const token = await getGoogleAccessToken();
+  await shareFileBatch(token, data.drive_file_id, [profile.email], 'reader');
+
+  return {
+    ok: true,
+    classFileId: data.id,
+    googleDriveUrl: data.drive_view_url,
   };
 }
 

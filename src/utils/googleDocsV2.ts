@@ -228,3 +228,14 @@ export async function uploadStreamGoogleDriveAttachment(params: {
     base64: await readFileAsBase64(params.file),
   });
 }
+
+export async function ensureStaffNoteAccess(classFileId: number): Promise<{
+  ok: boolean;
+  classFileId: number;
+  googleDriveUrl: string | null;
+}> {
+  return callGoogleDocsV2({
+    action: 'ensure-staff-note-access',
+    classFileId,
+  });
+}

@@ -177,7 +177,7 @@ const topics: KnowledgeTopic[] = [
     essentials: [
       'Classwork is organized around subjects, not isolated session pages.',
       'Sessions can have assignments and materials attached, but assignments can also belong directly to a subject.',
-      'Student materials and staff notes are stored in the school Google Drive; staff notes remain private to staff.',
+      'Student materials and staff notes are stored in the school Google Drive; staff notes remain private to teachers, admins, and translators (view).',
       'Teachers see year groups they are allowed to teach, with a filter for Teaching vs Year group.',
       'Students see only their own active year group work.',
       'Submissions is the teacher/admin review queue for work that needs grading.',
@@ -414,7 +414,7 @@ const topics: KnowledgeTopic[] = [
       'The school Google account connection is admin-only and is used to create school-owned documents in the Shared Drive.',
       'Assignment submissions are organized by year group, assignment, and student name.',
       'Materials and staff notes should be stored in Google Drive rather than Supabase Storage where possible.',
-      'Teachers/admins can create Google Doc materials directly from the portal.',
+      'Teachers/admins can create Google Doc materials and staff notes directly from the portal; translators can view staff notes for subjects they are assigned to.',
       'Students should not be able to edit staff-created materials unless intentionally shared.',
     ],
     where: [
@@ -436,7 +436,7 @@ const topics: KnowledgeTopic[] = [
     visual: [
       { label: 'Doc', icon: BookOpen, hint: 'Google document' },
       { label: 'Material', icon: Library, hint: 'Drive resource' },
-      { label: 'Private', icon: ShieldCheck, hint: 'Staff-only' },
+      { label: 'Private', icon: ShieldCheck, hint: 'Staff + translators' },
     ],
   },
   {

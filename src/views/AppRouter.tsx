@@ -447,7 +447,9 @@ export function AppRouter({
       ? 'admin'
       : hasRole('teacher') && activeWorkspace === 'teacher'
         ? 'teacher'
-        : 'student';
+        : hasRole('translator') && activeWorkspace === 'translator'
+          ? 'translator'
+          : 'student';
     return (
       <ClassworkView
         scope={scope}

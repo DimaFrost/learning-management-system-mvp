@@ -33,6 +33,7 @@ import type { useGradebookConfig } from '../../../hooks/useGradebookConfig';
 import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
 import { SubjectCurriculumPlan } from '../../../components/subject/SubjectCurriculumPlan';
 import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
+import { ensureStaffNoteAccess } from '../../../utils/googleDocsV2';
 import {
   findClass,
   getCompactDateParts,
@@ -175,7 +176,8 @@ export function SubjectDetailPage({
       return { homework, session, submissions, mySubmission };
     });
   const runTeachers = getRunTeachers(run, courses, users);
-  const canCreateHomework = scope !== 'student' && sessionItems.length > 0;
+  const canCreateHomework =
+    (scope === 'admin' || scope === 'teacher') && sessionItems.length > 0;
   const composerClassContext = composerItem?.classInfo
     ? findClass(courses, composerItem.classInfo.classId)
     : null;
@@ -289,7 +291,14 @@ export function SubjectDetailPage({
     setRelatedClassId(null);
   };
 
-  const openMaterialFile = (file: ClassFile) => {
+  const openMaterialFile = async (file: ClassFile) => {
+    if (scope === 'translator' && file.fileType === 'teacher_note') {
+      try {
+        await ensureStaffNoteAccess(file.id);
+      } catch (error) {
+        console.error(error);
+      }
+    }
     const preview = resolveClassFilePreview(file);
     if (preview) {
       setPreviewItem(preview);
@@ -535,7 +544,7 @@ export function SubjectDetailPage({
                         Upload subject materials
                       </h3>
                       <p className="mt-1 text-xs text-[#737373]">
-                        Student Materials are visible to students. Staff Notes stay private to staff.
+                        Student Materials are visible to students. Staff Notes stay private to teachers, admins, and translators.
                       </p>
                     </div>
                     <button
@@ -1144,11 +1153,11 @@ export function SubjectDetailPage({
                               role="button"
                               tabIndex={0}
                               key={file.id}
-                              onClick={() => openMaterialFile(file)}
+                              onClick={() => { void openMaterialFile(file); }}
                               onKeyDown={event => {
                                 if (event.key === 'Enter' || event.key === ' ') {
                                   event.preventDefault();
-                                  openMaterialFile(file);
+                                  void openMaterialFile(file);
                                 }
                               }}
                               className="tbo-focus -mx-4 grid w-[calc(100%+2rem)] items-center gap-3 px-4 py-3 text-left hover:bg-[#eff6ff]/60 md:grid-cols-[28px_minmax(0,1fr)_auto]"
@@ -1165,16 +1174,17 @@ export function SubjectDetailPage({
                                 </p>
                               </div>
                               <div className="flex items-center gap-1">
-                                <a
-                                  href={file.driveViewUrl}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  onClick={event => event.stopPropagation()}
+                                <button
+                                  type="button"
+                                  onClick={event => {
+                                    event.stopPropagation();
+                                    void openMaterialFile(file);
+                                  }}
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                                   title="Open in new tab"
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
+                                </button>
                                 {canManageMaterials && (
                                   <button
                                     type="button"

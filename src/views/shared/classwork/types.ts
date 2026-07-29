@@ -1,6 +1,6 @@
 import type { BookReadingAssignment, BookReadingSubmission, Course } from '../../../types/lms';
 
-export type ClassworkScope = 'admin' | 'teacher' | 'student';
+export type ClassworkScope = 'admin' | 'teacher' | 'translator' | 'student';
 export type SubjectTab = 'sessions' | 'homework' | 'materials' | 'attendance';
 
 export type HomeworkRow = {

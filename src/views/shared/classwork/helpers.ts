@@ -20,6 +20,14 @@ export function getScopedCourseIds(scope: ClassworkScope, currentUser: User, cou
       .filter(row => row.studentId === currentUser.id && row.status === 'active')
       .map(row => row.courseId);
   }
+  if (scope === 'translator') {
+    return courses
+      .filter(isCourseActive)
+      .filter(course => course.subjects.some(subject =>
+        subject.classes.some(cls => cls.translatorId === currentUser.id)
+      ))
+      .map(course => course.id);
+  }
   const teachingCourseTypes = currentUser.teachingCourseTypes ?? [];
   if (teachingCourseTypes.length > 0) {
     return courses
