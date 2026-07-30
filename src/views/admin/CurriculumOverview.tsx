@@ -1,6 +1,6 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronRight, ChevronDown, Edit3, Trash2, Plus, ExternalLink, Eye } from 'lucide-react';
-import type { Course, CourseStudent, HomeworkSubmission, User, Subject, Class } from '../../types/lms';
+import type { Course, CourseStudent, HomeworkSubmission, User, Subject, Class, CurriculumCapability } from '../../types/lms';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge } from './users/usersShared';
@@ -41,6 +41,7 @@ interface CurriculumOverviewProps {
   onNavigate?: (view: string) => void;
   onDetailActiveChange?: (active: boolean) => void;
   selectedYearGroupIds?: Set<number>;
+  curriculumCapability?: CurriculumCapability;
 }
 
 const SESSION_GRID = '72px 28px minmax(180px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
@@ -104,7 +105,9 @@ export function CurriculumOverview({
   onNavigate,
   onDetailActiveChange,
   selectedYearGroupIds,
+  curriculumCapability = 'full',
 }: CurriculumOverviewProps) {
+  const canFullyManage = curriculumCapability === 'full';
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
@@ -321,13 +324,18 @@ export function CurriculumOverview({
         assignmentSaving={assignmentSaving}
         backLabel="Back to curriculum"
         curriculumActions={{
-          onEditSubject: () => onEditSubject(courseId, selectedSubjectEntity),
-          onAddSession: () => onEditClass(courseId, subjectId),
+          ...(canFullyManage
+            ? {
+                onEditSubject: () => onEditSubject(courseId, selectedSubjectEntity),
+                onAddSession: () => onEditClass(courseId, subjectId),
+                onDeleteSession: (classId: number) => onDeleteClass(courseId, subjectId, classId),
+              }
+            : {}),
           onEditSession: classId => {
             const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
             if (cls) onEditClass(courseId, subjectId, cls);
           },
-          onDeleteSession: classId => onDeleteClass(courseId, subjectId, classId),
+          translatorAssignOnly: !canFullyManage,
           getSessionAttention: classId => {
             const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
             if (!cls) return null;
@@ -433,6 +441,8 @@ export function CurriculumOverview({
                     {totalSubjects} subjects · {totalClasses} sessions
                   </span>
                 )}
+                {canFullyManage && (
+                  <>
                 <button
                   type="button"
                   onClick={() => onEditCourse(course)}
@@ -449,6 +459,8 @@ export function CurriculumOverview({
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
+                  </>
+                )}
               </div>
             </div>
 
@@ -456,6 +468,7 @@ export function CurriculumOverview({
               <div className="space-y-3">
                 <div className="flex flex-col gap-2 border-y border-[#d4d4d4] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Subjects</p>
+                  {canFullyManage && (
                   <button
                     type="button"
                     onClick={() => onEditSubject(course.id)}
@@ -464,6 +477,7 @@ export function CurriculumOverview({
                     <Plus className="h-3.5 w-3.5" />
                     Add Subject
                   </button>
+                  )}
                 </div>
 
                 {course.subjects.length === 0 ? (
@@ -583,6 +597,8 @@ export function CurriculumOverview({
                                 <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
                                   {sessionCount} item{sessionCount === 1 ? '' : 's'}
                                 </span>
+                                {canFullyManage && (
+                                  <>
                                 <button
                                   type="button"
                                   onClick={() => onEditSubject(course.id, subject)}
@@ -599,6 +615,8 @@ export function CurriculumOverview({
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
+                                  </>
+                                )}
                               </div>
                               {!isSubjectCollapsed && (
                                 <button
@@ -618,6 +636,7 @@ export function CurriculumOverview({
                             <div>
                               <div className="flex flex-col gap-2 border-y border-[#d4d4d4] bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Sessions</p>
+                                {canFullyManage && (
                                 <button
                                   type="button"
                                   onClick={() => onEditClass(course.id, subject.id)}
@@ -626,6 +645,7 @@ export function CurriculumOverview({
                                   <Plus className="h-3 w-3" />
                                   Add Session
                                 </button>
+                                )}
                               </div>
 
                               {subject.classes.length === 0 ? (
@@ -741,10 +761,11 @@ export function CurriculumOverview({
                                                   type="button"
                                                   onClick={() => onEditClass(course.id, subject.id, cls)}
                                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                                  title="Edit session"
+                                                  title={canFullyManage ? 'Edit session' : 'Assign translator'}
                                                 >
                                                   <Edit3 className="h-3.5 w-3.5" />
                                                 </button>
+                                                {canFullyManage && (
                                                 <button
                                                   type="button"
                                                   onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
@@ -753,6 +774,7 @@ export function CurriculumOverview({
                                                 >
                                                   <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
+                                                )}
                                               </div>
                                             </div>
 
@@ -789,10 +811,11 @@ export function CurriculumOverview({
                                                     type="button"
                                                     onClick={() => onEditClass(course.id, subject.id, cls)}
                                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                                    title="Edit session"
+                                                    title={canFullyManage ? 'Edit session' : 'Assign translator'}
                                                   >
                                                     <Edit3 className="h-3.5 w-3.5" />
                                                   </button>
+                                                  {canFullyManage && (
                                                   <button
                                                     type="button"
                                                     onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
@@ -801,6 +824,7 @@ export function CurriculumOverview({
                                                   >
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                   </button>
+                                                  )}
                                                 </div>
                                               </div>
                                               <p className="text-xs text-[#737373]">

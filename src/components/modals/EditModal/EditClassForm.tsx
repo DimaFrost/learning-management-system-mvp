@@ -9,9 +9,59 @@ interface EditClassFormProps {
   onChange: (field: string, value: any) => void;
   users: User[];
   courses: Course[];
+  translatorOnly?: boolean;
 }
 
-export function EditClassForm({ formData, errors, onChange, users, courses }: EditClassFormProps) {
+export function EditClassForm({
+  formData,
+  errors,
+  onChange,
+  users,
+  courses,
+  translatorOnly = false,
+}: EditClassFormProps) {
+  const translatorSelect = (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-2">Translator</label>
+      <select
+        value={formData.translatorId || ''}
+        onChange={(e) => onChange('translatorId', e.target.value || null)}
+        className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+      >
+        <option value="">No translator assigned (Vacant)</option>
+        {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => {
+          const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour, courses).hasConflict : false;
+          return (
+            <option
+              key={translator.id}
+              value={translator.id}
+              disabled={isBooked}
+              className={isBooked ? 'text-red-500 bg-red-50' : ''}
+            >
+              {translator.name}{isBooked ? ' (Already booked)' : ''}
+            </option>
+          );
+        })}
+      </select>
+      {errors.translatorId && <p className="text-red-500 text-sm mt-1">{errors.translatorId}</p>}
+    </div>
+  );
+
+  if (translatorOnly) {
+    return (
+      <>
+        {formData.title && (
+          <p className="text-sm text-gray-600 mb-4">
+            Session: <span className="font-medium text-gray-900">{formData.title}</span>
+            {formData.date ? ` · ${formData.date}` : ''}
+            {formData.hour ? ` · ${formData.hour} hour` : ''}
+          </p>
+        )}
+        {translatorSelect}
+      </>
+    );
+  }
+
   return (
     <>
       <div>
@@ -33,7 +83,7 @@ export function EditClassForm({ formData, errors, onChange, users, courses }: Ed
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
           <option value="">Select a subject</option>
-          {courses.flatMap(course => 
+          {courses.flatMap(course =>
             course.subjects.map(subject => (
               <option key={subject.id} value={subject.id}>
                 {getCourseDisplayName(course)} - {subject.title}
@@ -78,8 +128,8 @@ export function EditClassForm({ formData, errors, onChange, users, courses }: Ed
           {users.filter(u => u.roles.includes('teacher') && u.id !== formData.translatorId).map(teacher => {
             const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(teacher.id, formData.date, formData.hour, courses).hasConflict : false;
             return (
-              <option 
-                key={teacher.id} 
+              <option
+                key={teacher.id}
                 value={teacher.id}
                 disabled={isBooked}
                 className={isBooked ? 'text-red-500 bg-red-50' : ''}
@@ -91,30 +141,7 @@ export function EditClassForm({ formData, errors, onChange, users, courses }: Ed
         </select>
         {errors.teacherId && <p className="text-red-500 text-sm mt-1">{errors.teacherId}</p>}
       </div>
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Translator</label>
-        <select
-          value={formData.translatorId || ''}
-          onChange={(e) => onChange('translatorId', e.target.value || null)}
-          className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-        >
-          <option value="">No translator assigned (Vacant)</option>
-          {users.filter(u => u.roles.includes('translator') && u.id !== formData.teacherId).map(translator => {
-            const isBooked = (formData.date && formData.hour) ? checkDoubleBooking(translator.id, formData.date, formData.hour, courses).hasConflict : false;
-            return (
-              <option 
-                key={translator.id} 
-                value={translator.id}
-                disabled={isBooked}
-                className={isBooked ? 'text-red-500 bg-red-50' : ''}
-              >
-                {translator.name}{isBooked ? ' (Already booked)' : ''}
-              </option>
-            );
-          })}
-        </select>
-        {errors.translatorId && <p className="text-red-500 text-sm mt-1">{errors.translatorId}</p>}
-      </div>
+      {translatorSelect}
     </>
   );
 }

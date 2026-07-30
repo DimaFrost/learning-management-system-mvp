@@ -17,6 +17,7 @@ import type {
 } from '../types/lms';
 import type { CadenceSettings } from '../hooks/useCadenceSettings';
 import type { WorkspaceId } from '../types/workspace';
+import { isTranslationMinistryTeamLeader } from '../utils/ministryTeamUtils';
 import { useAttendance } from '../hooks/useAttendance';
 import { useBooks } from '../hooks/useBooks';
 import { useStreamSettings } from '../hooks/useStreamSettings';
@@ -726,11 +727,11 @@ export function AppRouter({
             }
             onEditClass={(courseId, subjectId, classData, date?) => {
               if (classData) {
-                setEditingItem({ type: 'class', data: classData, courseId, subjectId });
+                setEditingItem({ type: 'class', data: classData, courseId, subjectId, classEditMode: 'full' });
               } else if (date) {
-                setEditingItem({ type: 'class', data: null, date });
+                setEditingItem({ type: 'class', data: null, date, classEditMode: 'full' });
               } else {
-                setEditingItem({ type: 'class', data: null, courseId, subjectId });
+                setEditingItem({ type: 'class', data: null, courseId, subjectId, classEditMode: 'full' });
               }
             }}
             onDeleteCourse={deleteCourse}
@@ -742,6 +743,7 @@ export function AppRouter({
             wellSchedule={attendance.wellSchedule}
             onGenerateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
             onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
+            curriculumCapability="full"
           />
         );
       case 'curriculum-books':
@@ -1002,6 +1004,79 @@ export function AppRouter({
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onOpenCheckin={openCheckin}
+          />
+        );
+    }
+  }
+
+  if (
+    hasRole('team_leader') &&
+    activeWorkspace === 'team_leader' &&
+    isTranslationMinistryTeamLeader(currentUser, attendance.ministryTeams)
+  ) {
+    switch (activeView) {
+      case 'curriculum':
+      case 'curriculum-overview':
+      case 'curriculum-date-view':
+        return (
+          <CurriculumView
+            activeCurriculumSection={
+              activeView === 'curriculum-date-view' ? 'date-view' : 'overview'
+            }
+            courses={courses}
+            courseStudents={courseStudents}
+            users={users}
+            currentUser={currentUser}
+            onAddClass={addClass}
+            onUpdateClass={updateClass}
+            onAddCourse={onAddCourse}
+            onRefetchCourses={onRefetchCourses}
+            collapsedCourses={collapsedCourses}
+            collapsedSubjects={collapsedSubjects}
+            toggleCourseCollapse={toggleCourseCollapse}
+            toggleSubjectCollapse={toggleSubjectCollapse}
+            getUserById={getUserById}
+            getCourseDisplayName={getCourseDisplayName}
+            checkDoubleBooking={checkDoubleBooking}
+            onEditCourse={(course?) => setEditingItem({ type: 'course', data: course ?? null })}
+            onEditSubject={(courseId, subject?) =>
+              setEditingItem({ type: 'subject', data: subject ?? null, courseId })
+            }
+            onEditClass={(courseId, subjectId, classData) => {
+              if (!classData) return;
+              setEditingItem({
+                type: 'class',
+                data: classData,
+                courseId,
+                subjectId,
+                classEditMode: 'translator-only',
+              });
+            }}
+            onDeleteCourse={deleteCourse}
+            onDeleteSubject={deleteSubject}
+            onDeleteClass={deleteClass}
+            onReactivate={(courseId) => updateCourse(courseId, { status: 'active' })}
+            onOpenClass={openClassDetail}
+            onNavigate={setActiveView}
+            wellSchedule={attendance.wellSchedule}
+            onGenerateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
+            onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
+            curriculumCapability="translator-assign"
+          />
+        );
+      case 'ministry-report':
+        return (
+          <MinistryReportView
+            currentUser={currentUser}
+            courses={courses}
+            courseStudents={courseStudents}
+            users={users}
+            ministryTeams={attendance.ministryTeams}
+            ministryRotations={attendance.ministryRotations}
+            ministrySessions={attendance.ministrySessions}
+            ministryAttendance={attendance.ministryAttendance}
+            loading={attendance.loading}
+            onSubmit={attendance.submitMinistryServiceReport}
           />
         );
     }

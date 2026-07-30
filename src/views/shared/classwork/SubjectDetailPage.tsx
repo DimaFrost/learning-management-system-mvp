@@ -438,8 +438,7 @@ export function SubjectDetailPage({
               )}
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-              {curriculumActions && (
-                <>
+              {curriculumActions?.onEditSubject && (
                   <button
                     type="button"
                     onClick={curriculumActions.onEditSubject}
@@ -448,6 +447,8 @@ export function SubjectDetailPage({
                     <Pencil className="h-4 w-4" />
                     Edit subject
                   </button>
+              )}
+              {curriculumActions?.onAddSession && (
                   <button
                     type="button"
                     onClick={curriculumActions.onAddSession}
@@ -456,7 +457,6 @@ export function SubjectDetailPage({
                     <Plus className="h-4 w-4" />
                     Add session
                   </button>
-                </>
               )}
               <button type="button" onClick={() => setActiveTab('sessions')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]">
                 <span className="text-lg leading-none">{sessionItems.length}</span>
@@ -976,18 +976,20 @@ export function SubjectDetailPage({
                           type="button"
                           onClick={() => curriculumActions.onEditSession(item.classInfo!.classId)}
                           className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5]"
-                          title="Edit session"
+                          title={curriculumActions.translatorAssignOnly ? 'Assign translator' : 'Edit session'}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
+                        {curriculumActions.onDeleteSession && (
                         <button
                           type="button"
-                          onClick={() => curriculumActions.onDeleteSession(item.classInfo!.classId)}
+                          onClick={() => curriculumActions.onDeleteSession?.(item.classInfo!.classId)}
                           className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fecaca] text-[#dc2626] hover:bg-[#fef2f2]"
                           title="Delete session"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
+                        )}
                       </span>
                     ) : (
                       <span className="text-xs font-semibold text-[#737373]">Session</span>

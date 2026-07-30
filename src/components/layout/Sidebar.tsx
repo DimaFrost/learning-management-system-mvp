@@ -43,6 +43,7 @@ interface SidebarProps {
   pendingUserCount?: number;
   isOnDuty: boolean;
   activeWorkspace: WorkspaceId | null;
+  canAssignSessionTranslators?: boolean;
   mode: 'locked' | 'collapsed';
   onToggleMode: () => void;
   mobileOpen?: boolean;
@@ -59,6 +60,8 @@ type NavItem = {
   shared?: boolean;
   badge?: string;
   tone?: 'default' | 'alert';
+  /** When true, only shown if canAssignSessionTranslators is true. */
+  requiresTranslationTeamLead?: boolean;
 };
 
 type NavSection = {
@@ -76,6 +79,7 @@ export function Sidebar({
   pendingUserCount = 0,
   isOnDuty,
   activeWorkspace,
+  canAssignSessionTranslators = false,
   mode,
   onToggleMode,
   mobileOpen = false,
@@ -166,16 +170,18 @@ export function Sidebar({
       label: 'Overview',
       description: 'Year groups and subjects',
       icon: BookOpen,
-      roles: ['administrator'],
-      workspaces: ['administrator'],
+      roles: ['administrator', 'team_leader'],
+      workspaces: ['administrator', 'team_leader'],
+      requiresTranslationTeamLead: true,
     },
     {
       id: 'curriculum-date-view',
       label: 'Date View',
       description: 'Sessions by date',
       icon: Calendar,
-      roles: ['administrator'],
-      workspaces: ['administrator'],
+      roles: ['administrator', 'team_leader'],
+      workspaces: ['administrator', 'team_leader'],
+      requiresTranslationTeamLead: true,
     },
     {
       id: 'curriculum-planning',
@@ -466,8 +472,9 @@ export function Sidebar({
           label: t('sidebar.curriculum'),
           description: t('sidebar.curriculum.desc'),
           icon: BookOpen,
-          roles: ['administrator'],
-          workspaces: ['administrator'],
+          roles: ['administrator', 'team_leader'],
+          workspaces: ['administrator', 'team_leader'],
+          requiresTranslationTeamLead: true,
         },
         {
           id: 'users-directory',
@@ -585,92 +592,35 @@ export function Sidebar({
     },
   ];
 
+  const isNavItemVisible = (item: NavItem) => {
+    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
+    const fitsWorkspace =
+      item.shared ||
+      !item.workspaces ||
+      !activeWorkspace ||
+      item.workspaces.includes(activeWorkspace);
+    const translationLeadOk =
+      !item.requiresTranslationTeamLead ||
+      hasRole('administrator') ||
+      canAssignSessionTranslators;
+
+    return hasPermission && fitsWorkspace && translationLeadOk;
+  };
+
   const visibleSections = sections
     .map(section => ({
       ...section,
-      items: section.items.filter(item => {
-        const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-        const fitsWorkspace =
-          item.shared ||
-          !item.workspaces ||
-          !activeWorkspace ||
-          item.workspaces.includes(activeWorkspace);
-
-        return hasPermission && fitsWorkspace;
-      }),
+      items: section.items.filter(isNavItemVisible),
     }))
     .filter(section => section.items.length > 0);
 
-  const visibleAttendanceItems = attendanceItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleCurriculumItems = curriculumItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleMentorshipItems = mentorshipItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleMyAttendanceItems = myAttendanceItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleUsersItems = usersItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleClassworkItems = classworkItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
-  const visibleTuitionItems = tuitionItems.filter(item => {
-    const hasPermission = !item.roles || item.roles.some(role => hasRole(role));
-    const fitsWorkspace =
-      item.shared ||
-      !item.workspaces ||
-      !activeWorkspace ||
-      item.workspaces.includes(activeWorkspace);
-
-    return hasPermission && fitsWorkspace;
-  });
+  const visibleAttendanceItems = attendanceItems.filter(isNavItemVisible);
+  const visibleCurriculumItems = curriculumItems.filter(isNavItemVisible);
+  const visibleMentorshipItems = mentorshipItems.filter(isNavItemVisible);
+  const visibleMyAttendanceItems = myAttendanceItems.filter(isNavItemVisible);
+  const visibleUsersItems = usersItems.filter(isNavItemVisible);
+  const visibleClassworkItems = classworkItems.filter(isNavItemVisible);
+  const visibleTuitionItems = tuitionItems.filter(isNavItemVisible);
   const inAttendanceModule =
     activeView === 'attendance' ||
     activeView.startsWith('attendance-');

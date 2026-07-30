@@ -62,9 +62,11 @@ export type HomeworkDetailSelection = {
 };
 
 export type CurriculumSubjectActions = {
-  onEditSubject: () => void;
-  onAddSession: () => void;
+  onEditSubject?: () => void;
+  onAddSession?: () => void;
   onEditSession: (classId: number) => void;
-  onDeleteSession: (classId: number) => void;
+  onDeleteSession?: (classId: number) => void;
   getSessionAttention?: (classId: number) => { hasConflict: boolean; hasVacantRoles: boolean } | null;
+  /** When true, edit session button is labeled for translator assignment. */
+  translatorAssignOnly?: boolean;
 };

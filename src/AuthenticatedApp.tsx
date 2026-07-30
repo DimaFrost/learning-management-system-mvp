@@ -34,6 +34,7 @@ import { LoadingSpinner } from './components/ui/LoadingSpinner';
 import { ErrorMessage } from './components/ui/ErrorMessage';
 import { AppRouter } from './views/AppRouter';
 import { DevRolePanel } from './components/dev/DevRolePanel';
+import { isTranslationMinistryTeamLeader } from './utils/ministryTeamUtils';
 import {
   WORKSPACE_DEFAULT_VIEW,
   getAvailableWorkspaces,
@@ -200,6 +201,10 @@ export function AuthenticatedApp({
     activeWorkspace && availableWorkspaces.includes(activeWorkspace)
       ? activeWorkspace
       : availableWorkspaces[0] ?? null;
+  const canAssignSessionTranslators = isTranslationMinistryTeamLeader(
+    effectiveUser,
+    attendance.ministryTeams
+  );
 
   useEffect(() => {
     localStorage.setItem('tbo-sidebar-mode', sidebarMode);
@@ -407,6 +412,7 @@ export function AuthenticatedApp({
           pendingUserCount={pendingUserCount}
           isOnDuty={effectiveIsOnDuty}
           activeWorkspace={selectedWorkspace}
+          canAssignSessionTranslators={canAssignSessionTranslators}
           mode={sidebarMode}
           onToggleMode={toggleSidebarMode}
           mobileOpen={mobileNavOpen}

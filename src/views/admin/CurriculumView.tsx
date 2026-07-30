@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
-import type { Course, CourseStudent, User, Subject, Class, WellScheduleEntry } from '../../types/lms';
+import type { Course, CourseStudent, User, Subject, Class, WellScheduleEntry, CurriculumCapability } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
 import { CurriculumOverview } from './CurriculumOverview';
 import { CurriculumDateView } from './CurriculumDateView';
@@ -36,6 +36,7 @@ interface CurriculumViewProps {
   wellSchedule: WellScheduleEntry[];
   onGenerateWellScheduleForCourse: (courseId: number) => Promise<void>;
   onRemoveWellScheduleDate: (wellDate: string, courseIds?: number[]) => Promise<void>;
+  curriculumCapability?: CurriculumCapability;
 }
 
 export function CurriculumView({
@@ -65,7 +66,9 @@ export function CurriculumView({
   wellSchedule,
   onGenerateWellScheduleForCourse,
   onRemoveWellScheduleDate,
+  curriculumCapability = 'full',
 }: CurriculumViewProps) {
+  const canFullyManage = curriculumCapability === 'full';
   const [overviewDetailActive, setOverviewDetailActive] = useState(false);
   const [dateViewDetailActive, setDateViewDetailActive] = useState(false);
   const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<Set<number>>(new Set());
@@ -115,9 +118,13 @@ export function CurriculumView({
           <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Curriculum</p>
-              <h1 className="tbo-display mt-1 text-3xl text-[#171717]">Curriculum Management</h1>
+              <h1 className="tbo-display mt-1 text-3xl text-[#171717]">
+                {canFullyManage ? 'Curriculum Management' : 'Curriculum'}
+              </h1>
               <p className="mt-1 max-w-2xl text-sm text-[#737373]">
-                Manage year groups, subjects, and sessions across the school year.
+                {canFullyManage
+                  ? 'Manage year groups, subjects, and sessions across the school year.'
+                  : 'View sessions and assign translators.'}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -147,6 +154,7 @@ export function CurriculumView({
                   })}
                 </div>
               )}
+              {canFullyManage && (
               <button
                 type="button"
                 onClick={() => onEditCourse()}
@@ -156,6 +164,7 @@ export function CurriculumView({
               >
                 <Plus className="h-4 w-4" />
               </button>
+              )}
             </div>
           </div>
         </div>
@@ -184,6 +193,7 @@ export function CurriculumView({
           onNavigate={onNavigate}
           onDetailActiveChange={setOverviewDetailActive}
           selectedYearGroupIds={selectedYearGroupIds}
+          curriculumCapability={curriculumCapability}
         />
       )}
       {activeCurriculumSection === 'date-view' && (
@@ -202,9 +212,10 @@ export function CurriculumView({
           onNavigate={onNavigate}
           onDetailActiveChange={setDateViewDetailActive}
           selectedYearGroupIds={selectedYearGroupIds}
+          curriculumCapability={curriculumCapability}
         />
       )}
-      {activeCurriculumSection === 'archived' && (
+      {canFullyManage && activeCurriculumSection === 'archived' && (
         <CurriculumArchiveView
           courses={courses}
           users={users}
@@ -213,7 +224,7 @@ export function CurriculumView({
           onReactivate={onReactivate}
         />
       )}
-      {activeCurriculumSection === 'planning' && (
+      {canFullyManage && activeCurriculumSection === 'planning' && (
         <CurriculumPlanningView
           courses={courses}
           users={users}

@@ -226,6 +226,7 @@ const topics: KnowledgeTopic[] = [
       'Planning groups sessions by week and supports drag/drop through a floating toolbar.',
       'The Well has its own planning tab and can auto-fill Wednesdays, with manual removal for weeks that should not meet.',
       'Archived year groups should stay out of normal dropdowns and active work areas.',
+      'Leaders of the Translation (Превод) ministry team can open Overview and Date View in the Team Leader workspace and assign translators to sessions only.',
     ],
     visual: [
       { label: 'Planning', icon: CalendarDays, hint: 'School year grid' },
@@ -490,6 +491,7 @@ const topics: KnowledgeTopic[] = [
       'Stream settings control posting/comment permissions and should be admin-controlled.',
       'Google Docs setup should be visible only to real admins, not users merely viewing as students.',
       'Database RLS controls what non-admin users can read or write.',
+      'Translation ministry team leaders can update only classes.translator_id; a DB trigger blocks other class fields.',
     ],
     where: [
       'Attendance Settings lives under Attendance, then Operations.',

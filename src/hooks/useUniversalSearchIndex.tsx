@@ -46,6 +46,7 @@ import type {
 import { findClassCourseContext, getCourseDisplayName, isCourseActive } from '../utils/courseUtils';
 import { getUserAccessStatus } from '../utils/userManagementUtils';
 import { formatPlatformDate } from '../utils/dateUtils';
+import { isTranslationMinistryTeamLeader } from '../utils/ministryTeamUtils';
 
 export type SearchResultType =
   | 'people'
@@ -184,12 +185,16 @@ function announcementVisible(announcement: Announcement, currentUser: User, work
 function navigationResults({
   currentUser,
   activeWorkspace,
+  ministryTeams,
   onNavigate,
-}: Pick<SearchIndexInput, 'currentUser' | 'activeWorkspace' | 'onNavigate'>): SearchResult[] {
+}: Pick<SearchIndexInput, 'currentUser' | 'activeWorkspace' | 'ministryTeams' | 'onNavigate'>): SearchResult[] {
   const isAdmin = activeWorkspace === 'administrator' && includesAnyRole(currentUser, ['administrator']);
   const isTeacher = activeWorkspace === 'teacher' && includesAnyRole(currentUser, ['teacher']);
   const isStudent = activeWorkspace === 'student' && includesAnyRole(currentUser, ['student']);
   const isTranslator = activeWorkspace === 'translator' && includesAnyRole(currentUser, ['translator']);
+  const isTeamLeader = activeWorkspace === 'team_leader' && includesAnyRole(currentUser, ['team_leader']);
+  const canAssignSessionTranslators =
+    isTeamLeader && isTranslationMinistryTeamLeader(currentUser, ministryTeams);
   const shared = [
     { view: 'dashboard', title: 'Dashboard', subtitle: 'Home overview', icon: LayoutDashboard },
     { view: 'announcements', title: 'Stream', subtitle: 'Posts, comments, and attachments', icon: Megaphone },
@@ -221,12 +226,22 @@ function navigationResults({
   const translator = [
     { view: 'my-classes', title: 'Translation Sessions', subtitle: 'Sessions assigned to translate', icon: Calendar },
   ];
+  const teamLeader = [
+    { view: 'ministry-report', title: 'Ministry Report', subtitle: 'Team attendance and service reports', icon: ClipboardList },
+    ...(canAssignSessionTranslators
+      ? [
+          { view: 'curriculum-overview', title: 'Curriculum Overview', subtitle: 'Year groups, subjects, and sessions', icon: BookOpen },
+          { view: 'curriculum-date-view', title: 'Curriculum Date View', subtitle: 'Sessions by date; assign translators', icon: Calendar },
+        ]
+      : []),
+  ];
   const entries = [
     ...shared,
     ...(isAdmin ? admin : []),
     ...(isAdmin || isTeacher || isStudent ? classroom : []),
     ...(isStudent ? student : []),
     ...(isTranslator ? translator : []),
+    ...(isTeamLeader ? teamLeader : []),
   ];
 
   return entries.map(entry => ({
@@ -285,7 +300,7 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
       : isTeacher || isTranslator ? staffClassIds : null;
     const userById = new Map(users.map(user => [user.id, user]));
 
-    results.push(...navigationResults({ currentUser, activeWorkspace, onNavigate }));
+    results.push(...navigationResults({ currentUser, activeWorkspace, ministryTeams, onNavigate }));
 
     users.forEach(user => {
       const sameUser = user.id === currentUser.id;

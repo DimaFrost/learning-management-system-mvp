@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Plus, Edit3, Trash2, Eye } from 'lucide-react';
-import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject } from '../../types/lms';
+import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject, CurriculumCapability } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
@@ -29,6 +29,7 @@ interface CurriculumDateViewProps {
   onNavigate?: (view: string) => void;
   onDetailActiveChange?: (active: boolean) => void;
   selectedYearGroupIds?: Set<number>;
+  curriculumCapability?: CurriculumCapability;
 }
 
 type SelectedSubject = {
@@ -114,7 +115,9 @@ export function CurriculumDateView({
   onNavigate,
   onDetailActiveChange,
   selectedYearGroupIds,
+  curriculumCapability = 'full',
 }: CurriculumDateViewProps) {
+  const canFullyManage = curriculumCapability === 'full';
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
@@ -390,13 +393,18 @@ export function CurriculumDateView({
         assignmentSaving={assignmentSaving}
         backLabel="Back to date view"
         curriculumActions={{
-          onEditSubject: () => onEditSubject(courseId, selectedSubjectEntity),
-          onAddSession: () => onEditClass(courseId, subjectId, null),
+          ...(canFullyManage
+            ? {
+                onEditSubject: () => onEditSubject(courseId, selectedSubjectEntity),
+                onAddSession: () => onEditClass(courseId, subjectId, null),
+                onDeleteSession: (classId: number) => onDeleteClass(courseId, subjectId, classId),
+              }
+            : {}),
           onEditSession: classId => {
             const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
             if (cls) onEditClass(courseId, subjectId, cls);
           },
-          onDeleteSession: classId => onDeleteClass(courseId, subjectId, classId),
+          translatorAssignOnly: !canFullyManage,
           getSessionAttention: classId => {
             const cls = selectedSubjectEntity.classes.find(item => item.id === classId);
             if (!cls) return null;
@@ -540,7 +548,7 @@ export function CurriculumDateView({
                       <span className="text-xs font-semibold text-[#525252]">
                         {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
                       </span>
-                    ) : (
+                    ) : canFullyManage ? (
                       <button
                         type="button"
                         onClick={() => onEditClass(0, 0, null, date)}
@@ -549,7 +557,7 @@ export function CurriculumDateView({
                         <Plus className="h-3.5 w-3.5" />
                         Add Session
                       </button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
 
@@ -610,10 +618,11 @@ export function CurriculumDateView({
                                       type="button"
                                       onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
                                       className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                      title="Edit session"
+                                      title={canFullyManage ? 'Edit session' : 'Assign translator'}
                                     >
                                       <Edit3 className="h-3.5 w-3.5" />
                                     </button>
+                                    {canFullyManage && (
                                     <button
                                       type="button"
                                       onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
@@ -622,6 +631,7 @@ export function CurriculumDateView({
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
+                                    )}
                                   </div>
                                 </div>
 

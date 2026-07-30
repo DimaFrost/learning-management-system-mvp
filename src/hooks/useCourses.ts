@@ -493,18 +493,25 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
   const updateClass = useCallback(async (courseId: number, subjectId: number, classId: number, updates: Partial<Class>) => {
     setError(null);
-    try {
-      const { error: updateError } = await supabase
-        .from('classes')
-        .update(toClassRow(updates))
-        .eq('id', classId);
+    const { data, error: updateError } = await supabase
+      .from('classes')
+      .update(toClassRow(updates))
+      .eq('id', classId)
+      .select('id')
+      .maybeSingle();
 
-      if (updateError) throw updateError;
-      await refetchCourses();
-    } catch (err) {
-      console.error('updateClass error:', err);
-      setError('Failed to update session');
+    if (updateError) {
+      console.error('updateClass error:', updateError);
+      throw new Error(updateError.message || 'Failed to update session');
     }
+    if (!data) {
+      const message =
+        'Could not update session. You may not have permission to assign translators.';
+      console.error('updateClass error:', message);
+      throw new Error(message);
+    }
+
+    await refetchCourses();
   }, [refetchCourses]);
 
   const deleteClass = useCallback((courseId: number, subjectId: number, classId: number) => {

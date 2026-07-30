@@ -87,6 +87,9 @@ export interface MentorshipLog {
   studentProgress?: 'excellent' | 'good' | 'needs_improvement' | 'concern';
 }
 
+export type CurriculumCapability = 'full' | 'translator-assign';
+export type ClassEditMode = 'full' | 'translator-only';
+
 export interface EditingItem {
   type: 'course' | 'user' | 'log' | 'subject' | 'class';
   data?: Course | User | Subject | Class | MentorshipLog | null;
@@ -94,6 +97,7 @@ export interface EditingItem {
   courseId?: number;
   subjectId?: number;
   date?: string;
+  classEditMode?: ClassEditMode;
   planningCourseOptions?: {
     firstYearId?: number;
     secondYearId?: number;

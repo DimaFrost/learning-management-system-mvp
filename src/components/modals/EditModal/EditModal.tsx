@@ -22,8 +22,8 @@ interface EditModalProps {
   onUpdateCourse: (id: number, data: Partial<Course>) => void;
   onAddSubject: (courseId: number, data: Partial<Subject>) => void;
   onUpdateSubject: (courseId: number, subjectId: number, data: Partial<Subject>) => void;
-  onAddClass: (courseId: number, subjectId: number, data: Partial<Class>) => void;
-  onUpdateClass: (courseId: number, subjectId: number, classId: number, data: Partial<Class>) => void;
+  onAddClass: (courseId: number, subjectId: number, data: Partial<Class>) => void | Promise<void>;
+  onUpdateClass: (courseId: number, subjectId: number, classId: number, data: Partial<Class>) => void | Promise<void>;
   onAddUser: (data: Partial<User>) => void;
   onUpdateUser: (id: string, data: Partial<User>) => void;
   onAssignUserToCourse: (userId: string, courseId: number, mentorId?: string | null) => void;
@@ -132,7 +132,7 @@ export function EditModal({
     if (!formData.email && editingItem && editingItem.type === 'user') {
       newErrors.email = 'Email is required';
     }
-    if (!formData.title && editingItem && (editingItem.type === 'subject' || editingItem.type === 'class')) {
+    if (!formData.title && editingItem && (editingItem.type === 'subject' || (editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only'))) {
       newErrors.title = 'Title is required';
     }
     if (
@@ -143,13 +143,13 @@ export function EditModal({
     ) {
       newErrors.courseId = 'Course is required';
     }
-    if (!formData.date && editingItem && editingItem.type === 'class') {
+    if (!formData.date && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
       newErrors.date = 'Date is required';
     }
-    if (!formData.hour && editingItem && editingItem.type === 'class') {
+    if (!formData.hour && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
       newErrors.hour = 'Hour is required';
     }
-    if (!formData.subjectId && editingItem && editingItem.type === 'class') {
+    if (!formData.subjectId && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
       newErrors.subjectId = 'Subject is required';
     }
     // Teacher and translator are no longer required - vacant roles are allowed and visually indicated
@@ -162,8 +162,8 @@ export function EditModal({
     if (editingItem && editingItem.type === 'class' && formData.date && formData.hour && (formData.teacherId || formData.translatorId)) {
       const excludeClassId = editingItem.data ? (editingItem.data as Class).id : undefined;
       
-      // Check teacher conflicts
-      if (formData.teacherId) {
+      // Check teacher conflicts (skip when only assigning translator)
+      if (formData.teacherId && editingItem.classEditMode !== 'translator-only') {
         const teacherConflict = checkDoubleBooking(formData.teacherId, formData.date, formData.hour, courses, excludeClassId);
         if (teacherConflict.hasConflict) {
           const conflictDetails = teacherConflict.conflictingClasses
@@ -208,12 +208,48 @@ export function EditModal({
       }
     } else if (editingItem && editingItem.type === 'class') {
       if (editingItem.data && editingItem.courseId && editingItem.subjectId) {
-        onUpdateClass(editingItem.courseId, editingItem.subjectId, (editingItem.data as Class).id, formData);
-      } else if (formData.subjectId) {
+        try {
+          if (editingItem.classEditMode === 'translator-only') {
+            await onUpdateClass(
+              editingItem.courseId,
+              editingItem.subjectId,
+              (editingItem.data as Class).id,
+              { translatorId: formData.translatorId ?? null }
+            );
+          } else {
+            await onUpdateClass(
+              editingItem.courseId,
+              editingItem.subjectId,
+              (editingItem.data as Class).id,
+              formData
+            );
+          }
+        } catch (err) {
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : 'Failed to update session';
+          setErrors(prev => ({
+            ...prev,
+            translatorId: editingItem.classEditMode === 'translator-only' ? message : prev.translatorId,
+            form: editingItem.classEditMode === 'translator-only' ? null : message,
+          }));
+          return;
+        }
+      } else if (formData.subjectId && editingItem.classEditMode !== 'translator-only') {
         // Find the course that contains the selected subject
         const course = courses.find(c => c.subjects.some(s => s.id === formData.subjectId));
         if (course) {
-          onAddClass(course.id, formData.subjectId, formData);
+          try {
+            await onAddClass(course.id, formData.subjectId, formData);
+          } catch (err) {
+            const message =
+              err instanceof Error && err.message
+                ? err.message
+                : 'Failed to add session';
+            setErrors(prev => ({ ...prev, form: message }));
+            return;
+          }
         }
       }
     } else if (editingItem && editingItem.type === 'user') {
@@ -315,8 +351,11 @@ export function EditModal({
 
   if (!editingItem || editingItem.type === 'log') return null;
   const isUserModal = editingItem.type === 'user';
+  const isTranslatorOnlyClass =
+    editingItem.type === 'class' && editingItem.classEditMode === 'translator-only';
 
   const getModalTitle = () => {
+    if (isTranslatorOnlyClass) return 'Assign Translator';
     const action = editingItem.data ? 'Edit' : 'Add';
     switch (editingItem.type) {
       case 'course': return `${action} Year Group`;
@@ -351,6 +390,7 @@ export function EditModal({
             onChange={handleChange}
             users={users}
             courses={courses}
+            translatorOnly={isTranslatorOnlyClass}
           />
         );
       case 'user':
@@ -392,8 +432,11 @@ export function EditModal({
         </div>
 
         <form onSubmit={handleSubmit} className="flex max-h-[calc(90vh-82px)] flex-col">
-          <div className="tbo-scrollbar flex-1 overflow-y-auto p-5">
+          <div className="tbo-scrollbar flex-1 overflow-y-auto p-5 space-y-4">
             {getFormFields()}
+            {errors.form && (
+              <p className="text-sm text-red-600">{errors.form}</p>
+            )}
           </div>
 
           <div className="flex justify-end gap-3 border-t border-[#e5e5e5] bg-white px-5 py-4">
