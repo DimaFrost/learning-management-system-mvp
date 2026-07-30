@@ -323,6 +323,7 @@ export function CurriculumOverview({
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
         backLabel="Back to curriculum"
+        tabAccess={canFullyManage ? 'full' : 'sessions-materials'}
         curriculumActions={{
           ...(canFullyManage
             ? {

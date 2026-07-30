@@ -22,7 +22,7 @@ import {
   X,
 } from 'lucide-react';
 import { supabase } from '../../../lib/supabase';
-import type { ClassFile, CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
+import type { ClassFile, Course, CourseStudent, HomeworkSubmission, Subject, User } from '../../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../../admin/users/usersShared';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 import { formatFileSize } from '../../../utils/formatFileSize';
@@ -83,6 +83,7 @@ export function SubjectDetailPage({
   gradebookConfig,
   backLabel = 'Back to classwork',
   curriculumActions,
+  tabAccess = 'full',
 }: {
   run: SubjectRun;
   initialTab?: SubjectTab;
@@ -102,8 +103,15 @@ export function SubjectDetailPage({
   gradebookConfig: ReturnType<typeof useGradebookConfig>;
   backLabel?: string;
   curriculumActions?: CurriculumSubjectActions;
+  tabAccess?: 'full' | 'sessions-materials';
 }) {
-  const [activeTab, setActiveTab] = useState<SubjectTab>(initialTab ?? 'sessions');
+  const sessionsMaterialsOnly = scope === 'translator' || tabAccess === 'sessions-materials';
+  const resolveInitialTab = (tab?: SubjectTab): SubjectTab => {
+    if (!tab) return 'sessions';
+    if (sessionsMaterialsOnly && (tab === 'homework' || tab === 'attendance')) return 'sessions';
+    return tab;
+  };
+  const [activeTab, setActiveTab] = useState<SubjectTab>(() => resolveInitialTab(initialTab));
   const [attendanceRows, setAttendanceRows] = useState<SubjectAttendanceRow[]>([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [assignmentSessionPickerOpen, setAssignmentSessionPickerOpen] = useState(false);
@@ -241,8 +249,18 @@ export function SubjectDetailPage({
   };
 
   useEffect(() => {
+    if (sessionsMaterialsOnly && (activeTab === 'homework' || activeTab === 'attendance')) {
+      setActiveTab('sessions');
+    }
+  }, [activeTab, sessionsMaterialsOnly]);
+
+  useEffect(() => {
     let cancelled = false;
     const loadAttendance = async () => {
+      if (sessionsMaterialsOnly) {
+        setAttendanceRows([]);
+        return;
+      }
       if (sessionClassIds.length === 0) {
         setAttendanceRows([]);
         return;
@@ -267,14 +285,17 @@ export function SubjectDetailPage({
     };
     void loadAttendance();
     return () => { cancelled = true; };
-  }, [currentUser.id, scope, sessionClassIds.join(',')]);
+  }, [currentUser.id, scope, sessionsMaterialsOnly, sessionClassIds.join(',')]);
 
-  const tabs: Array<{ id: SubjectTab; label: string; count: number; icon: typeof CalendarDays }> = [
+  const allTabs: Array<{ id: SubjectTab; label: string; count: number; icon: typeof CalendarDays }> = [
     { id: 'sessions', label: 'Sessions', count: sessionItems.length, icon: CalendarDays },
     { id: 'homework', label: 'Homework', count: homeworkItems.length, icon: BookOpen },
     { id: 'materials', label: 'Materials', count: visibleMaterialsCount, icon: FileText },
     { id: 'attendance', label: 'Attendance', count: attendanceMarked, icon: CheckCircle2 },
   ];
+  const tabs = sessionsMaterialsOnly
+    ? allTabs.filter(tab => tab.id === 'sessions' || tab.id === 'materials')
+    : allTabs;
 
   const openAssignmentComposer = () => {
     setComposerItem(sessionItems[0] ?? null);
@@ -462,18 +483,22 @@ export function SubjectDetailPage({
                 <span className="text-lg leading-none">{sessionItems.length}</span>
                 Sessions
               </button>
+              {!sessionsMaterialsOnly && (
               <button type="button" onClick={() => setActiveTab('homework')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857] hover:bg-[#d1fae5]">
                 <span className="text-lg leading-none">{homeworkItems.length}</span>
                 Homework
               </button>
+              )}
               <button type="button" onClick={() => setActiveTab('materials')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
                 <span className="text-lg leading-none">{visibleMaterialsCount}</span>
                 Materials
               </button>
+              {!sessionsMaterialsOnly && (
               <button type="button" onClick={() => setActiveTab('attendance')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#7c3aed] bg-[#f5f3ff] px-3 text-sm font-semibold text-[#6d28d9] hover:bg-[#ede9fe]">
                 <span className="text-lg leading-none">{attendanceMarked ? `${attendancePercent}%` : '-'}</span>
                 Attendance
               </button>
+              )}
             </div>
           </div>
         </div>
@@ -957,7 +982,7 @@ export function SubjectDetailPage({
                             <FileText className="h-3.5 w-3.5" />Materials
                           </button>
                         )}
-                        {hasSessionHomework(item) && (
+                        {!sessionsMaterialsOnly && hasSessionHomework(item) && (
                           <button
                             type="button"
                             onClick={() => openSessionHomework(item)}
@@ -966,7 +991,9 @@ export function SubjectDetailPage({
                             <BookOpen className="h-3.5 w-3.5" />{item.homeworkCount} homework
                           </button>
                         )}
-                        {!hasSessionMaterials(item) && !hasSessionHomework(item) && <span>No extras attached</span>}
+                        {!hasSessionMaterials(item) && (sessionsMaterialsOnly || !hasSessionHomework(item)) && (
+                          <span>No extras attached</span>
+                        )}
                       </span>
                     </span>
                     <span className="hidden md:block">{teacher ? <UserAvatar user={teacher} size="sm" /> : null}</span>
@@ -1284,7 +1311,9 @@ export function SubjectDetailPage({
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
               <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{sessionItems.length} sessions</span>
+              {!sessionsMaterialsOnly && (
               <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857] ring-1 ring-[#bbf7d0]">{homeworkItems.length} homework</span>
+              )}
               <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">{visibleMaterialsCount} materials</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-[#525252]">
@@ -1292,27 +1321,38 @@ export function SubjectDetailPage({
                 <span>Date range</span>
                 <span className="font-semibold text-[#171717]">{getRunDateRange(run)}</span>
               </div>
+              {!sessionsMaterialsOnly && (
               <div className="flex items-center justify-between gap-2">
                 <span>Attendance</span>
                 <span className="font-semibold text-[#171717]">{attendanceMarked ? `${attendancePercent}%` : 'Not marked'}</span>
               </div>
+              )}
             </div>
           </div>
 
           <div className="border-y border-[#d4d4d4] bg-white p-4">
             <p className="text-sm font-semibold text-[#171717]">Quick links</p>
             <div className="mt-3 grid gap-2">
-              {scope !== 'student' && (
+              {scope !== 'student' && !sessionsMaterialsOnly && (
                 <button type="button" onClick={() => onNavigate?.('curriculum')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                   Open planning
                 </button>
               )}
+              {!sessionsMaterialsOnly && (
+              <>
               <button type="button" onClick={() => onNavigate?.(scope === 'student' ? 'my-grades' : 'grades')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                 Open grades
               </button>
               <button type="button" onClick={() => onNavigate?.(scope === 'student' ? 'my-attendance' : 'attendance')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                 Open attendance
               </button>
+              </>
+              )}
+              {sessionsMaterialsOnly && (
+                <button type="button" onClick={() => onNavigate?.(scope === 'translator' ? 'my-classes' : 'curriculum-overview')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
+                  {scope === 'translator' ? 'Back to sessions' : 'Open curriculum'}
+                </button>
+              )}
             </div>
           </div>
         </aside>

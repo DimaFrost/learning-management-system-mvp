@@ -392,6 +392,7 @@ export function CurriculumDateView({
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
         backLabel="Back to date view"
+        tabAccess={canFullyManage ? 'full' : 'sessions-materials'}
         curriculumActions={{
           ...(canFullyManage
             ? {

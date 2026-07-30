@@ -181,10 +181,11 @@ const topics: KnowledgeTopic[] = [
       'Teachers see year groups they are allowed to teach, with a filter for Teaching vs Year group.',
       'Students see only their own active year group work.',
       'Submissions is the teacher/admin review queue for work that needs grading.',
+      'Translators opening a subject see only the Sessions and Materials tabs (not Homework or Attendance).',
     ],
     steps: [
       'Open Classwork to find subjects and sessions.',
-      'Open a subject for tabs: sessions, homework, materials, attendance, and teachers.',
+      'Open a subject for tabs: sessions, homework, materials, and attendance (translators: sessions and materials only).',
       'Open an assignment for the dedicated Google-Classroom-like assignment detail page.',
     ],
     visual: [
@@ -227,6 +228,7 @@ const topics: KnowledgeTopic[] = [
       'The Well has its own planning tab and can auto-fill Wednesdays, with manual removal for weeks that should not meet.',
       'Archived year groups should stay out of normal dropdowns and active work areas.',
       'Leaders of the Translation (Превод) ministry team can open Overview and Date View in the Team Leader workspace and assign translators to sessions only.',
+      'On subject pages, Translation team leaders see only Sessions and Materials tabs (same as translators).',
     ],
     visual: [
       { label: 'Planning', icon: CalendarDays, hint: 'School year grid' },
