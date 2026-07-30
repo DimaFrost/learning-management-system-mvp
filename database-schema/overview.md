@@ -2,7 +2,7 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-26T18:52:14.144Z
+Generated at: 2026-07-30T05:45:08.216Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
@@ -40,7 +40,7 @@ Exposed tables/views: 53
 | homework_assignments | 17 | [homework_assignments](./tables/homework_assignments.md) |
 | homework_comments | 5 | [homework_comments](./tables/homework_comments.md) |
 | homework_submissions | 19 | [homework_submissions](./tables/homework_submissions.md) |
-| mentorship_logs | 11 | [mentorship_logs](./tables/mentorship_logs.md) |
+| mentorship_logs | 21 | [mentorship_logs](./tables/mentorship_logs.md) |
 | messages | 8 | [messages](./tables/messages.md) |
 | ministry_rotations | 11 | [ministry_rotations](./tables/ministry_rotations.md) |
 | ministry_service_attendance | 6 | [ministry_service_attendance](./tables/ministry_service_attendance.md) |

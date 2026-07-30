@@ -3,7 +3,7 @@
 # mentorship_logs
 
 
-Column count: 11
+Column count: 21
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -18,6 +18,16 @@ Column count: 11
 | next_steps | string:text | no | no |  |  |
 | student_progress | string:text | no | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
+| meeting_month | string:text | no | no |  | YYYY-MM month of conducted meetings selected by the mentor |
+| in_person_meeting | string:text | no | no |  | Q1: yes \| planned_soon \| unable |
+| meetings_count | string:text | no | no |  | Q2: 0 \| 1 \| 2 \| more_than_2 |
+| stayed_in_touch | string:text | no | no |  | Q3: regularly \| occasionally \| no |
+| main_topic | string:text | no | no |  | Q4: main discussion topic |
+| engagement | string:text | no | no |  | Q5: very_high \| good \| moderate \| low |
+| challenges | string:text | no | no |  | Q6: mentoring difficulties |
+| school_support | string:text | no | no |  | Q7: school support request |
+| positive_moment | string:text | no | no |  | Q8: positive moment or progress |
+| other_observations | string:text | no | no |  | Q9: other observations |
 
 ## Raw Definition
 
@@ -81,6 +91,56 @@ Column count: 11
     "created_at": {
       "default": "now()",
       "format": "timestamp with time zone",
+      "type": "string"
+    },
+    "meeting_month": {
+      "description": "YYYY-MM month of conducted meetings selected by the mentor",
+      "format": "text",
+      "type": "string"
+    },
+    "in_person_meeting": {
+      "description": "Q1: yes | planned_soon | unable",
+      "format": "text",
+      "type": "string"
+    },
+    "meetings_count": {
+      "description": "Q2: 0 | 1 | 2 | more_than_2",
+      "format": "text",
+      "type": "string"
+    },
+    "stayed_in_touch": {
+      "description": "Q3: regularly | occasionally | no",
+      "format": "text",
+      "type": "string"
+    },
+    "main_topic": {
+      "description": "Q4: main discussion topic",
+      "format": "text",
+      "type": "string"
+    },
+    "engagement": {
+      "description": "Q5: very_high | good | moderate | low",
+      "format": "text",
+      "type": "string"
+    },
+    "challenges": {
+      "description": "Q6: mentoring difficulties",
+      "format": "text",
+      "type": "string"
+    },
+    "school_support": {
+      "description": "Q7: school support request",
+      "format": "text",
+      "type": "string"
+    },
+    "positive_moment": {
+      "description": "Q8: positive moment or progress",
+      "format": "text",
+      "type": "string"
+    },
+    "other_observations": {
+      "description": "Q9: other observations",
+      "format": "text",
       "type": "string"
     }
   },

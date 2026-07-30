@@ -59,7 +59,7 @@ export function MentorshipAssignmentsPanel({
           course,
           totalCheckins: studentLogs.length,
           latestCheckin: latestLog?.date,
-          latestProgress: latestLog?.studentProgress,
+          latestProgress: latestLog?.engagement ?? latestLog?.studentProgress,
           allLogs: studentLogs,
           pairKey: `${enrollment.studentId}-${enrollment.mentorId}-${enrollment.courseId}`,
         };
@@ -297,7 +297,9 @@ export function MentorshipAssignmentsPanel({
                                       </span>
                                       <span className="text-xs text-[#737373]">{formatPlatformDate(log.date)}</span>
                                     </div>
-                                    {log.notes && <p className="mt-2 text-sm text-[#525252]">{log.notes}</p>}
+                                    {(log.mainTopic || log.notes) && (
+                                      <p className="mt-2 text-sm text-[#525252]">{log.mainTopic || log.notes}</p>
+                                    )}
                                   </div>
                                 ))}
                               </div>

@@ -6560,6 +6560,36 @@
             "$ref": "#/parameters/rowFilter.mentorship_logs.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meeting_month"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.in_person_meeting"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meetings_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.stayed_in_touch"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.main_topic"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.engagement"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.school_support"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.positive_moment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.other_observations"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -6656,6 +6686,36 @@
             "$ref": "#/parameters/rowFilter.mentorship_logs.created_at"
           },
           {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meeting_month"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.in_person_meeting"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meetings_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.stayed_in_touch"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.main_topic"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.engagement"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.school_support"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.positive_moment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.other_observations"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -6702,6 +6762,36 @@
           },
           {
             "$ref": "#/parameters/rowFilter.mentorship_logs.created_at"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meeting_month"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.in_person_meeting"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.meetings_count"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.stayed_in_touch"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.main_topic"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.engagement"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.challenges"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.school_support"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.positive_moment"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.mentorship_logs.other_observations"
           },
           {
             "$ref": "#/parameters/body.mentorship_logs"
@@ -10312,6 +10402,51 @@
           "(rpc) can_current_user_write_stream"
         ]
       }
+    },
+    "/rpc/is_translation_ministry_team_leader": {
+      "get": {
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) is_translation_ministry_team_leader"
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "body",
+            "name": "args",
+            "required": true,
+            "schema": {
+              "type": "object"
+            }
+          },
+          {
+            "$ref": "#/parameters/preferParams"
+          }
+        ],
+        "produces": [
+          "application/json",
+          "application/vnd.pgrst.object+json;nulls=stripped",
+          "application/vnd.pgrst.object+json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        },
+        "tags": [
+          "(rpc) is_translation_ministry_team_leader"
+        ]
+      }
     }
   },
   "definitions": {
@@ -12512,6 +12647,56 @@
         "created_at": {
           "default": "now()",
           "format": "timestamp with time zone",
+          "type": "string"
+        },
+        "meeting_month": {
+          "description": "YYYY-MM month of conducted meetings selected by the mentor",
+          "format": "text",
+          "type": "string"
+        },
+        "in_person_meeting": {
+          "description": "Q1: yes | planned_soon | unable",
+          "format": "text",
+          "type": "string"
+        },
+        "meetings_count": {
+          "description": "Q2: 0 | 1 | 2 | more_than_2",
+          "format": "text",
+          "type": "string"
+        },
+        "stayed_in_touch": {
+          "description": "Q3: regularly | occasionally | no",
+          "format": "text",
+          "type": "string"
+        },
+        "main_topic": {
+          "description": "Q4: main discussion topic",
+          "format": "text",
+          "type": "string"
+        },
+        "engagement": {
+          "description": "Q5: very_high | good | moderate | low",
+          "format": "text",
+          "type": "string"
+        },
+        "challenges": {
+          "description": "Q6: mentoring difficulties",
+          "format": "text",
+          "type": "string"
+        },
+        "school_support": {
+          "description": "Q7: school support request",
+          "format": "text",
+          "type": "string"
+        },
+        "positive_moment": {
+          "description": "Q8: positive moment or progress",
+          "format": "text",
+          "type": "string"
+        },
+        "other_observations": {
+          "description": "Q9: other observations",
+          "format": "text",
           "type": "string"
         }
       },
@@ -16294,6 +16479,76 @@
     },
     "rowFilter.mentorship_logs.created_at": {
       "name": "created_at",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.meeting_month": {
+      "name": "meeting_month",
+      "description": "YYYY-MM month of conducted meetings selected by the mentor",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.in_person_meeting": {
+      "name": "in_person_meeting",
+      "description": "Q1: yes | planned_soon | unable",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.meetings_count": {
+      "name": "meetings_count",
+      "description": "Q2: 0 | 1 | 2 | more_than_2",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.stayed_in_touch": {
+      "name": "stayed_in_touch",
+      "description": "Q3: regularly | occasionally | no",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.main_topic": {
+      "name": "main_topic",
+      "description": "Q4: main discussion topic",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.engagement": {
+      "name": "engagement",
+      "description": "Q5: very_high | good | moderate | low",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.challenges": {
+      "name": "challenges",
+      "description": "Q6: mentoring difficulties",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.school_support": {
+      "name": "school_support",
+      "description": "Q7: school support request",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.positive_moment": {
+      "name": "positive_moment",
+      "description": "Q8: positive moment or progress",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.mentorship_logs.other_observations": {
+      "name": "other_observations",
+      "description": "Q9: other observations",
       "required": false,
       "in": "query",
       "type": "string"

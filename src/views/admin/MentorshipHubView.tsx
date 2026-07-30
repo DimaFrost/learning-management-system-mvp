@@ -372,7 +372,9 @@ export function MentorshipHubView({
                   <p className="mt-0.5 text-xs text-[#737373]">
                     {log.type === 'digital' ? 'Digital' : 'In-person'} · {log.mentorName}
                   </p>
-                  {log.notes && <p className="mt-1 line-clamp-2 text-xs text-[#525252]">{log.notes}</p>}
+                  {(log.mainTopic || log.notes) && (
+                    <p className="mt-1 line-clamp-2 text-xs text-[#525252]">{log.mainTopic || log.notes}</p>
+                  )}
                 </div>
                 <span className="shrink-0 text-xs text-[#737373]">{formatPlatformDate(log.date)}</span>
               </div>

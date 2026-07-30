@@ -121,7 +121,7 @@ const topics: KnowledgeTopic[] = [
     ],
     visual: [
       { label: 'Roles', icon: ShieldCheck, hint: 'Access chips' },
-      { label: 'Mentorship', icon: HeartHandshake, hint: 'Mentor links' },
+      { label: 'Mentorship', icon: HeartHandshake, hint: 'Links & check-ins' },
       { label: 'Year group', icon: GraduationCap, hint: 'I / II badges' },
     ],
   },
@@ -284,6 +284,32 @@ const topics: KnowledgeTopic[] = [
       { label: 'Leader', icon: UserCheck, hint: 'Team contact' },
       { label: 'Report', icon: ClipboardList, hint: 'Attendance source' },
       { label: 'Health', icon: CheckCircle2, hint: 'Requirement progress' },
+    ],
+  },
+  {
+    id: 'mentorship-checkin',
+    title: 'Mentorship Check-ins',
+    section: 'People & Mentoring',
+    summary: 'Mentors log monthly check-ins with a questionnaire; admins review pairs, follow-up cadence, and engagement.',
+    icon: HeartHandshake,
+    tone: 'violet',
+    keywords: ['mentorship', 'check-in', 'mentor', 'mentee', 'cadence', 'follow-up', 'engagement', 'meetings'],
+    essentials: [
+      'Mentors open Log Check-in from the Mentor Dashboard or Mentorship Assignments.',
+      'The form asks for the month of conducted meetings, not a specific calendar day. The completion date is saved automatically.',
+      'Questions cover in-person meeting status, how many times they met, contact between meetings, discussion topic, engagement, challenges, school support, a positive moment, and other notes.',
+      'Answering Yes to an in-person meeting marks the log as in-person for follow-up cadence. Other answers count as digital and do not drive at-risk flags.',
+      'Admins manage pairs, follow-up, and check-in rules under Mentorship.',
+    ],
+    where: [
+      'Mentor workspace → Mentor Dashboard → Log Check-in',
+      'Admin Mentorship → Assignments → Log check-in / History',
+      'Admin Mentorship → Follow-up and Check-in rules',
+    ],
+    visual: [
+      { label: 'Month', icon: CalendarDays, hint: 'Meetings period' },
+      { label: 'Questionnaire', icon: ClipboardList, hint: 'Q1–Q9 answers' },
+      { label: 'Cadence', icon: UserCheck, hint: 'In-person follow-up' },
     ],
   },
   {

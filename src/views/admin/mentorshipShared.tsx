@@ -210,4 +210,7 @@ export const progressStyles: Record<string, string> = {
   good: 'bg-[#dbeaff] text-[#1d4ed8]',
   needs_improvement: 'bg-[#fef3c7] text-[#b45309]',
   concern: 'bg-[#fee2e2] text-[#b91c1c]',
+  very_high: 'bg-[#dcfce7] text-[#166534]',
+  moderate: 'bg-[#fef3c7] text-[#b45309]',
+  low: 'bg-[#fee2e2] text-[#b91c1c]',
 };

@@ -13,6 +13,16 @@ type MentorshipLogRow = {
   topics: string[] | null;
   next_steps: string | null;
   student_progress: MentorshipLog['studentProgress'] | null;
+  meeting_month: string | null;
+  in_person_meeting: MentorshipLog['inPersonMeeting'] | null;
+  meetings_count: MentorshipLog['meetingsCount'] | null;
+  stayed_in_touch: MentorshipLog['stayedInTouch'] | null;
+  main_topic: string | null;
+  engagement: MentorshipLog['engagement'] | null;
+  challenges: string | null;
+  school_support: string | null;
+  positive_moment: string | null;
+  other_observations: string | null;
 };
 
 function mapRowToMentorshipLog(row: MentorshipLogRow): MentorshipLog {
@@ -27,6 +37,16 @@ function mapRowToMentorshipLog(row: MentorshipLogRow): MentorshipLog {
     topics: row.topics ?? undefined,
     nextSteps: row.next_steps ?? undefined,
     studentProgress: row.student_progress ?? undefined,
+    meetingMonth: row.meeting_month ?? undefined,
+    inPersonMeeting: row.in_person_meeting ?? undefined,
+    meetingsCount: row.meetings_count ?? undefined,
+    stayedInTouch: row.stayed_in_touch ?? undefined,
+    mainTopic: row.main_topic ?? undefined,
+    engagement: row.engagement ?? undefined,
+    challenges: row.challenges ?? undefined,
+    schoolSupport: row.school_support ?? undefined,
+    positiveMoment: row.positive_moment ?? undefined,
+    otherObservations: row.other_observations ?? undefined,
   };
 }
 
@@ -41,6 +61,16 @@ function mapUpdatesToRow(updates: Partial<MentorshipLog>) {
   if (updates.topics !== undefined) row.topics = updates.topics;
   if (updates.nextSteps !== undefined) row.next_steps = updates.nextSteps;
   if (updates.studentProgress !== undefined) row.student_progress = updates.studentProgress;
+  if (updates.meetingMonth !== undefined) row.meeting_month = updates.meetingMonth;
+  if (updates.inPersonMeeting !== undefined) row.in_person_meeting = updates.inPersonMeeting;
+  if (updates.meetingsCount !== undefined) row.meetings_count = updates.meetingsCount;
+  if (updates.stayedInTouch !== undefined) row.stayed_in_touch = updates.stayedInTouch;
+  if (updates.mainTopic !== undefined) row.main_topic = updates.mainTopic;
+  if (updates.engagement !== undefined) row.engagement = updates.engagement;
+  if (updates.challenges !== undefined) row.challenges = updates.challenges;
+  if (updates.schoolSupport !== undefined) row.school_support = updates.schoolSupport;
+  if (updates.positiveMoment !== undefined) row.positive_moment = updates.positiveMoment;
+  if (updates.otherObservations !== undefined) row.other_observations = updates.otherObservations;
   return row;
 }
 
@@ -87,10 +117,20 @@ export function useMentorshipLogs() {
         type: log.type || 'digital',
         date: log.date || new Date().toISOString().split('T')[0],
         notes: log.notes || '',
-        duration: log.duration,
+        duration: log.duration ?? null,
         topics: log.topics || [],
-        next_steps: log.nextSteps,
-        student_progress: log.studentProgress,
+        next_steps: log.nextSteps ?? null,
+        student_progress: log.studentProgress ?? null,
+        meeting_month: log.meetingMonth ?? null,
+        in_person_meeting: log.inPersonMeeting ?? null,
+        meetings_count: log.meetingsCount ?? null,
+        stayed_in_touch: log.stayedInTouch ?? null,
+        main_topic: log.mainTopic ?? null,
+        engagement: log.engagement ?? null,
+        challenges: log.challenges ?? null,
+        school_support: log.schoolSupport ?? null,
+        positive_moment: log.positiveMoment ?? null,
+        other_observations: log.otherObservations ?? null,
       });
 
       if (insertError) throw insertError;

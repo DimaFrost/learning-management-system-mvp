@@ -74,18 +74,19 @@ export function MentorDashboard({
   const myLogs = mentorshipLogs.filter(log => log.mentorId === currentUser.id);
   const recentLogs = myLogs.slice(-5).reverse();
 
-  const getProgressStats = () => {
-    const progressCounts = myLogs.reduce((acc, log) => {
-      if (log.studentProgress) {
-        acc[log.studentProgress] = (acc[log.studentProgress] || 0) + 1;
+  const getEngagementStats = () => {
+    const engagementCounts = myLogs.reduce((acc, log) => {
+      const level = log.engagement ?? log.studentProgress;
+      if (level) {
+        acc[level] = (acc[level] || 0) + 1;
       }
       return acc;
     }, {} as Record<string, number>);
 
-    return progressCounts;
+    return engagementCounts;
   };
 
-  const progressStats = getProgressStats();
+  const engagementStats = getEngagementStats();
 
   return (
     <div className="space-y-6">
@@ -141,9 +142,13 @@ export function MentorDashboard({
               <GraduationCap className="w-6 h-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Avg Progress</p>
+              <p className="text-sm font-medium text-gray-600">Avg Engagement</p>
               <p className="text-2xl font-bold text-gray-900">
-                {progressStats.excellent ? 'Excellent' : progressStats.good ? 'Good' : 'Needs Focus'}
+                {engagementStats.very_high || engagementStats.excellent
+                  ? 'Very high'
+                  : engagementStats.good
+                    ? 'Good'
+                    : 'Needs Focus'}
               </p>
             </div>
           </div>
@@ -185,7 +190,7 @@ export function MentorDashboard({
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-gray-900">{student?.name}</p>
-                    <p className="text-sm text-gray-500 truncate">{log.notes}</p>
+                    <p className="text-sm text-gray-500 truncate">{log.mainTopic || log.notes}</p>
                   </div>
                   <div className="flex-shrink-0 text-xs text-gray-400">
                     {log.date}
@@ -200,15 +205,16 @@ export function MentorDashboard({
         </div>
 
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Progress Overview</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Engagement Overview</h3>
           <div className="space-y-3">
             {myStudents.map(enrollment => {
               const studentLogs = myLogs.filter(log => log.studentId === enrollment.studentId);
               const latestLog = studentLogs[studentLogs.length - 1];
-              const progressColor = latestLog?.studentProgress === 'excellent' ? 'text-green-600' :
-                                 latestLog?.studentProgress === 'good' ? 'text-blue-600' :
-                                 latestLog?.studentProgress === 'needs_improvement' ? 'text-yellow-600' :
-                                 latestLog?.studentProgress === 'concern' ? 'text-red-600' : 'text-gray-600';
+              const engagement = latestLog?.engagement ?? latestLog?.studentProgress;
+              const progressColor = engagement === 'very_high' || engagement === 'excellent' ? 'text-green-600' :
+                                 engagement === 'good' ? 'text-blue-600' :
+                                 engagement === 'moderate' || engagement === 'needs_improvement' ? 'text-yellow-600' :
+                                 engagement === 'low' || engagement === 'concern' ? 'text-red-600' : 'text-gray-600';
 
               return (
                 <div key={enrollment.studentId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -217,7 +223,7 @@ export function MentorDashboard({
                     <p className="text-xs text-gray-500">{studentLogs.length} check-ins</p>
                   </div>
                   <div className={`text-sm font-medium ${progressColor}`}>
-                    {latestLog?.studentProgress ? latestLog.studentProgress.replace('_', ' ') : 'No data'}
+                    {engagement ? engagement.replace(/_/g, ' ') : 'No data'}
                   </div>
                 </div>
               );
@@ -283,19 +289,19 @@ export function MentorDashboard({
                           )}
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600">{log.notes}</p>
-                      {log.duration && (
-                        <p className="text-xs text-gray-500 mt-1">Duration: {log.duration} minutes</p>
+                      <p className="text-sm text-gray-600">{log.mainTopic || log.notes}</p>
+                      {log.meetingMonth && (
+                        <p className="text-xs text-gray-500 mt-1">Month: {log.meetingMonth}</p>
                       )}
-                      {log.studentProgress && (
+                      {(log.engagement || log.studentProgress) && (
                         <div className="mt-2">
                           <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
-                            log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
-                            log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
+                            log.engagement === 'very_high' || log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
+                            log.engagement === 'good' || log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
+                            log.engagement === 'moderate' || log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                            {log.studentProgress.replace('_', ' ')}
+                            {(log.engagement || log.studentProgress || '').replace(/_/g, ' ')}
                           </span>
                         </div>
                       )}

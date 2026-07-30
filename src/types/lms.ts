@@ -74,6 +74,11 @@ export interface CourseStudent {
   status: string;
 }
 
+export type MentorshipInPersonMeeting = 'yes' | 'planned_soon' | 'unable';
+export type MentorshipMeetingsCount = '0' | '1' | '2' | 'more_than_2';
+export type MentorshipStayedInTouch = 'regularly' | 'occasionally' | 'no';
+export type MentorshipEngagement = 'very_high' | 'good' | 'moderate' | 'low';
+
 export interface MentorshipLog {
   id: number;
   mentorId: string | null;
@@ -81,10 +86,20 @@ export interface MentorshipLog {
   type: 'digital' | 'in_person';
   date: string;
   notes: string;
-  duration?: number; // in minutes
-  topics?: string[]; // discussion topics
-  nextSteps?: string; // follow-up actions
-  studentProgress?: 'excellent' | 'good' | 'needs_improvement' | 'concern';
+  duration?: number; // in minutes (legacy)
+  topics?: string[]; // discussion topics (legacy)
+  nextSteps?: string; // follow-up actions (legacy)
+  studentProgress?: 'excellent' | 'good' | 'needs_improvement' | 'concern'; // legacy
+  meetingMonth?: string; // YYYY-MM
+  inPersonMeeting?: MentorshipInPersonMeeting;
+  meetingsCount?: MentorshipMeetingsCount;
+  stayedInTouch?: MentorshipStayedInTouch;
+  mainTopic?: string;
+  engagement?: MentorshipEngagement;
+  challenges?: string;
+  schoolSupport?: string;
+  positiveMoment?: string;
+  otherObservations?: string;
 }
 
 export type CurriculumCapability = 'full' | 'translator-assign';
