@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { X, Save } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 import type { CourseType, User } from '../../../types/lms';
 
 export interface AddPlanningSubjectData {
@@ -27,6 +28,7 @@ export function AddPlanningSubjectModal({
   secondYearCourseId,
   onSubmit,
 }: AddPlanningSubjectModalProps) {
+  const { t } = useLanguage();
   const [courseSide, setCourseSide] = useState<'firstYear' | 'secondYear'>('firstYear');
   const [title, setTitle] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -72,16 +74,16 @@ export function AddPlanningSubjectModal({
     e.preventDefault();
     const newErrors: Record<string, string> = {};
 
-    if (!title.trim()) newErrors.title = 'Title is required';
-    if (!startDate) newErrors.startDate = 'Start date is required';
+    if (!title.trim()) newErrors.title = t('planning.modal.error.titleRequired');
+    if (!startDate) newErrors.startDate = t('planning.modal.error.startDateRequired');
     if (!duration || duration < 1) {
-      newErrors.duration = 'Number of sessions must be at least 1';
+      newErrors.duration = t('planning.modal.error.sessionCountMin');
     }
     if (courseSide === 'firstYear' && !canPickFirstYear) {
-      newErrors.courseSide = 'First Year course is not available';
+      newErrors.courseSide = t('planning.modal.error.firstYearUnavailable');
     }
     if (courseSide === 'secondYear' && !canPickSecondYear) {
-      newErrors.courseSide = 'Second Year course is not available';
+      newErrors.courseSide = t('planning.modal.error.secondYearUnavailable');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -108,7 +110,7 @@ export function AddPlanningSubjectModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Add Subject</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('planning.modal.addSubject')}</h2>
           <button
             type="button"
             onClick={onClose}
@@ -126,7 +128,7 @@ export function AddPlanningSubjectModal({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Course</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('planning.modal.course')}</label>
             <select
               value={courseSide}
               onChange={e =>
@@ -135,10 +137,10 @@ export function AddPlanningSubjectModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
               {canPickFirstYear && (
-                <option value="firstYear">First Year</option>
+                <option value="firstYear">{t('common.yearGroup.first')}</option>
               )}
               {canPickSecondYear && (
-                <option value="secondYear">Second Year</option>
+                <option value="secondYear">{t('common.yearGroup.second')}</option>
               )}
             </select>
             {errors.courseSide && (
@@ -148,14 +150,14 @@ export function AddPlanningSubjectModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Subject Title
+              {t('planning.modal.subjectTitle')}
             </label>
             <input
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-              placeholder="Enter subject title"
+              placeholder={t('planning.modal.subjectTitlePlaceholder')}
             />
             {errors.title && (
               <p className="text-red-500 text-sm mt-1">{errors.title}</p>
@@ -164,7 +166,7 @@ export function AddPlanningSubjectModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Start Date
+              {t('planning.modal.startDate')}
             </label>
             <input
               type="date"
@@ -179,7 +181,7 @@ export function AddPlanningSubjectModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Number of Sessions
+              {t('planning.modal.sessionCount')}
             </label>
             <input
               type="number"
@@ -190,7 +192,7 @@ export function AddPlanningSubjectModal({
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Sessions will be added to the planning grid. Click Update to save to the database.
+              {t('planning.modal.sessionCountHint')}
             </p>
             {errors.duration && (
               <p className="text-red-500 text-sm mt-1">{errors.duration}</p>
@@ -199,7 +201,7 @@ export function AddPlanningSubjectModal({
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">
-              Primary Teacher
+              {t('planning.modal.primaryTeacher')}
             </label>
             <select
               value={primaryTeacherId ?? ''}
@@ -208,7 +210,7 @@ export function AddPlanningSubjectModal({
               }
               className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
             >
-              <option value="">Select a teacher</option>
+              <option value="">{t('planning.modal.selectTeacher')}</option>
               {teacherOptions
                 .map(teacher => (
                   <option key={teacher.id} value={teacher.id}>
@@ -224,14 +226,14 @@ export function AddPlanningSubjectModal({
               onClick={onClose}
               className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="flex-1 px-4 py-2 rounded-lg bg-amber-600 text-white font-medium hover:bg-amber-700 flex items-center justify-center gap-2"
             >
               <Save className="w-4 h-4" />
-              Add to Plan
+              {t('planning.modal.addToPlan')}
             </button>
           </div>
         </form>

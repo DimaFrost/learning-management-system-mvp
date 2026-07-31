@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { Course, CourseStudent, User, Subject, Class, WellScheduleEntry, CurriculumCapability } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
 import { CurriculumOverview } from './CurriculumOverview';
@@ -68,6 +69,7 @@ export function CurriculumView({
   onRemoveWellScheduleDate,
   curriculumCapability = 'full',
 }: CurriculumViewProps) {
+  const { t } = useLanguage();
   const canFullyManage = curriculumCapability === 'full';
   const [overviewDetailActive, setOverviewDetailActive] = useState(false);
   const [dateViewDetailActive, setDateViewDetailActive] = useState(false);
@@ -117,14 +119,12 @@ export function CurriculumView({
         <div className="border-l-2 border-[#171717] pl-4">
           <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Curriculum</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('sidebar.curriculum')}</p>
               <h1 className="tbo-display mt-1 text-3xl text-[#171717]">
-                {canFullyManage ? 'Curriculum Management' : 'Curriculum'}
+                {canFullyManage ? t('curriculum.title.manage') : t('curriculum.title.view')}
               </h1>
               <p className="mt-1 max-w-2xl text-sm text-[#737373]">
-                {canFullyManage
-                  ? 'Manage year groups, subjects, and sessions across the school year.'
-                  : 'View sessions and assign translators.'}
+                {canFullyManage ? t('curriculum.desc.manage') : t('curriculum.desc.view')}
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -132,7 +132,7 @@ export function CurriculumView({
                 <div className="flex flex-wrap items-center justify-end gap-2">
                   {sortedActiveCourses.map(course => {
                     const selected = selectedYearGroupIds.has(course.id);
-                    const label = course.courseType === 'second_year' ? 'Second Year' : 'First Year';
+                    const label = course.courseType === 'second_year' ? t('common.yearGroup.second') : t('common.yearGroup.first');
                     return (
                       <label
                         key={course.id}
@@ -159,8 +159,8 @@ export function CurriculumView({
                 type="button"
                 onClick={() => onEditCourse()}
                 className="tbo-focus inline-grid h-9 w-9 place-items-center rounded-lg border border-[#171717] bg-[#171717] text-white shadow-[0_1px_0_rgba(0,0,0,0.08)] transition hover:bg-[#404040]"
-                aria-label="Add year group"
-                title="Add year group"
+                aria-label={t('curriculum.addYearGroup')}
+                title={t('curriculum.addYearGroup')}
               >
                 <Plus className="h-4 w-4" />
               </button>

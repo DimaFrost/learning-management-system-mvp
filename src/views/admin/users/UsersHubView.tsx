@@ -20,6 +20,8 @@ import {
   Users,
 } from 'lucide-react';
 import type { Course, CourseStudent, MinistryRotation, MinistryTeam, User } from '../../../types/lms';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 import { formatDate } from '../../../i18n/formatters';
 import { isCourseActive } from '../../../utils/courseUtils';
 import {
@@ -66,27 +68,25 @@ export interface UsersHubViewProps {
   onDeleteUser: (id: string) => void;
 }
 
-const sectionMeta: Record<UsersSection, { title: string; eyebrow: string; description: string }> = {
-  directory: {
-    title: 'Directory',
-    eyebrow: 'All accounts',
-    description: 'Search, filter, and manage every person in one place.',
-  },
-  pending: {
-    title: 'Pending access',
-    eyebrow: 'Awaiting roles',
-    description: 'Google sign-ups that still need roles and year group assignment.',
-  },
-  enrollments: {
-    title: 'Enrollments',
-    eyebrow: 'Student × course',
-    description: 'Active student enrollments with mentor assignment per year group.',
-  },
-  staff: {
-    title: 'Staff roster',
-    eyebrow: 'Teachers & leaders',
-    description: 'Where staff serve — classes, translation, mentorship, and ministry teams.',
-  },
+const SECTION_TITLE_KEYS: Record<UsersSection, TranslationKey> = {
+  directory: 'nav.users.directory',
+  pending: 'nav.users.pending',
+  enrollments: 'nav.users.enrollments',
+  staff: 'nav.users.staff',
+};
+
+const SECTION_EYEBROW_KEYS: Record<UsersSection, TranslationKey> = {
+  directory: 'users.section.directory.eyebrow',
+  pending: 'users.section.pending.eyebrow',
+  enrollments: 'users.section.enrollments.eyebrow',
+  staff: 'users.section.staff.eyebrow',
+};
+
+const SECTION_DESCRIPTION_KEYS: Record<UsersSection, TranslationKey> = {
+  directory: 'users.section.directory.description',
+  pending: 'users.section.pending.description',
+  enrollments: 'users.section.enrollments.description',
+  staff: 'users.section.staff.description',
 };
 
 function SortHeader({
@@ -100,6 +100,7 @@ function SortHeader({
   direction: SortDirection;
   onClick: () => void;
 }) {
+  const { t } = useLanguage();
   return (
     <button
       type="button"
@@ -110,26 +111,27 @@ function SortHeader({
     >
       {label}
       <ArrowUpDown className={`h-3.5 w-3.5 ${active ? 'opacity-100' : 'opacity-40'}`} />
-      {active && <span className="sr-only">{direction === 'asc' ? 'ascending' : 'descending'}</span>}
+      {active && <span className="sr-only">{direction === 'asc' ? t('users.sort.ascending') : t('users.sort.descending')}</span>}
     </button>
   );
 }
 
 type ContributionTone = 'neutral' | 'blue' | 'green' | 'orange' | 'violet';
 
-function getContributionBadges(row: UserDirectoryRow): Array<{ label: string; tone: ContributionTone }> {
+function getContributionBadges(row: UserDirectoryRow, t: (key: TranslationKey, params?: Record<string, string | number>) => string): Array<{ label: string; tone: ContributionTone }> {
   const badges: Array<{ label: string; tone: ContributionTone }> = [];
-  if (row.teachingCount > 0 || row.user.roles.includes('teacher')) badges.push({ label: 'Teaching', tone: 'blue' });
-  if (row.user.roles.includes('translator')) badges.push({ label: 'Translating', tone: 'violet' });
-  if (row.menteeCount > 0 || row.user.roles.includes('mentor')) badges.push({ label: 'Mentoring', tone: 'green' });
-  if (row.user.roles.includes('team_leader')) badges.push({ label: 'Leading', tone: 'orange' });
-  if (row.ministryTeams.length > 0) badges.push({ label: 'Serving', tone: 'orange' });
+  if (row.teachingCount > 0 || row.user.roles.includes('teacher')) badges.push({ label: t('users.contribution.teaching'), tone: 'blue' });
+  if (row.user.roles.includes('translator')) badges.push({ label: t('users.contribution.translating'), tone: 'violet' });
+  if (row.menteeCount > 0 || row.user.roles.includes('mentor')) badges.push({ label: t('users.contribution.mentoring'), tone: 'green' });
+  if (row.user.roles.includes('team_leader')) badges.push({ label: t('users.contribution.leading'), tone: 'orange' });
+  if (row.ministryTeams.length > 0) badges.push({ label: t('users.contribution.serving'), tone: 'orange' });
   return badges;
 }
 
 function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
+  const { t } = useLanguage();
   const [leadershipOpen, setLeadershipOpen] = useState(false);
-  const badges = getContributionBadges(row);
+  const badges = getContributionBadges(row, t);
   const toneClasses: Record<ContributionTone, string> = {
     neutral: 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]',
     blue: 'border-[#bfdbfe] bg-white text-[#2563eb]',
@@ -145,7 +147,7 @@ function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
   return (
     <div className="flex max-w-[18rem] flex-wrap gap-1">
       {badges.slice(0, 3).map(badge => {
-        const isLeadership = badge.label === 'Leading' && row.ministryTeams.length > 0;
+        const isLeadership = badge.label === t('users.contribution.leading') && row.ministryTeams.length > 0;
         if (isLeadership) {
           return (
             <span key={badge.label} className="relative inline-flex">
@@ -157,7 +159,7 @@ function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
                 }}
                 className={`inline-flex items-center gap-1 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none transition hover:shadow-sm ${toneClasses[badge.tone]}`}
               >
-                Leading
+                {t('users.contribution.leading')}
                 <span className="rounded-full bg-[#fff7ed] px-1.5 py-0.5 text-[10px] text-[#9a3412] ring-1 ring-[#fed7aa]">
                   {row.ministryTeams.length}
                 </span>
@@ -167,7 +169,7 @@ function ResponsibilitiesBadges({ row }: { row: UserDirectoryRow }) {
                   className="absolute left-0 top-7 z-30 w-56 rounded-xl border border-[#fed7aa] bg-white p-2 text-left shadow-[0_16px_40px_rgba(23,23,23,0.14)]"
                   onClick={event => event.stopPropagation()}
                 >
-                  <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">Leading ministries</p>
+                  <p className="px-2 pb-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">{t('users.leadingMinistries')}</p>
                   <div className="max-h-44 overflow-y-auto">
                     {row.ministryTeams.map(team => (
                       <p key={team} className="rounded-lg px-2 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#fff7ed]">
@@ -250,10 +252,11 @@ function UserDetailModal({
   onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
 }) {
+  const { t, tCount } = useLanguage();
   const user = row.user;
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close user details" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label={t('users.detail.closeAria')} />
       <section role="dialog" aria-modal="true" aria-labelledby="user-detail-title" className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(0,0,0,0.18)] sm:max-w-2xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
           <div className="flex min-w-0 items-center gap-3">
@@ -267,8 +270,8 @@ function UserDetailModal({
             {user.roles.includes('student') && onOpenStudentDashboard && (
               <button
                 type="button"
-                aria-label="Open student dashboard"
-                title="Open student dashboard"
+                aria-label={t('users.detail.openStudentDashboard')}
+                title={t('users.detail.openStudentDashboard')}
                 onClick={() => { onOpenStudentDashboard(user.id); onClose(); }}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d] hover:bg-[#dcfce7]"
               >
@@ -281,18 +284,18 @@ function UserDetailModal({
               className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
             >
               <Pencil className="h-4 w-4" />
-              Edit
+              {t('users.detail.edit')}
             </button>
             <button
               type="button"
               onClick={() => { onDeleteUser(user.id); onClose(); }}
               className="grid h-9 w-9 place-items-center rounded-lg border border-[#fecaca] text-[#b91c1c] hover:bg-[#fef2f2]"
-              aria-label="Delete person"
-              title="Delete person"
+              aria-label={t('users.detail.deleteAria')}
+              title={t('users.detail.deleteAria')}
             >
               <Trash2 className="h-4 w-4" />
             </button>
-            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label="Close">
+            <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label={t('common.close')}>
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -300,80 +303,80 @@ function UserDetailModal({
 
         <div className="tbo-scrollbar max-h-[68vh] space-y-5 overflow-y-auto p-5">
           <div>
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Responsibilities</p>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.detail.responsibilities')}</p>
             <ResponsibilitiesBadges row={row} />
           </div>
 
           <div className="grid gap-2 sm:grid-cols-2">
             {row.user.roles.includes('team_leader') && (
               <ContributionDetailCard
-                label="Leading"
+                label={t('users.contribution.leading')}
                 tone="orange"
-                detail={row.ministryTeams.length > 0 ? `Leads ${row.ministryTeams.join(', ')}` : 'Team leader with no active team assignment yet.'}
+                detail={row.ministryTeams.length > 0 ? t('users.detail.leadsTeams', { teams: row.ministryTeams.join(', ') }) : t('users.detail.noTeamAssignment')}
               />
             )}
             {(row.teachingCount > 0 || row.user.roles.includes('teacher')) && (
               <ContributionDetailCard
-                label="Teaching"
+                label={t('users.contribution.teaching')}
                 tone="blue"
-                detail={`${row.teachingCount} assigned class ${row.teachingCount === 1 ? 'session' : 'sessions'}`}
+                detail={tCount('users.detail.teachingSessions', row.teachingCount, { count: row.teachingCount })}
               />
             )}
             {(row.translatingCount > 0 || row.user.roles.includes('translator')) && (
               <ContributionDetailCard
-                label="Translating"
+                label={t('users.contribution.translating')}
                 tone="violet"
-                detail={`${row.translatingCount} assigned translation ${row.translatingCount === 1 ? 'session' : 'sessions'}`}
+                detail={tCount('users.detail.translationSessions', row.translatingCount, { count: row.translatingCount })}
               />
             )}
             {(row.menteeCount > 0 || row.user.roles.includes('mentor')) && (
               <ContributionDetailCard
-                label="Mentoring"
+                label={t('users.contribution.mentoring')}
                 tone="green"
-                detail={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : 'No active mentees assigned yet.'}
+                detail={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : t('users.detail.noActiveMentees')}
               />
             )}
             {row.mentorNames.length > 0 && (
               <ContributionDetailCard
-                label="Mentee"
+                label={t('users.detail.mentee')}
                 tone="green"
-                detail={`Mentored by ${row.mentorNames.join(', ')}`}
+                detail={t('users.detail.mentoredBy', { names: row.mentorNames.join(', ') })}
               />
             )}
             {row.ministryTeams.length > 0 && (
               <ContributionDetailCard
-                label="Serving"
+                label={t('users.contribution.serving')}
                 tone="orange"
                 detail={row.ministryTeams.join(', ')}
               />
             )}
-            {getContributionBadges(row).length === 0 && (
-              <ContributionDetailCard label="No responsibilities" detail="No active responsibility has been assigned yet." />
+            {getContributionBadges(row, t).length === 0 && (
+              <ContributionDetailCard label={t('users.detail.noResponsibilities')} detail={t('users.detail.noResponsibilityAssigned')} />
             )}
           </div>
 
           <div className="grid gap-3 sm:grid-cols-2">
-            <DetailLine icon={ShieldCheck} label="Access" value={<AccessBadge status={row.access} />} />
-            <DetailLine icon={Phone} label="Phone" value={user.phone || <span className="text-[#737373]">Not added</span>} />
-            <DetailLine icon={Languages} label="Language" value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
-            <DetailLine icon={BadgeCheck} label="Roles" value={
+            <DetailLine icon={ShieldCheck} label={t('users.detail.access')} value={<AccessBadge status={row.access} />} />
+            <DetailLine icon={Phone} label={t('users.detail.phone')} value={user.phone || <span className="text-[#737373]">{t('users.detail.notAdded')}</span>} />
+            <DetailLine icon={Languages} label={t('users.detail.language')} value={(user as any).languagePreference?.toUpperCase?.() || 'EN'} />
+            <DetailLine icon={BadgeCheck} label={t('edit.user.roles')} value={
               <div className="flex flex-wrap items-center gap-1">
                 <RoleBadges roles={row.realRoles} yearGroups={row.courses} />
                 {user.isOnlineStudent && <OnlineStudentBadge />}
               </div>
             } />
-            <DetailLine icon={GraduationCap} label="Year groups" value={row.courses.length > 0 ? (
+            <DetailLine icon={GraduationCap} label={t('users.detail.yearGroups')} value={row.courses.length > 0 ? (
               <div className="flex flex-wrap gap-1">{row.courses.map(course => <ActiveYearGroupBadge key={course.id} course={course} />)}</div>
-            ) : <span className="text-[#737373]">None</span>} />
-            <DetailLine icon={HeartHandshake} label="Mentor" value={row.mentorNames.length > 0 ? row.mentorNames.join(', ') : <span className="text-[#737373]">Not assigned</span>} />
-            <DetailLine icon={Users} label="Mentees" value={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : <span className="text-[#737373]">None</span>} />
-            <DetailLine icon={BookOpen} label="Ministry" value={row.ministryTeams.length > 0 ? row.ministryTeams.join(', ') : <span className="text-[#737373]">None</span>} />
-            <DetailLine icon={Briefcase} label="Staff load" value={`${row.teachingCount} teaching / ${row.translatingCount} translating / ${row.menteeCount} mentees`} />
+            ) : <span className="text-[#737373]">{t('users.detail.none')}</span>} />
+            <DetailLine icon={HeartHandshake} label={t('users.detail.mentor')} value={row.mentorNames.length > 0 ? row.mentorNames.join(', ') : <span className="text-[#737373]">{t('users.detail.notAssigned')}</span>} />
+            <DetailLine icon={Users} label={t('users.detail.mentees')} value={row.menteeNames.length > 0 ? row.menteeNames.join(', ') : <span className="text-[#737373]">{t('users.detail.none')}</span>} />
+            <DetailLine icon={BookOpen} label={t('users.detail.ministry')} value={row.ministryTeams.length > 0 ? row.ministryTeams.join(', ') : <span className="text-[#737373]">{t('users.detail.none')}</span>} />
+            <DetailLine icon={Briefcase} label={t('users.detail.staffLoad')} value={t('users.detail.staffLoadValue', { teaching: row.teachingCount, translating: row.translatingCount, mentees: row.menteeCount })} />
           </div>
         </div>
 
         <div className="border-t border-[#e5e5e5] px-5 py-3 text-xs text-[#737373]">
-          Edit profile, roles, year groups, mentorship, and responsibility assignments from the edit view.
+          {t('users.detail.footerHint')}
         </div>
       </section>
     </div>
@@ -391,6 +394,7 @@ function UserActions({
   onDeleteUser: (id: string) => void;
   emphasizeAssign?: boolean;
 }) {
+  const { t } = useLanguage();
   return (
     <div className="flex flex-wrap items-center gap-2">
       <button
@@ -405,7 +409,7 @@ function UserActions({
             : 'text-[#2563eb] hover:bg-[#eff6ff]'
         }`}
       >
-        {emphasizeAssign ? 'Assign roles' : 'Edit'}
+        {emphasizeAssign ? t('users.assignRoles') : t('users.edit')}
       </button>
       <button
         type="button"
@@ -415,7 +419,7 @@ function UserActions({
         }}
         className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#b91c1c] hover:bg-[#fef2f2]"
       >
-        Remove
+        {t('users.remove')}
       </button>
     </div>
   );
@@ -432,8 +436,9 @@ function DirectoryRowActions({
   onEditUser: (user?: User) => void;
   onDeleteUser: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const isPending = access === 'pending';
-  const editLabel = isPending ? 'Assign roles' : 'Edit person';
+  const editLabel = isPending ? t('users.assignRoles') : t('users.editPerson');
 
   return (
     <div className="inline-flex items-center justify-end gap-1.5">
@@ -452,7 +457,7 @@ function DirectoryRowActions({
         title={editLabel}
       >
         {isPending ? <UserCog className="h-3.5 w-3.5 flex-shrink-0" /> : <Pencil className="h-3.5 w-3.5 flex-shrink-0" />}
-        <span>{isPending ? 'Assign' : 'Edit'}</span>
+        <span>{isPending ? t('users.directory.assign') : t('users.edit')}</span>
       </button>
       <button
         type="button"
@@ -461,8 +466,8 @@ function DirectoryRowActions({
           onDeleteUser(user.id);
         }}
         className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fecaca] bg-white text-[#b91c1c] transition-colors hover:border-[#f87171] hover:bg-[#fef2f2] hover:text-[#991b1b] sm:h-9 sm:w-9"
-        aria-label={`Remove ${user.name}`}
-        title="Remove user"
+        aria-label={`${t('users.remove')} ${user.name}`}
+        title={t('users.removeUser')}
       >
         <Trash2 className="h-3.5 w-3.5" />
       </button>
@@ -489,6 +494,7 @@ function DirectoryPanel({
   onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
 }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<DirectoryRoleFilter>('all');
   const [courseId, setCourseId] = useState<number | 'all'>('all');
@@ -536,10 +542,10 @@ function DirectoryPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <StatPill label="Total people" value={rows.length} detail={`${roleCounts.pending} pending access`} />
-        <StatPill label="Students" value={roleCounts.student} detail="With student role" />
-        <StatPill label="Staff" value={roleCounts.staff} detail="Non-student roles" />
-        <StatPill label="Showing" value={filteredRows.length} detail="After filters" />
+        <StatPill label={t('users.directory.totalPeople')} value={rows.length} detail={t('users.directory.pendingAccessDetail', { count: roleCounts.pending })} />
+        <StatPill label={t('common.students')} value={roleCounts.student} detail={t('users.directory.withStudentRole')} />
+        <StatPill label={t('users.directory.staff')} value={roleCounts.staff} detail={t('users.directory.nonStudentRoles')} />
+        <StatPill label={t('users.directory.showing')} value={filteredRows.length} detail={t('users.directory.afterFilters')} />
       </div>
 
       <SectionCard className="p-4 space-y-4">
@@ -547,16 +553,16 @@ function DirectoryPanel({
           <SearchField
             value={search}
             onChange={setSearch}
-            placeholder="Search name, email, phone, role, year group..."
+            placeholder={t('users.directory.searchPlaceholder')}
           />
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[#737373]">Year Group</span>
+            <span className="mb-1 block text-xs font-medium text-[#737373]">{t('users.directory.yearGroup')}</span>
             <select
               value={courseId === 'all' ? 'all' : String(courseId)}
               onChange={event => setCourseId(event.target.value === 'all' ? 'all' : Number(event.target.value))}
               className="h-10 w-full min-w-[10rem] rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm text-[#171717] focus:border-[#171717] focus:outline-none focus:ring-2 focus:ring-[#171717]/10"
             >
-              <option value="all">All year groups</option>
+              <option value="all">{t('users.directory.allYearGroups')}</option>
               {activeCourses.map(course => (
                 <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
               ))}
@@ -565,13 +571,13 @@ function DirectoryPanel({
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <FilterChip active={roleFilter === 'all'} label="All" count={roleCounts.all} onClick={() => setRoleFilter('all')} />
-          <FilterChip active={accessFilter === 'pending'} label="Pending" count={roleCounts.pending} tone="warning" onClick={() => setAccessFilter(accessFilter === 'pending' ? 'all' : 'pending')} />
-          <FilterChip active={roleFilter === 'student'} label="Students" count={roleCounts.student} onClick={() => setRoleFilter(roleFilter === 'student' ? 'all' : 'student')} />
-          <FilterChip active={roleFilter === 'staff'} label="Staff" count={roleCounts.staff} onClick={() => setRoleFilter(roleFilter === 'staff' ? 'all' : 'staff')} />
-          <FilterChip active={roleFilter === 'teacher'} label="Teachers" onClick={() => setRoleFilter(roleFilter === 'teacher' ? 'all' : 'teacher')} tone="info" />
-          <FilterChip active={roleFilter === 'mentor'} label="Mentors" onClick={() => setRoleFilter(roleFilter === 'mentor' ? 'all' : 'mentor')} tone="success" />
-          <FilterChip active={mentorFilter === 'without_mentor'} label="No mentor" onClick={() => setMentorFilter(mentorFilter === 'without_mentor' ? 'all' : 'without_mentor')} tone="danger" />
+          <FilterChip active={roleFilter === 'all'} label={t('common.all')} count={roleCounts.all} onClick={() => setRoleFilter('all')} />
+          <FilterChip active={accessFilter === 'pending'} label={t('users.directory.pending')} count={roleCounts.pending} tone="warning" onClick={() => setAccessFilter(accessFilter === 'pending' ? 'all' : 'pending')} />
+          <FilterChip active={roleFilter === 'student'} label={t('common.students')} count={roleCounts.student} onClick={() => setRoleFilter(roleFilter === 'student' ? 'all' : 'student')} />
+          <FilterChip active={roleFilter === 'staff'} label={t('users.directory.staff')} count={roleCounts.staff} onClick={() => setRoleFilter(roleFilter === 'staff' ? 'all' : 'staff')} />
+          <FilterChip active={roleFilter === 'teacher'} label={t('users.directory.teachers')} onClick={() => setRoleFilter(roleFilter === 'teacher' ? 'all' : 'teacher')} tone="info" />
+          <FilterChip active={roleFilter === 'mentor'} label={t('users.directory.mentors')} onClick={() => setRoleFilter(roleFilter === 'mentor' ? 'all' : 'mentor')} tone="success" />
+          <FilterChip active={mentorFilter === 'without_mentor'} label={t('users.directory.noMentor')} onClick={() => setMentorFilter(mentorFilter === 'without_mentor' ? 'all' : 'without_mentor')} tone="danger" />
         </div>
       </SectionCard>
 
@@ -581,27 +587,27 @@ function DirectoryPanel({
             <thead className="border-b border-[#e5e5e5] bg-[#fafafa]">
               <tr>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader label="User" active={sortKey === 'name'} direction={sortDirection} onClick={() => toggleSort('name')} />
+                  <SortHeader label={t('users.directory.user')} active={sortKey === 'name'} direction={sortDirection} onClick={() => toggleSort('name')} />
                 </th>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader label="Roles" active={sortKey === 'roles'} direction={sortDirection} onClick={() => toggleSort('roles')} />
+                  <SortHeader label={t('edit.user.roles')} active={sortKey === 'roles'} direction={sortDirection} onClick={() => toggleSort('roles')} />
                 </th>
                 <th className="px-4 py-3 text-left">
                   <span className="inline-flex items-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                    Responsibilities
+                    {t('users.directory.responsibilities')}
                   </span>
                 </th>
                 <th className="px-4 py-3 text-left">
-                  <SortHeader label="Access" active={sortKey === 'access'} direction={sortDirection} onClick={() => toggleSort('access')} />
+                  <SortHeader label={t('users.detail.access')} active={sortKey === 'access'} direction={sortDirection} onClick={() => toggleSort('access')} />
                 </th>
-                <th className="px-4 py-3 text-right whitespace-nowrap">Actions</th>
+                <th className="px-4 py-3 text-right whitespace-nowrap">{t('users.directory.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
               {filteredRows.length === 0 ? (
                 <tr>
                   <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">
-                    No people match your filters.
+                    {t('users.directory.noMatches')}
                   </td>
                 </tr>
               ) : (
@@ -679,6 +685,7 @@ function PendingPanel({
   onEditUser: (user?: User) => void;
   onDeleteUser: (id: string) => void;
 }) {
+  const { t, tCount } = useLanguage();
   const pendingRows = rows.filter(row => row.access === 'pending');
 
   return (
@@ -688,10 +695,10 @@ function PendingPanel({
           <Clock3 className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#b45309]" />
           <div>
             <p className="font-medium text-[#92400e]">
-              {pendingRows.length} {pendingRows.length === 1 ? 'person' : 'people'} signed in with Google and still need roles.
+              {tCount('users.pending.signedIn', pendingRows.length, { count: pendingRows.length })}
             </p>
             <p className="mt-1 text-sm text-[#b45309]">
-              Open each account, assign roles, and enroll students in a year group before they can use the app.
+              {t('users.pending.instructions')}
             </p>
           </div>
         </div>
@@ -699,7 +706,7 @@ function PendingPanel({
 
       {pendingRows.length === 0 ? (
         <SectionCard className="p-8 text-center text-[#737373]">
-          No pending people - everyone has been assigned roles.
+          {t('users.pending.empty')}
         </SectionCard>
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -735,6 +742,7 @@ function EnrollmentsPanel({
   getCourseDisplayName: (course: Course) => string;
   onEditUser: (user?: User) => void;
 }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
   const [courseId, setCourseId] = useState<number | 'all'>('all');
 
@@ -762,22 +770,22 @@ function EnrollmentsPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatPill label="Active enrollments" value={enrollmentRows.length} detail="Student x year group pairs" />
-        <StatPill label="Without mentor" value={withoutMentor} detail="Needs assignment" />
-        <StatPill label="Showing" value={filtered.length} detail="After filters" />
+        <StatPill label={t('users.enrollments.active')} value={enrollmentRows.length} detail={t('users.enrollments.pairsDetail')} />
+        <StatPill label={t('users.enrollments.withoutMentor')} value={withoutMentor} detail={t('users.enrollments.needsAssignment')} />
+        <StatPill label={t('users.directory.showing')} value={filtered.length} detail={t('users.directory.afterFilters')} />
       </div>
 
       <SectionCard className="p-4">
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto]">
-          <SearchField value={search} onChange={setSearch} placeholder="Search student, mentor, or year group..." />
+          <SearchField value={search} onChange={setSearch} placeholder={t('users.enrollments.searchPlaceholder')} />
           <label className="block text-sm">
-            <span className="mb-1 block text-xs font-medium text-[#737373]">Year Group</span>
+            <span className="mb-1 block text-xs font-medium text-[#737373]">{t('users.enrollments.yearGroup')}</span>
             <select
               value={courseId === 'all' ? 'all' : String(courseId)}
               onChange={event => setCourseId(event.target.value === 'all' ? 'all' : Number(event.target.value))}
               className="h-10 w-full min-w-[10rem] rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
             >
-              <option value="all">All year groups</option>
+              <option value="all">{t('users.directory.allYearGroups')}</option>
               {courseOptions.map(course => (
                 <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
               ))}
@@ -791,17 +799,17 @@ function EnrollmentsPanel({
           <table className="min-w-full text-sm">
             <thead className="border-b border-[#e5e5e5] bg-[#fafafa]">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Student</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Year Group</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Mentor</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Enrolled</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Actions</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.enrollments.student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.enrollments.yearGroup')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.enrollments.mentor')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.enrollments.enrolled')}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.directory.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">No enrollments found.</td>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">{t('users.enrollments.empty')}</td>
                 </tr>
               ) : (
                 filtered.map(row => (
@@ -823,7 +831,7 @@ function EnrollmentsPanel({
                           <span>{row.mentor.name}</span>
                         </div>
                       ) : (
-                        <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-xs font-semibold text-[#c2410c]">Unassigned</span>
+                        <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-xs font-semibold text-[#c2410c]">{t('users.enrollments.unassigned')}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-[#737373]">
@@ -837,7 +845,7 @@ function EnrollmentsPanel({
                         onClick={() => onEditUser(row.student)}
                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#2563eb] hover:bg-[#eff6ff]"
                       >
-                        Edit student
+                        {t('users.enrollments.editStudent')}
                       </button>
                     </td>
                   </tr>
@@ -858,6 +866,7 @@ function StaffPanel({
   staffRows: ReturnType<typeof buildStaffRosterRows>;
   onEditUser: (user?: User) => void;
 }) {
+  const { t } = useLanguage();
   const [search, setSearch] = useState('');
 
   const filtered = useMemo(() => {
@@ -877,21 +886,21 @@ function StaffPanel({
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-3">
-        <StatPill label="Staff accounts" value={staffRows.length} detail="Teachers, mentors, leaders" />
+        <StatPill label={t('users.staff.accounts')} value={staffRows.length} detail={t('users.staff.accountsDetail')} />
         <StatPill
-          label="Teaching slots"
+          label={t('users.staff.teachingSlots')}
           value={staffRows.reduce((sum, row) => sum + row.teachingCount, 0)}
-          detail="Active class assignments"
+          detail={t('users.staff.teachingSlotsDetail')}
         />
         <StatPill
-          label="Mentees"
+          label={t('users.staff.mentees')}
           value={staffRows.reduce((sum, row) => sum + row.menteeCount, 0)}
-          detail="Active mentor assignments"
+          detail={t('users.staff.menteesDetail')}
         />
       </div>
 
       <SectionCard className="p-4">
-        <SearchField value={search} onChange={setSearch} placeholder="Search staff by name, role, or team…" />
+        <SearchField value={search} onChange={setSearch} placeholder={t('users.staff.searchPlaceholder')} />
       </SectionCard>
 
       <SectionCard className="overflow-hidden">
@@ -899,18 +908,18 @@ function StaffPanel({
           <table className="min-w-full text-sm">
             <thead className="border-b border-[#e5e5e5] bg-[#fafafa]">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Staff</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Roles</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Classes</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Mentees</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Ministry</th>
-                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Actions</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.staff.staff')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.staff.roles')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.staff.classes')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.staff.mentees')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.detail.ministry')}</th>
+                <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('users.directory.actions')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0f0f0]">
               {filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-[#737373]">No staff found.</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-[#737373]">{t('users.staff.empty')}</td>
                 </tr>
               ) : (
                 filtered.map(row => (
@@ -927,8 +936,8 @@ function StaffPanel({
                     <td className="px-4 py-3 align-top"><RoleBadges roles={row.realRoles} /></td>
                     <td className="px-4 py-3 align-top">
                       <div className="space-y-1 text-xs text-[#525252]">
-                        <p>{row.teachingCount} teaching</p>
-                        <p>{row.translatingCount} translating</p>
+                        <p>{t('users.staff.teachingCount', { count: row.teachingCount })}</p>
+                        <p>{t('users.staff.translatingCount', { count: row.translatingCount })}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3">{row.menteeCount}</td>
@@ -951,7 +960,7 @@ function StaffPanel({
                         onClick={() => onEditUser(row.user)}
                         className="rounded-lg px-3 py-1.5 text-sm font-medium text-[#2563eb] hover:bg-[#eff6ff]"
                       >
-                        Edit
+                        {t('users.edit')}
                       </button>
                     </td>
                   </tr>
@@ -980,7 +989,7 @@ export function UsersHubView({
   onOpenStudentDashboard,
   onDeleteUser,
 }: UsersHubViewProps) {
-  const meta = sectionMeta[activeSection];
+  const { t } = useLanguage();
 
   const directoryRows = useMemo(
     () => buildUserDirectoryRows({
@@ -1007,9 +1016,9 @@ export function UsersHubView({
   return (
     <div className="space-y-6">
       <PageHeader
-        title="People"
-        eyebrow={meta.eyebrow}
-        description={meta.description}
+        title={t('users.title')}
+        eyebrow={t(SECTION_EYEBROW_KEYS[activeSection])}
+        description={t(SECTION_DESCRIPTION_KEYS[activeSection])}
         action={
           <button
             type="button"
@@ -1017,7 +1026,7 @@ export function UsersHubView({
             className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] sm:w-auto"
           >
             <Plus className="h-4 w-4" />
-            Add person
+            {t('users.addPerson')}
           </button>
         }
       />
@@ -1027,7 +1036,7 @@ export function UsersHubView({
         {activeSection === 'pending' && <Clock3 className="h-4 w-4" />}
         {activeSection === 'enrollments' && <GraduationCap className="h-4 w-4" />}
         {activeSection === 'staff' && <UserCheck className="h-4 w-4" />}
-        <span className="font-medium text-[#171717]">{meta.title}</span>
+        <span className="font-medium text-[#171717]">{t(SECTION_TITLE_KEYS[activeSection])}</span>
       </div>
 
       {activeSection === 'directory' && (

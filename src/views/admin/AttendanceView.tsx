@@ -60,6 +60,9 @@ import {
 } from '../../utils/attendanceUtils';
 import { ActiveYearGroupBadge } from './users/usersShared';
 import type { OnlineSessionSettings } from '../../hooks/useOnlineSessionSettings';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { PluralKey, TranslationKey } from '../../i18n/translations';
+import type { TranslationParams } from '../../i18n/translate';
 
 type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
 type MinistrySortKey =
@@ -170,15 +173,20 @@ const STATUS_CLASS = {
   failing: 'bg-[#fee2e2] text-[#b91c1c]',
 };
 
-const WEEKDAYS = [
-  { value: 0, label: 'Sun' },
-  { value: 1, label: 'Mon' },
-  { value: 2, label: 'Tue' },
-  { value: 3, label: 'Wed' },
-  { value: 4, label: 'Thu' },
-  { value: 5, label: 'Fri' },
-  { value: 6, label: 'Sat' },
-];
+type TranslateFn = (key: TranslationKey, params?: TranslationParams) => string;
+type TranslateCountFn = (key: PluralKey, count: number, params?: TranslationParams) => string;
+
+function getWeekdayOptions(t: TranslateFn) {
+  return [
+    { value: 0, label: t('common.weekday.short.sun') },
+    { value: 1, label: t('common.weekday.short.mon') },
+    { value: 2, label: t('common.weekday.short.tue') },
+    { value: 3, label: t('common.weekday.short.wed') },
+    { value: 4, label: t('common.weekday.short.thu') },
+    { value: 5, label: t('common.weekday.short.fri') },
+    { value: 6, label: t('common.weekday.short.sat') },
+  ];
+}
 
 function getInitials(name: string): string {
   return name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join('') || '?';
@@ -203,16 +211,21 @@ function formatCompactWeekDate(dateStr: string): string {
   });
 }
 
-function getWeekLabel(weekStart: string, currentWeekStart: string): string {
-  if (weekStart === currentWeekStart) return 'This week';
+function getWeekLabel(
+  weekStart: string,
+  currentWeekStart: string,
+  t: TranslateFn,
+  tCount: TranslateCountFn,
+): string {
+  if (weekStart === currentWeekStart) return t('attendance.admin.week.thisWeek');
   const start = new Date(`${weekStart}T00:00:00`).getTime();
   const current = new Date(`${currentWeekStart}T00:00:00`).getTime();
   const diffWeeks = Math.round((start - current) / (7 * 24 * 60 * 60 * 1000));
-  if (diffWeeks === 1) return 'Next week';
-  if (diffWeeks === -1) return 'Last week';
-  if (diffWeeks > 1) return `In ${diffWeeks} weeks`;
-  if (diffWeeks < -1) return `${Math.abs(diffWeeks)} weeks ago`;
-  return 'Scheduled';
+  if (diffWeeks === 1) return t('attendance.admin.week.nextWeek');
+  if (diffWeeks === -1) return t('attendance.admin.week.lastWeek');
+  if (diffWeeks > 1) return t('attendance.admin.week.inWeeks', { count: diffWeeks });
+  if (diffWeeks < -1) return t('attendance.admin.week.weeksAgo', { count: Math.abs(diffWeeks) });
+  return t('attendance.admin.week.scheduled');
 }
 
 function dateInputValue(date: Date): string {
@@ -421,6 +434,7 @@ function EditDutyWeekModal({
   onClose: () => void;
   onSave: (entryId: number, studentId: string) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const firstYearStudents = useMemo(
     () => row.firstYear ? getEnrolledStudents(row.firstYear.courseId, courseStudents, users) : [],
     [row.firstYear, courseStudents, users]
@@ -455,8 +469,8 @@ function EditDutyWeekModal({
       <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">On duty schedule</p>
-            <h3 className="mt-1 text-lg font-semibold text-[#171717]">Edit Week Keepers</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.duty.eyebrow')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.admin.duty.editWeekKeepers')}</h3>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
             <X className="h-5 w-5" />
@@ -469,7 +483,7 @@ function EditDutyWeekModal({
 
         <div className="space-y-4">
           <div className="rounded-xl border border-[#e5e5e5] p-4">
-            <label htmlFor="edit-first-year-student" className="mb-2 block text-sm font-medium text-[#171717]">First Year Keeper</label>
+            <label htmlFor="edit-first-year-student" className="mb-2 block text-sm font-medium text-[#171717]">{t('attendance.admin.duty.firstYearKeeper')}</label>
             {row.firstYear ? (
               <select
                 id="edit-first-year-student"
@@ -480,12 +494,12 @@ function EditDutyWeekModal({
                 {firstYearStudents.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
               </select>
             ) : (
-              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">No first year duty slot exists for this week.</p>
+              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">{t('attendance.admin.duty.noFirstYearSlot')}</p>
             )}
           </div>
 
           <div className="rounded-xl border border-[#e5e5e5] p-4">
-            <label htmlFor="edit-second-year-student" className="mb-2 block text-sm font-medium text-[#171717]">Second Year Keeper</label>
+            <label htmlFor="edit-second-year-student" className="mb-2 block text-sm font-medium text-[#171717]">{t('attendance.admin.duty.secondYearKeeper')}</label>
             {row.secondYear ? (
               <select
                 id="edit-second-year-student"
@@ -496,15 +510,15 @@ function EditDutyWeekModal({
                 {secondYearStudents.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
               </select>
             ) : (
-              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">No second year duty slot exists for this week.</p>
+              <p className="rounded-lg bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">{t('attendance.admin.duty.noSecondYearSlot')}</p>
             )}
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">{t('common.cancel')}</button>
           <button type="button" onClick={handleSave} disabled={saving} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -523,6 +537,7 @@ function EditPrayerWeekModal({
   onClose: () => void;
   onSave: (entryId: number, updates: { tuesdayStudentId?: string | null; thursdayStudentId?: string | null }) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [tuesdayStudentId, setTuesdayStudentId] = useState(row.tuesdayStudentId ?? '');
   const [thursdayStudentId, setThursdayStudentId] = useState(row.thursdayStudentId ?? '');
   const [saving, setSaving] = useState(false);
@@ -545,8 +560,8 @@ function EditPrayerWeekModal({
       <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Prayer schedule</p>
-            <h3 className="mt-1 text-lg font-semibold text-[#171717]">Edit prayer leaders</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.prayer.eyebrow')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.admin.prayer.editLeaders')}</h3>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
             <X className="h-5 w-5" />
@@ -560,7 +575,7 @@ function EditPrayerWeekModal({
         <div className="space-y-4">
           <div className="rounded-xl border border-[#e5e5e5] p-4">
             <label htmlFor="edit-tuesday-prayer-student" className="mb-2 block text-sm font-medium text-[#171717]">
-              Tuesday prayer · {formatCompactWeekDate(getTuesdayDateForWeek(row.weekStart))}
+              {t('attendance.admin.prayer.tuesdayLabel', { date: formatCompactWeekDate(getTuesdayDateForWeek(row.weekStart)) })}
             </label>
             <select
               id="edit-tuesday-prayer-student"
@@ -568,14 +583,14 @@ function EditPrayerWeekModal({
               onChange={event => setTuesdayStudentId(event.target.value)}
               className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
             >
-              <option value="">Unassigned</option>
+              <option value="">{t('attendance.admin.prayer.unassigned')}</option>
               {students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
             </select>
           </div>
 
           <div className="rounded-xl border border-[#e5e5e5] p-4">
             <label htmlFor="edit-thursday-prayer-student" className="mb-2 block text-sm font-medium text-[#171717]">
-              Thursday prayer · {formatCompactWeekDate(getThursdayDateForWeek(row.weekStart))}
+              {t('attendance.admin.prayer.thursdayLabel', { date: formatCompactWeekDate(getThursdayDateForWeek(row.weekStart)) })}
             </label>
             <select
               id="edit-thursday-prayer-student"
@@ -583,16 +598,16 @@ function EditPrayerWeekModal({
               onChange={event => setThursdayStudentId(event.target.value)}
               className="w-full rounded-lg border border-[#e5e5e5] px-3 py-2 text-sm focus:border-[#2563eb] focus:ring-[#2563eb]"
             >
-              <option value="">Unassigned</option>
+              <option value="">{t('attendance.admin.prayer.unassigned')}</option>
               {students.map(student => <option key={student.id} value={student.id}>{student.name}</option>)}
             </select>
           </div>
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
+          <button type="button" onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]">{t('common.cancel')}</button>
           <button type="button" onClick={handleSave} disabled={saving} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50">
-            {saving ? 'Saving...' : 'Save'}
+            {saving ? t('common.saving') : t('common.save')}
           </button>
         </div>
       </div>
@@ -613,6 +628,7 @@ function GeneratePrayerScheduleModal({
   onClose: () => void;
   onGenerate: (options: PrayerScheduleGenerateOptions) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [includeFirstYear, setIncludeFirstYear] = useState(true);
   const [includeSecondYear, setIncludeSecondYear] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -670,8 +686,8 @@ function GeneratePrayerScheduleModal({
       <div className="w-full max-w-xl rounded-xl border border-[#e5e5e5] bg-white p-6 shadow-[0_24px_80px_rgba(0,0,0,0.18)]">
         <div className="mb-4 flex items-start justify-between gap-4">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Prayer schedule</p>
-            <h3 className="mt-1 text-lg font-semibold text-[#171717]">Generate school year</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.prayer.eyebrow')}</p>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.admin.prayer.generateTitle')}</h3>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
             <X className="h-5 w-5" />
@@ -679,7 +695,7 @@ function GeneratePrayerScheduleModal({
         </div>
 
         <p className="mb-5 rounded-lg border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-sm text-[#92400e]">
-          This replaces the entire prayer schedule. Choose which active year groups to include before generating.
+          {t('attendance.admin.prayer.replaceWarning')}
         </p>
 
         <div className="space-y-3">
@@ -691,11 +707,11 @@ function GeneratePrayerScheduleModal({
               className="mt-1 h-4 w-4 rounded border-[#d4d4d4] text-[#7c3aed] focus:ring-[#7c3aed]"
             />
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-[#171717]">First year</span>
+              <span className="block text-sm font-semibold text-[#171717]">{t('attendance.admin.prayer.firstYear')}</span>
               <span className="mt-1 block text-sm text-[#737373]">
                 {firstYearCourses.length > 0
                   ? firstYearCourses.map(course => getCourseDisplayName(course)).join(', ')
-                  : 'No active first-year groups'}
+                  : t('attendance.admin.prayer.noActiveFirstYear')}
               </span>
             </span>
           </label>
@@ -708,11 +724,11 @@ function GeneratePrayerScheduleModal({
               className="mt-1 h-4 w-4 rounded border-[#d4d4d4] text-[#7c3aed] focus:ring-[#7c3aed]"
             />
             <span className="min-w-0">
-              <span className="block text-sm font-semibold text-[#171717]">Second year</span>
+              <span className="block text-sm font-semibold text-[#171717]">{t('attendance.admin.prayer.secondYear')}</span>
               <span className="mt-1 block text-sm text-[#737373]">
                 {secondYearCourses.length > 0
                   ? secondYearCourses.map(course => getCourseDisplayName(course)).join(', ')
-                  : 'No active second-year groups'}
+                  : t('attendance.admin.prayer.noActiveSecondYear')}
               </span>
             </span>
           </label>
@@ -720,17 +736,17 @@ function GeneratePrayerScheduleModal({
 
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
           <div className="rounded-xl bg-[#f5f5f5] px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Students</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.students')}</p>
             <p className="mt-1 text-lg font-semibold text-[#171717]">{studentCount}</p>
           </div>
           <div className="rounded-xl bg-[#f5f5f5] px-4 py-3">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Weeks</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.prayer.weeks')}</p>
             <p className="mt-1 text-lg font-semibold text-[#171717]">{weekCount}</p>
           </div>
         </div>
 
         {!includeFirstYear && !includeSecondYear && (
-          <p className="mt-4 text-sm text-[#b91c1c]">Select at least one year group type.</p>
+          <p className="mt-4 text-sm text-[#b91c1c]">{t('attendance.admin.prayer.selectYearGroup')}</p>
         )}
 
         <div className="mt-6 flex justify-end gap-3">
@@ -743,7 +759,7 @@ function GeneratePrayerScheduleModal({
             disabled={!canGenerate || generating}
             className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#0a0a0a] disabled:opacity-50"
           >
-            {generating ? 'Generating...' : 'Generate schedule'}
+            {generating ? t('attendance.admin.prayer.generating') : t('attendance.admin.prayer.generateSchedule')}
           </button>
         </div>
       </div>
@@ -788,6 +804,8 @@ export function AttendanceView({
   markMinistryAttendance,
   onOpenStudentDashboard,
 }: AttendanceViewProps) {
+  const { t, tCount, language } = useLanguage();
+  const weekdays = useMemo(() => getWeekdayOptions(t), [t, language]);
   const activeCourses = useMemo(() => courses.filter(isCourseActive), [courses]);
   const onlineStudentIds = useMemo(
     () => new Set(users.filter(user => user.isOnlineStudent).map(user => user.id)),
@@ -990,7 +1008,7 @@ export function AttendanceView({
       .filter(member => member.active && member.canSubmitReports)
       .map(member => member.userName)
       .filter(Boolean) ?? [];
-    return names.length > 0 ? names.join(', ') : 'No team users';
+    return names.length > 0 ? names.join(', ') : t('attendance.admin.ministry.noTeamUsers');
   };
   const toggleTeamMember = (userId: string) => {
     setTeamDraft(prev => ({
@@ -1240,48 +1258,48 @@ export function AttendanceView({
     });
   }, [activeSection, currentWeekStart, prayerRows]);
 
-  const sectionMeta: Record<TabId, { title: string; eyebrow: string; description: string }> = {
+  const sectionMeta = useMemo<Record<TabId, { title: string; eyebrow: string; description: string }>>(() => ({
     overview: {
-      title: 'Overview',
-      eyebrow: 'Graduation readiness',
-      description: 'Four independent gates: Classes, The Well, Ministry, and Activation Saturday.',
+      title: t('common.overview'),
+      eyebrow: t('attendance.admin.section.overview.eyebrow'),
+      description: t('attendance.admin.section.overview.description'),
     },
     classes: {
-      title: 'Classes',
-      eyebrow: 'Weekly sessions',
-      description: 'Tuesday and Thursday class sessions count toward the class attendance requirement.',
+      title: t('nav.attendance.classes'),
+      eyebrow: t('nav.attendance.classes.desc'),
+      description: t('attendance.admin.section.classes.description'),
     },
     well: {
-      title: 'The Well',
-      eyebrow: 'Wednesday attendance',
-      description: 'Monthly Well credits are official, with yearly fallback progress shown separately.',
+      title: t('nav.attendance.well'),
+      eyebrow: t('nav.attendance.well.desc'),
+      description: t('attendance.admin.section.well.description'),
     },
     ministry: {
-      title: 'Ministry',
-      eyebrow: 'Service teams',
-      description: 'Manage ministry teams, rotations, sessions, and service attendance.',
+      title: t('nav.attendance.ministry'),
+      eyebrow: t('attendance.admin.section.ministry.eyebrow'),
+      description: t('attendance.admin.section.ministry.description'),
     },
     activation: {
-      title: 'Activation Saturday',
-      eyebrow: 'Monthly joint sessions',
-      description: 'Students may lose only the configured number of Activation Saturday credits.',
+      title: t('nav.attendance.activation'),
+      eyebrow: t('nav.attendance.activation.desc'),
+      description: t('attendance.admin.section.activation.description'),
     },
     duty: {
-      title: 'On Duty Schedule',
-      eyebrow: 'Attendance keepers',
-      description: 'Class and The Well attendance keepers remain separate from ministry team leaders.',
+      title: t('nav.attendance.duty'),
+      eyebrow: t('nav.attendance.duty.desc'),
+      description: t('attendance.admin.section.duty.description'),
     },
     prayer: {
-      title: 'Prayer Schedule',
-      eyebrow: 'Tuesday & Thursday prayer',
-      description: 'Assign students to lead prayer on Tuesday and Thursday. The two days can have different leaders.',
+      title: t('nav.attendance.prayer'),
+      eyebrow: t('nav.attendance.prayer.desc'),
+      description: t('attendance.admin.section.prayer.description'),
     },
     settings: {
-      title: 'Settings',
-      eyebrow: 'Configurable attendance rules',
-      description: 'Tune every graduation gate without changing code.',
+      title: t('common.settings'),
+      eyebrow: t('attendance.admin.section.settings.eyebrow'),
+      description: t('attendance.admin.section.settings.description'),
     },
-  };
+  }), [t, language]);
 
   const saveSettings = async () => {
     setSavingSettings(true);
@@ -1303,7 +1321,7 @@ export function AttendanceView({
         valid = false;
       }
       if (!valid) {
-        setMeetLinkError('Enter a full link starting with https:// (e.g. https://meet.google.com/abc-defg-hij).');
+        setMeetLinkError(t('attendance.admin.settings.meetLinkError'));
         setMeetLinkSaved(false);
         return;
       }
@@ -1337,13 +1355,13 @@ export function AttendanceView({
       setShowTeamForm(false);
       setTeamFeedback({
         tone: 'success',
-        message: wasEditing ? 'Team updated.' : 'Team created.',
+        message: wasEditing ? t('attendance.admin.ministry.teamUpdated') : t('attendance.admin.ministry.teamCreated'),
       });
     } catch (teamError) {
       console.error('Failed to save ministry team', teamError);
       setTeamFeedback({
         tone: 'error',
-        message: 'Could not save team. Please try again.',
+        message: t('attendance.admin.ministry.teamSaveError'),
       });
     } finally {
       setSavingTeam(false);
@@ -1386,7 +1404,7 @@ export function AttendanceView({
 
   const renderTeamUserPicker = () => (
     <div className="md:col-span-2">
-      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Team users</span>
+      <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.ministry.teamUsers')}</span>
       <div className="max-h-44 overflow-y-auto rounded-xl border border-[#d4d4d4] bg-white p-2">
         <div className="grid gap-1 sm:grid-cols-2">
           {teamLeaders.map(user => {
@@ -1405,7 +1423,7 @@ export function AttendanceView({
                 </span>
                 <span className="min-w-0">
                   <span className="block truncate font-semibold">{user.name}</span>
-                  <span className="block truncate text-xs opacity-70">{user.roles.includes('team_leader') ? 'Team leader' : 'Administrator'}</span>
+                  <span className="block truncate text-xs opacity-70">{user.roles.includes('team_leader') ? t('attendance.ministry.role.leader') : t('attendance.admin.ministry.administrator')}</span>
                 </span>
                 <span className={`ml-auto h-4 w-4 rounded border ${selected ? 'border-[#2563eb] bg-[#2563eb]' : 'border-[#d4d4d4] bg-white'}`}>
                   {selected && <CheckCircle2 className="h-4 w-4 text-white" />}
@@ -1414,7 +1432,7 @@ export function AttendanceView({
             );
           })}
         </div>
-        {teamLeaders.length === 0 && <p className="px-2 py-3 text-sm text-[#737373]">No administrators or team leaders are available.</p>}
+        {teamLeaders.length === 0 && <p className="px-2 py-3 text-sm text-[#737373]">{t('attendance.admin.ministry.noLeadersAvailable')}</p>}
       </div>
     </div>
   );
@@ -1490,13 +1508,13 @@ export function AttendanceView({
     if (!entry) {
       return (
         <div className="rounded-xl border border-dashed border-[#e5e5e5] bg-[#fafafa] px-3 py-3">
-          <p className="text-sm font-medium text-[#737373]">No {label.toLowerCase()} keeper</p>
-          <p className="mt-1 text-xs text-[#a3a3a3]">Generate this year group schedule to fill the slot.</p>
+          <p className="text-sm font-medium text-[#737373]">{t('attendance.admin.duty.noKeeper', { label })}</p>
+          <p className="mt-1 text-xs text-[#a3a3a3]">{t('attendance.admin.duty.generateHint')}</p>
         </div>
       );
     }
 
-    const statusLabel = entry.status === 'active' ? 'Active' : 'Transferred';
+    const statusLabel = entry.status === 'active' ? t('attendance.admin.duty.active') : t('attendance.admin.duty.transferred');
     const dutyLoad = dutyLoadByStudent.get(entry.studentId) ?? { served: 0, total: 0 };
 
     return (
@@ -1514,7 +1532,7 @@ export function AttendanceView({
             </span>
           </div>
           <p className="mt-1 text-xs text-[#737373]">
-            {dutyLoad.served} served / {dutyLoad.total} total scheduled
+            {t('attendance.admin.duty.servedTotal', { served: dutyLoad.served, total: dutyLoad.total })}
           </p>
         </div>
       </div>
@@ -1530,7 +1548,7 @@ export function AttendanceView({
     if (!studentId || !studentName) {
       return (
         <div className="rounded-xl border border-dashed border-[#e5e5e5] bg-[#fafafa] px-3 py-3">
-          <p className="text-sm font-medium text-[#737373]">No {dayLabel.toLowerCase()} leader</p>
+          <p className="text-sm font-medium text-[#737373]">{t('attendance.admin.prayer.noLeader', { day: dayLabel })}</p>
           <p className="mt-1 text-xs text-[#a3a3a3]">{formatCompactWeekDate(sessionDate)}</p>
         </div>
       );
@@ -1551,7 +1569,7 @@ export function AttendanceView({
             </span>
           </div>
           <p className="mt-1 text-xs text-[#737373]">
-            {prayerLoad.served} led / {prayerLoad.total} total scheduled
+            {t('attendance.admin.prayer.ledTotal', { served: prayerLoad.served, total: prayerLoad.total })}
           </p>
         </div>
       </div>
@@ -1562,10 +1580,10 @@ export function AttendanceView({
     onlineStudentIds.has(studentId) ? (
       <span
         className="inline-flex items-center gap-1 rounded-md border border-[#7dd3fc] bg-[#f0f9ff] px-1.5 py-0.5 text-[10px] font-semibold leading-none text-[#0369a1]"
-        title="Online student — joins sessions remotely"
+        title={t('student.online.tooltip')}
       >
         <Wifi className="h-3 w-3" />
-        Online
+        {t('student.online.chip')}
       </span>
     ) : null;
 
@@ -1594,70 +1612,76 @@ export function AttendanceView({
     </div>
   );
 
-  const pageStats: Partial<Record<TabId, Array<{ label: string; value: string | number; detail: string; icon: typeof Activity; accent: string }>>> = {
+  const pageStats = useMemo<Partial<Record<TabId, Array<{ label: string; value: string | number; detail: string; icon: typeof Activity; accent: string }>>>>(() => ({
     overview: [
-      { label: 'Average', value: formatPercent(averageOverall), detail: `${activeSummaries.length} students`, icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Passing gates', value: passingCount, detail: `${Math.max(activeSummaries.length - passingCount, 0)} need review`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Ministry teams', value: ministryTeams.length, detail: `${ministryRotations.length} rotations`, icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
-      { label: 'Transfers', value: pendingTransferRequests.length, detail: 'pending duty requests', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.average'), value: formatPercent(averageOverall), detail: tCount('attendance.admin.stats.students', activeSummaries.length), icon: Activity, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.passingGates'), value: passingCount, detail: tCount('attendance.admin.stats.needReview', Math.max(activeSummaries.length - passingCount, 0)), icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.ministryTeams'), value: ministryTeams.length, detail: tCount('attendance.admin.stats.rotations', ministryRotations.length), icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: t('attendance.admin.stats.transfers'), value: pendingTransferRequests.length, detail: t('attendance.admin.stats.pendingDutyRequests'), icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
     ],
     classes: [
-      { label: 'Planned sessions', value: regularClasses.length, detail: `${selectedYearGroupCourses.length} selected`, icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Average score', value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.classAttendanceScore, 0) / summaries.length : 1), detail: 'class gate only', icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Below rule', value: summaries.filter(summary => summary.classAttendanceScore < settings.classRequiredPercent).length, detail: `${percentInput(settings.classRequiredPercent)}% required`, icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Missing records', value: missingClassRecords, detail: 'unmarked class slots', icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('attendance.admin.stats.plannedSessions'), value: regularClasses.length, detail: tCount('attendance.admin.stats.selected', selectedYearGroupCourses.length), icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.averageScore'), value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.classAttendanceScore, 0) / summaries.length : 1), detail: t('attendance.admin.stats.classGateOnly'), icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.belowRule'), value: summaries.filter(summary => summary.classAttendanceScore < settings.classRequiredPercent).length, detail: t('attendance.admin.stats.percentRequired', { percent: percentInput(settings.classRequiredPercent) }), icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.missingRecords'), value: missingClassRecords, detail: t('attendance.admin.stats.unmarkedClassSlots'), icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
     ],
     well: [
-      { label: 'Monthly credits', value: settings.theWellRequiredPerMonth, detail: `${formatMonthYear(month.year, month.month)} requirement`, icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Meeting rule', value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'the_well')?.status ?? 'failing') === 'passing').length, detail: `${summaries.length} students`, icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Fallback risk', value: summaries.filter(summary => summary.theWellScore < settings.theWellFallbackPercent).length, detail: `${percentInput(settings.theWellFallbackPercent)}% fallback`, icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Tracked records', value: theWellAttendance.filter(item => selectedYearGroupIdSet.has(item.courseId)).length, detail: 'student-month rows', icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: t('attendance.admin.stats.monthlyCredits'), value: settings.theWellRequiredPerMonth, detail: t('attendance.admin.stats.monthRequirement', { month: formatMonthYear(month.year, month.month) }), icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.meetingRule'), value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'the_well')?.status ?? 'failing') === 'passing').length, detail: tCount('attendance.admin.stats.students', summaries.length), icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.fallbackRisk'), value: summaries.filter(summary => summary.theWellScore < settings.theWellFallbackPercent).length, detail: t('attendance.admin.stats.percentFallback', { percent: percentInput(settings.theWellFallbackPercent) }), icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.trackedRecords'), value: theWellAttendance.filter(item => selectedYearGroupIdSet.has(item.courseId)).length, detail: t('attendance.admin.stats.studentMonthRows'), icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
     ],
     ministry: [
-      { label: 'Teams', value: ministryTeams.length, detail: `${ministryTeams.filter(team => team.active).length} active`, icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
-      { label: 'Assigned', value: ministryAssignedCount, detail: `${ministryRows.length} students tracked`, icon: ClipboardList, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Avg health', value: formatPercent(averageMinistryHealth), detail: formatMonthYear(month.year, month.month), icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Below req.', value: ministryBelowRequirement, detail: 'at risk or failing', icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.teams'), value: ministryTeams.length, detail: tCount('attendance.admin.stats.active', ministryTeams.filter(team => team.active).length), icon: Users, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: t('attendance.admin.stats.assigned'), value: ministryAssignedCount, detail: tCount('attendance.admin.stats.studentsTracked', ministryRows.length), icon: ClipboardList, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.avgHealth'), value: formatPercent(averageMinistryHealth), detail: formatMonthYear(month.year, month.month), icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.belowReq'), value: ministryBelowRequirement, detail: t('attendance.admin.stats.atRiskOrFailing'), icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
     ],
     activation: [
-      { label: 'Sessions', value: activationClasses.length, detail: 'detected Saturdays', icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Over limit', value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'activation')?.status ?? 'passing') === 'failing').length, detail: `${settings.activationMaxLostCredits} max lost credits`, icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
-      { label: 'Avg score', value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.saturdayAttendanceScore, 0) / summaries.length : 1), detail: 'Activation only', icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Missing records', value: missingActivationRecords, detail: 'unmarked Activation slots', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.sessions'), value: activationClasses.length, detail: t('attendance.admin.stats.detectedSaturdays'), icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.overLimit'), value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'activation')?.status ?? 'passing') === 'failing').length, detail: t('attendance.admin.stats.maxLostCredits', { count: settings.activationMaxLostCredits }), icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('attendance.admin.stats.avgScore'), value: formatPercent(summaries.length ? summaries.reduce((sum, summary) => sum + summary.saturdayAttendanceScore, 0) / summaries.length : 1), detail: t('attendance.admin.stats.activationOnly'), icon: Activity, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.missingRecords'), value: missingActivationRecords, detail: t('attendance.admin.stats.unmarkedActivationSlots'), icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
     ],
     duty: [
-      { label: 'This week', value: currentWeekKeepers, detail: 'keepers assigned', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Transfers', value: pendingTransferRequests.length, detail: 'waiting for review', icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Scheduled weeks', value: new Set(dutyRows.map(row => row.weekStart)).size, detail: 'in active year groups', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Open slots', value: Math.max(0, unassignedKeeperSlots), detail: 'current week estimate', icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('attendance.admin.week.thisWeek'), value: currentWeekKeepers, detail: t('attendance.admin.stats.keepersAssigned'), icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.transfers'), value: pendingTransferRequests.length, detail: t('attendance.admin.stats.waitingReview'), icon: ClipboardList, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.admin.stats.scheduledWeeks'), value: new Set(dutyRows.map(row => row.weekStart)).size, detail: t('attendance.admin.stats.inActiveYearGroups'), icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.openSlots'), value: Math.max(0, unassignedKeeperSlots), detail: t('attendance.admin.stats.currentWeekEstimate'), icon: ShieldCheck, accent: 'bg-[#fee2e2] text-[#dc2626]' },
     ],
     prayer: [
       {
-        label: 'This week',
+        label: t('attendance.admin.week.thisWeek'),
         value: (() => {
           const row = prayerRows.find(entry => entry.weekStart === currentWeekStart);
           if (!row) return 0;
           return Number(Boolean(row.tuesdayStudentId)) + Number(Boolean(row.thursdayStudentId));
         })(),
-        detail: 'Tuesday & Thursday leaders',
+        detail: t('attendance.admin.stats.tuesdayThursdayLeaders'),
         icon: HeartHandshake,
         accent: 'bg-[#f3e8ff] text-[#7c3aed]',
       },
-      { label: 'Scheduled weeks', value: prayerRows.length, detail: 'school year coverage', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Students used', value: prayerLoadByStudent.size, detail: 'assigned at least once', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.admin.stats.scheduledWeeks'), value: prayerRows.length, detail: t('attendance.admin.stats.schoolYearCoverage'), icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.admin.stats.studentsUsed'), value: prayerLoadByStudent.size, detail: t('attendance.admin.stats.assignedAtLeastOnce'), icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
       {
-        label: 'Open this week',
+        label: t('attendance.admin.stats.openThisWeek'),
         value: (() => {
           const row = prayerRows.find(entry => entry.weekStart === currentWeekStart);
           if (!row) return 2;
           return Math.max(0, 2 - Number(Boolean(row.tuesdayStudentId)) - Number(Boolean(row.thursdayStudentId)));
         })(),
-        detail: 'slots still empty',
+        detail: t('attendance.admin.stats.slotsStillEmpty'),
         icon: ClipboardList,
         accent: 'bg-[#fff7ed] text-[#ea580c]',
       },
     ],
-  };
+  }), [
+    t, tCount, language, activeSummaries, averageOverall, passingCount, ministryTeams, ministryRotations,
+    pendingTransferRequests, regularClasses, selectedYearGroupCourses, summaries, settings, missingClassRecords,
+    month, theWellAttendance, selectedYearGroupIdSet, ministryAssignedCount, ministryRows, averageMinistryHealth,
+    ministryBelowRequirement, activationClasses, missingActivationRecords, currentWeekKeepers, dutyRows,
+    unassignedKeeperSlots, prayerRows, currentWeekStart, prayerLoadByStudent,
+  ]);
 
   const renderPageStats = () => {
     const stats = pageStats[activeSection];
@@ -1691,7 +1715,7 @@ export function AttendanceView({
               const course = activeCourses.find(item => item.id === option.id);
               const isActive = selectedYearGroupIds.includes(option.id);
               const isSecond = course?.courseType === 'second_year';
-              const yearLabel = isSecond ? 'Second Year' : 'First Year';
+              const yearLabel = isSecond ? t('common.yearGroup.second') : t('common.yearGroup.first');
               return (
                 <label
                   key={option.id}
@@ -1721,13 +1745,13 @@ export function AttendanceView({
           ))}
         </div>
         <label className="relative block w-full sm:w-72">
-          <span className="sr-only">Search students</span>
+          <span className="sr-only">{t('attendance.admin.searchStudents')}</span>
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
           <input
             type="search"
             value={search}
             onChange={event => setSearch(event.target.value)}
-            placeholder="Search students"
+            placeholder={t('attendance.admin.searchStudents')}
             className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#171717] focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
           />
         </label>
@@ -1742,7 +1766,7 @@ export function AttendanceView({
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#f5f5f5]">
               <tr>
-                {['Student', 'Classes', 'The Well', 'Ministry', 'Activation', 'Result'].map(column => (
+                {[t('attendance.table.student'), t('nav.attendance.classes'), t('nav.attendance.well'), t('nav.attendance.ministry'), t('attendance.admin.activationShort'), t('attendance.admin.result')].map(column => (
                   <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
                     {column}
                   </th>
@@ -1762,12 +1786,12 @@ export function AttendanceView({
                         {gate ? (
                           <div>
                             <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_CLASS[gate.status]}`}>
-                              {gate.status === 'passing' ? 'Passing' : gate.status === 'at_risk' ? 'At risk' : 'Failing'}
+                              {gate.status === 'passing' ? t('attendance.status.passing') : gate.status === 'at_risk' ? t('attendance.status.atRisk') : t('attendance.status.failing')}
                             </span>
                             <p className="mt-1 text-xs text-[#737373]">{gate.detail}</p>
                           </div>
                         ) : (
-                          <span className="text-[#737373]">Not tracked</span>
+                          <span className="text-[#737373]">{t('attendance.admin.notTracked')}</span>
                         )}
                       </td>
                     );
@@ -1777,14 +1801,14 @@ export function AttendanceView({
                       summary.meetsGraduationThreshold ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'
                     }`}>
                       {summary.meetsGraduationThreshold ? <CheckCircle2 className="h-3 w-3" /> : null}
-                      {summary.meetsGraduationThreshold ? 'Meets gates' : 'Needs review'}
+                      {summary.meetsGraduationThreshold ? t('attendance.admin.meetsGates') : t('attendance.needsReview')}
                     </span>
                   </td>
                 </tr>
               ))}
               {filteredSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={6} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                  <td colSpan={6} className="px-4 py-10 text-center text-[#737373]">{t('attendance.admin.noStudents')}</td>
                 </tr>
               )}
             </tbody>
@@ -1799,7 +1823,7 @@ export function AttendanceView({
       <button
         type="button"
         title={title ?? label}
-        aria-label={`Sort by ${title ?? label}`}
+        aria-label={t('attendance.admin.sortBy', { label: title ?? label })}
         onClick={() => {
           if (classesSortKey === key) {
             setClassesSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -1820,22 +1844,22 @@ export function AttendanceView({
         <SectionCard className="p-4">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#171717]">Class rule</p>
-              <p className="mt-1 text-sm text-[#737373]">Required attendance credit for weekly classes.</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.classes.ruleTitle')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.classes.ruleHint')}</p>
             </div>
             <div className="grid gap-2 sm:grid-cols-3 lg:min-w-[560px]">
               <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Required</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.requirement')}</p>
                 <p className="mt-1 text-xl font-semibold text-[#171717]">{percentInput(settings.classRequiredPercent)}%</p>
               </div>
               <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Sessions</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.stats.sessions')}</p>
                 <p className="mt-1 text-xl font-semibold text-[#171717]">{regularClasses.length}</p>
-                <p className="text-xs text-[#737373]">{settings.classSessionsPerDay} per day</p>
+                <p className="text-xs text-[#737373]">{t('attendance.admin.classes.perDay', { count: settings.classSessionsPerDay })}</p>
               </div>
               <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Included</p>
-                <p className="mt-1 text-sm font-semibold text-[#171717]">{settings.classIncludedWeekdays.map(day => WEEKDAYS.find(item => item.value === day)?.label).join(', ')}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.classes.included')}</p>
+                <p className="mt-1 text-sm font-semibold text-[#171717]">{settings.classIncludedWeekdays.map(day => weekdays.find(item => item.value === day)?.label).join(', ')}</p>
               </div>
             </div>
           </div>
@@ -1845,11 +1869,11 @@ export function AttendanceView({
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#f5f5f5]">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Present', 'present')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Late', 'late')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Absent', 'absent')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.table.student'), 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.present'), 'present')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.late'), 'late')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.absent'), 'absent')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.score'), 'score')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e5e5]">
@@ -1864,7 +1888,7 @@ export function AttendanceView({
               ))}
               {sortedClassesSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">{t('attendance.admin.noStudents')}</td>
                 </tr>
               )}
             </tbody>
@@ -1879,7 +1903,7 @@ export function AttendanceView({
       <button
         type="button"
         title={title ?? label}
-        aria-label={`Sort by ${title ?? label}`}
+        aria-label={t('attendance.admin.sortBy', { label: title ?? label })}
         onClick={() => {
           if (wellSortKey === key) {
             setWellSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -1899,19 +1923,19 @@ export function AttendanceView({
       <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Official monthly rule</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.well.officialMonthlyRule')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.theWellRequiredPerMonth}</p>
-            <p className="mt-1 text-sm text-[#737373]">credits per month</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.well.creditsPerMonth')}</p>
           </SectionCard>
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Fallback</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.fallback')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{percentInput(settings.theWellFallbackPercent)}%</p>
-            <p className="mt-1 text-sm text-[#737373]">of yearly Well sessions</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.well.ofYearlySessions')}</p>
           </SectionCard>
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Tracked months</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.well.trackedMonths')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{theWellAttendance.filter(item => item.courseId === courseId).length}</p>
-            <p className="mt-1 text-sm text-[#737373]">student-month records</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.well.studentMonthRecords')}</p>
           </SectionCard>
         </div>
         {renderCourseFilter()}
@@ -1919,10 +1943,10 @@ export function AttendanceView({
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#f5f5f5]">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Months tracked', 'monthsTracked')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Gate detail</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.table.student'), 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.admin.well.monthsTracked'), 'monthsTracked')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.score'), 'score')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.well.gateDetail')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e5e5]">
@@ -1933,7 +1957,7 @@ export function AttendanceView({
                     <td className="px-4 py-3">{renderSummaryStudentCell(summary)}</td>
                     <td className="px-4 py-3">
                       <span className="font-medium text-[#171717]">{summary.theWellMonthsTracked}</span>
-                      <span className="ml-1 text-xs text-[#737373]">month(s) tracked</span>
+                      <span className="ml-1 text-xs text-[#737373]">{tCount('attendance.admin.well.monthsTrackedSuffix', summary.theWellMonthsTracked)}</span>
                     </td>
                     <td className="px-4 py-3"><ScoreBar score={summary.theWellScore} /></td>
                     <td className="px-4 py-3 text-sm text-[#525252]">{gate?.detail}{gate?.fallbackDetail ? `; ${gate.fallbackDetail}` : ''}</td>
@@ -1942,7 +1966,7 @@ export function AttendanceView({
               })}
               {sortedWellSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={4} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                  <td colSpan={4} className="px-4 py-10 text-center text-[#737373]">{t('attendance.admin.noStudents')}</td>
                 </tr>
               )}
             </tbody>
@@ -1957,7 +1981,7 @@ export function AttendanceView({
       <button
         type="button"
         title={title ?? label}
-        aria-label={`Sort by ${title ?? label}`}
+        aria-label={t('attendance.admin.sortBy', { label: title ?? label })}
         onClick={() => {
           if (activationSortKey === key) {
             setActivationSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -1983,19 +2007,19 @@ export function AttendanceView({
       <div className="space-y-4">
         <div className="grid gap-4 lg:grid-cols-3">
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Activation rule</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.activation.ruleTitle')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{settings.activationMaxLostCredits}</p>
-            <p className="mt-1 text-sm text-[#737373]">maximum lost credits</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.activation.maxLostCredits')}</p>
           </SectionCard>
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Sessions</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.stats.sessions')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{activationClasses.length}</p>
-            <p className="mt-1 text-sm text-[#737373]">Activation Saturdays detected</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.activation.saturdaysDetected')}</p>
           </SectionCard>
           <SectionCard className="p-4">
-            <p className="text-sm font-semibold text-[#171717]">Over limit</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.stats.overLimit')}</p>
             <p className="mt-2 text-3xl font-semibold text-[#171717]">{overLimitCount}</p>
-            <p className="mt-1 text-sm text-[#737373]">{formatPercent(averageActivationScore)} average score</p>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.activation.averageScore', { score: formatPercent(averageActivationScore) })}</p>
           </SectionCard>
         </div>
         {renderCourseFilter()}
@@ -2003,11 +2027,11 @@ export function AttendanceView({
           <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#f5f5f5]">
               <tr>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Present', 'present')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Late', 'late')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Absent', 'absent')}</th>
-                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Score', 'score')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.table.student'), 'student')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.present'), 'present')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.late'), 'late')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.absent'), 'absent')}</th>
+                <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.score'), 'score')}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#e5e5e5]">
@@ -2022,7 +2046,7 @@ export function AttendanceView({
               ))}
               {sortedActivationSummaries.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">No students to show.</td>
+                  <td colSpan={5} className="px-4 py-10 text-center text-[#737373]">{t('attendance.admin.noStudents')}</td>
                 </tr>
               )}
             </tbody>
@@ -2050,10 +2074,10 @@ export function AttendanceView({
           <SectionCard className="p-4">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-[#171717]">Ministry teams</h3>
-                <p className="text-sm text-[#737373]">Sunday and non-Sunday service requirements.</p>
+                <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.teamsTitle')}</h3>
+                <p className="text-sm text-[#737373]">{t('attendance.admin.ministry.teamsHint')}</p>
               </div>
-              <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#166534]">{ministryTeams.length} teams</span>
+              <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#166534]">{tCount('attendance.admin.ministry.teamsCount', ministryTeams.length)}</span>
             </div>
             <div className="space-y-2">
               {ministryTeams.map(team => (
@@ -2061,7 +2085,7 @@ export function AttendanceView({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <p className="font-semibold text-[#171717]">{team.name}</p>
-                      <p className="text-xs text-[#737373]">{team.serviceType === 'sunday' ? 'Sunday' : 'Non-Sunday'} - {team.requiredCredits} credit(s) every {team.requirementPeriodMonths} month(s)</p>
+                      <p className="text-xs text-[#737373]">{t('attendance.admin.ministry.teamCreditsPeriod', { type: team.serviceType === 'sunday' ? t('attendance.admin.ministry.sunday') : t('attendance.admin.ministry.nonSunday'), credits: team.requiredCredits, months: team.requirementPeriodMonths })}</p>
                     </div>
                     <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
                   </div>
@@ -2070,66 +2094,66 @@ export function AttendanceView({
               ))}
             </div>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label="Team name">
+              <Field label={t('attendance.admin.ministry.teamName')}>
                 <input value={teamDraft.name} onChange={event => setTeamDraft(prev => ({ ...prev, name: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
               </Field>
-              <Field label="Bulgarian name">
+              <Field label={t('attendance.admin.ministry.bulgarianName')}>
                 <input value={teamDraft.nameBg} onChange={event => setTeamDraft(prev => ({ ...prev, nameBg: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
               </Field>
-              <Field label="Type">
+              <Field label={t('common.type')}>
                 <select value={teamDraft.serviceType} onChange={event => setTeamDraft(prev => ({ ...prev, serviceType: event.target.value as 'sunday' | 'non_sunday' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                  <option value="sunday">Sunday</option>
-                  <option value="non_sunday">Non-Sunday</option>
+                  <option value="sunday">{t('attendance.admin.ministry.sunday')}</option>
+                  <option value="non_sunday">{t('attendance.admin.ministry.nonSunday')}</option>
                 </select>
               </Field>
-              <Field label="Required credits">
+              <Field label={t('attendance.admin.ministry.requiredCredits')}>
                 <NumberInput value={teamDraft.requiredCredits} min={0} step={0.5} onChange={value => setTeamDraft(prev => ({ ...prev, requiredCredits: value }))} />
               </Field>
-              <Field label="Period months">
+              <Field label={t('attendance.admin.ministry.periodMonths')}>
                 <NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} />
               </Field>
               {renderTeamUserPicker()}
             </div>
             <button type="button" onClick={saveTeam} className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-              <Plus className="h-4 w-4" /> Save team
+              <Plus className="h-4 w-4" /> {t('attendance.admin.ministry.saveTeam')}
             </button>
           </SectionCard>
 
           <SectionCard className="p-4">
-            <h3 className="font-semibold text-[#171717]">Rotations</h3>
-            <p className="text-sm text-[#737373]">Assign students to ministry teams for a date range.</p>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.rotationsTitle')}</h3>
+            <p className="text-sm text-[#737373]">{t('attendance.admin.ministry.rotationsHint')}</p>
             <div className="mt-4 grid gap-3 md:grid-cols-2">
-              <Field label="Year Group">
+              <Field label={t('attendance.admin.ministry.yearGroup')}>
                 <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
                 </select>
               </Field>
-              <Field label="Student">
+              <Field label={t('attendance.table.student')}>
                 <select value={rotationDraft.studentId} onChange={event => setRotationDraft(prev => ({ ...prev, studentId: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                  <option value="">Choose student</option>
+                  <option value="">{t('attendance.admin.ministry.chooseStudent')}</option>
                   {activeStudents.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
                 </select>
               </Field>
-              <Field label="Team">
+              <Field label={t('attendance.admin.ministry.teamFallback')}>
                 <select value={rotationDraft.teamId} onChange={event => setRotationDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
                 </select>
               </Field>
-              <Field label="Start date">
+              <Field label={t('attendance.admin.ministry.startDate')}>
                 <input type="date" value={rotationDraft.startDate} onChange={event => setRotationDraft(prev => ({ ...prev, startDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
               </Field>
-              <Field label="End date">
+              <Field label={t('attendance.admin.ministry.endDate')}>
                 <input type="date" value={rotationDraft.endDate} onChange={event => setRotationDraft(prev => ({ ...prev, endDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
               </Field>
             </div>
-            <button type="button" onClick={saveRotation} className="mt-3 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save rotation</button>
+            <button type="button" onClick={saveRotation} className="mt-3 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.ministry.saveRotation')}</button>
             <div className="mt-4 max-h-72 space-y-2 overflow-y-auto">
               {ministryRotations.map(rotation => {
                 const team = ministryTeams.find(item => item.id === rotation.teamId);
                 return (
                   <div key={rotation.id} className="rounded-xl border border-[#e5e5e5] p-3 text-sm">
                     <p className="font-semibold text-[#171717]">{rotation.studentName}</p>
-                    <p className="text-[#737373]">{team?.name ?? 'Team'} - {formatDate(rotation.startDate)} to {formatDate(rotation.endDate)}</p>
+                    <p className="text-[#737373]">{t('attendance.admin.ministry.rotationRange', { team: team?.name ?? t('attendance.admin.ministry.teamFallback'), start: formatDate(rotation.startDate), end: formatDate(rotation.endDate) })}</p>
                   </div>
                 );
               })}
@@ -2138,29 +2162,29 @@ export function AttendanceView({
         </div>
 
         <SectionCard className="p-4">
-          <h3 className="font-semibold text-[#171717]">Service sessions</h3>
+          <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.serviceSessions')}</h3>
           <div className="mt-4 grid gap-3 md:grid-cols-4">
-            <Field label="Team">
+            <Field label={t('attendance.admin.ministry.teamFallback')}>
               <select value={sessionDraft.teamId} onChange={event => setSessionDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                 {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
             </Field>
-            <Field label="Date">
+            <Field label={t('attendance.admin.ministry.date')}>
               <input type="date" value={sessionDraft.serviceDate} onChange={event => setSessionDraft(prev => ({ ...prev, serviceDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
             </Field>
-            <Field label="Title">
+            <Field label={t('common.title')}>
               <input value={sessionDraft.title} onChange={event => setSessionDraft(prev => ({ ...prev, title: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
             </Field>
-            <button type="button" onClick={saveSession} className="self-end rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Create session</button>
+            <button type="button" onClick={saveSession} className="self-end rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.ministry.createSession')}</button>
           </div>
           {selectedSession && (
             <div className="mt-5 rounded-xl border border-[#e5e5e5] p-3">
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                  <p className="font-semibold text-[#171717]">Latest: {selectedSession.title}</p>
+                  <p className="font-semibold text-[#171717]">{t('attendance.admin.ministry.latestSession', { title: selectedSession.title })}</p>
                   <p className="text-sm text-[#737373]">{selectedSessionTeam?.name} - {formatDate(selectedSession.serviceDate)}</p>
                 </div>
-                <button type="button" onClick={() => saveMinistryAttendance(selectedSession.id)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save attendance</button>
+                <button type="button" onClick={() => saveMinistryAttendance(selectedSession.id)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.ministry.saveAttendance')}</button>
               </div>
               <div className="mt-3 grid gap-2 md:grid-cols-2">
                 {sessionStudents.map(student => {
@@ -2183,14 +2207,14 @@ export function AttendanceView({
                         }))}
                         className="rounded-lg border border-[#d4d4d4] px-2 py-1 text-sm"
                       >
-                        <option value="present">Present</option>
-                        <option value="late">Late</option>
-                        <option value="absent">Absent</option>
+                        <option value="present">{t('attendance.present')}</option>
+                        <option value="late">{t('attendance.late')}</option>
+                        <option value="absent">{t('attendance.absent')}</option>
                       </select>
                     </div>
                   );
                 })}
-                {sessionStudents.length === 0 && <p className="text-sm text-[#737373]">No rotations match this session yet.</p>}
+                {sessionStudents.length === 0 && <p className="text-sm text-[#737373]">{t('attendance.admin.ministry.noRotationsForSession')}</p>}
               </div>
             </div>
           )}
@@ -2211,7 +2235,7 @@ export function AttendanceView({
       <button
         type="button"
         title={title ?? label}
-        aria-label={`Sort by ${title ?? label}`}
+        aria-label={t('attendance.admin.sortBy', { label: title ?? label })}
         onClick={() => {
           if (ministrySortKey === key) {
             setMinistrySortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
@@ -2232,20 +2256,20 @@ export function AttendanceView({
         <SectionCard className="p-4">
           <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
             <div>
-              <h3 className="font-semibold text-[#171717]">Student ministry standing</h3>
-              <p className="text-sm text-[#737373]">Filter and sort students by team, monthly health, service type, and rotation.</p>
+              <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.standingTitle')}</h3>
+              <p className="text-sm text-[#737373]">{t('attendance.admin.ministry.standingHint')}</p>
             </div>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => openRotationModal()} className="inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-                <SlidersHorizontal className="h-4 w-4" /> Manage Rotations
+                <SlidersHorizontal className="h-4 w-4" /> {t('attendance.admin.ministry.manageRotations')}
               </button>
               <button type="button" onClick={() => setTeamHealthOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-4 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                <BarChart3 className="h-4 w-4" /> Team Health
+                <BarChart3 className="h-4 w-4" /> {t('attendance.admin.ministry.teamHealth')}
               </button>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
-            <Field label="Month">
+            <Field label={t('attendance.admin.ministry.month')}>
               <input
                 type="month"
                 value={monthInputValue(month)}
@@ -2253,39 +2277,39 @@ export function AttendanceView({
                 className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm"
               />
             </Field>
-            <Field label="Team">
+            <Field label={t('attendance.admin.ministry.teamFallback')}>
               <select value={ministryTeamFilter} onChange={event => setMinistryTeamFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                <option value="all">All teams</option>
+                <option value="all">{t('attendance.admin.ministry.allTeams')}</option>
                 {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
               </select>
             </Field>
-            <Field label="Year Group">
+            <Field label={t('attendance.admin.ministry.yearGroup')}>
               <select value={ministryCourseFilter} onChange={event => setMinistryCourseFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                <option value="all">All years</option>
+                <option value="all">{t('attendance.admin.ministry.allYears')}</option>
                 {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
               </select>
             </Field>
-            <Field label="Health">
+            <Field label={t('attendance.health')}>
               <select value={ministryStatusFilter} onChange={event => setMinistryStatusFilter(event.target.value as MinistryHealthStatus)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                <option value="all">All statuses</option>
-                <option value="passing">Passing</option>
-                <option value="at_risk">At risk</option>
-                <option value="failing">Failing</option>
-                <option value="unassigned">Unassigned</option>
+                <option value="all">{t('attendance.admin.ministry.allStatuses')}</option>
+                <option value="passing">{t('attendance.status.passing')}</option>
+                <option value="at_risk">{t('attendance.status.atRisk')}</option>
+                <option value="failing">{t('attendance.status.failing')}</option>
+                <option value="unassigned">{t('attendance.admin.ministry.unassigned')}</option>
               </select>
             </Field>
-            <Field label="Type">
+            <Field label={t('common.type')}>
               <select value={ministryServiceTypeFilter} onChange={event => setMinistryServiceTypeFilter(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                <option value="all">All types</option>
-                <option value="sunday">Sunday</option>
-                <option value="non_sunday">Non-Sunday</option>
+                <option value="all">{t('attendance.admin.ministry.allTypes')}</option>
+                <option value="sunday">{t('attendance.admin.ministry.sunday')}</option>
+                <option value="non_sunday">{t('attendance.admin.ministry.nonSunday')}</option>
               </select>
             </Field>
             <label className="block">
-              <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Search</span>
+              <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.search')}</span>
               <span className="relative block">
                 <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-                <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Student name" className="h-10 w-full rounded-lg border border-[#d4d4d4] pl-9 pr-3 text-sm" />
+                <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('attendance.admin.searchStudentName')} className="h-10 w-full rounded-lg border border-[#d4d4d4] pl-9 pr-3 text-sm" />
               </span>
             </label>
           </div>
@@ -2296,17 +2320,17 @@ export function AttendanceView({
             <table className="min-w-[1000px] divide-y divide-[#e5e5e5] text-sm">
               <thead className="bg-[#f5f5f5]">
                 <tr>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Student', 'student')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Year Group', 'course')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Current Team', 'team')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Rotation Period</th>
-                  <th className="w-28 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Credits', 'earnedCredits', 'Earned credits')}</th>
-                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('P', 'present', 'Present')}</th>
-                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('L', 'late', 'Late')}</th>
-                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('A', 'absent', 'Absent')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Health', 'health')}</th>
-                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader('Last Service', 'lastService')}</th>
-                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Action</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.table.student'), 'student')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.admin.ministry.yearGroup'), 'course')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.admin.ministry.currentTeam'), 'team')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.ministry.rotationPeriod')}</th>
+                  <th className="w-28 px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.credits'), 'earnedCredits', t('attendance.admin.ministry.earnedCredits'))}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.statusShort.present'), 'present', t('attendance.present'))}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.statusShort.late'), 'late', t('attendance.late'))}</th>
+                  <th className="w-12 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.statusShort.absent'), 'absent', t('attendance.absent'))}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.health'), 'health')}</th>
+                  <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{sortHeader(t('attendance.admin.ministry.lastService'), 'lastService')}</th>
+                  <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.ministry.action')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#e5e5e5]">
@@ -2321,13 +2345,13 @@ export function AttendanceView({
                           <span className="font-semibold text-[#171717]">{row.student.name}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-[#525252]">{row.course ? <ActiveYearGroupBadge course={row.course} /> : 'No year group'}</td>
+                      <td className="px-4 py-3 text-[#525252]">{row.course ? <ActiveYearGroupBadge course={row.course} /> : t('attendance.admin.ministry.noYearGroup')}</td>
                       <td className="px-4 py-3">
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.team ? 'bg-[#f0fdf4] text-[#166534]' : 'bg-[#f5f5f5] text-[#737373]'}`}>
-                          {row.team?.name ?? 'Unassigned'}
+                          {row.team?.name ?? t('attendance.admin.ministry.unassigned')}
                         </span>
                       </td>
-                      <td className="px-4 py-3 text-[#525252]">{row.rotation ? `${formatDate(row.rotation.startDate)} - ${formatDate(row.rotation.endDate)}` : 'No rotation'}</td>
+                      <td className="px-4 py-3 text-[#525252]">{row.rotation ? `${formatDate(row.rotation.startDate)} - ${formatDate(row.rotation.endDate)}` : t('attendance.admin.ministry.noRotation')}</td>
                       <td className="w-28 px-4 py-3">
                         <div className="flex w-24 flex-col gap-1.5">
                           <span className="font-semibold text-[#171717]">{row.earnedCredits.toFixed(1)} / {row.requiredCredits.toFixed(1)}</span>
@@ -2336,14 +2360,14 @@ export function AttendanceView({
                           </span>
                         </div>
                       </td>
-                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Present">{row.present}</td>
-                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Late">{row.late}</td>
-                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title="Absent">{row.absent}</td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title={t('attendance.present')}>{row.present}</td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title={t('attendance.late')}>{row.late}</td>
+                      <td className="w-12 px-2 py-3 text-center font-semibold text-[#171717]" title={t('attendance.absent')}>{row.absent}</td>
                       <td className="px-4 py-3"><ScoreBar score={row.health} /></td>
-                      <td className="px-4 py-3 text-[#525252]">{row.lastService ? formatDate(row.lastService) : 'None'}</td>
+                      <td className="px-4 py-3 text-[#525252]">{row.lastService ? formatDate(row.lastService) : t('users.detail.none')}</td>
                       <td className="px-4 py-3 text-right">
                         <button type="button" onClick={() => openRotationModal(row)} className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
-                          <Pencil className="h-3.5 w-3.5" /> Rotation
+                          <Pencil className="h-3.5 w-3.5" /> {t('attendance.admin.ministry.rotation')}
                         </button>
                       </td>
                     </tr>
@@ -2351,7 +2375,7 @@ export function AttendanceView({
                 })}
                 {filteredMinistryRows.length === 0 && (
                   <tr>
-                    <td colSpan={11} className="px-4 py-10 text-center text-[#737373]">No students match the current ministry filters.</td>
+                    <td colSpan={11} className="px-4 py-10 text-center text-[#737373]">{t('attendance.admin.ministry.noFilterMatch')}</td>
                   </tr>
                 )}
               </tbody>
@@ -2363,8 +2387,8 @@ export function AttendanceView({
           <SectionCard className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <h3 className="font-semibold text-[#171717]">{showTeamForm ? (editingTeamId ? 'Edit team' : 'New team') : 'Teams'}</h3>
-                <p className="text-sm text-[#737373]">{showTeamForm ? 'Manage the team requirement and users who can submit reports.' : 'Review ministry team requirements.'}</p>
+                <h3 className="font-semibold text-[#171717]">{showTeamForm ? (editingTeamId ? t('attendance.admin.ministry.editTeam') : t('attendance.admin.ministry.newTeam')) : t('attendance.admin.stats.teams')}</h3>
+                <p className="text-sm text-[#737373]">{showTeamForm ? t('attendance.admin.ministry.editTeamFormHint') : t('attendance.admin.ministry.reviewTeamsHint')}</p>
               </div>
               {showTeamForm ? (
                 <button
@@ -2375,14 +2399,14 @@ export function AttendanceView({
                   }}
                   className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                 >
-                  <ChevronLeft className="h-4 w-4" /> Teams
+                  <ChevronLeft className="h-4 w-4" /> {t('attendance.admin.stats.teams')}
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={openNewTeamForm}
-                  title="Add ministry team"
-                  aria-label="Add ministry team"
+                  title={t('attendance.admin.ministry.addTeam')}
+                  aria-label={t('attendance.admin.ministry.addTeam')}
                   className="grid h-9 w-9 place-items-center rounded-lg bg-[#171717] text-white shadow-sm hover:bg-[#262626]"
                 >
                   <Plus className="h-4 w-4" />
@@ -2403,16 +2427,16 @@ export function AttendanceView({
             {showTeamForm ? (
               <>
                 <div className="mt-4 grid gap-3 md:grid-cols-2">
-                  <Field label="Team name"><input value={teamDraft.name} onChange={event => setTeamDraft(prev => ({ ...prev, name: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
-                  <Field label="Bulgarian name"><input value={teamDraft.nameBg} onChange={event => setTeamDraft(prev => ({ ...prev, nameBg: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
-                  <Field label="Type">
+                  <Field label={t('attendance.admin.ministry.teamName')}><input value={teamDraft.name} onChange={event => setTeamDraft(prev => ({ ...prev, name: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
+                  <Field label={t('attendance.admin.ministry.bulgarianName')}><input value={teamDraft.nameBg} onChange={event => setTeamDraft(prev => ({ ...prev, nameBg: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" /></Field>
+                  <Field label={t('common.type')}>
                     <select value={teamDraft.serviceType} onChange={event => setTeamDraft(prev => ({ ...prev, serviceType: event.target.value as 'sunday' | 'non_sunday' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                      <option value="sunday">Sunday</option>
-                      <option value="non_sunday">Non-Sunday</option>
+                      <option value="sunday">{t('attendance.admin.ministry.sunday')}</option>
+                      <option value="non_sunday">{t('attendance.admin.ministry.nonSunday')}</option>
                     </select>
                   </Field>
-                  <Field label="Required credits"><NumberInput value={teamDraft.requiredCredits} min={0} step={0.5} onChange={value => setTeamDraft(prev => ({ ...prev, requiredCredits: value }))} /></Field>
-                  <Field label="Period months"><NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} /></Field>
+                  <Field label={t('attendance.admin.ministry.requiredCredits')}><NumberInput value={teamDraft.requiredCredits} min={0} step={0.5} onChange={value => setTeamDraft(prev => ({ ...prev, requiredCredits: value }))} /></Field>
+                  <Field label={t('attendance.admin.ministry.periodMonths')}><NumberInput value={teamDraft.requirementPeriodMonths} min={1} onChange={value => setTeamDraft(prev => ({ ...prev, requirementPeriodMonths: value }))} /></Field>
                   {renderTeamUserPicker()}
                 </div>
                 <button
@@ -2422,7 +2446,7 @@ export function AttendanceView({
                   className="mt-3 inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {editingTeamId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
-                  {savingTeam ? 'Saving...' : 'Save team'}
+                  {savingTeam ? t('common.saving') : t('attendance.admin.ministry.saveTeam')}
                 </button>
               </>
             ) : (
@@ -2431,7 +2455,7 @@ export function AttendanceView({
                   <div key={team.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3">
                     <div className="min-w-0">
                       <p className="font-semibold text-[#171717]">{team.name}</p>
-                      <p className="text-xs text-[#737373]">{team.serviceType === 'sunday' ? 'Sunday' : 'Non-Sunday'} - {team.requiredCredits} credit(s) / {team.requirementPeriodMonths} month(s)</p>
+                      <p className="text-xs text-[#737373]">{t('attendance.admin.ministry.teamCreditsShort', { type: team.serviceType === 'sunday' ? t('attendance.admin.ministry.sunday') : t('attendance.admin.ministry.nonSunday'), credits: team.requiredCredits, months: team.requirementPeriodMonths })}</p>
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                       <span className="max-w-[220px] truncate rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-medium text-[#525252]">{formatTeamUsers(team)}</span>
@@ -2439,8 +2463,8 @@ export function AttendanceView({
                         type="button"
                         onClick={() => openEditTeamForm(team)}
                         className="grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                        aria-label={`Edit ${team.name}`}
-                        title="Edit team"
+                        aria-label={t('attendance.admin.ministry.editTeamAria', { name: team.name })}
+                        title={t('attendance.admin.ministry.editTeam')}
                       >
                         <Pencil className="h-3.5 w-3.5" />
                       </button>
@@ -2453,8 +2477,8 @@ export function AttendanceView({
 
           <SectionCard className="p-4">
             <div className="border-b border-[#e5e5e5] pb-3">
-              <h3 className="font-semibold text-[#171717]">Submitted reports</h3>
-              <p className="mt-1 text-sm text-[#737373]">Review team leader reports by the service date on the form.</p>
+              <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.submittedReports')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.ministry.submittedReportsHint')}</p>
             </div>
 
             <div className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-stretch">
@@ -2483,14 +2507,14 @@ export function AttendanceView({
                     setReportDate(event.target.value);
                     setReportDateText(formatPlatformDate(event.target.value));
                   }}
-                  aria-label="Choose report date"
+                  aria-label={t('attendance.admin.ministry.chooseReportDate')}
                   className="pointer-events-none absolute inset-0 h-9 w-32 opacity-0"
                 />
               </div>
               <div className="grid flex-1 grid-cols-2 gap-2">
                 {[
-                  { label: 'Submitted', teams: submittedTeams, tone: 'bg-[#f0fdf4] text-[#166534] border-[#bbf7d0]' },
-                  { label: 'Missing', teams: missingTeams, tone: 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]' },
+                  { label: t('attendance.admin.ministry.submitted'), teams: submittedTeams, tone: 'bg-[#f0fdf4] text-[#166534] border-[#bbf7d0]' },
+                  { label: t('attendance.admin.ministry.missing'), teams: missingTeams, tone: 'bg-[#fff7ed] text-[#c2410c] border-[#fed7aa]' },
                 ].map(item => (
                   <div key={item.label} className={`group relative rounded-lg border px-3 py-2 ${item.tone}`}>
                     <div className="flex items-center justify-between gap-2">
@@ -2498,7 +2522,7 @@ export function AttendanceView({
                       <span className="text-lg font-semibold leading-none">{item.teams.length}</span>
                     </div>
                     <div className="pointer-events-none absolute left-0 top-[calc(100%+8px)] z-20 hidden w-64 rounded-xl border border-[#e5e5e5] bg-white p-3 text-[#171717] shadow-[0_18px_40px_rgba(15,23,42,0.14)] group-hover:block">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{item.label} teams</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.ministry.submittedTeams', { label: item.label })}</p>
                       <div className="mt-2 max-h-40 space-y-1 overflow-y-auto pr-1">
                         {item.teams.map(team => (
                           <div key={team.id} className="flex items-center justify-between gap-2 rounded-lg bg-[#f5f5f5] px-2 py-1.5 text-xs">
@@ -2506,7 +2530,7 @@ export function AttendanceView({
                             <span className="truncate text-[#737373]">{formatTeamUsers(team)}</span>
                           </div>
                         ))}
-                        {item.teams.length === 0 && <p className="text-sm text-[#737373]">None</p>}
+                        {item.teams.length === 0 && <p className="text-sm text-[#737373]">{t('users.detail.none')}</p>}
                       </div>
                     </div>
                   </div>
@@ -2527,8 +2551,8 @@ export function AttendanceView({
                   <article key={report.id} className="rounded-xl border border-[#e5e5e5] bg-white p-3">
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
-                        <p className="font-semibold text-[#171717]">{team?.name ?? 'Ministry team'}</p>
-                        <p className="text-xs text-[#737373]">Submitted {submittedTime} by {report.createdByName || 'team user'}</p>
+                        <p className="font-semibold text-[#171717]">{team?.name ?? t('attendance.ministry.teamFallback')}</p>
+                        <p className="text-xs text-[#737373]">{t('attendance.admin.ministry.submittedAt', { time: submittedTime, name: report.createdByName || t('attendance.admin.ministry.teamUserFallback') })}</p>
                       </div>
                       <div className="flex gap-1.5 text-xs font-semibold">
                         <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534]">{present} P</span>
@@ -2537,17 +2561,17 @@ export function AttendanceView({
                       </div>
                     </div>
                     <div className="mt-3 grid gap-2 text-sm">
-                      <p className="rounded-lg bg-[#f8fafc] px-3 py-2 text-[#525252]"><span className="font-semibold text-[#171717]">General:</span> {report.generalView || 'No summary added.'}</p>
-                      {report.winsTestimonies && <p className="rounded-lg bg-[#f0fdf4] px-3 py-2 text-[#166534]"><span className="font-semibold">Wins:</span> {report.winsTestimonies}</p>}
-                      {report.challenges && <p className="rounded-lg bg-[#fff7ed] px-3 py-2 text-[#c2410c]"><span className="font-semibold">Challenges:</span> {report.challenges}</p>}
-                      <p className="rounded-lg bg-[#eff6ff] px-3 py-2 text-[#1d4ed8]"><span className="font-semibold">Actions:</span> {report.timelyActions || 'No actions added.'}</p>
+                      <p className="rounded-lg bg-[#f8fafc] px-3 py-2 text-[#525252]"><span className="font-semibold text-[#171717]">{t('attendance.admin.ministry.general')}</span> {report.generalView || t('attendance.admin.ministry.noSummary')}</p>
+                      {report.winsTestimonies && <p className="rounded-lg bg-[#f0fdf4] px-3 py-2 text-[#166534]"><span className="font-semibold">{t('attendance.admin.ministry.wins')}</span> {report.winsTestimonies}</p>}
+                      {report.challenges && <p className="rounded-lg bg-[#fff7ed] px-3 py-2 text-[#c2410c]"><span className="font-semibold">{t('attendance.admin.ministry.challenges')}</span> {report.challenges}</p>}
+                      <p className="rounded-lg bg-[#eff6ff] px-3 py-2 text-[#1d4ed8]"><span className="font-semibold">{t('attendance.admin.ministry.actions')}</span> {report.timelyActions || t('attendance.admin.ministry.noActions')}</p>
                     </div>
                   </article>
                 );
               })}
               {selectedDateReports.length === 0 && (
                 <div className="rounded-xl border border-dashed border-[#d4d4d4] p-6 text-center text-sm text-[#737373]">
-                  No reports submitted for {formatDate(reportDate)}.
+                  {t('attendance.admin.ministry.noReportsForDate', { date: formatDate(reportDate) })}
                 </div>
               )}
             </div>
@@ -2561,7 +2585,7 @@ export function AttendanceView({
     <div className="space-y-4">
       {pendingCorrectionRequests.length > 0 && (
         <SectionCard className="p-4">
-          <h3 className="font-semibold text-[#171717]">Pending attendance corrections</h3>
+          <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.pendingCorrections')}</h3>
           <div className="mt-3 space-y-2">
             {pendingCorrectionRequests.map(request => (
               <div key={request.id} className="rounded-xl border border-[#e5e5e5] p-3 text-sm">
@@ -2572,12 +2596,12 @@ export function AttendanceView({
                       {request.title} · {formatDate(request.recordDate)}
                     </p>
                     <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                      {request.gate.replace('_', ' ')} · {request.currentStatus ?? 'not marked'} to {request.requestedStatus}
+                      {t('attendance.admin.duty.correctionStatus', { gate: request.gate.replace('_', ' '), current: request.currentStatus ?? t('attendance.admin.duty.notMarked'), requested: request.requestedStatus })}
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">Approve</button>
-                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">Reject</button>
+                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">{t('announcements.action.approve')}</button>
+                    <button type="button" onClick={() => resolveAttendanceCorrection(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">{t('attendance.admin.reject')}</button>
                   </div>
                 </div>
                 <p className="mt-3 rounded-lg bg-[#fafafa] px-3 py-2 text-[#525252]">{request.reason}</p>
@@ -2589,19 +2613,16 @@ export function AttendanceView({
 
       {pendingTransferRequests.length > 0 && (
         <SectionCard className="p-4">
-          <h3 className="font-semibold text-[#171717]">Pending transfers</h3>
+          <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.pendingTransfers')}</h3>
           <div className="mt-3 space-y-2">
             {pendingTransferRequests.map(request => (
               <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3 text-sm">
                 <p>
-                  <span className="font-semibold">{request.fromStudentName}</span>
-                  {' '}to{' '}
-                  <span className="font-semibold">{request.toStudentName}</span>
-                  {' '}for {formatDate(request.weekStart)}
+                  {t('attendance.admin.duty.transferRequest', { from: request.fromStudentName, to: request.toStudentName, date: formatDate(request.weekStart) })}
                 </p>
                 <div className="flex gap-2">
-                  <button type="button" onClick={() => resolveTransferRequest(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">Approve</button>
-                  <button type="button" onClick={() => resolveTransferRequest(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">Reject</button>
+                  <button type="button" onClick={() => resolveTransferRequest(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">{t('announcements.action.approve')}</button>
+                  <button type="button" onClick={() => resolveTransferRequest(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">{t('attendance.admin.reject')}</button>
                 </div>
               </div>
             ))}
@@ -2612,23 +2633,23 @@ export function AttendanceView({
       <SectionCard className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
-            <p className="text-sm text-[#737373]">Creates weekly attendance keeper rows for the selected year group.</p>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.generateTitle')}</h3>
+            <p className="text-sm text-[#737373]">{t('attendance.admin.duty.generateSectionHint')}</p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
             <select value={courseId} onChange={event => setCourseId(Number(event.target.value))} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
               {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
             </select>
-            <button type="button" onClick={() => generateDutyScheduleForCourse(courseId)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Generate</button>
+            <button type="button" onClick={() => generateDutyScheduleForCourse(courseId)} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.duty.generate')}</button>
           </div>
         </div>
       </SectionCard>
 
       <SectionCard className="overflow-hidden">
         <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
-          <span>Week</span>
-          <span>First Year Keeper</span>
-          <span>Second Year Keeper</span>
+          <span>{t('common.week')}</span>
+          <span>{t('attendance.admin.duty.firstYearKeeper')}</span>
+          <span>{t('attendance.admin.duty.secondYearKeeper')}</span>
           <span />
         </div>
 
@@ -2645,9 +2666,9 @@ export function AttendanceView({
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart)}</p>
+                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart, t, tCount)}</p>
                     {isCurrentWeek && (
-                      <span className="rounded-full bg-[#dbeaff] px-2 py-0.5 text-[11px] font-medium text-[#2563eb]">Live</span>
+                      <span className="rounded-full bg-[#dbeaff] px-2 py-0.5 text-[11px] font-medium text-[#2563eb]">{t('attendance.admin.live')}</span>
                     )}
                   </div>
                   <p className="mt-1 text-xs text-[#737373]">
@@ -2656,13 +2677,13 @@ export function AttendanceView({
                 </div>
 
                 <div className="space-y-1 lg:space-y-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">First Year Keeper</p>
-                  {renderDutyKeeperCell(row.firstYear, 'First Year')}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">{t('attendance.admin.duty.firstYearKeeper')}</p>
+                  {renderDutyKeeperCell(row.firstYear, t('common.yearGroup.first'))}
                 </div>
 
                 <div className="space-y-1 lg:space-y-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Second Year Keeper</p>
-                  {renderDutyKeeperCell(row.secondYear, 'Second Year')}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">{t('attendance.admin.duty.secondYearKeeper')}</p>
+                  {renderDutyKeeperCell(row.secondYear, t('common.yearGroup.second'))}
                 </div>
 
                 <div className="flex justify-end">
@@ -2670,7 +2691,7 @@ export function AttendanceView({
                     type="button"
                     onClick={() => setEditDutyWeekRow(row)}
                     className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] opacity-100 transition hover:bg-[#f5f5f5] hover:text-[#171717] lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-                    aria-label={`Edit duty keepers for week of ${formatWeekDate(row.weekStart)}`}
+                    aria-label={t('attendance.admin.duty.editWeekAria', { date: formatWeekDate(row.weekStart) })}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -2681,8 +2702,8 @@ export function AttendanceView({
 
           {dutyWeekRows.length === 0 && (
             <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[#171717]">No duty schedule yet.</p>
-              <p className="mt-1 text-sm text-[#737373]">Use Generate to create duty slots for an active year group.</p>
+              <p className="text-sm font-medium text-[#171717]">{t('attendance.admin.duty.noSchedule')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.duty.noScheduleHint')}</p>
             </div>
           )}
         </div>
@@ -2695,9 +2716,9 @@ export function AttendanceView({
       <SectionCard className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h3 className="font-semibold text-[#171717]">Generate schedule</h3>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.generateTitle')}</h3>
             <p className="text-sm text-[#737373]">
-              Build the school-year prayer rotation from enrolled students in the selected year group types. Tuesday and Thursday use separate rotations.
+              {t('attendance.admin.prayer.generateHint')}
             </p>
           </div>
           <button
@@ -2705,16 +2726,16 @@ export function AttendanceView({
             onClick={() => setPrayerGenerateModalOpen(true)}
             className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white"
           >
-            Generate school year
+            {t('attendance.admin.prayer.generateTitle')}
           </button>
         </div>
       </SectionCard>
 
       <SectionCard className="overflow-hidden">
         <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(240px,1fr)_minmax(240px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
-          <span>Week</span>
-          <span>Tuesday prayer</span>
-          <span>Thursday prayer</span>
+          <span>{t('common.week')}</span>
+          <span>{t('attendance.admin.prayer.tuesdayColumn')}</span>
+          <span>{t('attendance.admin.prayer.thursdayColumn')}</span>
           <span />
         </div>
 
@@ -2734,9 +2755,9 @@ export function AttendanceView({
               >
                 <div className="min-w-0">
                   <div className="flex flex-wrap items-center gap-2">
-                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart)}</p>
+                    <p className="font-semibold text-[#171717]">{getWeekLabel(row.weekStart, currentWeekStart, t, tCount)}</p>
                     {isCurrentWeek && (
-                      <span className="rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">Live</span>
+                      <span className="rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">{t('attendance.admin.live')}</span>
                     )}
                   </div>
                   <p className="mt-1 text-xs text-[#737373]">
@@ -2745,13 +2766,13 @@ export function AttendanceView({
                 </div>
 
                 <div className="space-y-1 lg:space-y-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Tuesday prayer</p>
-                  {renderPrayerLeaderCell(row.tuesdayStudentId, row.tuesdayStudentName, 'Tuesday', tuesdayDate)}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">{t('attendance.admin.prayer.tuesdayColumn')}</p>
+                  {renderPrayerLeaderCell(row.tuesdayStudentId, row.tuesdayStudentName, t('attendance.admin.prayer.tuesday'), tuesdayDate)}
                 </div>
 
                 <div className="space-y-1 lg:space-y-0">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">Thursday prayer</p>
-                  {renderPrayerLeaderCell(row.thursdayStudentId, row.thursdayStudentName, 'Thursday', thursdayDate)}
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] lg:hidden">{t('attendance.admin.prayer.thursdayColumn')}</p>
+                  {renderPrayerLeaderCell(row.thursdayStudentId, row.thursdayStudentName, t('attendance.admin.prayer.thursday'), thursdayDate)}
                 </div>
 
                 <div className="flex justify-end">
@@ -2759,7 +2780,7 @@ export function AttendanceView({
                     type="button"
                     onClick={() => setEditPrayerWeekRow(row)}
                     className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] opacity-100 transition hover:bg-[#f5f5f5] hover:text-[#171717] lg:opacity-0 lg:group-hover:opacity-100 lg:group-focus-within:opacity-100"
-                    aria-label={`Edit prayer leaders for week of ${formatWeekDate(row.weekStart)}`}
+                    aria-label={t('attendance.admin.prayer.editWeekAria', { date: formatWeekDate(row.weekStart) })}
                   >
                     <Pencil className="h-4 w-4" />
                   </button>
@@ -2770,8 +2791,8 @@ export function AttendanceView({
 
           {prayerRows.length === 0 && (
             <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[#171717]">No prayer schedule yet.</p>
-              <p className="mt-1 text-sm text-[#737373]">Use Generate school year to create Tuesday and Thursday prayer slots.</p>
+              <p className="text-sm font-medium text-[#171717]">{t('attendance.admin.prayer.noSchedule')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.prayer.noScheduleHint')}</p>
             </div>
           )}
         </div>
@@ -2787,9 +2808,9 @@ export function AttendanceView({
             <Video className="h-4 w-4" />
           </span>
           <div className="min-w-0 flex-1">
-            <h3 className="font-semibold text-[#171717]">Online session link</h3>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.settings.onlineLinkTitle')}</h3>
             <p className="mt-0.5 text-sm text-[#737373]">
-              The permanent Google Meet link online students use to join live sessions. Shown on their dashboard and attendance page.
+              {t('attendance.admin.settings.onlineLinkHint')}
             </p>
             <div className="mt-3 flex flex-col gap-2 sm:flex-row">
               <input
@@ -2800,7 +2821,7 @@ export function AttendanceView({
                   setMeetLinkError(null);
                   setMeetLinkSaved(false);
                 }}
-                placeholder="https://meet.google.com/abc-defg-hij"
+                placeholder={t('attendance.admin.settings.meetPlaceholder')}
                 className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
               />
               <button
@@ -2809,12 +2830,12 @@ export function AttendanceView({
                 disabled={meetLinkDraft.trim() === onlineSessionSettings.meetLink}
                 className="h-10 shrink-0 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50"
               >
-                Save link
+                {t('attendance.admin.settings.saveLink')}
               </button>
             </div>
             {meetLinkError && <p className="mt-1.5 text-sm text-red-600">{meetLinkError}</p>}
             {meetLinkSaved && !meetLinkError && (
-              <p className="mt-1.5 text-sm text-[#15803d]">Link saved.</p>
+              <p className="mt-1.5 text-sm text-[#15803d]">{t('attendance.admin.settings.linkSaved')}</p>
             )}
           </div>
         </div>
@@ -2822,8 +2843,8 @@ export function AttendanceView({
 
       <div className="flex flex-wrap items-center gap-2">
         {([
-          { id: 'regular' as const, label: 'Regular students', icon: Users },
-          { id: 'online' as const, label: 'Online students', icon: Wifi },
+          { id: 'regular' as const, label: t('attendance.admin.settings.regularStudents'), icon: Users },
+          { id: 'online' as const, label: t('attendance.admin.settings.onlineStudents'), icon: Wifi },
         ]).map(option => {
           const Icon = option.icon;
           const selected = settingsAudience === option.id;
@@ -2847,31 +2868,31 @@ export function AttendanceView({
         })}
         <p className="text-sm text-[#737373]">
           {settingsAudience === 'online'
-            ? 'These requirements apply only to students marked as online students.'
-            : 'These requirements apply to all students who are not marked as online students.'}
+            ? t('attendance.admin.settings.onlineOnlyHint')
+            : t('attendance.admin.settings.regularOnlyHint')}
         </p>
       </div>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">Global scoring</h3>
+        <h3 className="font-semibold text-[#171717]">{t('attendance.admin.settings.globalScoring')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Field label="Present credit"><NumberInput value={settingsDraft.presentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, presentCredit: value }))} /></Field>
-          <Field label="Late credit"><NumberInput value={settingsDraft.lateCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, lateCredit: value, lateClassWeight: value, lateSaturdayWeight: value, lateWellWeight: value }))} /></Field>
-          <Field label="Absent credit"><NumberInput value={settingsDraft.absentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, absentCredit: value }))} /></Field>
-          <Toggle checked={settingsDraft.lateUsesGlobalCredit} onChange={checked => setSettingsDraft(prev => ({ ...prev, lateUsesGlobalCredit: checked }))} label="Global late rule" />
+          <Field label={t('attendance.admin.settings.presentCredit')}><NumberInput value={settingsDraft.presentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, presentCredit: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.lateCredit')}><NumberInput value={settingsDraft.lateCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, lateCredit: value, lateClassWeight: value, lateSaturdayWeight: value, lateWellWeight: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.absentCredit')}><NumberInput value={settingsDraft.absentCredit} step={0.1} max={1} onChange={value => setSettingsDraft(prev => ({ ...prev, absentCredit: value }))} /></Field>
+          <Toggle checked={settingsDraft.lateUsesGlobalCredit} onChange={checked => setSettingsDraft(prev => ({ ...prev, lateUsesGlobalCredit: checked }))} label={t('attendance.admin.settings.globalLateRule')} />
         </div>
       </SectionCard>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">Classes</h3>
+        <h3 className="font-semibold text-[#171717]">{t('nav.attendance.classes')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Field label="Required percent"><NumberInput value={percentInput(settingsDraft.classRequiredPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, classRequiredPercent: toPercent(value), graduationThreshold: toPercent(value) }))} /></Field>
-          <Field label="Sessions per day"><NumberInput value={settingsDraft.classSessionsPerDay} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, classSessionsPerDay: value }))} /></Field>
-          <Toggle checked={settingsDraft.classJointCountsOnce} onChange={checked => setSettingsDraft(prev => ({ ...prev, classJointCountsOnce: checked }))} label="Joint counts once" />
+          <Field label={t('attendance.admin.settings.requiredPercent')}><NumberInput value={percentInput(settingsDraft.classRequiredPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, classRequiredPercent: toPercent(value), graduationThreshold: toPercent(value) }))} /></Field>
+          <Field label={t('attendance.admin.settings.sessionsPerDay')}><NumberInput value={settingsDraft.classSessionsPerDay} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, classSessionsPerDay: value }))} /></Field>
+          <Toggle checked={settingsDraft.classJointCountsOnce} onChange={checked => setSettingsDraft(prev => ({ ...prev, classJointCountsOnce: checked }))} label={t('attendance.admin.settings.jointCountsOnce')} />
           <div>
-            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Weekdays</span>
+            <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.settings.weekdays')}</span>
             <div className="flex flex-wrap gap-1">
-              {WEEKDAYS.map(day => {
+              {weekdays.map(day => {
                 const selected = settingsDraft.classIncludedWeekdays.includes(day.value);
                 return (
                   <button
@@ -2895,73 +2916,73 @@ export function AttendanceView({
       </SectionCard>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">The Well</h3>
+        <h3 className="font-semibold text-[#171717]">{t('nav.attendance.well')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-5">
-          <Toggle checked={settingsDraft.theWellEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellEnabled: checked }))} label="Enabled" />
-          <Field label="Weekday">
+          <Toggle checked={settingsDraft.theWellEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellEnabled: checked }))} label={t('attendance.admin.settings.enabled')} />
+          <Field label={t('attendance.admin.settings.weekday')}>
             <select value={settingsDraft.theWellWeekday} onChange={event => setSettingsDraft(prev => ({ ...prev, theWellWeekday: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-              {WEEKDAYS.map(day => <option key={day.value} value={day.value}>{day.label}</option>)}
+              {weekdays.map(day => <option key={day.value} value={day.value}>{day.label}</option>)}
             </select>
           </Field>
-          <Field label="Monthly credits"><NumberInput value={settingsDraft.theWellRequiredPerMonth} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellRequiredPerMonth: value }))} /></Field>
-          <Toggle checked={settingsDraft.theWellFallbackEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellFallbackEnabled: checked }))} label="Fallback" />
-          <Field label="Fallback percent"><NumberInput value={percentInput(settingsDraft.theWellFallbackPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellFallbackPercent: toPercent(value) }))} /></Field>
+          <Field label={t('attendance.admin.settings.monthlyCredits')}><NumberInput value={settingsDraft.theWellRequiredPerMonth} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellRequiredPerMonth: value }))} /></Field>
+          <Toggle checked={settingsDraft.theWellFallbackEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, theWellFallbackEnabled: checked }))} label={t('attendance.fallback')} />
+          <Field label={t('attendance.admin.settings.fallbackPercent')}><NumberInput value={percentInput(settingsDraft.theWellFallbackPercent)} max={100} onChange={value => setSettingsDraft(prev => ({ ...prev, theWellFallbackPercent: toPercent(value) }))} /></Field>
         </div>
       </SectionCard>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">Activation Saturday</h3>
+        <h3 className="font-semibold text-[#171717]">{t('nav.attendance.activation')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Toggle checked={settingsDraft.activationEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, activationEnabled: checked }))} label="Enabled" />
-          <Field label="Frequency">
+          <Toggle checked={settingsDraft.activationEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, activationEnabled: checked }))} label={t('attendance.admin.settings.enabled')} />
+          <Field label={t('attendance.admin.settings.frequency')}>
             <select value={settingsDraft.activationFrequency} onChange={event => setSettingsDraft(prev => ({ ...prev, activationFrequency: event.target.value as 'monthly' | 'custom' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-              <option value="monthly">Monthly</option>
-              <option value="custom">Custom</option>
+              <option value="monthly">{t('attendance.admin.settings.monthly')}</option>
+              <option value="custom">{t('attendance.admin.settings.custom')}</option>
             </select>
           </Field>
-          <Field label="Max lost credits"><NumberInput value={settingsDraft.activationMaxLostCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, activationMaxLostCredits: value }))} /></Field>
-          <Field label="Detection">
+          <Field label={t('attendance.admin.settings.maxLostCredits')}><NumberInput value={settingsDraft.activationMaxLostCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, activationMaxLostCredits: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.detection')}>
             <select value={settingsDraft.activationDetectionRule} onChange={event => setSettingsDraft(prev => ({ ...prev, activationDetectionRule: event.target.value as 'saturday_both' | 'manual' }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-              <option value="saturday_both">Saturday + both</option>
-              <option value="manual">Manual</option>
+              <option value="saturday_both">{t('attendance.admin.settings.saturdayBoth')}</option>
+              <option value="manual">{t('attendance.admin.settings.manual')}</option>
             </select>
           </Field>
         </div>
       </SectionCard>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">Ministry</h3>
+        <h3 className="font-semibold text-[#171717]">{t('nav.attendance.ministry')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-4">
-          <Toggle checked={settingsDraft.ministryEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryEnabled: checked }))} label="Enabled" />
-          <Field label="Sunday credits"><NumberInput value={settingsDraft.ministrySundayRequiredCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayRequiredCredits: value, sundayRequiredPerMonth: value }))} /></Field>
-          <Field label="Sunday period"><NumberInput value={settingsDraft.ministrySundayPeriodMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayPeriodMonths: value }))} /></Field>
-          <Field label="First year rotation"><NumberInput value={settingsDraft.ministryFirstYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministryFirstYearRotationMonths: value }))} /></Field>
-          <Field label="Second year rotation"><NumberInput value={settingsDraft.ministrySecondYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySecondYearRotationMonths: value }))} /></Field>
-          <Toggle checked={settingsDraft.ministryTeamLeadersCanMark} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryTeamLeadersCanMark: checked }))} label="Leaders mark" />
-          <Toggle checked={settingsDraft.ministryAdminsCanOverrideRotations} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryAdminsCanOverrideRotations: checked }))} label="Admin override" />
+          <Toggle checked={settingsDraft.ministryEnabled} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryEnabled: checked }))} label={t('attendance.admin.settings.enabled')} />
+          <Field label={t('attendance.admin.settings.sundayCredits')}><NumberInput value={settingsDraft.ministrySundayRequiredCredits} min={0} step={0.5} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayRequiredCredits: value, sundayRequiredPerMonth: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.sundayPeriod')}><NumberInput value={settingsDraft.ministrySundayPeriodMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySundayPeriodMonths: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.firstYearRotation')}><NumberInput value={settingsDraft.ministryFirstYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministryFirstYearRotationMonths: value }))} /></Field>
+          <Field label={t('attendance.admin.settings.secondYearRotation')}><NumberInput value={settingsDraft.ministrySecondYearRotationMonths} min={1} onChange={value => setSettingsDraft(prev => ({ ...prev, ministrySecondYearRotationMonths: value }))} /></Field>
+          <Toggle checked={settingsDraft.ministryTeamLeadersCanMark} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryTeamLeadersCanMark: checked }))} label={t('attendance.admin.settings.leadersMark')} />
+          <Toggle checked={settingsDraft.ministryAdminsCanOverrideRotations} onChange={checked => setSettingsDraft(prev => ({ ...prev, ministryAdminsCanOverrideRotations: checked }))} label={t('attendance.admin.settings.adminOverride')} />
         </div>
       </SectionCard>
 
       <SectionCard className="p-4">
-        <h3 className="font-semibold text-[#171717]">Display and reminders</h3>
+        <h3 className="font-semibold text-[#171717]">{t('attendance.admin.settings.displayReminders')}</h3>
         <div className="mt-4 grid gap-3 md:grid-cols-3">
-          <Toggle checked={settingsDraft.showClassesOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showClassesOnStudentView: checked }))} label="Show classes" />
-          <Toggle checked={settingsDraft.showTheWellOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showTheWellOnStudentView: checked }))} label="Show Well" />
-          <Toggle checked={settingsDraft.showActivationOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showActivationOnStudentView: checked }))} label="Show Activation" />
-          <Toggle checked={settingsDraft.showMinistryOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showMinistryOnStudentView: checked }))} label="Show Ministry" />
-          <Toggle checked={settingsDraft.showFallbackScores} onChange={checked => setSettingsDraft(prev => ({ ...prev, showFallbackScores: checked }))} label="Show fallback" />
-          <Toggle checked={settingsDraft.remindMissingClassAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingClassAttendance: checked }))} label="Class reminders" />
-          <Toggle checked={settingsDraft.remindMissingWellAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingWellAttendance: checked }))} label="Well reminders" />
-          <Toggle checked={settingsDraft.remindMissingMinistryAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingMinistryAttendance: checked }))} label="Ministry reminders" />
+          <Toggle checked={settingsDraft.showClassesOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showClassesOnStudentView: checked }))} label={t('attendance.admin.settings.showClasses')} />
+          <Toggle checked={settingsDraft.showTheWellOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showTheWellOnStudentView: checked }))} label={t('attendance.admin.settings.showWell')} />
+          <Toggle checked={settingsDraft.showActivationOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showActivationOnStudentView: checked }))} label={t('attendance.admin.settings.showActivation')} />
+          <Toggle checked={settingsDraft.showMinistryOnStudentView} onChange={checked => setSettingsDraft(prev => ({ ...prev, showMinistryOnStudentView: checked }))} label={t('attendance.admin.settings.showMinistry')} />
+          <Toggle checked={settingsDraft.showFallbackScores} onChange={checked => setSettingsDraft(prev => ({ ...prev, showFallbackScores: checked }))} label={t('attendance.admin.settings.showFallback')} />
+          <Toggle checked={settingsDraft.remindMissingClassAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingClassAttendance: checked }))} label={t('attendance.admin.settings.classReminders')} />
+          <Toggle checked={settingsDraft.remindMissingWellAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingWellAttendance: checked }))} label={t('attendance.admin.settings.wellReminders')} />
+          <Toggle checked={settingsDraft.remindMissingMinistryAttendance} onChange={checked => setSettingsDraft(prev => ({ ...prev, remindMissingMinistryAttendance: checked }))} label={t('attendance.admin.settings.ministryReminders')} />
         </div>
       </SectionCard>
 
       <button type="button" onClick={saveSettings} disabled={savingSettings} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
         {savingSettings
-          ? 'Saving...'
+          ? t('common.saving')
           : settingsAudience === 'online'
-            ? 'Save online student settings'
-            : 'Save settings'}
+            ? t('attendance.admin.settings.saveOnline')
+            : t('attendance.admin.settings.saveSettings')}
       </button>
     </div>
   );
@@ -2973,9 +2994,9 @@ export function AttendanceView({
         <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
           <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] p-5">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Ministry rotation</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{editingRotationId ? 'Edit rotation' : 'Create rotation'}</h3>
-              <p className="mt-1 text-sm text-[#737373]">Month mode uses the first and last day of the selected months.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('attendance.admin.rotation.eyebrow')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{editingRotationId ? t('attendance.admin.rotation.editTitle') : t('attendance.admin.rotation.createTitle')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.rotation.monthModeHint')}</p>
             </div>
             <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
               <X className="h-5 w-5" />
@@ -2991,43 +3012,43 @@ export function AttendanceView({
                   onClick={() => setRotationDateMode(mode)}
                   className={`rounded-md px-3 py-1.5 text-sm font-semibold capitalize ${rotationDateMode === mode ? 'bg-white text-[#171717] shadow-sm' : 'text-[#737373]'}`}
                 >
-                  {mode}
+                  {t(`attendance.admin.rotation.${mode}` as TranslationKey)}
                 </button>
               ))}
             </div>
 
             <div className="grid gap-3 md:grid-cols-2">
-              <Field label="Year Group">
+              <Field label={t('attendance.admin.ministry.yearGroup')}>
                 <select value={rotationDraft.courseId} onChange={event => setRotationDraft(prev => ({ ...prev, courseId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
                 </select>
               </Field>
-              <Field label="Student">
+              <Field label={t('attendance.table.student')}>
                 <select value={rotationDraft.studentId} onChange={event => setRotationDraft(prev => ({ ...prev, studentId: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                  <option value="">Choose student</option>
+                  <option value="">{t('attendance.admin.ministry.chooseStudent')}</option>
                   {activeStudents.map(user => <option key={user.id} value={user.id}>{user.name}</option>)}
                 </select>
               </Field>
-              <Field label="Team">
+              <Field label={t('attendance.admin.ministry.teamFallback')}>
                 <select value={rotationDraft.teamId} onChange={event => setRotationDraft(prev => ({ ...prev, teamId: Number(event.target.value) }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
                   {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
                 </select>
               </Field>
               {rotationDateMode === 'month' ? (
                 <>
-                  <Field label="Start month">
+                  <Field label={t('attendance.admin.rotation.startMonth')}>
                     <input type="month" value={rotationStartMonth} onChange={event => setRotationStartMonth(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   </Field>
-                  <Field label="End month">
+                  <Field label={t('attendance.admin.rotation.endMonth')}>
                     <input type="month" value={rotationEndMonth} onChange={event => setRotationEndMonth(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   </Field>
                 </>
               ) : (
                 <>
-                  <Field label="Start date">
+                  <Field label={t('attendance.admin.ministry.startDate')}>
                     <input type="date" value={rotationDraft.startDate} onChange={event => setRotationDraft(prev => ({ ...prev, startDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   </Field>
-                  <Field label="End date">
+                  <Field label={t('attendance.admin.ministry.endDate')}>
                     <input type="date" value={rotationDraft.endDate} onChange={event => setRotationDraft(prev => ({ ...prev, endDate: event.target.value }))} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   </Field>
                 </>
@@ -3036,8 +3057,8 @@ export function AttendanceView({
           </div>
 
           <div className="flex justify-end gap-2 border-t border-[#e5e5e5] p-5">
-            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg border border-[#d4d4d4] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">Cancel</button>
-            <button type="button" onClick={saveRotation} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">Save rotation</button>
+            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg border border-[#d4d4d4] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">{t('common.cancel')}</button>
+            <button type="button" onClick={saveRotation} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.ministry.saveRotation')}</button>
           </div>
         </div>
       </div>
@@ -3051,7 +3072,7 @@ export function AttendanceView({
         <div className="max-h-[90vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
           <div className="flex flex-col gap-4 border-b border-[#e5e5e5] p-5 lg:flex-row lg:items-center lg:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Team health</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('attendance.admin.teamHealth.eyebrow')}</p>
               <h3 className="mt-1 text-xl font-semibold text-[#171717]">{formatMonthYear(teamHealthMonth.year, teamHealthMonth.month)}</h3>
             </div>
             <div className="flex items-center gap-2">
@@ -3073,13 +3094,13 @@ export function AttendanceView({
                   >
                     <div>
                       <p className="font-semibold text-[#171717]">{row.team.name}</p>
-                      <p className="text-xs text-[#737373]">{row.assignedStudents.length} assigned students</p>
+                      <p className="text-xs text-[#737373]">{tCount('attendance.admin.teamHealth.assignedStudents', row.assignedStudents.length)}</p>
                     </div>
                     <ScoreBar score={row.health} />
-                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.present}</span> present</p>
-                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.late}</span> late</p>
-                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.absent}</span> absent</p>
-                    <p className="text-sm text-[#525252]"><span className="font-semibold text-[#171717]">{row.unmarked}</span> unmarked</p>
+                    <p className="text-sm text-[#525252]">{t('attendance.admin.teamHealth.presentCount', { count: row.present })}</p>
+                    <p className="text-sm text-[#525252]">{t('attendance.admin.teamHealth.lateCount', { count: row.late })}</p>
+                    <p className="text-sm text-[#525252]">{t('attendance.admin.teamHealth.absentCount', { count: row.absent })}</p>
+                    <p className="text-sm text-[#525252]">{t('attendance.admin.teamHealth.unmarkedCount', { count: row.unmarked })}</p>
                   </button>
                   {expanded && (
                     <div className="border-t border-[#e5e5e5] bg-[#fafafa] p-4">
@@ -3090,7 +3111,7 @@ export function AttendanceView({
                             <span className="text-[#737373]">{studentRow.earnedCredits.toFixed(1)} / {studentRow.requiredCredits.toFixed(1)}</span>
                           </div>
                         ))}
-                        {row.rows.length === 0 && <p className="text-sm text-[#737373]">No students assigned for this team.</p>}
+                        {row.rows.length === 0 && <p className="text-sm text-[#737373]">{t('attendance.admin.teamHealth.noStudentsAssigned')}</p>}
                       </div>
                     </div>
                   )}
@@ -3115,7 +3136,7 @@ export function AttendanceView({
           </div>
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e5e5e5] bg-[#f5f5f5] px-3 py-1.5 text-xs font-medium text-[#525252]">
             <Activity className="h-3.5 w-3.5 text-[#2563eb]" />
-            {loading ? 'Syncing attendance data' : 'Live attendance data'}
+            {loading ? t('attendance.admin.syncing') : t('attendance.admin.liveData')}
           </div>
         </div>
         {renderPageStats()}

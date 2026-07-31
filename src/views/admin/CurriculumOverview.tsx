@@ -1,5 +1,8 @@
 import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
 import { CalendarDays, ChevronRight, ChevronDown, Edit3, Trash2, Plus, ExternalLink, Eye } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
+import type { TranslationKey } from '../../i18n/translations';
 import type { Course, CourseStudent, HomeworkSubmission, User, Subject, Class, CurriculumCapability } from '../../types/lms';
 import { getClassDisplayTitle, isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -67,16 +70,16 @@ function mapHomeworkComment(row: HomeworkCommentRow) {
     id: row.id,
     submissionId: row.submission_id,
     authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? 'Unknown',
+    authorName: row.author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
 }
 
-function hourLabel(hour: string) {
-  if (hour === 'first') return '1st Hour';
-  if (hour === 'second') return '2nd Hour';
-  return 'Both Hours';
+function sessionHourLabel(hour: string, t: (key: TranslationKey) => string) {
+  if (hour === 'first') return t('edit.class.hourFirst');
+  if (hour === 'second') return t('edit.class.hourSecond');
+  return t('edit.class.hourBoth');
 }
 
 type SelectedSubject = {
@@ -107,6 +110,7 @@ export function CurriculumOverview({
   selectedYearGroupIds,
   curriculumCapability = 'full',
 }: CurriculumOverviewProps) {
+  const { t, tCount } = useLanguage();
   const canFullyManage = curriculumCapability === 'full';
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
@@ -226,7 +230,7 @@ export function CurriculumOverview({
         id: row.id,
         assignmentId: row.assignment_id,
         studentId: row.student_id,
-        studentName: row.student?.name ?? 'Unknown',
+        studentName: row.student?.name ?? translate('common.unknown'),
         submissionType: row.submission_type,
         driveFileId: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
@@ -322,7 +326,7 @@ export function CurriculumOverview({
         onNavigate={onNavigate}
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
-        backLabel="Back to curriculum"
+        backLabel={t('curriculum.backToCurriculum')}
         tabAccess={canFullyManage ? 'full' : 'sessions-materials'}
         curriculumActions={{
           ...(canFullyManage
@@ -354,8 +358,8 @@ export function CurriculumOverview({
   if (sortedCourses.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
-        <p className="text-sm font-semibold text-[#171717]">No active year groups.</p>
-        <p className="mt-1 text-sm text-[#737373]">Add a year group to start building the curriculum.</p>
+        <p className="text-sm font-semibold text-[#171717]">{t('curriculum.noActiveYearGroups.title')}</p>
+        <p className="mt-1 text-sm text-[#737373]">{t('curriculum.noActiveYearGroups.desc')}</p>
       </div>
     );
   }
@@ -400,7 +404,7 @@ export function CurriculumOverview({
                     ? 'hidden'
                     : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'
                 }
-                aria-label={isCourseCollapsed ? 'Expand year group' : 'Collapse year group'}
+                aria-label={isCourseCollapsed ? t('curriculum.expandYearGroup') : t('curriculum.collapseYearGroup')}
               >
                 {isCourseCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
@@ -411,7 +415,7 @@ export function CurriculumOverview({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
                     {course.startDate && course.endDate
                       ? `${formatPlatformDate(course.startDate)} – ${formatPlatformDate(course.endDate)}`
-                      : 'Year group'}
+                      : t('curriculum.yearGroup')}
                   </p>
                   <span
                     className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ring-1 ${
@@ -420,7 +424,7 @@ export function CurriculumOverview({
                         : 'bg-[#f5f5f5] text-[#525252] ring-[#e5e5e5]'
                     }`}
                   >
-                    {course.status}
+                    {t(`curriculum.status.${course.status}` as TranslationKey)}
                   </span>
                 </div>
                 <h3 className={`${isCourseCollapsed ? 'text-sm' : 'mt-1 text-xl'} truncate font-semibold text-[#171717]`}>
@@ -428,7 +432,7 @@ export function CurriculumOverview({
                 </h3>
                 {isCourseCollapsed && (
                   <p className="mt-0.5 text-xs text-[#737373]">
-                    {totalSubjects} subjects · {totalClasses} sessions
+                    {t('curriculum.subjectsSessionsSummary', { subjects: totalSubjects, sessions: totalClasses })}
                   </p>
                 )}
               </div>
@@ -439,7 +443,7 @@ export function CurriculumOverview({
               >
                 {!isCourseCollapsed && (
                   <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
-                    {totalSubjects} subjects · {totalClasses} sessions
+                    {t('curriculum.subjectsSessionsSummary', { subjects: totalSubjects, sessions: totalClasses })}
                   </span>
                 )}
                 {canFullyManage && (
@@ -448,7 +452,7 @@ export function CurriculumOverview({
                   type="button"
                   onClick={() => onEditCourse(course)}
                   className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  title="Edit year group"
+                  title={t('curriculum.editYearGroup')}
                 >
                   <Edit3 className="h-4 w-4" />
                 </button>
@@ -456,7 +460,7 @@ export function CurriculumOverview({
                   type="button"
                   onClick={() => onDeleteCourse(course.id)}
                   className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                  title="Delete year group"
+                  title={t('curriculum.deleteYearGroup')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </button>
@@ -468,7 +472,7 @@ export function CurriculumOverview({
             {!isCourseCollapsed && (
               <div className="space-y-3">
                 <div className="flex flex-col gap-2 border-y border-[#d4d4d4] bg-white px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Subjects</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('curriculum.subjects')}</p>
                   {canFullyManage && (
                   <button
                     type="button"
@@ -476,14 +480,14 @@ export function CurriculumOverview({
                     className="tbo-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]"
                   >
                     <Plus className="h-3.5 w-3.5" />
-                    Add Subject
+                    {t('curriculum.addSubject')}
                   </button>
                   )}
                 </div>
 
                 {course.subjects.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white px-4 py-6 text-center text-sm text-[#737373]">
-                    No subjects yet.
+                    {t('curriculum.noSubjectsYet')}
                   </div>
                 ) : (
                   <div className="space-y-4">
@@ -506,8 +510,8 @@ export function CurriculumOverview({
                       const materialsCount = materialRows.filter(file => file.subject_id === subject.id).length;
                       const openSubjectPage = () => setSelectedSubject({ courseId: course.id, subjectId: subject.id });
                       const timelineLabel =
-                        timelineState === 'current' ? 'Current - ' :
-                        timelineState === 'past' ? 'Past - ' :
+                        timelineState === 'current' ? t('curriculum.timeline.current') :
+                        timelineState === 'past' ? t('curriculum.timeline.past') :
                         '';
 
                       return (
@@ -552,7 +556,7 @@ export function CurriculumOverview({
                                   ? 'hidden'
                                   : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'
                               }
-                              aria-label={isSubjectCollapsed ? 'Expand subject' : 'Collapse subject'}
+                              aria-label={isSubjectCollapsed ? t('curriculum.expandSubject') : t('curriculum.collapseSubject')}
                             >
                               {isSubjectCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                             </button>
@@ -592,11 +596,11 @@ export function CurriculumOverview({
                               <div className={isSubjectCollapsed ? 'contents' : 'flex flex-wrap items-center justify-end gap-2'}>
                                 {materialsCount > 0 && (
                                   <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#c2410c]">
-                                    {materialsCount} material{materialsCount === 1 ? '' : 's'}
+                                    {tCount('curriculum.materialsCount', materialsCount, { count: materialsCount })}
                                   </span>
                                 )}
                                 <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
-                                  {sessionCount} item{sessionCount === 1 ? '' : 's'}
+                                  {tCount('curriculum.itemsCount', sessionCount, { count: sessionCount })}
                                 </span>
                                 {canFullyManage && (
                                   <>
@@ -604,7 +608,7 @@ export function CurriculumOverview({
                                   type="button"
                                   onClick={() => onEditSubject(course.id, subject)}
                                   className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                  title="Edit subject"
+                                  title={t('curriculum.editSubject')}
                                 >
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </button>
@@ -612,7 +616,7 @@ export function CurriculumOverview({
                                   type="button"
                                   onClick={() => onDeleteSubject(course.id, subject.id)}
                                   className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                  title="Delete subject"
+                                  title={t('curriculum.deleteSubject')}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -623,8 +627,8 @@ export function CurriculumOverview({
                                 <button
                                   type="button"
                                   onClick={openSubjectPage}
-                                  title="Open subject"
-                                  aria-label="Open subject"
+                                  title={t('curriculum.openSubject')}
+                                  aria-label={t('curriculum.openSubject')}
                                   className="tbo-focus grid h-full min-h-[44px] w-11 place-items-center rounded-xl border border-[#d4d4d4] bg-white text-[#171717] hover:bg-[#f5f5f5] hover:text-[#2563eb]"
                                 >
                                   <ExternalLink className="h-4 w-4" />
@@ -636,7 +640,7 @@ export function CurriculumOverview({
                           {!isSubjectCollapsed && (
                             <div>
                               <div className="flex flex-col gap-2 border-y border-[#d4d4d4] bg-white px-4 py-2.5 sm:flex-row sm:items-center sm:justify-between">
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Sessions</p>
+                                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('curriculum.sessions')}</p>
                                 {canFullyManage && (
                                 <button
                                   type="button"
@@ -644,14 +648,14 @@ export function CurriculumOverview({
                                   className="tbo-focus inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-2.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5]"
                                 >
                                   <Plus className="h-3 w-3" />
-                                  Add Session
+                                  {t('curriculum.addSession')}
                                 </button>
                                 )}
                               </div>
 
                               {subject.classes.length === 0 ? (
                                 <div className="border-b border-[#d4d4d4] bg-white px-4 py-4 text-sm text-[#737373]">
-                                  No sessions yet.
+                                  {t('curriculum.noSessionsYet')}
                                 </div>
                               ) : (
                                 <div className="divide-y divide-[#e5e5e5] border-b border-[#d4d4d4] bg-white px-4">
@@ -662,10 +666,10 @@ export function CurriculumOverview({
                                     <span />
                                     <span />
                                     <span />
-                                    <span>Session</span>
-                                    <span>Teacher</span>
-                                    <span>Translator</span>
-                                    <span className="text-right">Actions</span>
+                                    <span>{t('curriculum.session')}</span>
+                                    <span>{t('edit.class.teacher')}</span>
+                                    <span>{t('edit.class.translator')}</span>
+                                    <span className="text-right">{t('curriculum.actions')}</span>
                                   </div>
                                   {groupByCalendarWeek(subject.classes, cls => cls.date).map(weekGroup => (
                                     <Fragment key={weekGroup.weekStart}>
@@ -709,7 +713,7 @@ export function CurriculumOverview({
                                                     <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
                                                   </span>
                                                 ) : (
-                                                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">No date</span>
+                                                  <span className="block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('curriculum.noDate')}</span>
                                                 )}
                                               </span>
                                               <span className={`grid h-7 w-7 place-items-center ${iconAccent}`}>
@@ -718,14 +722,14 @@ export function CurriculumOverview({
                                               <span className="min-w-0 truncate text-sm font-semibold text-[#171717]">
                                                 {getClassDisplayTitle(cls, subject, currentUser.roles)}
                                                 {hasConflict && (
-                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#dc2626]">Conflict</span>
+                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#dc2626]">{t('classwork.subject.conflict')}</span>
                                                 )}
                                                 {hasVacantRoles && !hasConflict && (
-                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Incomplete</span>
+                                                  <span className="ml-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">{t('classwork.subject.incomplete')}</span>
                                                 )}
                                               </span>
                                               <span className="text-xs font-semibold capitalize text-[#525252]">
-                                                {hourLabel(cls.hour)}
+                                                {sessionHourLabel(cls.hour, t)}
                                               </span>
                                               <span
                                                 className={`truncate text-sm ${
@@ -736,7 +740,7 @@ export function CurriculumOverview({
                                                       : 'text-[#525252]'
                                                 }`}
                                               >
-                                                {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
+                                                {cls.teacherId === null ? t('curriculum.vacant') : teacher?.name ?? '—'}
                                               </span>
                                               <span
                                                 className={`truncate text-sm ${
@@ -747,14 +751,14 @@ export function CurriculumOverview({
                                                       : 'text-[#525252]'
                                                 }`}
                                               >
-                                                {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                                {cls.translatorId === null ? t('curriculum.vacant') : translator?.name ?? '—'}
                                               </span>
                                               <div className="flex items-center justify-end gap-1" onClick={event => event.stopPropagation()}>
                                                 <button
                                                   type="button"
                                                   onClick={openSubjectPage}
                                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                                  title="Open subject"
+                                                  title={t('curriculum.openSubject')}
                                                 >
                                                   <Eye className="h-3.5 w-3.5" />
                                                 </button>
@@ -762,7 +766,7 @@ export function CurriculumOverview({
                                                   type="button"
                                                   onClick={() => onEditClass(course.id, subject.id, cls)}
                                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                                  title={canFullyManage ? 'Edit session' : 'Assign translator'}
+                                                  title={canFullyManage ? t('curriculum.editSession') : t('curriculum.assignTranslator')}
                                                 >
                                                   <Edit3 className="h-3.5 w-3.5" />
                                                 </button>
@@ -771,7 +775,7 @@ export function CurriculumOverview({
                                                   type="button"
                                                   onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
                                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                                  title="Delete session"
+                                                  title={t('curriculum.deleteSession')}
                                                 >
                                                   <Trash2 className="h-3.5 w-3.5" />
                                                 </button>
@@ -789,14 +793,14 @@ export function CurriculumOverview({
                                                         <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
                                                       </span>
                                                     ) : (
-                                                      <span className="text-[11px] font-semibold uppercase text-[#737373]">No date</span>
+                                                      <span className="text-[11px] font-semibold uppercase text-[#737373]">{t('curriculum.noDate')}</span>
                                                     )}
                                                   </span>
                                                   <div className="min-w-0">
                                                     <p className="truncate text-sm font-semibold text-[#171717]">
                                                       {getClassDisplayTitle(cls, subject, currentUser.roles)}
                                                     </p>
-                                                    <p className="mt-1 text-xs font-semibold text-[#525252]">{hourLabel(cls.hour)}</p>
+                                                    <p className="mt-1 text-xs font-semibold text-[#525252]">{sessionHourLabel(cls.hour, t)}</p>
                                                   </div>
                                                 </div>
                                                 <div className="flex shrink-0 gap-1" onClick={event => event.stopPropagation()}>
@@ -804,7 +808,7 @@ export function CurriculumOverview({
                                                     type="button"
                                                     onClick={openSubjectPage}
                                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                                    title="Open subject"
+                                                    title={t('curriculum.openSubject')}
                                                   >
                                                     <Eye className="h-3.5 w-3.5" />
                                                   </button>
@@ -812,7 +816,7 @@ export function CurriculumOverview({
                                                     type="button"
                                                     onClick={() => onEditClass(course.id, subject.id, cls)}
                                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5]"
-                                                    title={canFullyManage ? 'Edit session' : 'Assign translator'}
+                                                    title={canFullyManage ? t('curriculum.editSession') : t('curriculum.assignTranslator')}
                                                   >
                                                     <Edit3 className="h-3.5 w-3.5" />
                                                   </button>
@@ -821,7 +825,7 @@ export function CurriculumOverview({
                                                     type="button"
                                                     onClick={() => onDeleteClass(course.id, subject.id, cls.id)}
                                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                                    title="Delete session"
+                                                    title={t('curriculum.deleteSession')}
                                                   >
                                                     <Trash2 className="h-3.5 w-3.5" />
                                                   </button>
@@ -829,13 +833,13 @@ export function CurriculumOverview({
                                                 </div>
                                               </div>
                                               <p className="text-xs text-[#737373]">
-                                                Teacher:{' '}
+                                                {t('curriculum.teacherLabel')}{' '}
                                                 <span className={teacherConflict.hasConflict || cls.teacherId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
-                                                  {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
+                                                  {cls.teacherId === null ? t('curriculum.vacant') : teacher?.name ?? '—'}
                                                 </span>
-                                                {' · '}Translator:{' '}
+                                                {' · '}{t('curriculum.translatorLabel')}{' '}
                                                 <span className={translatorConflict.hasConflict || cls.translatorId === null ? 'font-semibold text-[#c2410c]' : 'text-[#171717]'}>
-                                                  {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                                  {cls.translatorId === null ? t('curriculum.vacant') : translator?.name ?? '—'}
                                                 </span>
                                               </p>
                                             </div>

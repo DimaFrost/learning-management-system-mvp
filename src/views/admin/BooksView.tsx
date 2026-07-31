@@ -9,6 +9,8 @@ import type {
   User,
 } from '../../types/lms';
 import type { BookDraft, ReadingAssignmentDraft } from '../../hooks/useBooks';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
@@ -75,6 +77,38 @@ function getAssignmentStudents(assignment: BookReadingAssignment, users: User[],
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
+const FILTER_KEYS: Record<'all' | 'assigned' | 'draft' | 'past_due', TranslationKey> = {
+  all: 'books.admin.filter.all',
+  assigned: 'books.admin.filter.assigned',
+  draft: 'books.admin.filter.draft',
+  past_due: 'books.admin.filter.pastDue',
+};
+
+const ASSIGNMENT_STATUS_KEYS: Record<BookReadingAssignment['status'], TranslationKey> = {
+  assigned: 'books.admin.status.assigned',
+  draft: 'books.admin.status.draft',
+  completed: 'books.admin.status.completed',
+  archived: 'books.admin.status.archived',
+};
+
+const SUBMISSION_STATUS_KEYS: Record<string, TranslationKey> = {
+  not_started: 'student.books.status.not_started',
+  reading: 'student.books.status.reading',
+  submitted: 'student.books.status.submitted',
+  returned: 'student.books.status.returned',
+  completed: 'student.books.status.completed',
+};
+
+function getAssignmentStatusLabel(status: BookReadingAssignment['status'], t: (key: TranslationKey) => string) {
+  return t(ASSIGNMENT_STATUS_KEYS[status] ?? 'books.admin.status.assigned');
+}
+
+function getSubmissionStatusLabel(status: string | undefined, t: (key: TranslationKey) => string) {
+  if (!status) return t('student.books.status.not_started');
+  const normalized = status.replace('_', ' ') === 'not started' ? 'not_started' : status;
+  return t(SUBMISSION_STATUS_KEYS[normalized] ?? SUBMISSION_STATUS_KEYS.not_started);
+}
+
 export function ReviewReadingModal({
   assignment,
   submissions,
@@ -90,6 +124,7 @@ export function ReviewReadingModal({
   onClose: () => void;
   onGrade: BooksViewProps['gradeReadingSubmission'];
 }) {
+  const { t } = useLanguage();
   const [activeSubmission, setActiveSubmission] = useState<BookReadingSubmission | null>(null);
   const [points, setPoints] = useState('');
   const [comment, setComment] = useState('');
@@ -128,14 +163,14 @@ export function ReviewReadingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close review" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label={t('books.admin.review.closeAria')} />
       <section className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-2xl sm:max-w-5xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Reading review</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('books.admin.review.title')}</p>
             <h3 className="mt-1 text-xl font-semibold text-[#171717]">{assignment.title}</h3>
             <p className="mt-1 text-sm text-[#737373]">
-              {assignment.maxPoints === null ? 'Completion review' : `${assignment.maxPoints} possible points`}
+              {assignment.maxPoints === null ? t('books.admin.review.completionReview') : t('books.admin.review.possiblePoints', { count: assignment.maxPoints })}
             </p>
           </div>
           <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]">
@@ -149,16 +184,16 @@ export function ReviewReadingModal({
               <table className="min-w-full text-sm">
                 <thead className="bg-[#fafafa]">
                   <tr>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Person</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Status</th>
-                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Grade</th>
-                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Review</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('books.admin.review.person')}</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('books.admin.review.grade')}</th>
+                    <th className="px-4 py-3 text-right text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('books.admin.review.review')}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#eeeeee]">
                   {students.map(student => {
                     const submission = submissionByStudent.get(student.id);
-                    const status = submission?.status?.replace('_', ' ') ?? 'not started';
+                    const status = getSubmissionStatusLabel(submission?.status, t);
                     return (
                       <tr key={student.id} className="hover:bg-[#fafafa]">
                         <td className="px-4 py-3">
@@ -170,11 +205,11 @@ export function ReviewReadingModal({
                             </div>
                           </div>
                         </td>
-                        <td className="px-4 py-3 capitalize text-[#525252]">{status}</td>
+                        <td className="px-4 py-3 text-[#525252]">{status}</td>
                         <td className="px-4 py-3">
                           {submission?.gradedAt ? (
                             <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857]">
-                              {assignment.maxPoints === null ? 'Reviewed' : `${submission.points ?? 0}/${assignment.maxPoints}`}
+                              {assignment.maxPoints === null ? t('books.admin.review.reviewed') : `${submission.points ?? 0}/${assignment.maxPoints}`}
                             </span>
                           ) : (
                             <span className="text-xs text-[#a3a3a3]">-</span>
@@ -187,10 +222,10 @@ export function ReviewReadingModal({
                               onClick={() => openSubmission(submission)}
                               className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                             >
-                              Review
+                              {t('books.admin.review.review')}
                             </button>
                           ) : (
-                            <span className="text-xs text-[#a3a3a3]">No submission</span>
+                            <span className="text-xs text-[#a3a3a3]">{t('books.admin.review.noSubmission')}</span>
                           )}
                         </td>
                       </tr>
@@ -206,28 +241,28 @@ export function ReviewReadingModal({
               <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-6 text-center">
                 <div>
                   <Star className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-                  <p className="mt-3 text-sm font-semibold text-[#171717]">Select a submission</p>
-                  <p className="mt-1 text-sm text-[#737373]">Review the response, return it, or mark it complete.</p>
+                  <p className="mt-3 text-sm font-semibold text-[#171717]">{t('books.admin.review.selectSubmission')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('books.admin.review.selectSubmissionHint')}</p>
                 </div>
               </div>
             ) : (
               <div className="space-y-3">
                 <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
                   <p className="text-sm font-semibold text-[#171717]">
-                    {users.find(user => user.id === activeSubmission.studentId)?.name ?? 'Student response'}
+                    {users.find(user => user.id === activeSubmission.studentId)?.name ?? t('books.admin.review.studentResponse')}
                   </p>
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
-                    {activeSubmission.responseText || 'No written response.'}
+                    {activeSubmission.responseText || t('books.admin.review.noWrittenResponse')}
                   </p>
                   {activeSubmission.responseUrl && (
                     <a href={activeSubmission.responseUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
-                      Open link <ExternalLink className="h-3 w-3" />
+                      {t('books.admin.review.openLink')} <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
                 </div>
                 {assignment.maxPoints !== null && (
                   <label className="block">
-                    <span className="mb-1 block text-xs font-semibold text-[#737373]">Points</span>
+                    <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.review.points')}</span>
                     <input
                       type="number"
                       min="0"
@@ -238,25 +273,25 @@ export function ReviewReadingModal({
                       placeholder={`0-${assignment.maxPoints}`}
                     />
                     {points.trim() && (Number(points) < 0 || Number(points) > assignment.maxPoints) && (
-                      <p className="mt-1 text-xs font-medium text-[#b91c1c]">Points must be between 0 and {assignment.maxPoints}.</p>
+                      <p className="mt-1 text-xs font-medium text-[#b91c1c]">{t('books.admin.review.pointsRange', { max: assignment.maxPoints })}</p>
                     )}
                   </label>
                 )}
                 <label className="block">
-                  <span className="mb-1 block text-xs font-semibold text-[#737373]">Feedback</span>
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.review.feedback')}</span>
                   <textarea
                     value={comment}
                     onChange={event => setComment(event.target.value)}
                     className="min-h-28 w-full rounded-lg border border-[#d4d4d4] bg-white p-3 text-sm"
-                    placeholder="Optional feedback for the student"
+                    placeholder={t('books.admin.review.feedbackPlaceholder')}
                   />
                 </label>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <button type="button" disabled={saving} onClick={() => void saveGrade('returned')} className="h-10 rounded-xl border border-[#fed7aa] bg-white px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#fff7ed] disabled:opacity-50">
-                    Return
+                    {t('books.admin.review.return')}
                   </button>
                   <button type="button" disabled={saving} onClick={() => void saveGrade('completed')} className="h-10 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#404040] disabled:opacity-50">
-                    {saving ? 'Saving...' : assignment.maxPoints === null ? 'Mark reviewed' : 'Save grade'}
+                    {saving ? t('common.saving') : assignment.maxPoints === null ? t('books.admin.review.markReviewed') : t('books.admin.review.saveGrade')}
                   </button>
                 </div>
               </div>
@@ -307,6 +342,7 @@ export function BooksView({
   deleteReadingAssignment,
   gradeReadingSubmission,
 }: BooksViewProps) {
+  const { t, tCount } = useLanguage();
   const activeCourses = getActiveYearGroups(courses);
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -426,12 +462,12 @@ export function BooksView({
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="tbo-display text-3xl text-[#171717]">Books</h2>
-          <p className="text-sm text-[#737373]">Reading assignments by year group.</p>
+          <h2 className="tbo-display text-3xl text-[#171717]">{t('books.admin.title')}</h2>
+          <p className="text-sm text-[#737373]">{t('books.admin.subtitle')}</p>
         </div>
         <button type="button" onClick={() => setModalOpen(true)} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white">
           <Plus className="h-4 w-4" />
-          Add book
+          {t('books.admin.addBook')}
         </button>
       </div>
 
@@ -443,7 +479,7 @@ export function BooksView({
             onClick={() => setFilter(item)}
             className={`rounded-2xl border p-4 text-left ${filter === item ? 'border-[#171717] bg-white' : 'border-[#e5e5e5] bg-[#fafafa]'}`}
           >
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{item.replace('_', ' ')}</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t(FILTER_KEYS[item])}</p>
             <p className="mt-2 text-2xl font-semibold text-[#171717]">{filterCounts[item]}</p>
           </button>
         ))}
@@ -451,11 +487,11 @@ export function BooksView({
 
       {error && <div className="rounded-xl border border-[#fecaca] bg-[#fef2f2] p-3 text-sm text-[#b91c1c]">{error}</div>}
       {loading ? (
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-[#737373]">Loading books...</div>
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-[#737373]">{t('books.admin.loading')}</div>
       ) : filteredAssignments.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
           <Library className="mx-auto h-10 w-10 text-[#a3a3a3]" />
-          <p className="mt-3 font-semibold text-[#171717]">No reading assignments yet.</p>
+          <p className="mt-3 font-semibold text-[#171717]">{t('books.admin.empty')}</p>
         </div>
       ) : (
         <div className="grid gap-4 lg:grid-cols-2">
@@ -473,23 +509,23 @@ export function BooksView({
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {course && <ActiveYearGroupBadge course={course} />}
-                      <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold capitalize text-[#525252]">{assignment.status.replace('_', ' ')}</span>
+                      <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold text-[#525252]">{getAssignmentStatusLabel(assignment.status, t)}</span>
                     </div>
                     <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-[#171717]">{assignment.book.title}</h3>
-                    <p className="mt-1 truncate text-sm text-[#737373]">{assignment.book.authors.join(', ') || 'Unknown author'}</p>
+                    <p className="mt-1 truncate text-sm text-[#737373]">{assignment.book.authors.join(', ') || t('student.books.unknownAuthor')}</p>
                     <p className="mt-2 text-sm text-[#525252]">{assignment.title}</p>
                     <div className="mt-3 flex items-center gap-2 text-xs text-[#737373]">
                       <Calendar className="h-3.5 w-3.5" />
-                      {assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date'}
+                      {assignment.dueDate ? t('books.admin.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate')}
                     </div>
                   </div>
                 </div>
                 <div className="border-t border-[#eeeeee] bg-[#fafafa] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#525252]">{stats.complete}/{stats.total} submitted</p>
+                      <p className="text-xs font-semibold text-[#525252]">{t('books.admin.submitted', { complete: stats.complete, total: stats.total })}</p>
                       {assignment.maxPoints !== null && (
-                        <p className="mt-1 text-xs font-semibold text-[#2563eb]">{assignment.maxPoints} points</p>
+                        <p className="mt-1 text-xs font-semibold text-[#2563eb]">{t('books.admin.points', { count: assignment.maxPoints })}</p>
                       )}
                       {assignedBy && (
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-[#737373]">
@@ -504,13 +540,13 @@ export function BooksView({
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button type="button" onClick={() => setReviewAssignment(assignment)} className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
-                      Review submissions
+                      {t('books.admin.reviewSubmissions')}
                     </button>
                     <button type="button" onClick={() => updateReadingAssignment(assignment.id, { status: assignment.status === 'draft' ? 'assigned' : 'completed' })} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
-                      {assignment.status === 'draft' ? 'Publish' : 'Mark complete'}
+                      {assignment.status === 'draft' ? t('books.admin.publish') : t('books.admin.markComplete')}
                     </button>
                     <button type="button" onClick={() => deleteReadingAssignment(assignment.id)} className="rounded-lg border border-[#fee2e2] bg-white px-3 py-1.5 text-xs font-semibold text-[#b91c1c]">
-                      Delete
+                      {t('common.delete')}
                     </button>
                   </div>
                 </div>
@@ -522,12 +558,12 @@ export function BooksView({
 
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setModalOpen(false)} aria-label="Close" />
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setModalOpen(false)} aria-label={t('books.admin.modal.closeAria')} />
           <section className="relative max-h-[92vh] w-full overflow-y-auto rounded-t-2xl bg-white p-5 shadow-2xl sm:max-w-3xl sm:rounded-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h3 className="text-xl font-semibold text-[#171717]">Add reading assignment</h3>
-                <p className="text-sm text-[#737373]">Lookup a book or enter it manually.</p>
+                <h3 className="text-xl font-semibold text-[#171717]">{t('books.admin.modal.title')}</h3>
+                <p className="text-sm text-[#737373]">{t('books.admin.modal.subtitle')}</p>
               </div>
               <button type="button" onClick={() => setModalOpen(false)} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5]">
                 <X className="h-4 w-4" />
@@ -546,12 +582,12 @@ export function BooksView({
                         void runLookup();
                       }
                     }}
-                    placeholder="Search title, author, or ISBN"
+                    placeholder={t('books.admin.lookupPlaceholder')}
                     className="h-10 min-w-0 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
                   />
                   <button type="button" onClick={() => void runLookup()} disabled={!lookupQuery.trim() || lookupLoading} className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
                     {lookupLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    Search
+                    {t('common.search')}
                   </button>
                 </div>
               </div>
@@ -560,9 +596,9 @@ export function BooksView({
                 <div className="rounded-2xl border border-[#e5e5e5] bg-white">
                   <div className="flex items-center justify-between gap-3 border-b border-[#eeeeee] px-4 py-3">
                     <div>
-                      <p className="text-sm font-semibold text-[#171717]">Search results</p>
+                      <p className="text-sm font-semibold text-[#171717]">{t('books.admin.searchResults')}</p>
                       <p className="text-xs text-[#737373]">
-                        {lookupLoading ? 'Looking up book metadata...' : `${lookupResults.length} result${lookupResults.length === 1 ? '' : 's'} found`}
+                        {lookupLoading ? t('books.admin.lookupLoading') : tCount('books.admin.resultsFound', lookupResults.length, { count: lookupResults.length })}
                       </p>
                     </div>
                     <button
@@ -570,20 +606,20 @@ export function BooksView({
                       onClick={() => setLookupPanelOpen(false)}
                       className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                     >
-                      Close results
+                      {t('books.admin.closeResults')}
                     </button>
                   </div>
                   <div className="max-h-[54vh] overflow-y-auto p-3">
                     {lookupLoading ? (
                       <div className="flex min-h-48 items-center justify-center rounded-2xl bg-[#fafafa] text-sm text-[#737373]">
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Searching...
+                        {t('books.admin.searching')}
                       </div>
                     ) : lookupResults.length === 0 ? (
                       <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] p-8 text-center">
                         <BookOpen className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-                        <p className="mt-2 text-sm font-semibold text-[#171717]">No books found.</p>
-                        <p className="mt-1 text-xs text-[#737373]">Close results and enter the book manually.</p>
+                        <p className="mt-2 text-sm font-semibold text-[#171717]">{t('books.admin.noBooksFound')}</p>
+                        <p className="mt-1 text-xs text-[#737373]">{t('books.admin.noBooksFoundHint')}</p>
                       </div>
                     ) : (
                       <div className="grid gap-2 sm:grid-cols-2">
@@ -599,7 +635,7 @@ export function BooksView({
                             </div>
                             <div className="min-w-0">
                               <p className="line-clamp-2 text-sm font-semibold text-[#171717]">{result.title}</p>
-                              <p className="mt-1 truncate text-xs text-[#737373]">{result.authors.join(', ') || 'Unknown author'}</p>
+                              <p className="mt-1 truncate text-xs text-[#737373]">{result.authors.join(', ') || t('student.books.unknownAuthor')}</p>
                               <p className="mt-2 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#a3a3a3]">
                                 {result.sourceProvider.replace('_', ' ')}
                               </p>
@@ -613,8 +649,8 @@ export function BooksView({
               ) : (
               <div className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <input value={bookDraft.title} onChange={event => setBookDraft(prev => ({ ...prev, title: event.target.value }))} placeholder="Book title" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm sm:col-span-2" />
-                  <input value={bookDraft.authors?.join(', ') ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, authors: event.target.value.split(',').map(item => item.trim()).filter(Boolean) }))} placeholder="Authors" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm sm:col-span-2" />
+                  <input value={bookDraft.title} onChange={event => setBookDraft(prev => ({ ...prev, title: event.target.value }))} placeholder={t('books.admin.bookTitle')} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm sm:col-span-2" />
+                  <input value={bookDraft.authors?.join(', ') ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, authors: event.target.value.split(',').map(item => item.trim()).filter(Boolean) }))} placeholder={t('books.admin.authors')} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm sm:col-span-2" />
                   <div className="sm:col-span-2 grid gap-3 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3 sm:grid-cols-[84px_1fr]">
                     <div className="grid h-28 w-20 place-items-center overflow-hidden rounded-xl border border-[#e5e5e5] bg-white text-[#a3a3a3]">
                       {bookDraft.coverUrl ? (
@@ -627,7 +663,7 @@ export function BooksView({
                       <div className="flex flex-wrap items-center gap-2">
                         <label className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
                           {coverUploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />}
-                          {coverUploading ? 'Uploading...' : 'Upload cover'}
+                          {coverUploading ? t('books.admin.uploading') : t('books.admin.uploadCover')}
                           <input
                             type="file"
                             accept="image/*"
@@ -645,26 +681,26 @@ export function BooksView({
                             onClick={() => setBookDraft(prev => ({ ...prev, coverUrl: null }))}
                             className="h-9 rounded-lg border border-[#fee2e2] bg-white px-3 text-xs font-semibold text-[#b91c1c] hover:bg-[#fef2f2]"
                           >
-                            Remove
+                            {t('common.remove')}
                           </button>
                         )}
                       </div>
                       <input
                         value={bookDraft.coverUrl ?? ''}
                         onChange={event => setBookDraft(prev => ({ ...prev, coverUrl: event.target.value }))}
-                        placeholder="Or paste cover image URL"
+                        placeholder={t('books.admin.coverUrlPlaceholder')}
                         className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
                       />
-                      <p className="text-xs text-[#737373]">Use upload when the lookup image or external URL is missing or unreliable.</p>
+                      <p className="text-xs text-[#737373]">{t('books.admin.coverHint')}</p>
                     </div>
                   </div>
-                  <input value={bookDraft.isbn13 ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, isbn13: event.target.value }))} placeholder="ISBN 13" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
-                  <input value={bookDraft.internalCode ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, internalCode: event.target.value }))} placeholder="Internal code" className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  <input value={bookDraft.isbn13 ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, isbn13: event.target.value }))} placeholder={t('books.admin.isbn13')} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                  <input value={bookDraft.internalCode ?? ''} onChange={event => setBookDraft(prev => ({ ...prev, internalCode: event.target.value }))} placeholder={t('books.admin.internalCode')} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                 </div>
                 <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Year group</p>
-                    <span className="text-xs text-[#737373]">{selectedCourseIds.length} selected</span>
+                    <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('books.admin.yearGroup')}</p>
+                    <span className="text-xs text-[#737373]">{tCount('books.admin.selected', selectedCourseIds.length, { count: selectedCourseIds.length })}</span>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {activeCourses.map(course => {
@@ -694,8 +730,8 @@ export function BooksView({
                     })}
                   </div>
                 </div>
-                <input value={assignmentTitle} onChange={event => setAssignmentTitle(event.target.value)} placeholder="Assignment title" className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
-                <textarea value={instructions} onChange={event => setInstructions(event.target.value)} placeholder="Instructions" className="min-h-24 w-full rounded-lg border border-[#d4d4d4] p-3 text-sm" />
+                <input value={assignmentTitle} onChange={event => setAssignmentTitle(event.target.value)} placeholder={t('books.admin.assignmentTitle')} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                <textarea value={instructions} onChange={event => setInstructions(event.target.value)} placeholder={t('books.admin.instructions')} className="min-h-24 w-full rounded-lg border border-[#d4d4d4] p-3 text-sm" />
                 <div className="grid gap-3 sm:grid-cols-3">
                   <input type="date" value={dueDate} onChange={event => setDueDate(event.target.value)} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm" />
                   <input
@@ -703,17 +739,17 @@ export function BooksView({
                     min="0"
                     value={maxPoints}
                     onChange={event => setMaxPoints(event.target.value)}
-                    placeholder="Optional points"
+                    placeholder={t('books.admin.optionalPoints')}
                     className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm"
                   />
                   <select value={status} onChange={event => setStatus(event.target.value as BookReadingAssignment['status'])} className="h-10 rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                    <option value="assigned">Assigned</option>
-                    <option value="draft">Draft</option>
+                    <option value="assigned">{t('books.admin.statusOption.assigned')}</option>
+                    <option value="draft">{t('books.admin.statusOption.draft')}</option>
                   </select>
                 </div>
                 <button type="button" disabled={saving || !bookDraft.title || selectedCourseIds.length === 0} onClick={submit} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
                   <CheckCircle2 className="h-4 w-4" />
-                  {saving ? 'Saving...' : 'Create reading assignment'}
+                  {saving ? t('common.saving') : t('books.admin.createAssignment')}
                 </button>
               </div>
               )}

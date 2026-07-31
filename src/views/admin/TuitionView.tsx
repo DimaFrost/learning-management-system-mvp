@@ -21,6 +21,7 @@ import type {
   User,
 } from '../../types/lms';
 import type { TuitionSummary } from '../../hooks/useTuition';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatCurrency } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
@@ -124,6 +125,7 @@ export function TuitionView({
   onRecordPayment,
   onSendReminder,
 }: TuitionViewProps) {
+  const { t, tCount } = useLanguage();
   const [search, setSearch] = useState('');
   const [planFormOpen, setPlanFormOpen] = useState(false);
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
@@ -174,25 +176,25 @@ export function TuitionView({
         <div>
           <p className="inline-flex items-center gap-2 rounded-full bg-white px-3 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
             <Banknote className="h-3.5 w-3.5 text-[#15803d]" />
-            Tuition
+            {t('tuition.title')}
           </p>
-          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#171717]">Tuition</h1>
+          <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#171717]">{t('tuition.title')}</h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-[#737373]">
-            Track student tuition, installments, payments received, and reminders from one admin workspace.
+            {t('tuition.description')}
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-sm sm:flex">
           <button type="button" onClick={() => setAccountFormOpen(true)} className="tbo-focus inline-flex items-center justify-center gap-2 rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 font-semibold text-[#525252] hover:bg-[#f5f5f5]">
             <Users className="h-4 w-4" />
-            Add student
+            {t('tuition.addStudent')}
           </button>
           <button type="button" onClick={() => setPaymentFormOpen(true)} className="tbo-focus inline-flex items-center justify-center gap-2 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 font-semibold text-[#15803d] hover:bg-[#dcfce7]">
             <CreditCard className="h-4 w-4" />
-            Record payment
+            {t('tuition.recordPayment')}
           </button>
           <button type="button" onClick={() => setPlanFormOpen(true)} className="tbo-focus inline-flex items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 py-2 font-semibold text-white hover:bg-[#262626]">
             <Plus className="h-4 w-4" />
-            New plan
+            {t('tuition.newPlan')}
           </button>
         </div>
       </div>
@@ -201,10 +203,10 @@ export function TuitionView({
 
   const stats = (
     <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-      <StatCard label="Collected" value={currency(summary.collected, activeCurrency)} detail="Payments recorded" icon={CheckCircle2} tone="green" />
-      <StatCard label="Remaining" value={currency(summary.remaining, activeCurrency)} detail="Still outstanding" icon={AlertCircle} tone="amber" />
-      <StatCard label="Overdue" value={String(summary.overdueStudents)} detail="Students need follow-up" icon={Bell} tone="rose" />
-      <StatCard label="Next installment" value={summary.nextInstallment ? formatPlatformDate(summary.nextInstallment.dueDate) : 'Not set'} detail={summary.nextInstallment?.title ?? 'Add installment dates'} icon={CalendarDays} tone="blue" />
+      <StatCard label={t('tuition.stat.collected')} value={currency(summary.collected, activeCurrency)} detail={t('tuition.stat.collectedDetail')} icon={CheckCircle2} tone="green" />
+      <StatCard label={t('tuition.stat.remaining')} value={currency(summary.remaining, activeCurrency)} detail={t('tuition.stat.remainingDetail')} icon={AlertCircle} tone="amber" />
+      <StatCard label={t('tuition.stat.overdue')} value={String(summary.overdueStudents)} detail={t('tuition.stat.overdueDetail')} icon={Bell} tone="rose" />
+      <StatCard label={t('tuition.stat.nextInstallment')} value={summary.nextInstallment ? formatPlatformDate(summary.nextInstallment.dueDate) : t('tuition.stat.notSet')} detail={summary.nextInstallment?.title ?? t('tuition.stat.addInstallmentDates')} icon={CalendarDays} tone="blue" />
     </div>
   );
 
@@ -212,25 +214,25 @@ export function TuitionView({
     <SectionCard className="overflow-hidden">
       <div className="flex flex-col gap-3 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-[#171717]">Student tuition</h2>
-          <p className="text-sm text-[#737373]">Outstanding balances and payment progress.</p>
+          <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.studentTuition.title')}</h2>
+          <p className="text-sm text-[#737373]">{t('tuition.studentTuition.subtitle')}</p>
         </div>
         <label className="relative block sm:w-72">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
-          <input value={search} onChange={event => setSearch(event.target.value)} placeholder="Search students" className="h-10 w-full rounded-xl border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
+          <input value={search} onChange={event => setSearch(event.target.value)} placeholder={t('tuition.searchStudents')} className="h-10 w-full rounded-xl border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#bfdbfe]" />
         </label>
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
           <thead className="bg-white text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
             <tr>
-              <th className="px-4 py-3">Student</th>
-              <th className="px-4 py-3">Plan</th>
-              <th className="px-4 py-3">Expected</th>
-              <th className="px-4 py-3">Paid</th>
-              <th className="px-4 py-3">Remaining</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Reminder</th>
+              <th className="px-4 py-3">{t('tuition.table.student')}</th>
+              <th className="px-4 py-3">{t('tuition.table.plan')}</th>
+              <th className="px-4 py-3">{t('tuition.table.expected')}</th>
+              <th className="px-4 py-3">{t('tuition.table.paid')}</th>
+              <th className="px-4 py-3">{t('tuition.table.remaining')}</th>
+              <th className="px-4 py-3">{t('common.status')}</th>
+              <th className="px-4 py-3 text-right">{t('tuition.table.reminder')}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-[#eeeeee]">
@@ -240,31 +242,31 @@ export function TuitionView({
                   <div className="flex items-center gap-3">
                     <UserAvatar user={row.student} size="sm" />
                     <div>
-                      <p className="font-semibold text-[#171717]">{row.student?.name ?? 'Unknown student'}</p>
+                      <p className="font-semibold text-[#171717]">{row.student?.name ?? t('tuition.unknownStudent')}</p>
                       <p className="text-xs text-[#737373]">{row.student?.email}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-3 text-[#525252]">{row.plan?.name ?? 'No plan'}</td>
+                <td className="px-4 py-3 text-[#525252]">{row.plan?.name ?? t('tuition.noPlan')}</td>
                 <td className="px-4 py-3 font-medium text-[#171717]">{currency(row.expected, row.plan?.currency)}</td>
                 <td className="px-4 py-3 text-[#15803d]">{currency(row.paid, row.plan?.currency)}</td>
                 <td className="px-4 py-3 text-[#c2410c]">{currency(row.remaining, row.plan?.currency)}</td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.remaining <= 0 ? 'bg-[#dcfce7] text-[#166534]' : row.isOverdue ? 'bg-[#fee2e2] text-[#b91c1c]' : row.paid > 0 ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#f5f5f5] text-[#525252]'}`}>
-                    {row.remaining <= 0 ? 'Paid' : row.isOverdue ? 'Overdue' : row.paid > 0 ? 'Part paid' : 'Open'}
+                    {row.remaining <= 0 ? t('tuition.status.paid') : row.isOverdue ? t('common.overdue') : row.paid > 0 ? t('tuition.status.partPaid') : t('tuition.status.open')}
                   </span>
                 </td>
                 <td className="px-4 py-3 text-right">
                   <button type="button" onClick={() => setConfirmReminderAccountId(row.account.id)} className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
                     <Bell className="h-3.5 w-3.5" />
-                    Send
+                    {t('common.send')}
                   </button>
                 </td>
               </tr>
             ))}
             {accountRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#737373]">No tuition accounts yet.</td>
+                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noAccounts')}</td>
               </tr>
             )}
           </tbody>
@@ -277,14 +279,14 @@ export function TuitionView({
     <div className="grid gap-4">
       <SectionCard className="order-2 p-4">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-lg font-semibold text-[#171717]">Installments</h2>
+          <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.installments')}</h2>
           <button
             type="button"
             onClick={() => setInstallmentFormOpen(true)}
             className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1.5 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
           >
             <Plus className="h-3.5 w-3.5" />
-            Add
+            {t('tuition.add')}
           </button>
         </div>
         <div className="mt-4 space-y-2">
@@ -294,17 +296,17 @@ export function TuitionView({
               <div key={item.id} className="flex items-center justify-between gap-3 rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
                 <div>
                   <p className="font-semibold text-[#171717]">{item.title}</p>
-                  <p className="text-xs text-[#737373]">{plan?.name ?? 'Plan'} · due {formatPlatformDate(item.dueDate)}</p>
+                  <p className="text-xs text-[#737373]">{t('tuition.installmentDue', { plan: plan?.name ?? t('tuition.table.plan'), date: formatPlatformDate(item.dueDate) })}</p>
                 </div>
                 <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{currency(item.amount, plan?.currency)}</span>
               </div>
             );
           })}
-          {installments.length === 0 ? <p className="rounded-xl bg-[#fafafa] p-4 text-sm text-[#737373]">No installments configured yet.</p> : null}
+          {installments.length === 0 ? <p className="rounded-xl bg-[#fafafa] p-4 text-sm text-[#737373]">{t('tuition.noInstallments')}</p> : null}
         </div>
       </SectionCard>
       <SectionCard className="order-1 p-4">
-        <h2 className="text-lg font-semibold text-[#171717]">Plans</h2>
+        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.plans')}</h2>
         <div className="mt-4 space-y-2">
           {plans.map(plan => {
             const course = courses.find(item => item.id === plan.courseId);
@@ -313,7 +315,7 @@ export function TuitionView({
                 <div className="flex items-start justify-between gap-3">
                   <div>
                     <p className="font-semibold text-[#171717]">{plan.name}</p>
-                    <p className="mt-1 text-xs text-[#737373]">{course ? <ActiveYearGroupBadge course={course} /> : 'All students'}</p>
+                    <p className="mt-1 text-xs text-[#737373]">{course ? <ActiveYearGroupBadge course={course} /> : t('tuition.allStudents')}</p>
                   </div>
                   <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d]">{currency(plan.totalAmount, plan.currency)}</span>
                 </div>
@@ -328,7 +330,7 @@ export function TuitionView({
   const paymentsPanel = (
     <SectionCard className="overflow-hidden">
       <div className="border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
-        <h2 className="text-lg font-semibold text-[#171717]">Payments received</h2>
+        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.paymentsReceived')}</h2>
       </div>
       <div className="divide-y divide-[#eeeeee]">
         {payments.map(payment => {
@@ -340,7 +342,7 @@ export function TuitionView({
               <div className="flex items-center gap-3">
                 <UserAvatar user={student ?? null} size="sm" />
                 <div>
-                  <p className="font-semibold text-[#171717]">{student?.name ?? 'Unknown student'}</p>
+                  <p className="font-semibold text-[#171717]">{student?.name ?? t('tuition.unknownStudent')}</p>
                   <p className="text-xs text-[#737373]">{formatPlatformDate(payment.paymentDate)} · {payment.method}</p>
                 </div>
               </div>
@@ -348,7 +350,7 @@ export function TuitionView({
             </div>
           );
         })}
-        {payments.length === 0 ? <p className="p-8 text-center text-sm text-[#737373]">No payments recorded yet.</p> : null}
+        {payments.length === 0 ? <p className="p-8 text-center text-sm text-[#737373]">{t('tuition.noPayments')}</p> : null}
       </div>
     </SectionCard>
   );
@@ -356,10 +358,10 @@ export function TuitionView({
   const remindersPanel = (
     <SectionCard className="overflow-hidden">
       <div className="flex items-center justify-between gap-3 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
-        <h2 className="text-lg font-semibold text-[#171717]">Reminders</h2>
+        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.reminders')}</h2>
         <button type="button" onClick={() => setConfirmOutstandingOpen(true)} disabled={outstandingAccountIds.length === 0} className="tbo-focus inline-flex items-center gap-2 rounded-xl bg-[#171717] px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50">
           <Bell className="h-4 w-4" />
-          Remind outstanding
+          {t('tuition.remindOutstanding')}
         </button>
       </div>
       <div className="divide-y divide-[#eeeeee]">
@@ -369,13 +371,13 @@ export function TuitionView({
             <div key={reminder.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
               <div>
                 <p className="font-semibold text-[#171717]">{reminder.subject}</p>
-                <p className="text-xs text-[#737373]">{student?.name ?? 'Unknown student'} · {formatPlatformDate(reminder.createdAt.slice(0, 10))}</p>
+                <p className="text-xs text-[#737373]">{student?.name ?? t('tuition.unknownStudent')} · {formatPlatformDate(reminder.createdAt.slice(0, 10))}</p>
               </div>
               <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8]">{reminder.status}</span>
             </div>
           );
         })}
-        {reminders.length === 0 ? <p className="p-8 text-center text-sm text-[#737373]">No reminders queued yet.</p> : null}
+        {reminders.length === 0 ? <p className="p-8 text-center text-sm text-[#737373]">{t('tuition.noReminders')}</p> : null}
       </div>
     </SectionCard>
   );
@@ -385,13 +387,13 @@ export function TuitionView({
       <SectionCard className="p-4">
         <div className="flex items-center gap-2">
           <Settings className="h-5 w-5 text-[#525252]" />
-          <h2 className="text-lg font-semibold text-[#171717]">Defaults</h2>
+          <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.settings.defaults')}</h2>
         </div>
-        <p className="mt-3 text-sm leading-6 text-[#737373]">Create plans to set currency, tuition amount, and installment dates. The active plan becomes the default for new student accounts.</p>
+        <p className="mt-3 text-sm leading-6 text-[#737373]">{t('tuition.settings.defaultsDesc')}</p>
       </SectionCard>
       <SectionCard className="p-4">
-        <h2 className="text-lg font-semibold text-[#171717]">Reminder template</h2>
-        <p className="mt-3 text-sm leading-6 text-[#737373]">Tuition reminders use the platform email queue. The message includes the remaining amount and installment due date when one is selected.</p>
+        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.settings.reminderTemplate')}</h2>
+        <p className="mt-3 text-sm leading-6 text-[#737373]">{t('tuition.settings.reminderTemplateDesc')}</p>
       </SectionCard>
     </div>
   );
@@ -400,7 +402,7 @@ export function TuitionView({
     <div className="space-y-5">
       {Header}
       {error ? <SectionCard className="border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-medium text-[#b91c1c]">{error}</SectionCard> : null}
-      {loading ? <SectionCard className="p-8 text-center text-sm text-[#737373]">Loading tuition...</SectionCard> : null}
+      {loading ? <SectionCard className="p-8 text-center text-sm text-[#737373]">{t('tuition.loading')}</SectionCard> : null}
       {activeSection === 'overview' ? stats : null}
       {activeSection === 'overview' ? <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]"><div>{studentsTable}</div><div>{plansPanel}</div></div> : null}
       {activeSection === 'students' ? studentsTable : null}
@@ -410,18 +412,19 @@ export function TuitionView({
       {activeSection === 'settings' ? settingsPanel : null}
 
       {planFormOpen ? (
-        <TuitionModal title="New tuition plan" onClose={() => setPlanFormOpen(false)}>
+        <TuitionModal title={t('tuition.modal.newPlan')} onClose={() => setPlanFormOpen(false)}>
           <TuitionPlanForm courses={courses} saving={saving} onSubmit={input => run(() => onCreatePlan(input))} />
         </TuitionModal>
       ) : null}
       {accountFormOpen ? (
-        <TuitionModal title="Add student to tuition" onClose={() => setAccountFormOpen(false)}>
+        <TuitionModal title={t('tuition.modal.addStudent')} onClose={() => setAccountFormOpen(false)}>
           <TuitionAccountForm
             students={activeStudents}
             firstYearStudents={activeStudentsByCourseType.firstYear}
             secondYearStudents={activeStudentsByCourseType.secondYear}
             plans={plans}
             saving={saving}
+            onOpenStudentDashboard={onOpenStudentDashboard}
             onSubmit={input => run(() => Promise.all(input.studentIds.map(studentId => onEnrollStudent({
               studentId,
               planId: input.planId,
@@ -431,24 +434,24 @@ export function TuitionView({
         </TuitionModal>
       ) : null}
       {paymentFormOpen ? (
-        <TuitionModal title="Record payment" onClose={() => setPaymentFormOpen(false)}>
+        <TuitionModal title={t('tuition.modal.recordPayment')} onClose={() => setPaymentFormOpen(false)}>
           <TuitionPaymentForm rows={accountRows} saving={saving} onSubmit={input => run(() => onRecordPayment(input))} />
         </TuitionModal>
       ) : null}
       {installmentFormOpen ? (
-        <TuitionModal title="Add installment" onClose={() => setInstallmentFormOpen(false)}>
+        <TuitionModal title={t('tuition.modal.addInstallment')} onClose={() => setInstallmentFormOpen(false)}>
           <TuitionInstallmentForm plans={plans} saving={saving} onSubmit={input => run(() => onUpsertInstallment(input))} />
         </TuitionModal>
       ) : null}
       {confirmOutstandingOpen ? (
-        <TuitionModal title="Send tuition reminders?" onClose={() => setConfirmOutstandingOpen(false)}>
+        <TuitionModal title={t('tuition.modal.sendRemindersTitle')} onClose={() => setConfirmOutstandingOpen(false)}>
           <div className="space-y-4">
             <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-4 text-sm leading-6 text-[#7c2d12]">
               <p className="font-semibold text-[#9a3412]">
-                This will queue reminder emails for {outstandingAccountIds.length} student{outstandingAccountIds.length === 1 ? '' : 's'} with an outstanding tuition balance.
+                {tCount('tuition.modal.sendRemindersBody', outstandingAccountIds.length, { count: outstandingAccountIds.length })}
               </p>
               <p className="mt-2">
-                Each email will include the student name, remaining amount, and tuition reminder text. Students who are fully paid will not receive this reminder.
+                {t('tuition.modal.sendRemindersDetail')}
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -457,7 +460,7 @@ export function TuitionView({
                 onClick={() => setConfirmOutstandingOpen(false)}
                 className="tbo-focus rounded-xl border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -469,21 +472,21 @@ export function TuitionView({
                 className="tbo-focus inline-flex items-center gap-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Bell className="h-4 w-4" />
-                Send reminders
+                {t('tuition.modal.sendReminders')}
               </button>
             </div>
           </div>
         </TuitionModal>
       ) : null}
       {confirmReminderRow ? (
-        <TuitionModal title="Send tuition reminder?" onClose={() => setConfirmReminderAccountId(null)}>
+        <TuitionModal title={t('tuition.modal.sendReminderTitle')} onClose={() => setConfirmReminderAccountId(null)}>
           <div className="space-y-4">
             <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-4 text-sm leading-6 text-[#7c2d12]">
               <p className="font-semibold text-[#9a3412]">
-                This will queue a tuition reminder email for {confirmReminderRow.student?.name ?? 'this student'}.
+                {t('tuition.modal.sendReminderBody', { name: confirmReminderRow.student?.name ?? t('tuition.form.thisStudent') })}
               </p>
               <p className="mt-2">
-                Remaining balance: {currency(confirmReminderRow.remaining, confirmReminderRow.plan?.currency)}. The email will include the tuition reminder text and current balance information.
+                {t('tuition.modal.remainingBalance', { amount: currency(confirmReminderRow.remaining, confirmReminderRow.plan?.currency) })}
               </p>
             </div>
             <div className="flex justify-end gap-2">
@@ -492,7 +495,7 @@ export function TuitionView({
                 onClick={() => setConfirmReminderAccountId(null)}
                 className="tbo-focus rounded-xl border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="button"
@@ -504,7 +507,7 @@ export function TuitionView({
                 className="tbo-focus inline-flex items-center gap-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Bell className="h-4 w-4" />
-                Send reminder
+                {t('tuition.modal.sendReminder')}
               </button>
             </div>
           </div>
@@ -515,9 +518,10 @@ export function TuitionView({
 }
 
 function TuitionModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
+  const { t } = useLanguage();
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/35 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label={t('common.close')} />
       <section className="relative w-full max-w-xl rounded-t-2xl border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_80px_rgba(23,23,23,0.18)] sm:rounded-2xl">
         <h3 className="text-lg font-semibold text-[#171717]">{title}</h3>
         <div className="mt-4">{children}</div>
@@ -527,20 +531,21 @@ function TuitionModal({ title, children, onClose }: { title: string; children: R
 }
 
 function TuitionPlanForm({ courses, saving, onSubmit }: { courses: Course[]; saving: boolean; onSubmit: (input: { name: string; courseId?: number | null; academicYear?: string | null; currency: string; totalAmount: number; firstDueDate?: string; secondDueDate?: string }) => void }) {
-  const [name, setName] = useState('Annual tuition');
+  const { t } = useLanguage();
+  const [name, setName] = useState(() => t('tuition.form.defaultPlanName'));
   const [courseId, setCourseId] = useState('');
   const [amount, setAmount] = useState('0');
   const [firstDueDate, setFirstDueDate] = useState('');
   const [secondDueDate, setSecondDueDate] = useState('');
   return (
     <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ name, courseId: courseId ? Number(courseId) : null, currency: 'EUR', totalAmount: Number(amount), firstDueDate, secondDueDate }); }}>
-      <input value={name} onChange={event => setName(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" placeholder="Plan name" required />
+      <input value={name} onChange={event => setName(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" placeholder={t('tuition.form.planName')} required />
       <select value={courseId} onChange={event => setCourseId(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm">
-        <option value="">All active students</option>
-        {courses.filter(course => course.status === 'active').map(course => <option key={course.id} value={course.id}>{course.courseType === 'first_year' ? 'First Year' : 'Second Year'} {course.graduationYear}</option>)}
+        <option value="">{t('tuition.form.allActiveStudents')}</option>
+        {courses.filter(course => course.status === 'active').map(course => <option key={course.id} value={course.id}>{course.courseType === 'first_year' ? t('common.yearGroup.first') : t('common.yearGroup.second')} {course.graduationYear}</option>)}
       </select>
       <label className="block text-xs font-semibold text-[#737373]">
-        Total tuition amount
+        {t('tuition.form.totalAmount')}
         <div className="mt-1 flex h-10 overflow-hidden rounded-xl border border-[#d4d4d4] bg-white focus-within:ring-2 focus-within:ring-[#bfdbfe]">
           <span className="grid w-14 place-items-center border-r border-[#e5e5e5] bg-[#fafafa] text-sm font-semibold text-[#525252]">EUR</span>
           <input
@@ -550,16 +555,16 @@ function TuitionPlanForm({ courses, saving, onSubmit }: { courses: Course[]; sav
             min="0"
             step="0.01"
             className="min-w-0 flex-1 px-3 text-sm font-normal text-[#171717] outline-none"
-            placeholder="Total for this plan"
+            placeholder={t('tuition.form.totalPlaceholder')}
             required
           />
         </div>
       </label>
       <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-semibold text-[#737373]">First installment<input value={firstDueDate} onChange={event => setFirstDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
-        <label className="text-xs font-semibold text-[#737373]">Second installment<input value={secondDueDate} onChange={event => setSecondDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
+        <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.firstInstallment')}<input value={firstDueDate} onChange={event => setFirstDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
+        <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.secondInstallment')}<input value={secondDueDate} onChange={event => setSecondDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
       </div>
-      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Create plan</button>
+      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{t('tuition.form.createPlan')}</button>
     </form>
   );
 }
@@ -570,6 +575,7 @@ function TuitionAccountForm({
   secondYearStudents,
   plans,
   saving,
+  onOpenStudentDashboard,
   onSubmit,
 }: {
   students: User[];
@@ -577,8 +583,10 @@ function TuitionAccountForm({
   secondYearStudents: User[];
   plans: TuitionPlan[];
   saving: boolean;
+  onOpenStudentDashboard?: (studentId: string) => void;
   onSubmit: (input: { studentIds: string[]; planId: number; expectedAmount?: number }) => void;
 }) {
+  const { t, tCount } = useLanguage();
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<Array<'first_year' | 'second_year'>>([]);
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
@@ -614,7 +622,7 @@ function TuitionAccountForm({
   return (
     <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ studentIds: effectiveSelectedStudentIds, planId: Number(planId), expectedAmount: plan?.totalAmount }); }}>
       <div className="relative">
-        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Students</p>
+        <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('tuition.form.studentsLabel')}</p>
         <button
           type="button"
           onClick={() => setStudentPickerOpen(open => !open)}
@@ -622,17 +630,17 @@ function TuitionAccountForm({
         >
           <span className={effectiveSelectedStudentIds.length > 0 ? 'font-semibold text-[#171717]' : 'text-[#737373]'}>
             {effectiveSelectedStudentIds.length > 0
-              ? `${effectiveSelectedStudentIds.length} selected`
-              : 'Choose year groups or individual students'}
+              ? tCount('tuition.form.selected', effectiveSelectedStudentIds.length, { count: effectiveSelectedStudentIds.length })
+              : t('tuition.form.chooseGroupsOrStudents')}
           </span>
-          <span className="text-xs font-semibold text-[#737373]">{studentPickerOpen ? 'Close' : 'Open'}</span>
+          <span className="text-xs font-semibold text-[#737373]">{studentPickerOpen ? t('common.close') : t('common.open')}</span>
         </button>
         {studentPickerOpen ? (
           <div className="absolute left-0 right-0 top-full z-50 mt-2 max-h-80 overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white p-2 shadow-[0_18px_50px_rgba(23,23,23,0.16)]">
             <div className="grid gap-2 sm:grid-cols-2">
               {[
-                { id: 'first_year' as const, label: 'First Year', count: firstYearStudents.length },
-                { id: 'second_year' as const, label: 'Second Year', count: secondYearStudents.length },
+                { id: 'first_year' as const, label: t('common.yearGroup.first'), count: firstYearStudents.length },
+                { id: 'second_year' as const, label: t('common.yearGroup.second'), count: secondYearStudents.length },
               ].map(group => {
                 const selected = selectedGroups.includes(group.id);
                 return (
@@ -654,7 +662,7 @@ function TuitionAccountForm({
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate font-semibold">{group.label}</span>
-                      <span className="text-xs text-[#737373]">{group.count} student{group.count === 1 ? '' : 's'}</span>
+                      <span className="text-xs text-[#737373]">{tCount('tuition.form.studentsInGroup', group.count, { count: group.count })}</span>
                     </span>
                   </button>
                 );
@@ -693,7 +701,7 @@ function TuitionAccountForm({
             })}
             {visibleIndividualStudents.length === 0 ? (
               <p className="rounded-xl bg-[#fafafa] px-3 py-4 text-center text-sm text-[#737373]">
-                Individual students are hidden because selected year groups already include them.
+                {t('tuition.form.individualHidden')}
               </p>
             ) : null}
           </div>
@@ -701,30 +709,31 @@ function TuitionAccountForm({
       </div>
       {effectiveSelectedStudentIds.length > 0 ? (
         <div className="flex flex-wrap gap-1.5 rounded-xl bg-[#fafafa] p-2 ring-1 ring-[#eeeeee]">
-          {selectedGroups.includes('first_year') ? <button type="button" onClick={() => toggleGroup('first_year')} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">First Year x</button> : null}
-          {selectedGroups.includes('second_year') ? <button type="button" onClick={() => toggleGroup('second_year')} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">Second Year x</button> : null}
+          {selectedGroups.includes('first_year') ? <button type="button" onClick={() => toggleGroup('first_year')} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">{t('common.yearGroup.first')} x</button> : null}
+          {selectedGroups.includes('second_year') ? <button type="button" onClick={() => toggleGroup('second_year')} className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">{t('common.yearGroup.second')} x</button> : null}
           {selectedStudentIds.slice(0, 8).map(id => {
             const student = students.find(item => item.id === id);
             return (
               <button key={id} type="button" onClick={() => toggleStudent(id)} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                {student?.name ?? 'Student'} x
+                {student?.name ?? t('tuition.form.studentFallback')} x
               </button>
             );
           })}
-          {effectiveSelectedStudentIds.length > selectedStudentIds.slice(0, 8).length + selectedGroups.length ? <span className="rounded-full bg-[#171717] px-2.5 py-1 text-xs font-semibold text-white">{effectiveSelectedStudentIds.length} total</span> : null}
+          {effectiveSelectedStudentIds.length > selectedStudentIds.slice(0, 8).length + selectedGroups.length ? <span className="rounded-full bg-[#171717] px-2.5 py-1 text-xs font-semibold text-white">{t('tuition.form.total', { count: effectiveSelectedStudentIds.length })}</span> : null}
         </div>
       ) : null}
       <select value={planId} onChange={event => setPlanId(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" required>
-        <option value="">Choose plan</option>
+        <option value="">{t('tuition.form.choosePlan')}</option>
         {plans.map(planItem => <option key={planItem.id} value={planItem.id}>{planItem.name} - {currency(planItem.totalAmount, planItem.currency)}</option>)}
       </select>
       <button disabled={saving || !plans.length || effectiveSelectedStudentIds.length === 0} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
-        Add {effectiveSelectedStudentIds.length || ''} tuition account{effectiveSelectedStudentIds.length === 1 ? '' : 's'}
+        {tCount('tuition.form.addAccounts', effectiveSelectedStudentIds.length || 1, { count: effectiveSelectedStudentIds.length })}
       </button>
     </form>
   );
 }
 function TuitionPaymentForm({ rows, saving, onSubmit }: { rows: Array<{ account: StudentTuitionAccount; student: User | null; remaining: number; plan: TuitionPlan | null }>; saving: boolean; onSubmit: (input: { accountId: number; amount: number; paymentDate: string; method: string; reference?: string; note?: string }) => void }) {
+  const { t } = useLanguage();
   const [accountId, setAccountId] = useState('');
   const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(todayKey());
@@ -732,34 +741,35 @@ function TuitionPaymentForm({ rows, saving, onSubmit }: { rows: Array<{ account:
   return (
     <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ accountId: Number(accountId), amount: Number(amount), paymentDate, method }); }}>
       <select value={accountId} onChange={event => { setAccountId(event.target.value); const row = rows.find(item => item.account.id === Number(event.target.value)); setAmount(row?.remaining ? String(row.remaining) : ''); }} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" required>
-        <option value="">Choose student account</option>
-        {rows.map(row => <option key={row.account.id} value={row.account.id}>{row.student?.name ?? 'Unknown'} · remaining {currency(row.remaining, row.plan?.currency)}</option>)}
+        <option value="">{t('tuition.form.chooseAccount')}</option>
+        {rows.map(row => <option key={row.account.id} value={row.account.id}>{row.student?.name ?? t('common.unknown')} · {t('tuition.form.remainingAmount', { amount: currency(row.remaining, row.plan?.currency) })}</option>)}
       </select>
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-[#737373]">
-          Payment amount
+          {t('tuition.form.paymentAmount')}
           <div className="mt-1 flex h-10 overflow-hidden rounded-xl border border-[#d4d4d4] bg-white focus-within:ring-2 focus-within:ring-[#bfdbfe]">
             <span className="grid w-14 place-items-center border-r border-[#e5e5e5] bg-[#fafafa] text-sm font-semibold text-[#525252]">EUR</span>
-            <input value={amount} onChange={event => setAmount(event.target.value)} type="number" min="0" step="0.01" className="min-w-0 flex-1 px-3 text-sm font-normal text-[#171717] outline-none" placeholder="Amount received" required />
+            <input value={amount} onChange={event => setAmount(event.target.value)} type="number" min="0" step="0.01" className="min-w-0 flex-1 px-3 text-sm font-normal text-[#171717] outline-none" placeholder={t('tuition.form.amountReceived')} required />
           </div>
         </label>
         <label className="block text-xs font-semibold text-[#737373]">
-          Payment date
+          {t('tuition.form.paymentDate')}
           <input value={paymentDate} onChange={event => setPaymentDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" required />
         </label>
       </div>
       <select value={method} onChange={event => setMethod(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm">
-        <option value="cash">Cash</option>
-        <option value="bank_transfer">Bank transfer</option>
-        <option value="card">Card</option>
-        <option value="other">Other</option>
+        <option value="cash">{t('tuition.form.method.cash')}</option>
+        <option value="bank_transfer">{t('tuition.form.method.bankTransfer')}</option>
+        <option value="card">{t('tuition.form.method.card')}</option>
+        <option value="other">{t('tuition.form.method.other')}</option>
       </select>
-      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Save payment</button>
+      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{t('tuition.form.savePayment')}</button>
     </form>
   );
 }
 
 function TuitionInstallmentForm({ plans, saving, onSubmit }: { plans: TuitionPlan[]; saving: boolean; onSubmit: (input: { planId: number; title: string; amount: number; dueDate: string }) => void }) {
+  const { t } = useLanguage();
   const [planId, setPlanId] = useState('');
   const [title, setTitle] = useState('');
   const [amount, setAmount] = useState('');
@@ -767,24 +777,24 @@ function TuitionInstallmentForm({ plans, saving, onSubmit }: { plans: TuitionPla
   return (
     <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ planId: Number(planId), title, amount: Number(amount), dueDate }); }}>
       <select value={planId} onChange={event => setPlanId(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" required>
-        <option value="">Choose plan</option>
+        <option value="">{t('tuition.form.choosePlan')}</option>
         {plans.map(plan => <option key={plan.id} value={plan.id}>{plan.name}</option>)}
       </select>
-      <input value={title} onChange={event => setTitle(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" placeholder="Installment title" required />
+      <input value={title} onChange={event => setTitle(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" placeholder={t('tuition.form.installmentTitle')} required />
       <div className="grid gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-[#737373]">
-          Installment amount
+          {t('tuition.form.installmentAmount')}
           <div className="mt-1 flex h-10 overflow-hidden rounded-xl border border-[#d4d4d4] bg-white focus-within:ring-2 focus-within:ring-[#bfdbfe]">
             <span className="grid w-14 place-items-center border-r border-[#e5e5e5] bg-[#fafafa] text-sm font-semibold text-[#525252]">EUR</span>
-            <input value={amount} onChange={event => setAmount(event.target.value)} type="number" min="0" step="0.01" className="min-w-0 flex-1 px-3 text-sm font-normal text-[#171717] outline-none" placeholder="Amount due" required />
+            <input value={amount} onChange={event => setAmount(event.target.value)} type="number" min="0" step="0.01" className="min-w-0 flex-1 px-3 text-sm font-normal text-[#171717] outline-none" placeholder={t('tuition.form.amountDue')} required />
           </div>
         </label>
         <label className="block text-xs font-semibold text-[#737373]">
-          Due date
+          {t('tuition.form.dueDate')}
           <input value={dueDate} onChange={event => setDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" required />
         </label>
       </div>
-      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">Save installment</button>
+      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{t('tuition.form.saveInstallment')}</button>
     </form>
   );
 }

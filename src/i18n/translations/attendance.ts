@@ -1,7 +1,9 @@
 import { defineTranslations } from '../defineTranslations';
+import { attendanceAdminTranslations } from './attendanceAdmin';
 
 export const attendanceTranslations = defineTranslations({
   en: {
+    ...attendanceAdminTranslations.en,
     'attendance.gate.classes': 'Classes',
     'attendance.gate.the_well': 'The Well',
     'attendance.gate.activation': 'Activation Saturday',
@@ -220,6 +222,7 @@ export const attendanceTranslations = defineTranslations({
     'attendance.ministry.report.closeDetails': 'Close report details',
   },
   bg: {
+    ...attendanceAdminTranslations.bg,
     'attendance.gate.classes': 'Лекции',
     'attendance.gate.the_well': 'Кладенецът',
     'attendance.gate.activation': 'Събота на активация',

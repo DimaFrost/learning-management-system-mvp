@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { BookOpen } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface DraftSubject {
   title: string;
@@ -20,10 +21,10 @@ interface SubjectCardProps {
 }
 
 function SubjectCard({ subject }: SubjectCardProps) {
-  const sessionLabel =
-    subject.sessionCount === 1
-      ? '1 session scheduled'
-      : `${subject.sessionCount} sessions scheduled`;
+  const { t, tCount } = useLanguage();
+  const sessionLabel = tCount('planning.library.sessionsScheduled', subject.sessionCount, {
+    count: subject.sessionCount,
+  });
 
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3">
@@ -31,16 +32,16 @@ function SubjectCard({ subject }: SubjectCardProps) {
         <p className="font-semibold text-gray-900 text-sm truncate">{subject.title}</p>
         {subject.isNew && (
           <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded">
-            New
+            {t('planning.library.new')}
           </span>
         )}
       </div>
       <p className="text-xs text-gray-600 mt-1">{sessionLabel}</p>
       {subject.activationSaturdayCount > 0 && (
         <p className="text-xs text-amber-700 mt-0.5">
-          {subject.activationSaturdayCount === 1
-            ? '1 Activation Saturday'
-            : `${subject.activationSaturdayCount} Activation Saturdays`}
+          {tCount('planning.library.activationSaturday', subject.activationSaturdayCount, {
+            count: subject.activationSaturdayCount,
+          })}
         </p>
       )}
     </div>
@@ -53,6 +54,7 @@ interface SubjectSectionProps {
 }
 
 function SubjectSection({ title, subjects }: SubjectSectionProps) {
+  const { t } = useLanguage();
   const sorted = useMemo(
     () => [...subjects].sort((a, b) => a.title.localeCompare(b.title)),
     [subjects]
@@ -63,7 +65,7 @@ function SubjectSection({ title, subjects }: SubjectSectionProps) {
       <p className="text-xs text-gray-500 uppercase tracking-wide mb-2">{title}</p>
       {sorted.length === 0 ? (
         <p className="text-xs text-gray-500 italic">
-          No subjects scheduled yet. Type a subject name in the grid to add one.
+          {t('planning.library.empty')}
         </p>
       ) : (
         <div className="space-y-2">
@@ -77,20 +79,22 @@ function SubjectSection({ title, subjects }: SubjectSectionProps) {
 }
 
 export function SubjectLibraryPanel({ draftSubjects }: SubjectLibraryPanelProps) {
+  const { t } = useLanguage();
+
   return (
     <div className="flex flex-col h-full min-h-0">
       <div className="flex items-center gap-2 mb-3">
         <BookOpen className="w-4 h-4 text-gray-700" />
-        <h3 className="text-sm font-semibold text-gray-900">Subject Library</h3>
+        <h3 className="text-sm font-semibold text-gray-900">{t('planning.library.title')}</h3>
       </div>
 
       <div className="flex-1 overflow-y-auto min-h-0 space-y-4">
-        <SubjectSection title="First Year" subjects={draftSubjects.firstYear} />
-        <SubjectSection title="Second Year" subjects={draftSubjects.secondYear} />
+        <SubjectSection title={t('planning.library.firstYear')} subjects={draftSubjects.firstYear} />
+        <SubjectSection title={t('planning.library.secondYear')} subjects={draftSubjects.secondYear} />
       </div>
 
       <p className="text-xs text-gray-500 mt-3 pt-3 border-t border-gray-200">
-        Subjects marked &apos;New&apos; will be created automatically when you click Update.
+        {t('planning.library.hint')}
       </p>
     </div>
   );

@@ -10,6 +10,8 @@ import {
   UserCheck,
   Users,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import type { Course, CourseStudent, MentorshipLog, User } from '../../types/lms';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { calculateOverallStatus } from '../../utils/mentorshipUtils';
@@ -28,6 +30,53 @@ import {
 
 export type MentorshipSection = 'overview' | 'assignments' | 'follow-up' | 'check-in-rules';
 
+const sectionMetaKeys: Record<MentorshipSection, { title: TranslationKey; eyebrow: TranslationKey; description: TranslationKey }> = {
+  overview: {
+    title: 'mentorship.hub.section.overview.title',
+    eyebrow: 'mentorship.hub.section.overview.eyebrow',
+    description: 'mentorship.hub.section.overview.desc',
+  },
+  assignments: {
+    title: 'mentorship.hub.section.assignments.title',
+    eyebrow: 'mentorship.hub.section.assignments.eyebrow',
+    description: 'mentorship.hub.section.assignments.desc',
+  },
+  'follow-up': {
+    title: 'mentorship.hub.section.followUp.title',
+    eyebrow: 'mentorship.hub.section.followUp.eyebrow',
+    description: 'mentorship.hub.section.followUp.desc',
+  },
+  'check-in-rules': {
+    title: 'mentorship.hub.section.checkInRules.title',
+    eyebrow: 'mentorship.hub.section.checkInRules.eyebrow',
+    description: 'mentorship.hub.section.checkInRules.desc',
+  },
+};
+
+const sectionNavConfig: Array<{
+  section: MentorshipSection;
+  view: string;
+  labelKey: TranslationKey;
+  icon: typeof Activity;
+}> = [
+  { section: 'overview', view: 'mentorship-overview', labelKey: 'mentorship.hub.nav.overview', icon: Activity },
+  { section: 'assignments', view: 'mentorship-assignments', labelKey: 'mentorship.hub.nav.assignments', icon: UserCheck },
+  { section: 'follow-up', view: 'mentorship-follow-up', labelKey: 'mentorship.hub.nav.followUp', icon: AlertTriangle },
+  { section: 'check-in-rules', view: 'mentorship-check-in-rules', labelKey: 'mentorship.hub.nav.checkInRules', icon: Settings },
+];
+
+const quickLinkConfig: Array<{
+  section: MentorshipSection;
+  view: string;
+  titleKey: TranslationKey;
+  descriptionKey: TranslationKey;
+  icon: typeof Activity;
+}> = [
+  { section: 'assignments', view: 'mentorship-assignments', titleKey: 'mentorship.hub.quick.assignments.title', descriptionKey: 'mentorship.hub.quick.assignments.desc', icon: UserCheck },
+  { section: 'follow-up', view: 'mentorship-follow-up', titleKey: 'mentorship.hub.quick.followUp.title', descriptionKey: 'mentorship.hub.quick.followUp.desc', icon: AlertTriangle },
+  { section: 'check-in-rules', view: 'mentorship-check-in-rules', titleKey: 'mentorship.hub.quick.checkInRules.title', descriptionKey: 'mentorship.hub.quick.checkInRules.desc', icon: Settings },
+];
+
 export interface MentorshipHubViewProps {
   activeSection?: MentorshipSection;
   onNavigate?: (view: string) => void;
@@ -43,53 +92,6 @@ export interface MentorshipHubViewProps {
   onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;
 }
 
-const sectionMeta: Record<MentorshipSection, { title: string; eyebrow: string; description: string }> = {
-  overview: {
-    title: 'Overview',
-    eyebrow: 'Mentorship health',
-    description: 'A quick read on coverage, check-in rhythm, and who needs attention right now.',
-  },
-  assignments: {
-    title: 'Assignments',
-    eyebrow: 'Student-mentor pairs',
-    description: 'Match students with mentors, review history, and log check-ins in one place.',
-  },
-  'follow-up': {
-    title: 'Follow-up',
-    eyebrow: 'Risk monitoring',
-    description: 'Filter by status, spot overdue contact, and act on pairs that need support.',
-  },
-  'check-in-rules': {
-    title: 'Check-in rules',
-    eyebrow: 'In-person meetings',
-    description: 'Set how often mentors should meet students face-to-face, and when follow-up flags at-risk.',
-  },
-};
-
-const sectionNav: Array<{
-  section: MentorshipSection;
-  view: string;
-  label: string;
-  icon: typeof Activity;
-}> = [
-  { section: 'overview', view: 'mentorship-overview', label: 'Overview', icon: Activity },
-  { section: 'assignments', view: 'mentorship-assignments', label: 'Assignments', icon: UserCheck },
-  { section: 'follow-up', view: 'mentorship-follow-up', label: 'Follow-up', icon: AlertTriangle },
-  { section: 'check-in-rules', view: 'mentorship-check-in-rules', label: 'Check-in rules', icon: Settings },
-];
-
-const quickLinks: Array<{
-  section: MentorshipSection;
-  view: string;
-  title: string;
-  description: string;
-  icon: typeof Activity;
-}> = [
-  { section: 'assignments', view: 'mentorship-assignments', title: 'Assignments', description: 'Manage pairs & log check-ins', icon: UserCheck },
-  { section: 'follow-up', view: 'mentorship-follow-up', title: 'Follow-up', description: 'Monitor at-risk students', icon: AlertTriangle },
-  { section: 'check-in-rules', view: 'mentorship-check-in-rules', title: 'Check-in rules', description: 'Edit meeting expectations', icon: Settings },
-];
-
 export function MentorshipHubView({
   activeSection = 'overview',
   onNavigate,
@@ -104,6 +106,7 @@ export function MentorshipHubView({
   onAssignMentor,
   onOpenCheckin,
 }: MentorshipHubViewProps) {
+  const { t } = useLanguage();
   const activeStudents = users.filter(user => user.roles.includes('student'));
   const activeMentors = users.filter(user => user.roles.includes('mentor'));
   const assignedPairs = courseStudents.filter(enrollment => enrollment.mentorId && enrollment.status === 'active');
@@ -158,53 +161,53 @@ export function MentorshipHubView({
       .slice(0, 6)
       .map(log => ({
         ...log,
-        studentName: getUserById(log.studentId)?.name ?? 'Unknown student',
-        mentorName: getUserById(log.mentorId)?.name ?? 'Unknown mentor',
+        studentName: getUserById(log.studentId)?.name ?? t('mentorship.hub.unknownStudent'),
+        mentorName: getUserById(log.mentorId)?.name ?? t('mentorship.hub.unknownMentor'),
       }));
-  }, [getUserById, mentorshipLogs]);
+  }, [getUserById, mentorshipLogs, t]);
 
   const attentionList = useMemo(() => {
     const atRisk = Array.from(new Set(assignedPairs.map(pair => pair.studentId)))
       .filter(studentId => calculateOverallStatus(studentId, mentorshipLogs, cadenceSettings) === 'at_risk')
       .map(studentId => ({
         id: studentId,
-        name: getUserById(studentId)?.name ?? 'Unknown',
+        name: getUserById(studentId)?.name ?? t('common.unknown'),
         kind: 'at_risk' as const,
       }));
 
     const unassigned = studentsWithoutMentor.map(studentId => ({
       id: studentId,
-      name: getUserById(studentId)?.name ?? 'Unknown',
+      name: getUserById(studentId)?.name ?? t('common.unknown'),
       kind: 'unassigned' as const,
     }));
 
     return [...atRisk, ...unassigned].slice(0, 8);
-  }, [assignedPairs, cadenceSettings, getUserById, mentorshipLogs, studentsWithoutMentor]);
+  }, [assignedPairs, cadenceSettings, getUserById, mentorshipLogs, studentsWithoutMentor, t]);
 
   const pageStatsBySection = useMemo(() => ({
     overview: [
-      { label: 'Active pairs', value: assignedPairs.length, detail: `${activeMentors.length} mentors available`, icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Coverage', value: `${coveragePercent}%`, detail: `${studentsWithoutMentor.length} still unassigned`, icon: UserCheck, accent: coveragePercent >= 90 ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'At risk', value: statusCounts.atRisk, detail: `${statusCounts.lagging} lagging`, icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
-      { label: 'This week', value: recentCheckIns, detail: 'check-ins logged', icon: Activity, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: t('mentorship.hub.stat.activePairs'), value: assignedPairs.length, detail: t('mentorship.hub.stat.mentorsAvailable', { count: activeMentors.length }), icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('mentorship.hub.stat.coverage'), value: `${coveragePercent}%`, detail: t('mentorship.hub.stat.stillUnassigned', { count: studentsWithoutMentor.length }), icon: UserCheck, accent: coveragePercent >= 90 ? 'bg-[#dcfce7] text-[#16a34a]' : 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('mentorship.hub.stat.atRisk'), value: statusCounts.atRisk, detail: t('mentorship.hub.stat.laggingCount', { count: statusCounts.lagging }), icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('mentorship.hub.stat.thisWeek'), value: recentCheckIns, detail: t('mentorship.hub.stat.checkinsLogged'), icon: Activity, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
     ],
     assignments: [
-      { label: 'Active pairs', value: assignedPairs.length, detail: 'students with mentors', icon: UserCheck, accent: 'bg-[#dbeaff] text-[#2563eb]' },
-      { label: 'Needs mentor', value: studentsWithoutMentor.length, detail: 'awaiting assignment', icon: AlertTriangle, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Avg check-ins', value: avgCheckIns, detail: 'per assigned pair', icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
-      { label: 'This week', value: recentCheckIns, detail: 'new logs', icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('mentorship.hub.stat.activePairs'), value: assignedPairs.length, detail: t('mentorship.hub.stat.studentsWithMentors'), icon: UserCheck, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('mentorship.hub.stat.needsMentor'), value: studentsWithoutMentor.length, detail: t('mentorship.hub.stat.awaitingAssignment'), icon: AlertTriangle, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('mentorship.hub.stat.avgCheckins'), value: avgCheckIns, detail: t('mentorship.hub.stat.perAssignedPair'), icon: ClipboardList, accent: 'bg-[#f3e8ff] text-[#7c3aed]' },
+      { label: t('mentorship.hub.stat.thisWeek'), value: recentCheckIns, detail: t('mentorship.hub.stat.newLogs'), icon: Calendar, accent: 'bg-[#dcfce7] text-[#16a34a]' },
     ],
     'follow-up': [
-      { label: 'At risk', value: statusCounts.atRisk, detail: 'need immediate follow-up', icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
-      { label: 'Lagging', value: statusCounts.lagging, detail: 'approaching thresholds', icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'On track', value: statusCounts.onTrack, detail: 'meeting expectations', icon: CheckCircle2, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Tracked', value: statusCounts.tracked, detail: 'students with mentors', icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('mentorship.hub.stat.atRisk'), value: statusCounts.atRisk, detail: t('mentorship.hub.stat.needImmediateFollowUp'), icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('mentorship.status.lagging'), value: statusCounts.lagging, detail: t('mentorship.hub.stat.approachingThresholds'), icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('mentorship.status.onTrack'), value: statusCounts.onTrack, detail: t('mentorship.hub.stat.meetingExpectations'), icon: CheckCircle2, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('mentorship.hub.stat.trackedPairs'), value: statusCounts.tracked, detail: t('mentorship.hub.stat.trackedStudents'), icon: Users, accent: 'bg-[#dbeaff] text-[#2563eb]' },
     ],
     'check-in-rules': [
-      { label: 'Expected gap', value: `${cadenceSettings.inPerson.expectedDays}d`, detail: 'between in-person meetings', icon: Users, accent: 'bg-[#dcfce7] text-[#16a34a]' },
-      { label: 'Warning', value: `${cadenceSettings.inPerson.warningDays}d`, detail: 'shows as lagging', icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
-      { label: 'Critical', value: `${cadenceSettings.inPerson.criticalDays}d`, detail: 'shows as at risk', icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
-      { label: 'Tracked pairs', value: statusCounts.tracked, detail: 'in-person rules only', icon: UserCheck, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('mentorship.hub.stat.expectedGap'), value: `${cadenceSettings.inPerson.expectedDays}d`, detail: t('mentorship.hub.stat.betweenInPerson'), icon: Users, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('mentorship.hub.stat.warning'), value: `${cadenceSettings.inPerson.warningDays}d`, detail: t('mentorship.hub.stat.showsAsLagging'), icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('mentorship.hub.stat.critical'), value: `${cadenceSettings.inPerson.criticalDays}d`, detail: t('mentorship.hub.stat.showsAsAtRisk'), icon: AlertTriangle, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+      { label: t('mentorship.hub.stat.trackedPairs'), value: statusCounts.tracked, detail: t('mentorship.hub.stat.inPersonRulesOnly'), icon: UserCheck, accent: 'bg-[#dbeaff] text-[#2563eb]' },
     ],
   }), [
     activeMentors.length,
@@ -215,6 +218,7 @@ export function MentorshipHubView({
     recentCheckIns,
     statusCounts,
     studentsWithoutMentor.length,
+    t,
   ]);
 
   const statusTotal = Math.max(statusCounts.tracked, 1);
@@ -225,9 +229,12 @@ export function MentorshipHubView({
         <SectionCard className="p-4 lg:p-5">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h3 className="font-semibold text-[#171717]">Mentor coverage</h3>
+              <h3 className="font-semibold text-[#171717]">{t('mentorship.hub.coverage.title')}</h3>
               <p className="mt-1 text-sm text-[#737373]">
-                {activeStudents.length - studentsWithoutMentor.length} of {activeStudents.length} students have a mentor.
+                {t('mentorship.hub.coverage.summary', {
+                  assigned: activeStudents.length - studentsWithoutMentor.length,
+                  total: activeStudents.length,
+                })}
               </p>
             </div>
             <span className="text-2xl font-semibold text-[#171717]">{coveragePercent}%</span>
@@ -242,22 +249,22 @@ export function MentorshipHubView({
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl bg-[#fef2f2] p-3 text-center ring-1 ring-[#fecaca]">
               <p className="text-xl font-semibold text-[#b91c1c]">{statusCounts.atRisk}</p>
-              <p className="mt-1 text-xs font-medium text-[#991b1b]">At risk</p>
+              <p className="mt-1 text-xs font-medium text-[#991b1b]">{t('mentorship.status.atRisk')}</p>
             </div>
             <div className="rounded-xl bg-[#fffbeb] p-3 text-center ring-1 ring-[#fde68a]">
               <p className="text-xl font-semibold text-[#b45309]">{statusCounts.lagging}</p>
-              <p className="mt-1 text-xs font-medium text-[#92400e]">Lagging</p>
+              <p className="mt-1 text-xs font-medium text-[#92400e]">{t('mentorship.status.lagging')}</p>
             </div>
             <div className="rounded-xl bg-[#f0fdf4] p-3 text-center ring-1 ring-[#bbf7d0]">
               <p className="text-xl font-semibold text-[#15803d]">{statusCounts.onTrack}</p>
-              <p className="mt-1 text-xs font-medium text-[#166534]">On track</p>
+              <p className="mt-1 text-xs font-medium text-[#166534]">{t('mentorship.status.onTrack')}</p>
             </div>
           </div>
 
           <div className="mt-5">
             <div className="mb-2 flex items-center justify-between text-xs text-[#737373]">
-              <span>Follow-up health</span>
-              <span>{statusCounts.tracked} students</span>
+              <span>{t('mentorship.hub.followUpHealth')}</span>
+              <span>{t('mentorship.hub.studentsCount', { count: statusCounts.tracked })}</span>
             </div>
             <div className="flex h-3 overflow-hidden rounded-full bg-[#f0f0f0]">
               <div className="bg-[#dc2626]" style={{ width: `${(statusCounts.atRisk / statusTotal) * 100}%` }} />
@@ -268,19 +275,19 @@ export function MentorshipHubView({
         </SectionCard>
 
         <SectionCard className="p-4 lg:p-5">
-          <h3 className="font-semibold text-[#171717]">In-person meeting rules</h3>
+          <h3 className="font-semibold text-[#171717]">{t('mentorship.hub.inPersonRules.title')}</h3>
           <p className="mt-1 text-sm text-[#737373]">
-            Follow-up status is based on face-to-face meetings. Digital check-ins are optional and not tracked here.
+            {t('mentorship.hub.inPersonRules.desc')}
           </p>
           <div className="mt-4 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] p-4">
             <div className="flex items-center gap-2 text-[#15803d]">
               <Users className="h-4 w-4" />
-              <span className="text-sm font-semibold">In-person meetings</span>
+              <span className="text-sm font-semibold">{t('mentorship.hub.inPersonMeetings')}</span>
             </div>
             <p className="mt-2 text-sm leading-6 text-[#525252]">
-              Expected every <strong>{cadenceSettings.inPerson.expectedDays}</strong> days
+              {t('mentorship.hub.expectedEvery', { days: cadenceSettings.inPerson.expectedDays })}
               <br />
-              Lagging after {cadenceSettings.inPerson.warningDays} days · At risk after {cadenceSettings.inPerson.criticalDays} days
+              {t('mentorship.hub.laggingAfter', { days: cadenceSettings.inPerson.warningDays })} · {t('mentorship.hub.atRiskAfter', { days: cadenceSettings.inPerson.criticalDays })}
             </p>
           </div>
           {onNavigate && (
@@ -289,7 +296,7 @@ export function MentorshipHubView({
               onClick={() => onNavigate('mentorship-check-in-rules')}
               className="tbo-focus mt-4 inline-flex items-center gap-1 text-sm font-semibold text-[#2563eb] hover:text-[#1d4ed8]"
             >
-              Edit check-in rules
+              {t('mentorship.hub.editCheckInRules')}
               <ArrowRight className="h-4 w-4" />
             </button>
           )}
@@ -298,7 +305,7 @@ export function MentorshipHubView({
 
       {onNavigate && (
         <div className="grid gap-3 sm:grid-cols-3">
-          {quickLinks.map(link => {
+          {quickLinkConfig.map(link => {
             const Icon = link.icon;
             return (
               <button
@@ -310,8 +317,8 @@ export function MentorshipHubView({
                 <span className="inline-flex h-9 w-9 items-center justify-center rounded-lg bg-[#f5f5f5] text-[#525252] group-hover:bg-[#171717] group-hover:text-white">
                   <Icon className="h-4 w-4" />
                 </span>
-                <p className="mt-3 font-semibold text-[#171717]">{link.title}</p>
-                <p className="mt-1 text-sm text-[#737373]">{link.description}</p>
+                <p className="mt-3 font-semibold text-[#171717]">{t(link.titleKey)}</p>
+                <p className="mt-1 text-sm text-[#737373]">{t(link.descriptionKey)}</p>
               </button>
             );
           })}
@@ -321,8 +328,8 @@ export function MentorshipHubView({
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard className="overflow-hidden">
           <div className="border-b border-[#e5e5e5] px-4 py-3">
-            <h3 className="font-semibold text-[#171717]">Needs attention</h3>
-            <p className="text-sm text-[#737373]">At-risk pairs and students without mentors.</p>
+            <h3 className="font-semibold text-[#171717]">{t('mentorship.hub.needsAttention.title')}</h3>
+            <p className="text-sm text-[#737373]">{t('mentorship.hub.needsAttention.desc')}</p>
           </div>
           <div className="divide-y divide-[#f0f0f0]">
             {attentionList.length > 0 ? attentionList.map(item => (
@@ -332,7 +339,7 @@ export function MentorshipHubView({
                   <div className="min-w-0">
                     <p className="truncate font-medium text-[#171717]">{item.name}</p>
                     <p className="text-xs text-[#737373]">
-                      {item.kind === 'unassigned' ? 'No mentor assigned' : 'Check-in overdue'}
+                      {item.kind === 'unassigned' ? t('mentorship.hub.noMentorAssigned') : t('mentorship.hub.checkInOverdue')}
                     </p>
                   </div>
                 </div>
@@ -343,7 +350,7 @@ export function MentorshipHubView({
                       onClick={() => onNavigate('mentorship-assignments')}
                       className="shrink-0 rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                     >
-                      Assign
+                      {t('mentorship.hub.assign')}
                     </button>
                   )
                 ) : (
@@ -353,7 +360,7 @@ export function MentorshipHubView({
             )) : (
               <div className="px-4 py-8 text-center text-sm text-[#737373]">
                 <CheckCircle2 className="mx-auto mb-2 h-6 w-6 text-[#16a34a]" />
-                Everyone is assigned and no pairs are at risk.
+                {t('mentorship.hub.allClear')}
               </div>
             )}
           </div>
@@ -361,8 +368,8 @@ export function MentorshipHubView({
 
         <SectionCard className="overflow-hidden">
           <div className="border-b border-[#e5e5e5] px-4 py-3">
-            <h3 className="font-semibold text-[#171717]">Recent check-ins</h3>
-            <p className="text-sm text-[#737373]">Latest mentor activity across all pairs.</p>
+            <h3 className="font-semibold text-[#171717]">{t('mentorship.hub.recentCheckins.title')}</h3>
+            <p className="text-sm text-[#737373]">{t('mentorship.hub.recentCheckins.desc')}</p>
           </div>
           <div className="divide-y divide-[#f0f0f0]">
             {recentActivity.length > 0 ? recentActivity.map(log => (
@@ -370,7 +377,7 @@ export function MentorshipHubView({
                 <div className="min-w-0">
                   <p className="truncate font-medium text-[#171717]">{log.studentName}</p>
                   <p className="mt-0.5 text-xs text-[#737373]">
-                    {log.type === 'digital' ? 'Digital' : 'In-person'} · {log.mentorName}
+                    {log.type === 'digital' ? t('mentorship.hub.checkin.digital') : t('mentorship.hub.checkin.inPerson')} · {log.mentorName}
                   </p>
                   {(log.mainTopic || log.notes) && (
                     <p className="mt-1 line-clamp-2 text-xs text-[#525252]">{log.mainTopic || log.notes}</p>
@@ -379,7 +386,7 @@ export function MentorshipHubView({
                 <span className="shrink-0 text-xs text-[#737373]">{formatPlatformDate(log.date)}</span>
               </div>
             )) : (
-              <EmptyState icon={ClipboardList} title="No check-ins yet" description="Activity will appear here once mentors start logging." />
+              <EmptyState icon={ClipboardList} title={t('mentorship.hub.noCheckinsYet')} description={t('mentorship.hub.noCheckinsDesc')} />
             )}
           </div>
         </SectionCard>
@@ -387,7 +394,7 @@ export function MentorshipHubView({
     </div>
   );
 
-  const meta = sectionMeta[activeSection];
+  const meta = sectionMetaKeys[activeSection];
   const pageStats = pageStatsBySection[activeSection];
 
   return (
@@ -396,18 +403,18 @@ export function MentorshipHubView({
         <div className="border-b border-[#e5e5e5] p-4 lg:p-5">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{meta.eyebrow}</p>
-              <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{meta.title}</h2>
-              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#525252]">{meta.description}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t(meta.eyebrow)}</p>
+              <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{t(meta.title)}</h2>
+              <p className="mt-1 max-w-3xl text-sm leading-6 text-[#525252]">{t(meta.description)}</p>
             </div>
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e5e5e5] bg-[#f5f5f5] px-3 py-1.5 text-xs font-medium text-[#525252]">
               <Activity className="h-3.5 w-3.5 text-[#2563eb]" />
-              Live mentorship data
+              {t('mentorship.hub.liveData')}
             </div>
           </div>
           {onNavigate && (
             <div className="mt-4 flex flex-wrap gap-2">
-              {sectionNav.map(item => {
+              {sectionNavConfig.map(item => {
                 const Icon = item.icon;
                 const isActive = item.section === activeSection;
                 return (
@@ -422,7 +429,7 @@ export function MentorshipHubView({
                     }`}
                   >
                     <Icon className="h-3.5 w-3.5" />
-                    {item.label}
+                    {t(item.labelKey)}
                   </button>
                 );
               })}

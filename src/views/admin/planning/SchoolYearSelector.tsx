@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Calendar, AlertTriangle, ChevronDown, Plus } from 'lucide-react';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface SchoolYearSelectorProps {
   academicYears: { label: string; firstYearId?: number; secondYearId?: number }[];
@@ -11,11 +12,12 @@ export interface SchoolYearSelectorProps {
 
 function getMissingCourseLabel(
   label: string,
-  firstYearId?: number,
-  secondYearId?: number
+  firstYearId: number | undefined,
+  secondYearId: number | undefined,
+  t: ReturnType<typeof useLanguage>['t'],
 ): string | null {
-  if (!firstYearId) return `${label} (First Year missing)`;
-  if (!secondYearId) return `${label} (Second Year missing)`;
+  if (!firstYearId) return t('planning.selector.firstYearMissing', { label });
+  if (!secondYearId) return t('planning.selector.secondYearMissing', { label });
   return null;
 }
 
@@ -38,6 +40,7 @@ export function SchoolYearSelector({
   onCreateYear,
   hideLabel = false,
 }: SchoolYearSelectorProps) {
+  const { t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [startYear, setStartYear] = useState(() => defaultStartYear(academicYears));
@@ -88,21 +91,22 @@ export function SchoolYearSelector({
   };
 
   const selectedDisplay = isStaleSelection
-    ? 'Select school year'
+    ? t('planning.selector.selectSchoolYear')
     : selectedLabel
       ? getMissingCourseLabel(
           selectedLabel,
           effectiveSelectedYear?.firstYearId,
-          effectiveSelectedYear?.secondYearId
+          effectiveSelectedYear?.secondYearId,
+          t,
         ) ?? selectedLabel
-      : 'Select school year';
+      : t('planning.selector.selectSchoolYear');
 
   return (
     <div ref={containerRef} className="relative z-30 w-full max-w-xs">
       {!hideLabel && (
         <label className="flex items-center gap-2 text-sm font-medium text-gray-700 mb-1.5">
           <Calendar className="w-4 h-4 text-amber-600" />
-          School Year
+          {t('planning.selector.schoolYear')}
         </label>
       )}
 
@@ -131,14 +135,15 @@ export function SchoolYearSelector({
       {isOpen && (
         <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-lg shadow-lg overflow-hidden">
           {academicYears.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-gray-500 italic">No school years yet</p>
+            <p className="px-3 py-2 text-sm text-gray-500 italic">{t('planning.selector.noSchoolYears')}</p>
           ) : (
             <ul className="max-h-60 overflow-y-auto py-1">
               {academicYears.map(year => {
                 const missingLabel = getMissingCourseLabel(
                   year.label,
                   year.firstYearId,
-                  year.secondYearId
+                  year.secondYearId,
+                  t,
                 );
                 const incomplete = isYearIncomplete(year.firstYearId, year.secondYearId);
                 const isSelected = year.label === selectedLabel;
@@ -157,7 +162,7 @@ export function SchoolYearSelector({
                       {incomplete && (
                         <AlertTriangle
                           className="w-4 h-4 text-amber-500 flex-shrink-0"
-                          aria-label={missingLabel ?? 'Incomplete school year'}
+                          aria-label={missingLabel ?? t('planning.selector.incompleteSchoolYear')}
                         />
                       )}
                       <span className={incomplete ? 'text-amber-800' : undefined}>
@@ -177,7 +182,7 @@ export function SchoolYearSelector({
               className="w-full flex items-center gap-2 px-3 py-2 text-sm text-amber-700 font-medium hover:bg-amber-50 transition-colors"
             >
               <Plus className="w-4 h-4" />
-              New School Year
+              {t('planning.selector.newSchoolYear')}
             </button>
           </div>
         </div>
@@ -187,7 +192,7 @@ export function SchoolYearSelector({
         <div className="mt-2 flex items-end gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg">
           <div className="flex-1 min-w-0">
             <label htmlFor="school-year-start" className="block text-xs font-medium text-amber-900 mb-1">
-              Starting year
+              {t('planning.selector.startingYear')}
             </label>
             <input
               id="school-year-start"
@@ -199,7 +204,10 @@ export function SchoolYearSelector({
               className="w-full border border-amber-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
             />
             <p className="text-xs text-amber-700 mt-1">
-              Creates {startYear}–{startYear + 1} (Sep {startYear} – Jun {startYear + 1})
+              {t('planning.selector.createsRange', {
+                start: startYear,
+                end: startYear + 1,
+              })}
             </p>
           </div>
           <button
@@ -208,7 +216,7 @@ export function SchoolYearSelector({
             disabled={submitting || startYear < 2000 || startYear > 2100}
             className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 whitespace-nowrap"
           >
-            {submitting ? 'Creating…' : 'Create'}
+            {submitting ? t('planning.selector.creating') : t('common.create')}
           </button>
           <button
             type="button"
@@ -216,7 +224,7 @@ export function SchoolYearSelector({
             disabled={submitting}
             className="px-3 py-2 text-sm text-amber-800 hover:text-amber-900 disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
         </div>
       )}

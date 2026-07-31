@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Plus, Edit3, Trash2, Eye } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
+import type { TranslationKey } from '../../i18n/translations';
 import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject, CurriculumCapability } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatDateCapitalized } from '../../i18n/formatters';
@@ -40,11 +43,11 @@ type SelectedSubject = {
 
 type DateFilter = 'all' | 'upcoming' | 'past';
 
-const DATE_FILTERS: { id: DateFilter; label: string }[] = [
-  { id: 'all', label: 'All' },
-  { id: 'upcoming', label: 'Upcoming' },
-  { id: 'past', label: 'Past' },
-];
+function sessionHourLabel(hour: string, t: (key: TranslationKey) => string) {
+  if (hour === 'first') return t('edit.class.hourFirst');
+  if (hour === 'second') return t('edit.class.hourSecond');
+  return t('edit.class.hourBoth');
+}
 
 type HomeworkCommentRow = {
   id: number;
@@ -67,7 +70,7 @@ function mapHomeworkComment(row: HomeworkCommentRow) {
     id: row.id,
     submissionId: row.submission_id,
     authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? 'Unknown',
+    authorName: row.author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
@@ -78,12 +81,6 @@ function formatDate(dateStr: string) {
     weekday: formatDateCapitalized(dateStr, { weekday: 'long' }),
     fullDate: formatPlatformDate(dateStr),
   };
-}
-
-function hourLabel(hour: string) {
-  if (hour === 'first') return '1st Hour';
-  if (hour === 'second') return '2nd Hour';
-  return 'Both Hours';
 }
 
 function hourTone(hour: string) {
@@ -117,6 +114,12 @@ export function CurriculumDateView({
   selectedYearGroupIds,
   curriculumCapability = 'full',
 }: CurriculumDateViewProps) {
+  const { t, tCount } = useLanguage();
+  const dateFilters = useMemo(() => ([
+    { id: 'all' as const, label: t('common.all') },
+    { id: 'upcoming' as const, label: t('curriculum.filter.upcoming') },
+    { id: 'past' as const, label: t('curriculum.filter.past') },
+  ]), [t]);
   const canFullyManage = curriculumCapability === 'full';
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
@@ -277,7 +280,7 @@ export function CurriculumDateView({
         id: row.id,
         assignmentId: row.assignment_id,
         studentId: row.student_id,
-        studentName: row.student?.name ?? 'Unknown',
+        studentName: row.student?.name ?? translate('common.unknown'),
         submissionType: row.submission_type,
         driveFileId: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
@@ -391,7 +394,7 @@ export function CurriculumDateView({
         onNavigate={onNavigate}
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
-        backLabel="Back to date view"
+        backLabel={t('curriculum.backToDateView')}
         tabAccess={canFullyManage ? 'full' : 'sessions-materials'}
         curriculumActions={{
           ...(canFullyManage
@@ -425,12 +428,12 @@ export function CurriculumDateView({
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Schedule</p>
-            <h3 className="text-sm font-semibold text-[#171717]">Schedule by Date</h3>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('curriculum.schedule')}</p>
+            <h3 className="text-sm font-semibold text-[#171717]">{t('curriculum.scheduleByDate')}</h3>
           </div>
           <div className="flex flex-col gap-2 sm:items-end">
-            <div className="inline-flex overflow-hidden rounded-lg border border-[#d4d4d4]" role="tablist" aria-label="Date filter">
-              {DATE_FILTERS.map(filter => {
+            <div className="inline-flex overflow-hidden rounded-lg border border-[#d4d4d4]" role="tablist" aria-label={t('curriculum.dateFilter')}>
+              {dateFilters.map(filter => {
                 const active = dateFilter === filter.id;
                 return (
                   <button
@@ -451,7 +454,7 @@ export function CurriculumDateView({
               })}
             </div>
             <p className="text-sm text-[#737373]">
-              {visibleDates.length} days · {visibleSessionCount} sessions
+              {t('curriculum.daysSessionsSummary', { days: visibleDates.length, sessions: visibleSessionCount })}
             </p>
           </div>
         </div>
@@ -460,13 +463,13 @@ export function CurriculumDateView({
       {sortedDates.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
           <Calendar className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions scheduled yet.</p>
-          <p className="mt-1 text-sm text-[#737373]">Sessions will appear here by date once they are added.</p>
+          <p className="mt-3 text-sm font-semibold text-[#171717]">{t('curriculum.noSessionsScheduled.title')}</p>
+          <p className="mt-1 text-sm text-[#737373]">{t('curriculum.noSessionsScheduled.desc')}</p>
         </div>
       ) : visibleDates.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
           <p className="text-sm font-semibold text-[#171717]">
-            {dateFilter === 'upcoming' ? 'No upcoming dates.' : 'No past dates.'}
+            {dateFilter === 'upcoming' ? t('curriculum.noUpcomingDates') : t('curriculum.noPastDates')}
           </p>
         </div>
       ) : (
@@ -510,7 +513,7 @@ export function CurriculumDateView({
                         ? 'hidden'
                         : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] sm:grid'
                     }
-                    aria-label={collapsed ? 'Expand date' : 'Collapse date'}
+                    aria-label={collapsed ? t('curriculum.expandDate') : t('curriculum.collapseDate')}
                   >
                     {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                   </button>
@@ -534,7 +537,7 @@ export function CurriculumDateView({
                         <div className="mt-1 flex flex-wrap items-center gap-2">
                           <h4 className="tbo-display text-2xl text-[#171717]">{dateInfo.weekday}</h4>
                           <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                            {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
+                            {tCount('curriculum.sessionCount', totalClasses, { count: totalClasses })}
                           </span>
                         </div>
                       </>
@@ -547,7 +550,7 @@ export function CurriculumDateView({
                   >
                     {collapsed ? (
                       <span className="text-xs font-semibold text-[#525252]">
-                        {totalClasses} {totalClasses === 1 ? 'session' : 'sessions'}
+                        {tCount('curriculum.sessionCount', totalClasses, { count: totalClasses })}
                       </span>
                     ) : canFullyManage ? (
                       <button
@@ -556,7 +559,7 @@ export function CurriculumDateView({
                         className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-lg border border-[#171717] bg-[#171717] px-4 text-sm font-semibold text-white transition hover:bg-[#404040]"
                       >
                         <Plus className="h-3.5 w-3.5" />
-                        Add Session
+                        {t('curriculum.addSession')}
                       </button>
                     ) : null}
                   </div>
@@ -579,7 +582,7 @@ export function CurriculumDateView({
                     .map(([courseName, courseClasses]) => (
                       <div key={courseName}>
                         <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                          {courseName} · {courseClasses.length} {courseClasses.length === 1 ? 'session' : 'sessions'}
+                          {courseName} · {tCount('curriculum.sessionCount', courseClasses.length, { count: courseClasses.length })}
                         </p>
                         <div className="grid gap-3 sm:grid-cols-2">
                           {courseClasses.map(cls => {
@@ -611,7 +614,7 @@ export function CurriculumDateView({
                                       type="button"
                                       onClick={() => openSubjectPage(cls.courseId, cls.subjectId)}
                                       className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                      title="Open subject"
+                                      title={t('curriculum.openSubject')}
                                     >
                                       <Eye className="h-3.5 w-3.5" />
                                     </button>
@@ -619,7 +622,7 @@ export function CurriculumDateView({
                                       type="button"
                                       onClick={() => onEditClass(cls.courseId, cls.subjectId, cls)}
                                       className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                      title={canFullyManage ? 'Edit session' : 'Assign translator'}
+                                      title={canFullyManage ? t('curriculum.editSession') : t('curriculum.assignTranslator')}
                                     >
                                       <Edit3 className="h-3.5 w-3.5" />
                                     </button>
@@ -628,7 +631,7 @@ export function CurriculumDateView({
                                       type="button"
                                       onClick={() => onDeleteClass(cls.courseId, cls.subjectId, cls.id)}
                                       className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                      title="Delete session"
+                                      title={t('curriculum.deleteSession')}
                                     >
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </button>
@@ -638,22 +641,22 @@ export function CurriculumDateView({
 
                                 <div className="mt-2 flex flex-wrap items-center gap-2">
                                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
-                                    {hourLabel(cls.hour)}
+                                    {sessionHourLabel(cls.hour, t)}
                                   </span>
                                   {hasConflict && (
                                     <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
-                                      Conflict
+                                      {t('classwork.subject.conflict')}
                                     </span>
                                   )}
                                   {hasVacantRoles && !hasConflict && (
                                     <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                                      Incomplete
+                                      {t('classwork.subject.incomplete')}
                                     </span>
                                   )}
                                 </div>
 
                                 <p className="mt-2 text-xs text-[#737373]">
-                                  Teacher:{' '}
+                                  {t('curriculum.teacherLabel')}{' '}
                                   <span
                                     className={
                                       teacherConflict.hasConflict
@@ -663,9 +666,9 @@ export function CurriculumDateView({
                                           : 'font-semibold text-[#c2410c]'
                                     }
                                   >
-                                    {cls.teacherId ? teacher?.name ?? '—' : 'Vacant'}
+                                    {cls.teacherId ? teacher?.name ?? '—' : t('curriculum.vacant')}
                                   </span>
-                                  {' · '}Translator:{' '}
+                                  {' · '}{t('curriculum.translatorLabel')}{' '}
                                   <span
                                     className={
                                       translatorConflict.hasConflict
@@ -675,7 +678,7 @@ export function CurriculumDateView({
                                           : 'font-semibold text-[#c2410c]'
                                     }
                                   >
-                                    {cls.translatorId ? translator?.name ?? '—' : 'Vacant'}
+                                    {cls.translatorId ? translator?.name ?? '—' : t('curriculum.vacant')}
                                   </span>
                                 </p>
                               </div>

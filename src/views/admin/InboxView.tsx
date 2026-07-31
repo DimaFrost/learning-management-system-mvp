@@ -13,6 +13,8 @@ import {
   RefreshCw,
   Search,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import { supabase } from '../../lib/supabase';
 import type { User } from '../../types/lms';
 import { formatPlatformDateTime } from '../../utils/dateUtils';
@@ -46,6 +48,20 @@ type InboxMessage = {
 
 const PAGE_SIZE = 10;
 
+const TYPE_LABEL_KEYS: Record<string, TranslationKey> = {
+  workflow_email: 'inbox.type.portalUpdate',
+  announcement_email: 'inbox.type.stream',
+  todo_reminder_email: 'inbox.type.todo',
+  absence_notice_email: 'inbox.type.absenceNotice',
+};
+
+const STATUS_LABEL_KEYS: Record<string, TranslationKey> = {
+  sent: 'inbox.status.delivered',
+  failed: 'inbox.status.failed',
+  pending: 'inbox.status.pending',
+  skipped: 'inbox.status.skipped',
+};
+
 function getPayloadText(payload: Record<string, unknown> | null | undefined, keys: string[]) {
   if (!payload) return '';
   for (const key of keys) {
@@ -55,20 +71,12 @@ function getPayloadText(payload: Record<string, unknown> | null | undefined, key
   return '';
 }
 
-function getMessageTitle(message: InboxMessage) {
-  return getPayloadText(message.job?.payload, ['subject', 'title']) || getTypeLabel(message.job?.type ?? 'portal_email');
+function getMessageTitle(message: InboxMessage, typeLabel: (type: string) => string) {
+  return getPayloadText(message.job?.payload, ['subject', 'title']) || typeLabel(message.job?.type ?? 'portal_email');
 }
 
 function getMessageBody(message: InboxMessage) {
   return getPayloadText(message.job?.payload, ['body', 'content', 'reason']);
-}
-
-function getTypeLabel(type: string) {
-  if (type === 'workflow_email') return 'Portal update';
-  if (type === 'announcement_email') return 'Stream';
-  if (type === 'todo_reminder_email') return 'To-do';
-  if (type === 'absence_notice_email') return 'Absence notice';
-  return type.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
 }
 
 function getMessageTone(type: string | undefined) {
@@ -104,15 +112,8 @@ function getStatusTone(status: string) {
   return 'text-[#9a5b00]';
 }
 
-function getStatusLabel(status: string) {
-  if (status === 'sent') return 'Delivered';
-  if (status === 'failed') return 'Failed';
-  if (status === 'pending') return 'Pending';
-  if (status === 'skipped') return 'Skipped';
-  return status;
-}
-
 export function InboxView({ currentUser }: { currentUser: User }) {
+  const { t } = useLanguage();
   const [messages, setMessages] = useState<InboxMessage[]>([]);
   const [selected, setSelected] = useState<InboxMessage | null>(null);
   const [loading, setLoading] = useState(true);
@@ -121,6 +122,17 @@ export function InboxView({ currentUser }: { currentUser: User }) {
   const [status, setStatus] = useState<DeliveryStatus>('all');
   const [page, setPage] = useState(0);
   const [total, setTotal] = useState(0);
+
+  const getTypeLabel = useCallback((type: string) => {
+    const key = TYPE_LABEL_KEYS[type];
+    if (key) return t(key);
+    return type.split('_').map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+  }, [t]);
+
+  const getStatusLabel = useCallback((value: string) => {
+    const key = STATUS_LABEL_KEYS[value];
+    return key ? t(key) : value;
+  }, [t]);
 
   const loadMessages = useCallback(async () => {
     setLoading(true);
@@ -163,7 +175,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
         if (!query.trim()) return true;
         const needle = query.trim().toLowerCase();
         return (
-          getMessageTitle(message).toLowerCase().includes(needle) ||
+          getMessageTitle(message, getTypeLabel).toLowerCase().includes(needle) ||
           getMessageBody(message).toLowerCase().includes(needle) ||
           getTypeLabel(message.job?.type ?? '').toLowerCase().includes(needle)
         );
@@ -176,13 +188,13 @@ export function InboxView({ currentUser }: { currentUser: User }) {
         return rows[0] ?? null;
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not load inbox.');
+      setError(err instanceof Error ? err.message : t('inbox.error.loadFailed'));
       setMessages([]);
       setSelected(null);
     } finally {
       setLoading(false);
     }
-  }, [currentUser.id, page, query, status]);
+  }, [currentUser.email, currentUser.id, getTypeLabel, page, query, status, t]);
 
   useEffect(() => {
     void loadMessages();
@@ -205,20 +217,20 @@ export function InboxView({ currentUser }: { currentUser: User }) {
             <div>
               <div className="inline-flex items-center gap-2 rounded-full border border-[#e6dfd3] bg-white px-3 py-1.5 text-xs font-semibold uppercase tracking-[0.16em] text-[#8a6a45]">
                 <Inbox className="h-3.5 w-3.5" />
-                Admin emails
+                {t('inbox.badge')}
               </div>
-              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#171717]">Inbox</h1>
+              <h1 className="mt-3 text-3xl font-semibold tracking-tight text-[#171717]">{t('inbox.title')}</h1>
               <p className="mt-1 max-w-2xl text-sm text-[#6b6257]">
-                Copies of portal emails sent to your admin account, so important notices are still visible inside the platform.
+                {t('inbox.desc')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-2 sm:w-[300px]">
               <div className="rounded-2xl border border-[#e6dfd3] bg-white px-3 py-2">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#8a8175]">This page</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#8a8175]">{t('inbox.stats.thisPage')}</p>
                 <p className="mt-1 text-xl font-semibold text-[#171717]">{messages.length}</p>
               </div>
               <div className="rounded-2xl border border-[#cdebd8] bg-[#f1fbf5] px-3 py-2">
-                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#4f8663]">Delivered</p>
+                <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#4f8663]">{t('inbox.stats.delivered')}</p>
                 <p className="mt-1 text-xl font-semibold text-[#137333]">{visibleSentCount}</p>
               </div>
             </div>
@@ -229,7 +241,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Search subject or email"
+                placeholder={t('inbox.search.placeholder')}
                 className="tbo-focus h-11 w-full rounded-2xl border border-[#ded8cc] bg-white pl-9 pr-3 text-sm text-[#171717] outline-none"
               />
             </label>
@@ -238,11 +250,11 @@ export function InboxView({ currentUser }: { currentUser: User }) {
               onChange={event => setStatus(event.target.value as DeliveryStatus)}
               className="tbo-focus h-11 rounded-2xl border border-[#ded8cc] bg-white px-3 text-sm text-[#3f3a34]"
             >
-              <option value="all">All emails</option>
-              <option value="sent">Delivered</option>
-              <option value="failed">Failed</option>
-              <option value="pending">Pending</option>
-              <option value="skipped">Skipped</option>
+              <option value="all">{t('inbox.filter.all')}</option>
+              <option value="sent">{t('inbox.filter.sent')}</option>
+              <option value="failed">{t('inbox.filter.failed')}</option>
+              <option value="pending">{t('inbox.filter.pending')}</option>
+              <option value="skipped">{t('inbox.filter.skipped')}</option>
             </select>
             <button
               type="button"
@@ -250,7 +262,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
               className="tbo-focus inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-[#ded8cc] bg-white px-4 text-sm font-semibold text-[#3f3a34] transition-colors hover:bg-[#f7f2ea]"
             >
               <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-              Refresh
+              {t('common.refresh')}
             </button>
           </div>
         </header>
@@ -258,20 +270,20 @@ export function InboxView({ currentUser }: { currentUser: User }) {
         <main className="grid min-h-[560px] overflow-hidden rounded-[24px] border border-[#e1d9cc] bg-white shadow-[0_18px_55px_rgba(91,70,39,0.07)] lg:grid-cols-[420px_minmax(0,1fr)]">
           <section className="flex min-h-0 flex-col border-b border-[#eee7dc] lg:border-b-0 lg:border-r">
             <div className="flex items-center justify-between border-b border-[#eee7dc] bg-[#fffdfa] px-4 py-3">
-              <p className="text-sm font-semibold text-[#171717]">Emails sent to you</p>
-              <p className="text-xs text-[#7b7167]">Page {page + 1} of {pageCount}</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('inbox.list.title')}</p>
+              <p className="text-xs text-[#7b7167]">{t('inbox.list.pageOf', { page: page + 1, total: pageCount })}</p>
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto">
               {error && <div className="border-b border-[#f5c7c0] bg-[#fff6f4] px-4 py-3 text-sm text-[#b42318]">{error}</div>}
               {loading ? (
-                <div className="p-8 text-center text-sm text-[#6b6257]">Loading inbox...</div>
+                <div className="p-8 text-center text-sm text-[#6b6257]">{t('inbox.loading')}</div>
               ) : messages.length === 0 ? (
                 <div className="flex min-h-[360px] flex-col items-center justify-center p-8 text-center">
                   <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-[#f5f0e8] text-[#8a6a45]">
                     <Mail className="h-5 w-5" />
                   </div>
-                  <p className="mt-3 text-sm font-semibold text-[#171717]">No emails here</p>
-                  <p className="mt-1 text-sm text-[#6b6257]">Portal email copies sent to you will appear here.</p>
+                  <p className="mt-3 text-sm font-semibold text-[#171717]">{t('inbox.empty.title')}</p>
+                  <p className="mt-1 text-sm text-[#6b6257]">{t('inbox.empty.desc')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-[#eee7dc]">
@@ -296,7 +308,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                             </span>
                             <span className="min-w-0 flex-1">
                               <span className="flex items-center justify-between gap-3">
-                                <span className="truncate text-sm font-semibold text-[#171717]">{getMessageTitle(message)}</span>
+                                <span className="truncate text-sm font-semibold text-[#171717]">{getMessageTitle(message, getTypeLabel)}</span>
                                 <span className="flex-shrink-0 text-[11px] text-[#8a8175]">
                                   {formatPlatformDateTime(message.sent_at ?? message.created_at)}
                                 </span>
@@ -331,7 +343,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                 className="tbo-focus inline-flex h-9 items-center gap-2 rounded-xl border border-[#ded8cc] bg-white px-3 text-xs font-semibold text-[#3f3a34] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <ChevronLeft className="h-4 w-4" />
-                Previous
+                {t('common.previous')}
               </button>
               <button
                 type="button"
@@ -339,7 +351,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                 onClick={() => setPage(value => value + 1)}
                 className="tbo-focus inline-flex h-9 items-center gap-2 rounded-xl border border-[#ded8cc] bg-white px-3 text-xs font-semibold text-[#3f3a34] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                Next
+                {t('common.next')}
                 <ChevronRight className="h-4 w-4" />
               </button>
             </div>
@@ -363,9 +375,12 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                           {getStatusLabel(selected.status)}
                         </span>
                       </div>
-                      <h2 className="text-2xl font-semibold tracking-tight text-[#171717]">{getMessageTitle(selected)}</h2>
+                      <h2 className="text-2xl font-semibold tracking-tight text-[#171717]">{getMessageTitle(selected, getTypeLabel)}</h2>
                       <p className="mt-1 text-sm text-[#7b7167]">
-                        Sent to {selected.recipient_email} · {formatPlatformDateTime(selected.sent_at ?? selected.created_at)}
+                        {t('inbox.detail.sentTo', {
+                          email: selected.recipient_email,
+                          date: formatPlatformDateTime(selected.sent_at ?? selected.created_at),
+                        })}
                       </p>
                     </div>
                   </div>
@@ -375,7 +390,7 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                     {getMessageBody(selected) ? (
                       <p className="whitespace-pre-wrap text-sm leading-7 text-[#3f3a34]">{getMessageBody(selected)}</p>
                     ) : (
-                      <p className="text-sm text-[#7b7167]">No message body was stored for this email.</p>
+                      <p className="text-sm text-[#7b7167]">{t('inbox.detail.noBody')}</p>
                     )}
                     {selected.error_message && (
                       <div className="mt-5 rounded-2xl border border-[#f5c7c0] bg-[#fff6f4] p-4 text-sm text-[#b42318]">
@@ -384,12 +399,12 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                     )}
                   </div>
                   <div className="mx-auto mt-4 max-w-3xl rounded-[18px] border border-[#e6dfd3] bg-[#f8f5ef] p-4">
-                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8a8175]">Delivery details</p>
+                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#8a8175]">{t('inbox.detail.deliveryDetails')}</p>
                     <div className="mt-3 grid gap-3 text-sm sm:grid-cols-2">
-                      <Detail label="Provider" value={selected.provider} />
-                      <Detail label="Provider ID" value={selected.provider_message_id ?? '-'} />
-                      <Detail label="Job status" value={selected.job?.status ?? '-'} />
-                      <Detail label="Processed" value={formatPlatformDateTime(selected.job?.processed_at) || '-'} />
+                      <Detail label={t('inbox.detail.provider')} value={selected.provider} />
+                      <Detail label={t('inbox.detail.providerId')} value={selected.provider_message_id ?? '-'} />
+                      <Detail label={t('inbox.detail.jobStatus')} value={selected.job?.status ?? '-'} />
+                      <Detail label={t('inbox.detail.processed')} value={formatPlatformDateTime(selected.job?.processed_at) || '-'} />
                     </div>
                   </div>
                 </div>
@@ -399,9 +414,9 @@ export function InboxView({ currentUser }: { currentUser: User }) {
                 <div className="flex h-14 w-14 items-center justify-center rounded-[20px] bg-[#f5f0e8] text-[#8a6a45]">
                   <Inbox className="h-6 w-6" />
                 </div>
-                <p className="mt-3 text-sm font-semibold text-[#171717]">Choose an email</p>
+                <p className="mt-3 text-sm font-semibold text-[#171717]">{t('inbox.detail.chooseTitle')}</p>
                 <p className="mt-1 max-w-sm text-sm text-[#6b6257]">
-                  Select a portal email copy from the list to read its content and delivery details.
+                  {t('inbox.detail.chooseDesc')}
                 </p>
               </div>
             )}

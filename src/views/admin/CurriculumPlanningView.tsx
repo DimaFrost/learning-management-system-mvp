@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CalendarDays, Loader2, Trash2 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { Course, User, WellScheduleEntry } from '../../types/lms';
 import { useSchoolYearPlanning } from '../../hooks/useSchoolYearPlanning';
 import { findAcademicYearEntry } from '../../utils/courseUtils';
@@ -30,6 +31,7 @@ export function CurriculumPlanningView({
   onGenerateWellScheduleForCourse,
   onRemoveWellScheduleDate,
 }: CurriculumPlanningViewProps) {
+  const { t, tCount } = useLanguage();
   const {
     rows,
     breaks,
@@ -65,16 +67,16 @@ export function CurriculumPlanningView({
   const unsavedSummaryItems = React.useMemo(() => {
     if (!isDirty) return [];
     const items: string[] = [];
-    if (changeSummary.newSessions > 0) items.push(`${changeSummary.newSessions} new`);
-    if (changeSummary.removedSessions > 0) items.push(`${changeSummary.removedSessions} removed`);
+    if (changeSummary.newSessions > 0) items.push(tCount('planning.change.newSessions', changeSummary.newSessions, { count: changeSummary.newSessions }));
+    if (changeSummary.removedSessions > 0) items.push(tCount('planning.change.removedSessions', changeSummary.removedSessions, { count: changeSummary.removedSessions }));
     if (changeSummary.breakChanges > 0) {
-      items.push(`${changeSummary.breakChanges} break${changeSummary.breakChanges === 1 ? '' : 's'}`);
+      items.push(tCount('planning.change.breaks', changeSummary.breakChanges, { count: changeSummary.breakChanges }));
     }
     if (items.length === 0 && changeSummary.editedSessions > 0) {
-      items.push('session details changed');
+      items.push(t('planning.change.sessionDetails'));
     }
     return items;
-  }, [changeSummary, isDirty]);
+  }, [changeSummary, isDirty, t, tCount]);
 
   useEffect(() => {
     if (!successMessage) return;
@@ -104,7 +106,7 @@ export function CurriculumPlanningView({
     if (!result.success) return;
 
     setSuccessMessage(
-      `Created ${result.createdCount} sessions, updated ${result.updatedCount} sessions`
+      t('planning.success.sessionsUpdated', { created: result.createdCount, updated: result.updatedCount })
     );
     const fresh = await onRefetchCourses();
     const entry = findAcademicYearEntry(fresh, activeYearLabel);
@@ -159,7 +161,9 @@ export function CurriculumPlanningView({
       for (const id of selectedWellCourseIds) {
         await onGenerateWellScheduleForCourse(id);
       }
-      setSuccessMessage(`Prepared ${selectedWellCourseIds.length === 2 ? 'both year groups' : 'the selected year group'} for The Well.`);
+      setSuccessMessage(selectedWellCourseIds.length === 2
+        ? t('planning.success.wellPreparedBoth')
+        : t('planning.success.wellPreparedOne'));
     } finally {
       setWellBusy(false);
     }
@@ -169,7 +173,7 @@ export function CurriculumPlanningView({
     setWellBusy(true);
     try {
       await onRemoveWellScheduleDate(wellDate, selectedWellCourseIds);
-      setSuccessMessage(`Removed The Well on ${formatPlatformDate(wellDate)}.`);
+      setSuccessMessage(t('planning.success.wellRemoved', { date: formatPlatformDate(wellDate) }));
     } finally {
       setWellBusy(false);
     }
@@ -179,12 +183,12 @@ export function CurriculumPlanningView({
     <div className="space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="space-y-3 min-w-0">
-          <h3 className="text-xl font-bold text-gray-900">Planning</h3>
+          <h3 className="text-xl font-bold text-gray-900">{t('planning.title')}</h3>
           {isDirty && (
             <div className="flex flex-wrap items-center gap-2 text-sm">
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 font-semibold text-amber-800">
                 <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-                Unsaved changes
+                {t('planning.unsavedChanges')}
               </span>
               {unsavedSummaryItems.length > 0 && (
                 <span className="text-[#737373]">{unsavedSummaryItems.join(' · ')}</span>
@@ -194,7 +198,7 @@ export function CurriculumPlanningView({
         </div>
 
         <div className="flex w-full flex-col gap-2 flex-shrink-0 lg:w-auto lg:flex-row lg:items-center">
-          <span className="whitespace-nowrap text-sm font-semibold text-[#171717]">School Year</span>
+          <span className="whitespace-nowrap text-sm font-semibold text-[#171717]">{t('planning.schoolYear')}</span>
           <SchoolYearSelector
             academicYears={academicYears}
             selectedLabel={activeYearLabel}
@@ -208,7 +212,7 @@ export function CurriculumPlanningView({
             disabled={!isDirty}
             className="h-10 whitespace-nowrap rounded-lg border border-[#d4d4d4] bg-white px-4 text-sm font-medium text-[#525252] shadow-[0_1px_0_rgba(0,0,0,0.03)] hover:border-[#a3a3a3] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-50"
           >
-            Discard Changes
+            {t('planning.discardChanges')}
           </button>
           <button
             type="button"
@@ -217,7 +221,7 @@ export function CurriculumPlanningView({
             className="inline-flex h-10 items-center justify-center gap-2 px-4 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {committing && <Loader2 className="w-4 h-4 animate-spin" />}
-            Update
+            {t('common.update')}
           </button>
         </div>
       </div>
@@ -236,8 +240,8 @@ export function CurriculumPlanningView({
 
       <div className="inline-flex rounded-xl border border-[#e5e5e5] bg-white p-1">
         {[
-          { id: 'schoolYear' as const, label: 'School Year' },
-          { id: 'well' as const, label: 'The Well' },
+          { id: 'schoolYear' as const, label: t('planning.tab.schoolYear') },
+          { id: 'well' as const, label: t('planning.tab.well') },
         ].map(tab => (
           <button
             key={tab.id}
@@ -256,7 +260,7 @@ export function CurriculumPlanningView({
 
       {!activeYearLabel ? (
         <div className="flex items-center justify-center py-16 text-gray-500 text-sm">
-          Select a school year above to start planning, or create a new one.
+          {t('planning.selectSchoolYear')}
         </div>
       ) : (
         <div className="flex gap-4 h-full">
@@ -297,10 +301,10 @@ export function CurriculumPlanningView({
                 <div>
                   <div className="flex items-center gap-2">
                     <CalendarDays className="h-5 w-5 text-[#16a34a]" />
-                    <h4 className="font-semibold text-[#171717]">The Well</h4>
+                    <h4 className="font-semibold text-[#171717]">{t('planning.well.title')}</h4>
                   </div>
                   <p className="mt-1 text-sm text-[#737373]">
-                    Add the shared Wednesday Well sessions for this school year. Remove a date when the school will not meet.
+                    {t('planning.well.desc')}
                   </p>
                 </div>
                 <button
@@ -309,7 +313,7 @@ export function CurriculumPlanningView({
                   disabled={wellBusy || selectedWellCourseIds.length === 0}
                   className="inline-flex h-10 items-center justify-center rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#0a0a0a] disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {wellBusy ? 'Working...' : 'Auto-fill Wednesdays'}
+                  {wellBusy ? t('planning.well.working') : t('planning.well.autoFill')}
                 </button>
               </div>
               <div className="mt-4 max-h-56 overflow-y-auto rounded-lg border border-[#eeeeee]">
@@ -319,14 +323,14 @@ export function CurriculumPlanningView({
                       <div key={date} className="flex items-center justify-between gap-3 px-3 py-2">
                         <div>
                           <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(date)}</p>
-                          <p className="text-xs text-[#737373]">Shared Well session</p>
+                          <p className="text-xs text-[#737373]">{t('planning.well.sharedSession')}</p>
                         </div>
                         <button
                           type="button"
                           onClick={() => handleRemoveWellDate(date)}
                           disabled={wellBusy}
                           className="grid h-8 w-8 place-items-center rounded-lg text-[#b91c1c] hover:bg-[#fef2f2] disabled:opacity-50"
-                          aria-label={`Remove The Well on ${formatPlatformDate(date)}`}
+                          aria-label={t('planning.well.removeAria', { date: formatPlatformDate(date) })}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -335,7 +339,7 @@ export function CurriculumPlanningView({
                   </div>
                 ) : (
                   <div className="px-3 py-6 text-center text-sm text-[#737373]">
-                    No Well sessions have been added for this school year yet.
+                    {t('planning.well.empty')}
                   </div>
                 )}
               </div>

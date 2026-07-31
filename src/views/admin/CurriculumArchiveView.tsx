@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronRight, ChevronDown, Archive } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { Course, User } from '../../types/lms';
 import { getTodayDateString, isCourseArchived } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -14,10 +15,10 @@ interface CurriculumArchiveViewProps {
 
 const SESSION_GRID = '72px minmax(160px,1fr) 88px minmax(120px,1fr) minmax(120px,1fr)';
 
-function hourLabel(hour: string) {
-  if (hour === 'first') return '1st Hour';
-  if (hour === 'second') return '2nd Hour';
-  return 'Both Hours';
+function sessionHourLabel(hour: string, t: ReturnType<typeof useLanguage>['t']) {
+  if (hour === 'first') return t('edit.class.hourFirst');
+  if (hour === 'second') return t('edit.class.hourSecond');
+  return t('edit.class.hourBoth');
 }
 
 function hourTone(hour: string) {
@@ -32,6 +33,7 @@ export function CurriculumArchiveView({
   getCourseDisplayName,
   onReactivate,
 }: CurriculumArchiveViewProps) {
+  const { t, tCount } = useLanguage();
   const [collapsedCourses, setCollapsedCourses] = useState<Set<number>>(new Set());
   const [collapsedSubjects, setCollapsedSubjects] = useState<Set<string>>(new Set());
 
@@ -72,8 +74,8 @@ export function CurriculumArchiveView({
     return (
       <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
         <Archive className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-        <p className="mt-3 text-sm font-semibold text-[#171717]">No archived courses.</p>
-        <p className="mt-1 text-sm text-[#737373]">Inactive or expired year groups will appear here.</p>
+        <p className="mt-3 text-sm font-semibold text-[#171717]">{t('curriculum.archive.noArchived.title')}</p>
+        <p className="mt-1 text-sm text-[#737373]">{t('curriculum.archive.noArchived.desc')}</p>
       </div>
     );
   }
@@ -120,7 +122,7 @@ export function CurriculumArchiveView({
                     ? 'hidden'
                     : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'
                 }
-                aria-label={isCourseCollapsed ? 'Expand year group' : 'Collapse year group'}
+                aria-label={isCourseCollapsed ? t('curriculum.expandYearGroup') : t('curriculum.collapseYearGroup')}
               >
                 {isCourseCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
@@ -131,16 +133,16 @@ export function CurriculumArchiveView({
                   <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">
                     {course.startDate && course.endDate
                       ? `${formatPlatformDate(course.startDate)} – ${formatPlatformDate(course.endDate)}`
-                      : 'Archived'}
+                      : t('curriculum.archived')}
                   </p>
                   {isInactive && (
                     <span className="rounded-full bg-[#f5f5f5] px-2.5 py-0.5 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                      Inactive
+                      {t('curriculum.archive.inactive')}
                     </span>
                   )}
                   {isExpired && (
                     <span className="rounded-full bg-[#fff7ed] px-2.5 py-0.5 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                      Expired
+                      {t('curriculum.archive.expired')}
                     </span>
                   )}
                 </div>
@@ -149,7 +151,7 @@ export function CurriculumArchiveView({
                 </h3>
                 {isCourseCollapsed && (
                   <p className="mt-0.5 text-xs text-[#737373]">
-                    {totalSubjects} subjects · {totalClasses} sessions
+                    {t('curriculum.subjectsSessionsSummary', { subjects: totalSubjects, sessions: totalClasses })}
                   </p>
                 )}
               </div>
@@ -160,7 +162,7 @@ export function CurriculumArchiveView({
               >
                 {!isCourseCollapsed && (
                   <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
-                    {totalSubjects} subjects · {totalClasses} sessions
+                    {t('curriculum.subjectsSessionsSummary', { subjects: totalSubjects, sessions: totalClasses })}
                   </span>
                 )}
                 <button
@@ -168,7 +170,7 @@ export function CurriculumArchiveView({
                   onClick={() => onReactivate(course.id)}
                   className="tbo-focus inline-flex h-9 items-center rounded-lg border border-[#171717] bg-[#171717] px-3 text-sm font-semibold text-white transition hover:bg-[#404040]"
                 >
-                  Reactivate
+                  {t('curriculum.archive.reactivate')}
                 </button>
               </div>
             </div>
@@ -176,12 +178,12 @@ export function CurriculumArchiveView({
             {!isCourseCollapsed && (
               <div className="space-y-4">
                 <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Subjects</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('curriculum.subjects')}</p>
                 </div>
 
                 {course.subjects.length === 0 ? (
                   <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white px-4 py-6 text-center text-sm text-[#737373]">
-                    No subjects.
+                    {t('curriculum.noSubjects')}
                   </div>
                 ) : (
                   course.subjects.map(subject => {
@@ -222,7 +224,7 @@ export function CurriculumArchiveView({
                                 ? 'hidden'
                                 : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'
                             }
-                            aria-label={isSubjectCollapsed ? 'Expand subject' : 'Collapse subject'}
+                            aria-label={isSubjectCollapsed ? t('curriculum.expandSubject') : t('curriculum.collapseSubject')}
                           >
                             {isSubjectCollapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </button>
@@ -232,7 +234,7 @@ export function CurriculumArchiveView({
                               {isSubjectCollapsed && <ChevronRight className="h-4 w-4 flex-none text-[#737373]" />}
                               {subject.startDate && (
                                 <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                                  Started {formatPlatformDate(subject.startDate)}
+                                  {t('curriculum.archive.started', { date: formatPlatformDate(subject.startDate) })}
                                 </p>
                               )}
                             </div>
@@ -243,9 +245,9 @@ export function CurriculumArchiveView({
                               <p className="mt-0.5 text-sm text-[#737373]">{subject.description}</p>
                             )}
                             <p className="mt-1 text-xs text-[#737373]">
-                              {subject.duration} sessions
-                              {leadTeacher ? ` · Teacher: ${leadTeacher.name}` : ''}
-                              {isSubjectCollapsed ? ` · ${subjectClassCount} scheduled` : ''}
+                              {tCount('curriculum.archive.durationSessions', subject.duration, { count: subject.duration })}
+                              {leadTeacher ? ` · ${t('curriculum.archive.teacher', { name: leadTeacher.name })}` : ''}
+                              {isSubjectCollapsed ? ` · ${tCount('curriculum.archive.scheduled', subjectClassCount, { count: subjectClassCount })}` : ''}
                             </p>
                           </div>
                         </div>
@@ -253,12 +255,12 @@ export function CurriculumArchiveView({
                         {!isSubjectCollapsed && (
                           <div>
                             <div className="border-y border-[#d4d4d4] bg-white px-4 py-2.5">
-                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Sessions</p>
+                              <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('curriculum.sessions')}</p>
                             </div>
 
                             {subject.classes.length === 0 ? (
                               <div className="border-b border-[#d4d4d4] bg-white px-4 py-4 text-sm text-[#737373]">
-                                No sessions.
+                                {t('curriculum.noSessions')}
                               </div>
                             ) : (
                               <div className="divide-y divide-[#e5e5e5] border-b border-[#d4d4d4] bg-white px-4">
@@ -266,11 +268,11 @@ export function CurriculumArchiveView({
                                   className="-mx-4 hidden w-[calc(100%+2rem)] items-center gap-4 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373] md:grid"
                                   style={{ gridTemplateColumns: SESSION_GRID }}
                                 >
-                                  <span>Date</span>
-                                  <span>Session</span>
-                                  <span>Hour</span>
-                                  <span>Teacher</span>
-                                  <span>Translator</span>
+                                  <span>{t('curriculum.archive.date')}</span>
+                                  <span>{t('curriculum.session')}</span>
+                                  <span>{t('curriculum.archive.hour')}</span>
+                                  <span>{t('edit.class.teacher')}</span>
+                                  <span>{t('edit.class.translator')}</span>
                                 </div>
                                 {subject.classes.map(cls => {
                                   const teacher = getUserById(cls.teacherId);
@@ -287,29 +289,29 @@ export function CurriculumArchiveView({
                                         </span>
                                         <span className="truncate text-sm font-semibold text-[#171717]">{cls.title}</span>
                                         <span className={`inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
-                                          {hourLabel(cls.hour)}
+                                          {sessionHourLabel(cls.hour, t)}
                                         </span>
                                         <span className="truncate text-sm text-[#525252]">
-                                          {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
+                                          {cls.teacherId === null ? t('curriculum.vacant') : teacher?.name ?? '—'}
                                         </span>
                                         <span className="truncate text-sm text-[#525252]">
-                                          {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                          {cls.translatorId === null ? t('curriculum.vacant') : translator?.name ?? '—'}
                                         </span>
                                       </div>
 
                                       <div className="flex flex-col gap-1.5 md:hidden">
                                         <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                                          {cls.date ? formatPlatformDate(cls.date) : 'No date'}
+                                          {cls.date ? formatPlatformDate(cls.date) : t('curriculum.noDate')}
                                         </p>
                                         <p className="text-sm font-semibold text-[#171717]">{cls.title}</p>
                                         <div className="flex flex-wrap items-center gap-2">
                                           <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${hourTone(cls.hour)}`}>
-                                            {hourLabel(cls.hour)}
+                                            {sessionHourLabel(cls.hour, t)}
                                           </span>
                                         </div>
                                         <p className="text-xs text-[#737373]">
-                                          Teacher: {cls.teacherId === null ? 'Vacant' : teacher?.name ?? '—'}
-                                          {' · '}Translator: {cls.translatorId === null ? 'Vacant' : translator?.name ?? '—'}
+                                          {t('curriculum.teacherLabel')} {cls.teacherId === null ? t('curriculum.vacant') : teacher?.name ?? '—'}
+                                          {' · '}{t('curriculum.translatorLabel')} {cls.translatorId === null ? t('curriculum.vacant') : translator?.name ?? '—'}
                                         </p>
                                       </div>
                                     </div>

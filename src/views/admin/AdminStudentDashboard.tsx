@@ -29,9 +29,47 @@ import type {
   User,
 } from '../../types/lms';
 import { supabase } from '../../lib/supabase';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatCurrency, formatDate, formatDateCapitalized } from '../../i18n/formatters';
+import type { PluralKey, TranslationKey } from '../../i18n/translations';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
+
+type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+const GATE_STATUS_KEYS: Record<string, TranslationKey> = {
+  passing: 'attendance.status.passing',
+  at_risk: 'attendance.status.atRisk',
+  failing: 'attendance.status.failing',
+};
+
+const ATTENDANCE_STATUS_KEYS: Record<string, TranslationKey> = {
+  present: 'attendance.present',
+  late: 'attendance.late',
+  absent: 'attendance.absent',
+};
+
+const HOMEWORK_STATUS_KEYS: Record<string, TranslationKey> = {
+  not_started: 'classwork.submissionStatus.notStarted',
+  in_progress: 'classwork.submissionStatus.inProgress',
+  submitted: 'classwork.submissionStatus.submitted',
+  graded: 'classwork.submissionStatus.graded',
+  returned: 'classwork.submissionStatus.returned',
+};
+
+const BOOK_STATUS_KEYS: Record<string, TranslationKey> = {
+  not_started: 'student.books.status.not_started',
+  reading: 'student.books.status.reading',
+  submitted: 'student.books.status.submitted',
+  returned: 'student.books.status.returned',
+  completed: 'student.books.status.completed',
+};
+
+const ATTENDANCE_CATEGORY_KEYS: Record<'classes' | 'activation' | 'ministry', TranslationKey> = {
+  classes: 'admin.student.category.classes',
+  activation: 'admin.student.category.activation',
+  ministry: 'admin.student.category.ministry',
+};
 
 type HomeworkRow = HomeworkSubmission & {
   assignmentTitle: string;
@@ -157,9 +195,10 @@ function getWeekStart(dateString: string): Date {
   return start;
 }
 
-function TeacherIcon({ user }: { user?: User }) {
+function TeacherIcon({ user, t }: { user?: User; t: TFunction }) {
+  const fallback = t('admin.student.teacherNotAssigned');
   return (
-    <span title={user?.name ?? 'Teacher not assigned'} aria-label={user?.name ?? 'Teacher not assigned'}>
+    <span title={user?.name ?? fallback} aria-label={user?.name ?? fallback}>
       {user ? (
         <UserAvatar user={user} size="sm" />
       ) : (
@@ -171,17 +210,17 @@ function TeacherIcon({ user }: { user?: User }) {
   );
 }
 
-function getSessionSlotLabel(hour: string): string {
-  if (hour === 'first') return 'S1';
-  if (hour === 'second') return 'S2';
-  if (hour === 'both') return 'Joint';
+function getSessionSlotLabel(hour: string, t: TFunction): string {
+  if (hour === 'first') return t('admin.student.sessionSlot.s1');
+  if (hour === 'second') return t('admin.student.sessionSlot.s2');
+  if (hour === 'both') return t('admin.student.sessionSlot.joint');
   return hour;
 }
 
-function getSessionSlotTitle(hour: string): string {
-  if (hour === 'first') return 'Session 1';
-  if (hour === 'second') return 'Session 2';
-  if (hour === 'both') return 'Joint session';
+function getSessionSlotTitle(hour: string, t: TFunction): string {
+  if (hour === 'first') return t('admin.student.sessionTitle.s1');
+  if (hour === 'second') return t('admin.student.sessionTitle.s2');
+  if (hour === 'both') return t('admin.student.sessionTitle.joint');
   return hour;
 }
 
@@ -227,6 +266,7 @@ export function AdminStudentDashboard({
   onEditUser,
   onNavigate,
 }: AdminStudentDashboardProps) {
+  const { t, tCount } = useLanguage();
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkLoading, setHomeworkLoading] = useState(false);
   const [sessionWeekPage, setSessionWeekPage] = useState(0);
@@ -320,12 +360,12 @@ export function AdminStudentDashboard({
       end.setDate(start.getDate() + 6);
       return {
         key,
-        label: `Week ${index + 1}`,
+        label: t('common.weekNumber', { n: index + 1 }),
         range: `${formatPlatformDate(toDateKey(start))} - ${formatPlatformDate(toDateKey(end))}`,
         rows: weekRows,
       };
     });
-  }, [activeEnrollments, getUserById]);
+  }, [activeEnrollments, getUserById, t]);
 
   const visibleSessionWeeks = sessionWeeks[sessionWeekPage] ? [sessionWeeks[sessionWeekPage]] : [];
   const maxSessionWeekPage = Math.max(0, sessionWeeks.length - 1);
@@ -381,9 +421,9 @@ export function AdminStudentDashboard({
             gradedBy: row.graded_by,
             createdAt: row.created_at,
             updatedAt: row.updated_at,
-            assignmentTitle: row.assignment?.title ?? 'Homework',
+            assignmentTitle: row.assignment?.title ?? t('admin.student.fallbackHomework'),
             dueDate: row.assignment?.due_date ?? null,
-            classTitle: row.assignment?.class?.title ?? 'Class session',
+            classTitle: row.assignment?.class?.title ?? t('admin.student.fallbackClassSession'),
           })));
         }
         setHomeworkLoading(false);
@@ -394,14 +434,14 @@ export function AdminStudentDashboard({
     return () => {
       cancelled = true;
     };
-  }, [student]);
+  }, [student, t]);
 
   if (!student) {
     return (
       <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
-        <p className="font-semibold text-[#171717]">No student selected.</p>
+        <p className="font-semibold text-[#171717]">{t('admin.student.noStudentSelected')}</p>
         <button type="button" onClick={onBack} className="mt-4 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-          Back to people
+          {t('admin.student.backToPeople')}
         </button>
       </div>
     );
@@ -426,14 +466,14 @@ export function AdminStudentDashboard({
   const tuitionCurrency = activeTuitionPlan?.currency ?? 'EUR';
   const remainingTuition = Math.max(0, expectedTuition - paidTuition - (activeTuitionAccount?.discountAmount ?? 0));
   const tabItems = [
-    { id: 'overview', label: 'Overview', count: null, icon: UserIcon },
-    { id: 'attendance', label: 'Attendance', count: gateCount || null, icon: CheckCircle2 },
-    { id: 'classwork', label: 'Homework', count: homeworkRows.length || null, icon: ClipboardCheck },
-    { id: 'reading', label: 'Reading', count: studentBookAssignments.length || null, icon: BookOpen },
-    { id: 'mentorship', label: 'Mentorship', count: studentLogs.length || null, icon: HeartHandshake },
-    { id: 'sessions', label: 'Sessions', count: sessionWeeks.length || null, icon: GraduationCap },
-    { id: 'service', label: 'Duty & service', count: activeRotation ? 1 : null, icon: ShieldCheck },
-    { id: 'tuition', label: 'Tuition', count: tuitionAccounts.length || null, icon: CreditCard },
+    { id: 'overview', label: t('common.overview'), count: null, icon: UserIcon },
+    { id: 'attendance', label: t('sidebar.attendance'), count: gateCount || null, icon: CheckCircle2 },
+    { id: 'classwork', label: t('admin.student.tab.classwork'), count: homeworkRows.length || null, icon: ClipboardCheck },
+    { id: 'reading', label: t('admin.student.tab.reading'), count: studentBookAssignments.length || null, icon: BookOpen },
+    { id: 'mentorship', label: t('sidebar.mentorship'), count: studentLogs.length || null, icon: HeartHandshake },
+    { id: 'sessions', label: t('admin.student.tab.sessions'), count: sessionWeeks.length || null, icon: GraduationCap },
+    { id: 'service', label: t('admin.student.tab.service'), count: activeRotation ? 1 : null, icon: ShieldCheck },
+    { id: 'tuition', label: t('sidebar.tuition'), count: tuitionAccounts.length || null, icon: CreditCard },
   ] as const;
   const latestMentor = activeEnrollments.map(item => item.mentor).find(Boolean);
   const attendanceEvents = useMemo(() => {
@@ -470,7 +510,7 @@ export function AdminStudentDashboard({
           date: session.serviceDate,
           title: session.title,
           category: 'ministry' as const,
-          detail: team?.name ?? 'Ministry service',
+          detail: team?.name ?? t('admin.student.ministryService'),
           status: record.status,
         };
       })
@@ -490,32 +530,32 @@ export function AdminStudentDashboard({
           <div className="flex min-w-0 items-center gap-4">
             <UserAvatar user={student} />
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Student dashboard</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.dashboardTitle')}</p>
               <h2 className="mt-1 truncate text-2xl font-semibold text-[#171717]">{student.name}</h2>
               <p className="truncate text-sm text-[#737373]">{student.email}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {activeEnrollments.map(({ course }) => <ActiveYearGroupBadge key={course.id} course={course} />)}
-                {activeEnrollments.length === 0 && <span className="text-sm text-[#737373]">No active year group</span>}
+                {activeEnrollments.length === 0 && <span className="text-sm text-[#737373]">{t('admin.student.noActiveYearGroup')}</span>}
               </div>
             </div>
           </div>
           <div className="flex gap-2">
             <button type="button" onClick={() => onEditUser(student)} className="rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-4 py-2 text-sm font-semibold text-[#1d4ed8]">
-              Edit student
+              {t('admin.student.editStudent')}
             </button>
             <button type="button" onClick={onBack} className="rounded-lg border border-[#e5e5e5] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">
-              Back
+              {t('admin.student.back')}
             </button>
           </div>
         </div>
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label="Attendance gates" value={gateCount ? `${passingGates}/${gateCount}` : '-'} detail={attendanceSummary?.meetsGraduationThreshold ? 'On track' : 'Needs review'} />
-        <StatCard label="Homework" value={`${submittedHomework}/${homeworkRows.length}`} detail={`${gradedHomework} graded`} />
-        <StatCard label="Books" value={`${completedBooks}/${studentBookAssignments.length}`} detail={overdueBooks > 0 ? `${overdueBooks} overdue` : 'Reading progress'} />
-        <StatCard label="Mentor" value={activeEnrollments.some(item => item.mentor) ? 'Assigned' : 'Missing'} detail={activeEnrollments.map(item => item.mentor?.name).filter(Boolean).join(', ') || 'No mentor'} />
-        <StatCard label="Ministry team" value={activeTeam?.name ?? '-'} detail={activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : 'No active rotation'} />
+        <StatCard label={t('admin.student.attendanceGates')} value={gateCount ? `${passingGates}/${gateCount}` : '-'} detail={attendanceSummary?.meetsGraduationThreshold ? t('admin.student.onTrack') : t('attendance.needsReview')} />
+        <StatCard label={t('admin.student.tab.classwork')} value={`${submittedHomework}/${homeworkRows.length}`} detail={t('admin.student.gradedCount', { count: gradedHomework })} />
+        <StatCard label={t('admin.student.books')} value={`${completedBooks}/${studentBookAssignments.length}`} detail={overdueBooks > 0 ? t('admin.student.overdueCount', { count: overdueBooks }) : t('admin.student.readingProgress')} />
+        <StatCard label={t('admin.student.mentor')} value={activeEnrollments.some(item => item.mentor) ? t('admin.student.assigned') : t('admin.student.missing')} detail={activeEnrollments.map(item => item.mentor?.name).filter(Boolean).join(', ') || t('admin.student.noMentor')} />
+        <StatCard label={t('admin.student.ministryTeam')} value={activeTeam?.name ?? '-'} detail={activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : t('admin.student.noActiveRotation')} />
       </div>
 
       <div className="overflow-x-auto border-b border-[#d4d4d4]">
@@ -548,13 +588,13 @@ export function AdminStudentDashboard({
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Attendance readiness</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Graduation gates</h3>
-              <p className="mt-1 text-sm text-[#737373]">Each gate is checked separately, so one weak area is easy to spot.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.attendanceReadiness')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('admin.student.graduationGates')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.gatesHint')}</p>
             </div>
             <div className="text-right">
               <p className="text-3xl font-semibold text-[#171717]">{attendanceSummary?.overallScore != null ? `${Math.round(attendanceSummary.overallScore * 100)}%` : '-'}</p>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Overall</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.overall')}</p>
             </div>
           </div>
           {attendanceSummary ? (
@@ -570,13 +610,13 @@ export function AdminStudentDashboard({
                           <p className="mt-1 text-sm text-[#737373]">{gate.detail}</p>
                         </div>
                         <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${gate.status === 'passing' ? 'bg-[#dcfce7] text-[#15803d]' : gate.status === 'at_risk' ? 'bg-[#fff7ed] text-[#ea580c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
-                          {gate.status.replace('_', ' ')}
+                          {t(GATE_STATUS_KEYS[gate.status] ?? 'attendance.status.failing')}
                         </span>
                       </div>
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
                         <div className="h-full rounded-full bg-[#171717]" style={{ width: `${score}%` }} />
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-[#525252]">{gate.earnedCredits}/{gate.requiredCredits} credits</p>
+                      <p className="mt-2 text-xs font-semibold text-[#525252]">{t('admin.student.credits', { earned: gate.earnedCredits, required: gate.requiredCredits })}</p>
                     </div>
                   );
                 })}
@@ -585,18 +625,18 @@ export function AdminStudentDashboard({
               <div className="mt-5 border-t border-[#e5e5e5] pt-4">
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#171717]">Attendance history</p>
-                    <p className="text-xs text-[#737373]">Dated class, Activation, and ministry records.</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('admin.student.attendanceHistory')}</p>
+                    <p className="text-xs text-[#737373]">{t('admin.student.attendanceHistoryHint')}</p>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     <select value={attendanceCategoryFilter} onChange={event => setAttendanceCategoryFilter(event.target.value as typeof attendanceCategoryFilter)} className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]">
-                      <option value="all">All categories</option>
-                      <option value="classes">Classes</option>
-                      <option value="activation">Activation</option>
-                      <option value="ministry">Ministry</option>
+                      <option value="all">{t('admin.student.allCategories')}</option>
+                      <option value="classes">{t('admin.student.category.classes')}</option>
+                      <option value="activation">{t('admin.student.category.activation')}</option>
+                      <option value="ministry">{t('admin.student.category.ministry')}</option>
                     </select>
                     <select value={attendanceMonthFilter} onChange={event => setAttendanceMonthFilter(event.target.value)} className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]">
-                      <option value="all">All months</option>
+                      <option value="all">{t('admin.student.allMonths')}</option>
                       {attendanceMonths.map(month => (
                         <option key={month} value={month}>{formatDateCapitalized(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</option>
                       ))}
@@ -611,16 +651,16 @@ export function AdminStudentDashboard({
                         <span className="block truncate text-sm font-semibold text-[#171717]">{event.title}</span>
                         <span className="block truncate text-xs text-[#737373]">{event.detail}</span>
                       </span>
-                      <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold capitalize text-[#525252]">{event.category}</span>
-                      <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold capitalize ${event.status === 'present' ? 'bg-[#dcfce7] text-[#15803d]' : event.status === 'late' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>{event.status}</span>
+                      <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252]">{t(ATTENDANCE_CATEGORY_KEYS[event.category])}</span>
+                      <span className={`w-fit rounded-full px-2.5 py-1 text-xs font-semibold ${event.status === 'present' ? 'bg-[#dcfce7] text-[#15803d]' : event.status === 'late' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>{t(ATTENDANCE_STATUS_KEYS[event.status] ?? 'attendance.absent')}</span>
                     </div>
                   ))}
-                  {visibleAttendanceEvents.length === 0 && <p className="px-4 py-6 text-sm text-[#737373]">No attendance records match these filters.</p>}
+                  {visibleAttendanceEvents.length === 0 && <p className="px-4 py-6 text-sm text-[#737373]">{t('admin.student.noAttendanceMatch')}</p>}
                 </div>
               </div>
             </>
           ) : (
-            <p className="mt-4 text-sm text-[#737373]">No attendance summary is available for this student yet.</p>
+            <p className="mt-4 text-sm text-[#737373]">{t('admin.student.noAttendanceSummary')}</p>
           )}
         </section>
       )}
@@ -629,21 +669,21 @@ export function AdminStudentDashboard({
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Homework record</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Submitted work</h3>
-              <p className="mt-1 text-sm text-[#737373]">A compact history of homework status, grades, and submission dates.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.homeworkRecord')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('admin.student.submittedWork')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.homeworkHistoryHint')}</p>
             </div>
-            <SourceButton onClick={() => onNavigate('classwork-submissions')}>Open submissions</SourceButton>
+            <SourceButton onClick={() => onNavigate('classwork-submissions')}>{t('admin.student.openSubmissions')}</SourceButton>
           </div>
           {homeworkLoading ? (
-            <p className="mt-4 text-sm text-[#737373]">Loading homework...</p>
+            <p className="mt-4 text-sm text-[#737373]">{t('admin.student.loadingHomework')}</p>
           ) : homeworkRows.length > 0 ? (
             <div className="mt-4 overflow-hidden rounded-2xl border border-[#e5e5e5]">
               <div className="grid grid-cols-[minmax(0,1fr)_120px_120px_100px] gap-3 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                <span>Homework</span>
-                <span>Status</span>
-                <span>Submitted</span>
-                <span className="text-right">Grade</span>
+                <span>{t('admin.student.tab.classwork')}</span>
+                <span>{t('common.status')}</span>
+                <span>{t('admin.student.submitted')}</span>
+                <span className="text-right">{t('admin.student.grade')}</span>
               </div>
               <div className="divide-y divide-[#eeeeee]">
                 {homeworkRows.map(row => (
@@ -652,7 +692,7 @@ export function AdminStudentDashboard({
                       <p className="truncate text-sm font-semibold text-[#171717]">{row.assignmentTitle}</p>
                       <p className="truncate text-xs text-[#737373]">{row.classTitle}</p>
                     </div>
-                    <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold capitalize text-[#525252]">{row.status.replace('_', ' ')}</span>
+                    <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252]">{t(HOMEWORK_STATUS_KEYS[row.status] ?? 'classwork.submissionStatus.notStarted')}</span>
                     <span className="text-xs font-semibold text-[#737373]">{row.submittedAt ? formatPlatformDate(row.submittedAt) : '-'}</span>
                     <span className="text-right text-sm font-semibold text-[#171717]">{row.points !== null ? row.points : '-'}</span>
                   </div>
@@ -660,7 +700,7 @@ export function AdminStudentDashboard({
               </div>
             </div>
           ) : (
-            <p className="mt-4 text-sm text-[#737373]">No homework submissions found yet.</p>
+            <p className="mt-4 text-sm text-[#737373]">{t('admin.student.noHomeworkSubmissions')}</p>
           )}
         </section>
       )}
@@ -669,11 +709,11 @@ export function AdminStudentDashboard({
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Reading work</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">Books and assignments</h3>
-              <p className="mt-1 text-sm text-[#737373]">Books assigned to the student's active year group.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.readingWork')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('admin.student.booksAndAssignments')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.readingHint')}</p>
             </div>
-            <SourceButton onClick={() => onNavigate('curriculum-books')}>Open books</SourceButton>
+            <SourceButton onClick={() => onNavigate('curriculum-books')}>{t('admin.student.openBooks')}</SourceButton>
           </div>
           {studentBookAssignments.length > 0 ? (
             <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
@@ -689,8 +729,8 @@ export function AdminStudentDashboard({
                       <p className="line-clamp-2 text-sm font-semibold text-[#171717]">{assignment.book.title}</p>
                       <p className="mt-1 truncate text-xs text-[#737373]">{assignment.title}</p>
                       <div className="mt-3 flex flex-wrap items-center gap-2">
-                        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold capitalize text-[#525252] ring-1 ring-[#e5e5e5]">{status.replace('_', ' ')}</span>
-                        <span className="text-xs font-semibold text-[#737373]">{assignment.dueDate ? formatPlatformDate(assignment.dueDate) : 'No due date'}</span>
+                        <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">{t(BOOK_STATUS_KEYS[status] ?? 'student.books.status.not_started')}</span>
+                        <span className="text-xs font-semibold text-[#737373]">{assignment.dueDate ? formatPlatformDate(assignment.dueDate) : t('common.noDueDate')}</span>
                       </div>
                     </div>
                   </div>
@@ -698,7 +738,7 @@ export function AdminStudentDashboard({
               })}
             </div>
           ) : (
-            <p className="mt-4 text-sm text-[#737373]">No reading assignments are attached to this student's active year group yet.</p>
+            <p className="mt-4 text-sm text-[#737373]">{t('admin.student.noReadingAssignments')}</p>
           )}
         </section>
       )}
@@ -707,32 +747,32 @@ export function AdminStudentDashboard({
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Mentorship</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{latestMentor ? latestMentor.name : 'No mentor assigned'}</h3>
-              <p className="mt-1 text-sm text-[#737373]">Mentor connection, mentees, and recent check-ins.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('sidebar.mentorship')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{latestMentor ? latestMentor.name : t('admin.student.noMentorAssigned')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.mentorshipHint')}</p>
             </div>
-            <SourceButton onClick={() => onNavigate('mentorship')}>Open mentorship</SourceButton>
+            <SourceButton onClick={() => onNavigate('mentorship')}>{t('admin.student.openMentorship')}</SourceButton>
           </div>
           <div className="mt-4 grid gap-4 xl:grid-cols-[280px_minmax(0,1fr)]">
             <div className="space-y-3">
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                <p className="text-sm font-semibold text-[#171717]">Mentees</p>
-                <p className="mt-1 text-sm text-[#525252]">{menteeRows.length > 0 ? menteeRows.map(user => user.name).join(', ') : 'No mentees assigned.'}</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('admin.student.mentees')}</p>
+                <p className="mt-1 text-sm text-[#525252]">{menteeRows.length > 0 ? menteeRows.map(user => user.name).join(', ') : t('admin.student.noMenteesAssigned')}</p>
               </div>
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                <p className="text-sm font-semibold text-[#171717]">Active enrollment</p>
-                <p className="mt-1 text-sm text-[#525252]">{activeEnrollments.map(item => item.course.name).join(', ') || 'No active year group'}</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('admin.student.activeEnrollment')}</p>
+                <p className="mt-1 text-sm text-[#525252]">{activeEnrollments.map(item => item.course.name).join(', ') || t('admin.student.noActiveYearGroup')}</p>
               </div>
             </div>
             <div>
-              <p className="mb-2 text-sm font-semibold text-[#171717]">Recent logs</p>
+              <p className="mb-2 text-sm font-semibold text-[#171717]">{t('admin.student.recentLogs')}</p>
               {studentLogs.slice(0, 8).map(log => (
                 <div key={log.id} className="mb-2 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                   <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(log.date)} · {log.type}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-[#525252]">{log.notes || 'No notes added.'}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#525252]">{log.notes || t('admin.student.noNotesAdded')}</p>
                 </div>
               ))}
-              {studentLogs.length === 0 && <p className="text-sm text-[#737373]">No mentorship logs yet.</p>}
+              {studentLogs.length === 0 && <p className="text-sm text-[#737373]">{t('admin.student.noMentorshipLogs')}</p>}
             </div>
           </div>
         </section>
@@ -742,28 +782,28 @@ export function AdminStudentDashboard({
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Duty and service</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{activeTeam?.name ?? 'No ministry assignment'}</h3>
-              <p className="mt-1 text-sm text-[#737373]">Ministry rotation, attendance duty, and platform service roles.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.dutyAndService')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{activeTeam?.name ?? t('admin.student.noMinistryAssignment')}</h3>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.serviceHint')}</p>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              <SourceButton onClick={() => onNavigate('attendance-duty')}>On duty</SourceButton>
-              <SourceButton onClick={() => onNavigate('attendance-ministry')}>Service</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-duty')}>{t('admin.student.onDuty')}</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-ministry')}>{t('admin.student.service')}</SourceButton>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Ministry</p>
-              <p className="mt-2 text-lg font-semibold text-[#171717]">{activeTeam?.name ?? 'Not assigned'}</p>
-              <p className="mt-1 text-sm text-[#737373]">{activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : 'No active rotation'}</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.ministry')}</p>
+              <p className="mt-2 text-lg font-semibold text-[#171717]">{activeTeam?.name ?? t('admin.dashboard.notAssigned')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{activeRotation ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}` : t('admin.student.noActiveRotation')}</p>
             </div>
             <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Attendance duty</p>
-              <p className="mt-2 text-lg font-semibold text-[#171717]">On-duty schedule</p>
-              <p className="mt-1 text-sm text-[#737373]">Class and Well keeper assignments are managed separately.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.attendanceDuty')}</p>
+              <p className="mt-2 text-lg font-semibold text-[#171717]">{t('admin.student.onDutySchedule')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('admin.student.dutyManagedSeparately')}</p>
             </div>
             <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Platform roles</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.platformRoles')}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {student.roles.filter(role => role !== 'dev').map(role => (
                   <span key={role} className="rounded-full border border-[#e5e5e5] bg-white px-2 py-1 text-xs font-semibold capitalize text-[#525252]">{role.replace('_', ' ')}</span>
@@ -778,9 +818,9 @@ export function AdminStudentDashboard({
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         {(activeTab === 'overview' || activeTab === 'attendance') && (
         <SectionCard
-          title="Attendance"
+          title={t('sidebar.attendance')}
           icon={CheckCircle2}
-          action={<SourceButton onClick={() => onNavigate('attendance')}>Open attendance</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('attendance')}>{t('admin.dashboard.openAttendance')}</SourceButton>}
         >
           {attendanceSummary ? (
             <div className="grid gap-2 sm:grid-cols-2">
@@ -789,41 +829,41 @@ export function AdminStudentDashboard({
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-[#171717]">{gate.label}</p>
                     <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${gate.status === 'passing' ? 'bg-[#dcfce7] text-[#15803d]' : gate.status === 'at_risk' ? 'bg-[#fff7ed] text-[#ea580c]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
-                      {gate.status.replace('_', ' ')}
+                      {t(GATE_STATUS_KEYS[gate.status] ?? 'attendance.status.failing')}
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-[#525252]">{gate.detail}</p>
-                  <p className="mt-1 text-xs text-[#737373]">{gate.earnedCredits}/{gate.requiredCredits} credits</p>
+                  <p className="mt-1 text-xs text-[#737373]">{t('admin.student.credits', { earned: gate.earnedCredits, required: gate.requiredCredits })}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#737373]">No attendance summary is available for this student yet.</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.noAttendanceSummary')}</p>
           )}
         </SectionCard>
         )}
 
         {(activeTab === 'overview') && (
         <SectionCard
-          title="Year, mentor, ministry"
+          title={t('admin.student.yearMentorMinistry')}
           icon={GraduationCap}
         >
           <div className="space-y-3">
             {activeEnrollments.map(({ course, enrollment, mentor }) => (
               <div key={course.id} className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                 <ActiveYearGroupBadge course={course} />
-                <p className="mt-2 text-sm text-[#525252]">Enrolled {formatPlatformDate(enrollment.enrollmentDate)}</p>
-                <p className="text-sm text-[#525252]">Mentor: {mentor?.name ?? 'Not assigned'}</p>
+                <p className="mt-2 text-sm text-[#525252]">{t('admin.student.enrolled', { date: formatPlatformDate(enrollment.enrollmentDate) })}</p>
+                <p className="text-sm text-[#525252]">{t('admin.student.mentorLabel', { name: mentor?.name ?? t('admin.dashboard.notAssigned') })}</p>
               </div>
             ))}
             <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-sm font-semibold text-[#171717]">Ministry</p>
-              <p className="mt-1 text-sm text-[#525252]">{activeTeam?.name ?? 'No active team rotation'}</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('admin.student.ministry')}</p>
+              <p className="mt-1 text-sm text-[#525252]">{activeTeam?.name ?? t('admin.student.noActiveTeamRotation')}</p>
             </div>
             <div className="flex flex-wrap gap-1.5 border-t border-[#e5e5e5] pt-3">
-              <SourceButton onClick={() => onNavigate('users-enrollments')}>Enrollment</SourceButton>
-              <SourceButton onClick={() => onNavigate('mentorship-assignments')}>Mentor</SourceButton>
-              <SourceButton onClick={() => onNavigate('attendance-ministry')}>Ministry</SourceButton>
+              <SourceButton onClick={() => onNavigate('users-enrollments')}>{t('admin.student.enrollment')}</SourceButton>
+              <SourceButton onClick={() => onNavigate('mentorship-assignments')}>{t('admin.student.mentor')}</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-ministry')}>{t('admin.student.ministry')}</SourceButton>
             </div>
           </div>
         </SectionCard>
@@ -835,12 +875,12 @@ export function AdminStudentDashboard({
       <div className="grid gap-4 xl:grid-cols-2">
         {(activeTab === 'overview' || activeTab === 'classwork') && (
         <SectionCard
-          title="Homework submitted"
+          title={t('admin.student.homeworkSubmitted')}
           icon={ClipboardCheck}
-          action={<SourceButton onClick={() => onNavigate('curriculum')}>Open curriculum</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('curriculum')}>{t('admin.dashboard.openCurriculum')}</SourceButton>}
         >
           {homeworkLoading ? (
-            <p className="text-sm text-[#737373]">Loading homework...</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.loadingHomework')}</p>
           ) : homeworkRows.length > 0 ? (
             <div className="space-y-2">
               {homeworkRows.slice(0, 8).map(row => (
@@ -850,25 +890,25 @@ export function AdminStudentDashboard({
                       <p className="truncate text-sm font-semibold text-[#171717]">{row.assignmentTitle}</p>
                       <p className="truncate text-xs text-[#737373]">{row.classTitle}</p>
                     </div>
-                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold text-[#525252]">{row.status}</span>
+                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold text-[#525252]">{t(HOMEWORK_STATUS_KEYS[row.status] ?? 'classwork.submissionStatus.notStarted')}</span>
                   </div>
                   <p className="mt-2 text-xs text-[#737373]">
-                    {row.submittedAt ? `Submitted ${formatPlatformDate(row.submittedAt)}` : 'Not submitted'}{row.points !== null ? ` · ${row.points} points` : ''}
+                    {row.submittedAt ? `${t('admin.student.submitted')} ${formatPlatformDate(row.submittedAt)}` : t('admin.student.notSubmitted')}{row.points !== null ? ` · ${t('admin.student.points', { count: row.points })}` : ''}
                   </p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#737373]">No homework submissions found yet.</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.noHomeworkSubmissions')}</p>
           )}
         </SectionCard>
         )}
 
         {(activeTab === 'overview' || activeTab === 'reading') && (
         <SectionCard
-          title="Books and reading"
+          title={t('admin.student.booksAndReading')}
           icon={BookOpen}
-          action={<SourceButton onClick={() => onNavigate('curriculum-books')}>Open books</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('curriculum-books')}>{t('admin.student.openBooks')}</SourceButton>}
         >
           {studentBookAssignments.length > 0 ? (
             <div className="space-y-2">
@@ -888,42 +928,42 @@ export function AdminStudentDashboard({
                       <p className="truncate text-sm font-semibold text-[#171717]">{assignment.book.title}</p>
                       <p className="truncate text-xs text-[#737373]">{assignment.title}</p>
                       <p className={`mt-1 text-xs ${assignment.dueDate && assignment.dueDate < toDateKey(new Date()) && status !== 'submitted' && status !== 'completed' ? 'text-[#c2410c]' : 'text-[#737373]'}`}>
-                        {assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date'}
+                        {assignment.dueDate ? t('common.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate')}
                       </p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold capitalize text-[#525252]">
-                      {status.replace('_', ' ')}
+                    <span className="shrink-0 rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold text-[#525252]">
+                      {t(BOOK_STATUS_KEYS[status] ?? 'student.books.status.not_started')}
                     </span>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <p className="text-sm text-[#737373]">No reading assignments are attached to this student's active year group yet.</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.noReadingAssignments')}</p>
           )}
         </SectionCard>
         )}
 
         {(activeTab === 'overview' || activeTab === 'mentorship') && (
         <SectionCard
-          title="Mentorship"
+          title={t('sidebar.mentorship')}
           icon={HeartHandshake}
-          action={<SourceButton onClick={() => onNavigate('mentorship')}>Open mentorship</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('mentorship')}>{t('admin.student.openMentorship')}</SourceButton>}
         >
           <div className="space-y-3">
             <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-sm font-semibold text-[#171717]">Mentees</p>
-              <p className="mt-1 text-sm text-[#525252]">{menteeRows.length > 0 ? menteeRows.map(user => user.name).join(', ') : 'No mentees assigned.'}</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('admin.student.mentees')}</p>
+              <p className="mt-1 text-sm text-[#525252]">{menteeRows.length > 0 ? menteeRows.map(user => user.name).join(', ') : t('admin.student.noMenteesAssigned')}</p>
             </div>
             <div>
-              <p className="mb-2 text-sm font-semibold text-[#171717]">Recent logs</p>
+              <p className="mb-2 text-sm font-semibold text-[#171717]">{t('admin.student.recentLogs')}</p>
               {studentLogs.slice(0, 5).map(log => (
                 <div key={log.id} className="mb-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                   <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(log.date)} · {log.type}</p>
-                  <p className="mt-1 line-clamp-2 text-sm text-[#525252]">{log.notes || 'No notes added.'}</p>
+                  <p className="mt-1 line-clamp-2 text-sm text-[#525252]">{log.notes || t('admin.student.noNotesAdded')}</p>
                 </div>
               ))}
-              {studentLogs.length === 0 && <p className="text-sm text-[#737373]">No mentorship logs yet.</p>}
+              {studentLogs.length === 0 && <p className="text-sm text-[#737373]">{t('admin.student.noMentorshipLogs')}</p>}
             </div>
           </div>
         </SectionCard>
@@ -935,20 +975,20 @@ export function AdminStudentDashboard({
       <div className="grid gap-4 xl:grid-cols-2">
         {(activeTab === 'overview' || activeTab === 'sessions') && (
         <SectionCard
-          title="Classes and sessions"
+          title={t('admin.student.classesAndSessions')}
           icon={BookOpen}
-          action={<SourceButton onClick={() => onNavigate('curriculum')}>Open planning</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('curriculum')}>{t('admin.student.openPlanning')}</SourceButton>}
         >
           {sessionWeeks.length > 0 ? (
             <div className="space-y-3">
               <div className="flex items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
                 <p className="text-xs font-semibold text-[#525252]">
-                  {sessionWeeks.length} weeks · {sessionWeeks.reduce((total, week) => total + week.rows.length, 0)} sessions
+                  {t('admin.student.weeksSessions', { weeks: sessionWeeks.length, sessions: sessionWeeks.reduce((total, week) => total + week.rows.length, 0) })}
                 </p>
                 <div className="flex items-center gap-1">
                   <button
                     type="button"
-                    aria-label="Previous session weeks"
+                    aria-label={t('admin.student.prevSessionWeeks')}
                     disabled={sessionWeekPage === 0}
                     onClick={() => setSessionWeekPage(page => Math.max(0, page - 1))}
                     className="grid h-7 w-7 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] disabled:cursor-not-allowed disabled:opacity-40"
@@ -960,7 +1000,7 @@ export function AdminStudentDashboard({
                   </span>
                   <button
                     type="button"
-                    aria-label="Next session weeks"
+                    aria-label={t('admin.student.nextSessionWeeks')}
                     disabled={sessionWeekPage >= maxSessionWeekPage}
                     onClick={() => setSessionWeekPage(page => Math.min(maxSessionWeekPage, page + 1))}
                     className="grid h-7 w-7 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] disabled:cursor-not-allowed disabled:opacity-40"
@@ -992,14 +1032,14 @@ export function AdminStudentDashboard({
                             >
                               <div className="min-w-0">
                                 <div className="flex min-w-0 items-center gap-2">
-                                  <span title={getSessionSlotTitle(row.hour)} className="shrink-0 rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#525252]">
-                                    {getSessionSlotLabel(row.hour)}
+                                  <span title={getSessionSlotTitle(row.hour, t)} className="shrink-0 rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#525252]">
+                                    {getSessionSlotLabel(row.hour, t)}
                                   </span>
                                   <p className="truncate text-sm font-semibold text-[#171717]">{row.title}</p>
                                 </div>
                                 <p className="mt-1 truncate text-xs text-[#737373]">{row.subjectTitle}</p>
                               </div>
-                              <TeacherIcon user={row.teacher} />
+                              <TeacherIcon user={row.teacher} t={t} />
                             </div>
                           ))}
                         </div>
@@ -1010,19 +1050,19 @@ export function AdminStudentDashboard({
               ))}
             </div>
           ) : (
-            <p className="text-sm text-[#737373]">No classes or sessions found for this student yet.</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.noClassesOrSessions')}</p>
           )}
         </SectionCard>
         )}
 
         {(activeTab === 'overview' || activeTab === 'service') && (
         <SectionCard
-          title="Duty and service"
+          title={t('admin.student.dutyAndService')}
           icon={ShieldCheck}
           action={(
             <div className="flex flex-wrap justify-end gap-1.5">
-              <SourceButton onClick={() => onNavigate('attendance-duty')}>On duty</SourceButton>
-              <SourceButton onClick={() => onNavigate('attendance-ministry')}>Service</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-duty')}>{t('admin.student.onDuty')}</SourceButton>
+              <SourceButton onClick={() => onNavigate('attendance-ministry')}>{t('admin.student.service')}</SourceButton>
             </div>
           )}
         >
@@ -1031,36 +1071,36 @@ export function AdminStudentDashboard({
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Ministry</p>
-                    <p className="mt-1 text-base font-semibold text-[#171717]">{activeTeam?.name ?? 'Not assigned'}</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.ministry')}</p>
+                    <p className="mt-1 text-base font-semibold text-[#171717]">{activeTeam?.name ?? t('admin.dashboard.notAssigned')}</p>
                   </div>
                   <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${activeRotation ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'}`}>
-                    {activeRotation ? 'Active' : 'Missing'}
+                    {activeRotation ? t('admin.student.active') : t('admin.student.missing')}
                   </span>
                 </div>
                 <p className="mt-3 text-xs text-[#737373]">
                   {activeRotation
                     ? `${formatPlatformDate(activeRotation.startDate)} - ${formatPlatformDate(activeRotation.endDate)}`
-                    : 'No ministry rotation is currently attached to this student.'}
+                    : t('admin.student.noMinistryRotationAttached')}
                 </p>
               </div>
 
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                 <div className="flex items-start justify-between gap-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Attendance duty</p>
-                    <p className="mt-1 text-base font-semibold text-[#171717]">On-duty schedule</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.attendanceDuty')}</p>
+                    <p className="mt-1 text-base font-semibold text-[#171717]">{t('admin.student.onDutySchedule')}</p>
                   </div>
-                  <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-xs font-semibold text-[#1d4ed8]">Tracked</span>
+                  <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-xs font-semibold text-[#1d4ed8]">{t('admin.student.tracked')}</span>
                 </div>
                 <p className="mt-3 text-xs text-[#737373]">
-                  Class and Well keeper assignments are managed from the on-duty schedule.
+                  {t('admin.student.dutyScheduleHint')}
                 </p>
               </div>
             </div>
 
             <div className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Access on platform</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.accessOnPlatform')}</p>
               <div className="mt-2 flex flex-wrap gap-1.5">
                 {student.roles.filter(role => role !== 'dev').length > 0 ? (
                   student.roles.filter(role => role !== 'dev').map(role => (
@@ -1069,7 +1109,7 @@ export function AdminStudentDashboard({
                     </span>
                   ))
                 ) : (
-                  <span className="text-sm text-[#737373]">No platform roles</span>
+                  <span className="text-sm text-[#737373]">{t('admin.student.noPlatformRoles')}</span>
                 )}
               </div>
             </div>
@@ -1081,23 +1121,23 @@ export function AdminStudentDashboard({
 
       {activeTab === 'tuition' && (
         <SectionCard
-          title="Tuition"
+          title={t('sidebar.tuition')}
           icon={CreditCard}
-          action={<SourceButton onClick={() => onNavigate('tuition-students')}>Open tuition</SourceButton>}
+          action={<SourceButton onClick={() => onNavigate('tuition-students')}>{t('admin.student.openTuition')}</SourceButton>}
         >
           {activeTuitionAccount ? (
             <div className="space-y-4">
               <div className="grid gap-3 md:grid-cols-4">
-                <StatCard label="Plan" value={activeTuitionPlan?.name ?? 'Unknown'} detail={activeTuitionAccount.status.replace('_', ' ')} />
-                <StatCard label="Expected" value={currency(expectedTuition, tuitionCurrency)} detail={`${currency(activeTuitionAccount.discountAmount, tuitionCurrency)} discount`} />
-                <StatCard label="Paid" value={currency(paidTuition, tuitionCurrency)} detail={`${tuitionPayments.length} payment${tuitionPayments.length === 1 ? '' : 's'}`} />
-                <StatCard label="Remaining" value={currency(remainingTuition, tuitionCurrency)} detail={remainingTuition > 0 ? 'Outstanding' : 'Cleared'} />
+                <StatCard label={t('admin.student.plan')} value={activeTuitionPlan?.name ?? t('common.unknown')} detail={activeTuitionAccount.status.replace('_', ' ')} />
+                <StatCard label={t('admin.student.expected')} value={currency(expectedTuition, tuitionCurrency)} detail={t('admin.student.discount', { amount: currency(activeTuitionAccount.discountAmount, tuitionCurrency) })} />
+                <StatCard label={t('admin.student.paid')} value={currency(paidTuition, tuitionCurrency)} detail={tCount('admin.student.payment', tuitionPayments.length)} />
+                <StatCard label={t('admin.dashboard.remaining')} value={currency(remainingTuition, tuitionCurrency)} detail={remainingTuition > 0 ? t('admin.student.outstanding') : t('admin.student.cleared')} />
               </div>
 
               <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_360px]">
                 <div className="rounded-2xl border border-[#e5e5e5] p-3">
                   <div className="flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-[#171717]">Payment history</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('admin.student.paymentHistory')}</p>
                     <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d]">
                       {tuitionPayments.length}
                     </span>
@@ -1121,7 +1161,7 @@ export function AdminStudentDashboard({
                     ))}
                     {tuitionPayments.length === 0 && (
                       <p className="rounded-xl bg-[#fafafa] px-3 py-6 text-center text-sm text-[#737373]">
-                        No payments recorded yet.
+                        {t('admin.student.noPaymentsRecorded')}
                       </p>
                     )}
                   </div>
@@ -1129,24 +1169,24 @@ export function AdminStudentDashboard({
 
                 <div className="space-y-4">
                   <div className="rounded-2xl border border-[#e5e5e5] p-3">
-                    <p className="text-sm font-semibold text-[#171717]">Installments</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('nav.tuition.installments')}</p>
                     <div className="mt-3 space-y-2">
                       {activeTuitionInstallments.map(installment => (
                         <div key={installment.id} className="flex items-center justify-between gap-3 rounded-xl bg-[#fafafa] px-3 py-2">
                           <div>
                             <p className="text-sm font-semibold text-[#171717]">{installment.title}</p>
-                            <p className="text-xs text-[#737373]">Due {formatPlatformDate(installment.dueDate)}</p>
+                            <p className="text-xs text-[#737373]">{t('admin.student.dueOn', { date: formatPlatformDate(installment.dueDate) })}</p>
                           </div>
                           <span className="text-sm font-semibold text-[#171717]">{currency(installment.amount, tuitionCurrency)}</span>
                         </div>
                       ))}
-                      {activeTuitionInstallments.length === 0 && <p className="text-sm text-[#737373]">No installments are set for this plan.</p>}
+                      {activeTuitionInstallments.length === 0 && <p className="text-sm text-[#737373]">{t('admin.student.noInstallments')}</p>}
                     </div>
                   </div>
 
                   <div className="rounded-2xl border border-[#e5e5e5] p-3">
                     <div className="flex items-center justify-between gap-3">
-                      <p className="text-sm font-semibold text-[#171717]">Reminder history</p>
+                      <p className="text-sm font-semibold text-[#171717]">{t('admin.student.reminderHistory')}</p>
                       <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#9a3412]">
                         {tuitionReminders.length}
                       </span>
@@ -1158,14 +1198,14 @@ export function AdminStudentDashboard({
                           <p className="text-xs text-[#737373]">{reminder.status} · {formatPlatformDate(reminder.createdAt)}</p>
                         </div>
                       ))}
-                      {tuitionReminders.length === 0 && <p className="text-sm text-[#737373]">No reminders recorded yet.</p>}
+                      {tuitionReminders.length === 0 && <p className="text-sm text-[#737373]">{t('admin.student.noRemindersRecorded')}</p>}
                     </div>
                   </div>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-[#737373]">This student is not attached to a tuition plan yet.</p>
+            <p className="text-sm text-[#737373]">{t('admin.student.noTuitionPlan')}</p>
           )}
         </SectionCard>
       )}

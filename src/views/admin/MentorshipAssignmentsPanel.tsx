@@ -3,6 +3,8 @@ import { ChevronDown, ChevronUp, Plus, UserCheck } from 'lucide-react';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 import { MentorAssignModal } from '../../components/modals/MentorAssignModal';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import {
   EmptyState,
   FilterChip,
@@ -25,6 +27,22 @@ interface MentorshipAssignmentsPanelProps {
 
 type ViewMode = 'pairs' | 'unassigned';
 
+const unassignedColumns: TranslationKey[] = [
+  'mentorship.assignments.column.student',
+  'mentorship.assignments.column.email',
+  'mentorship.assignments.column.course',
+];
+
+const pairsColumns: TranslationKey[] = [
+  'mentorship.assignments.column.student',
+  'mentorship.assignments.column.mentor',
+  'mentorship.assignments.column.course',
+  'mentorship.assignments.column.lastCheckin',
+  'mentorship.assignments.column.checkins',
+  'mentorship.assignments.column.progress',
+  'mentorship.assignments.column.actions',
+];
+
 export function MentorshipAssignmentsPanel({
   users,
   courseStudents,
@@ -35,6 +53,7 @@ export function MentorshipAssignmentsPanel({
   onAssignMentor,
   onOpenCheckin,
 }: MentorshipAssignmentsPanelProps) {
+  const { t } = useLanguage();
   const [viewMode, setViewMode] = useState<ViewMode>('pairs');
   const [search, setSearch] = useState('');
   const [expandedPairs, setExpandedPairs] = useState<Set<string>>(new Set());
@@ -117,14 +136,14 @@ export function MentorshipAssignmentsPanel({
           <div className="flex flex-wrap gap-2">
             <FilterChip
               active={viewMode === 'pairs'}
-              label="Active pairs"
+              label={t('mentorship.assignments.activePairs')}
               count={mentorshipPairs.length}
               onClick={() => setViewMode('pairs')}
               tone="info"
             />
             <FilterChip
               active={viewMode === 'unassigned'}
-              label="Needs mentor"
+              label={t('mentorship.assignments.needsMentor')}
               count={studentsWithoutMentors.length}
               onClick={() => setViewMode('unassigned')}
               tone={studentsWithoutMentors.length > 0 ? 'warning' : 'neutral'}
@@ -134,7 +153,7 @@ export function MentorshipAssignmentsPanel({
             <SearchField
               value={search}
               onChange={setSearch}
-              placeholder={viewMode === 'pairs' ? 'Search pairs…' : 'Search students…'}
+              placeholder={viewMode === 'pairs' ? t('mentorship.assignments.searchPairs') : t('mentorship.assignments.searchStudents')}
             />
           </div>
         </div>
@@ -147,11 +166,12 @@ export function MentorshipAssignmentsPanel({
               <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
                 <thead className="bg-[#fafafa]">
                   <tr>
-                    {['Student', 'Email', 'Course', ''].map(column => (
-                      <th key={column || 'action'} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                        {column}
+                    {unassignedColumns.map(column => (
+                      <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                        {t(column)}
                       </th>
                     ))}
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#f0f0f0]">
@@ -181,7 +201,7 @@ export function MentorshipAssignmentsPanel({
                             className="inline-flex items-center gap-1 rounded-lg bg-[#171717] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#262626]"
                           >
                             <Plus className="h-3.5 w-3.5" />
-                            Assign mentor
+                            {t('mentorship.assignments.assignMentor')}
                           </button>
                         </td>
                       </tr>
@@ -194,8 +214,8 @@ export function MentorshipAssignmentsPanel({
         ) : (
           <EmptyState
             icon={UserCheck}
-            title={query ? 'No students match your search' : 'All students have mentors'}
-            description={query ? 'Try a different name or email.' : 'Great work — every enrolled student is paired.'}
+            title={query ? t('mentorship.assignments.emptySearchStudents.title') : t('mentorship.assignments.allHaveMentors.title')}
+            description={query ? t('mentorship.assignments.emptySearchStudents.desc') : t('mentorship.assignments.allHaveMentors.desc')}
           />
         )
       ) : filteredPairs.length > 0 ? (
@@ -204,9 +224,9 @@ export function MentorshipAssignmentsPanel({
             <table className="min-w-[960px] divide-y divide-[#e5e5e5] text-sm">
               <thead className="bg-[#fafafa]">
                 <tr>
-                  {['Student', 'Mentor', 'Course', 'Last check-in', 'Check-ins', 'Progress', 'Actions'].map(column => (
+                  {pairsColumns.map(column => (
                     <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                      {column}
+                      {t(column)}
                     </th>
                   ))}
                 </tr>
@@ -221,8 +241,8 @@ export function MentorshipAssignmentsPanel({
                           <div className="flex items-center gap-3">
                             <PersonAvatar name={pair.student?.name ?? '?'} tone="student" size="sm" />
                             <div>
-                              <p className="font-medium text-[#171717]">{pair.student?.name ?? 'Unknown'}</p>
-                              <p className="text-xs text-[#737373]">Student</p>
+                              <p className="font-medium text-[#171717]">{pair.student?.name ?? t('common.unknown')}</p>
+                              <p className="text-xs text-[#737373]">{t('mentorship.assignments.role.student')}</p>
                             </div>
                           </div>
                         </td>
@@ -230,8 +250,8 @@ export function MentorshipAssignmentsPanel({
                           <div className="flex items-center gap-3">
                             <PersonAvatar name={pair.mentor?.name ?? '?'} tone="mentor" size="sm" />
                             <div>
-                              <p className="font-medium text-[#171717]">{pair.mentor?.name ?? 'Unknown'}</p>
-                              <p className="text-xs text-[#737373]">Mentor</p>
+                              <p className="font-medium text-[#171717]">{pair.mentor?.name ?? t('common.unknown')}</p>
+                              <p className="text-xs text-[#737373]">{t('mentorship.assignments.role.mentor')}</p>
                             </div>
                           </div>
                         </td>
@@ -240,7 +260,7 @@ export function MentorshipAssignmentsPanel({
                         </td>
                         <td className="px-4 py-3 text-[#525252]">
                           {pair.latestCheckin ? formatPlatformDate(pair.latestCheckin) : (
-                            <span className="text-[#a3a3a3]">None yet</span>
+                            <span className="text-[#a3a3a3]">{t('mentorship.assignments.noneYet')}</span>
                           )}
                         </td>
                         <td className="px-4 py-3 font-medium text-[#171717]">{pair.totalCheckins}</td>
@@ -260,14 +280,14 @@ export function MentorshipAssignmentsPanel({
                               onClick={() => onOpenCheckin(pair.studentId, pair.allLogs[0])}
                               className="rounded-lg bg-[#171717] px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-[#262626]"
                             >
-                              Log check-in
+                              {t('mentorship.assignments.logCheckin')}
                             </button>
                             <button
                               type="button"
                               onClick={() => togglePairExpansion(pair.pairKey)}
                               className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                             >
-                              History
+                              {t('mentorship.assignments.history')}
                               {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                             </button>
                             <button
@@ -279,7 +299,7 @@ export function MentorshipAssignmentsPanel({
                               })}
                               className="rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                             >
-                              Change
+                              {t('mentorship.assignments.change')}
                             </button>
                           </div>
                         </td>
@@ -293,7 +313,7 @@ export function MentorshipAssignmentsPanel({
                                   <div key={log.id} className="rounded-lg border border-[#e5e5e5] bg-white p-3">
                                     <div className="flex items-center justify-between gap-2">
                                       <span className="text-sm font-medium text-[#171717]">
-                                        {log.type === 'digital' ? 'Digital' : 'In-person'} check-in
+                                        {log.type === 'digital' ? t('mentorship.assignments.digitalCheckin') : t('mentorship.assignments.inPersonCheckin')}
                                       </span>
                                       <span className="text-xs text-[#737373]">{formatPlatformDate(log.date)}</span>
                                     </div>
@@ -304,7 +324,7 @@ export function MentorshipAssignmentsPanel({
                                 ))}
                               </div>
                             ) : (
-                              <p className="text-sm text-[#737373]">No check-ins recorded for this pair yet.</p>
+                              <p className="text-sm text-[#737373]">{t('mentorship.assignments.noCheckinsForPair')}</p>
                             )}
                           </td>
                         </tr>
@@ -319,8 +339,8 @@ export function MentorshipAssignmentsPanel({
       ) : (
         <EmptyState
           icon={UserCheck}
-          title={query ? 'No pairs match your search' : 'No mentorship pairs yet'}
-          description={query ? 'Try another student, mentor, or course name.' : 'Assign mentors to students to start tracking check-ins.'}
+          title={query ? t('mentorship.assignments.emptySearchPairs.title') : t('mentorship.assignments.noPairs.title')}
+          description={query ? t('mentorship.assignments.emptySearchPairs.desc') : t('mentorship.assignments.noPairs.desc')}
           action={
             studentsWithoutMentors.length > 0 ? (
               <button
@@ -328,7 +348,7 @@ export function MentorshipAssignmentsPanel({
                 onClick={() => setViewMode('unassigned')}
                 className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#262626]"
               >
-                View unassigned students
+                {t('mentorship.assignments.viewUnassigned')}
               </button>
             ) : undefined
           }
@@ -344,7 +364,7 @@ export function MentorshipAssignmentsPanel({
         onAssign={async (studentId, mentorId) => {
           const courseId = editingPair?.courseId ?? getEnrollmentForStudent(studentId)?.courseId;
           if (courseId == null) {
-            alert('This student must be enrolled in a course before a mentor can be assigned.');
+            alert(t('mentorship.assignments.enrollmentRequired'));
             return;
           }
           await onAssignMentor(studentId, courseId, mentorId);

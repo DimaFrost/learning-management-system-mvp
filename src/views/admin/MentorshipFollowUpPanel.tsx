@@ -4,6 +4,8 @@ import type { User, CourseStudent, MentorshipLog } from '../../types/lms';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { calculateOverallStatus, getCheckInStatus } from '../../utils/mentorshipUtils';
 import { ContactMentorModal } from '../../components/modals/ContactMentorModal';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import {
   CheckInStatusBadge,
   EmptyState,
@@ -31,6 +33,14 @@ const statusPriority: Record<string, number> = {
   on_track: 2,
 };
 
+const followUpColumns: TranslationKey[] = [
+  'mentorship.followUp.column.student',
+  'mentorship.followUp.column.mentor',
+  'mentorship.followUp.column.lastInPerson',
+  'mentorship.followUp.column.overall',
+  'mentorship.followUp.column.actions',
+];
+
 export function MentorshipFollowUpPanel({
   courseStudents,
   cadenceSettings,
@@ -38,6 +48,7 @@ export function MentorshipFollowUpPanel({
   getUserById,
   onOpenCheckin,
 }: MentorshipFollowUpPanelProps) {
+  const { t } = useLanguage();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [contactMentor, setContactMentor] = useState<User | null>(null);
@@ -60,8 +71,8 @@ export function MentorshipFollowUpPanel({
       const mentor = getUserById(cs.mentorId);
       studentMap.set(studentId, {
         id: studentId,
-        studentName: student?.name || 'Unknown',
-        mentorName: mentor?.name || 'Unassigned',
+        studentName: student?.name || t('common.unknown'),
+        mentorName: mentor?.name || t('mentorship.followUp.unassigned'),
         mentorId: cs.mentorId,
         overallStatus: calculateOverallStatus(studentId, mentorshipLogs, cadenceSettings),
         inPersonStatus: getCheckInStatus(studentId, 'in_person', mentorshipLogs, cadenceSettings),
@@ -76,7 +87,7 @@ export function MentorshipFollowUpPanel({
       onTrackPairs: allStudents.filter(pair => pair.overallStatus === 'on_track').length,
       allStudents,
     };
-  }, [cadenceSettings, courseStudents, getUserById, mentorshipLogs]);
+  }, [cadenceSettings, courseStudents, getUserById, mentorshipLogs, t]);
 
   const query = search.trim().toLowerCase();
 
@@ -102,18 +113,19 @@ export function MentorshipFollowUpPanel({
     <div className="space-y-4">
       <SectionCard className="p-4">
         <p className="text-sm text-[#737373]">
-          Status is based on <strong className="font-medium text-[#525252]">in-person meetings</strong> only.
-          Digital check-ins are optional and do not affect these flags.
+          {t('mentorship.followUp.inPersonOnly', {
+            strong: t('mentorship.followUp.inPersonMeetingsStrong'),
+          })}
         </p>
         <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex flex-wrap gap-2">
-            <FilterChip active={statusFilter === 'all'} label="All" count={analytics.totalPairs} onClick={() => setStatusFilter('all')} tone="info" />
-            <FilterChip active={statusFilter === 'at_risk'} label="At risk" count={analytics.atRiskPairs} onClick={() => setStatusFilter('at_risk')} tone="danger" />
-            <FilterChip active={statusFilter === 'lagging'} label="Lagging" count={analytics.laggingPairs} onClick={() => setStatusFilter('lagging')} tone="warning" />
-            <FilterChip active={statusFilter === 'on_track'} label="On track" count={analytics.onTrackPairs} onClick={() => setStatusFilter('on_track')} tone="success" />
+            <FilterChip active={statusFilter === 'all'} label={t('common.all')} count={analytics.totalPairs} onClick={() => setStatusFilter('all')} tone="info" />
+            <FilterChip active={statusFilter === 'at_risk'} label={t('mentorship.status.atRisk')} count={analytics.atRiskPairs} onClick={() => setStatusFilter('at_risk')} tone="danger" />
+            <FilterChip active={statusFilter === 'lagging'} label={t('mentorship.status.lagging')} count={analytics.laggingPairs} onClick={() => setStatusFilter('lagging')} tone="warning" />
+            <FilterChip active={statusFilter === 'on_track'} label={t('mentorship.status.onTrack')} count={analytics.onTrackPairs} onClick={() => setStatusFilter('on_track')} tone="success" />
           </div>
           <div className="w-full lg:max-w-xs">
-            <SearchField value={search} onChange={setSearch} placeholder="Search student or mentor…" />
+            <SearchField value={search} onChange={setSearch} placeholder={t('mentorship.followUp.searchPlaceholder')} />
           </div>
         </div>
       </SectionCard>
@@ -123,8 +135,8 @@ export function MentorshipFollowUpPanel({
           <div className="flex items-center gap-2 border-b border-[#fecaca] bg-[#fef2f2] px-4 py-3">
             <AlertTriangle className="h-4 w-4 text-[#b91c1c]" />
             <div>
-              <h3 className="font-semibold text-[#991b1b]">Priority follow-up</h3>
-              <p className="text-xs text-[#b91c1c]">Pairs overdue on in-person meetings.</p>
+              <h3 className="font-semibold text-[#991b1b]">{t('mentorship.followUp.priority.title')}</h3>
+              <p className="text-xs text-[#b91c1c]">{t('mentorship.followUp.priority.desc')}</p>
             </div>
           </div>
           <div className="divide-y divide-[#fecaca]/60">
@@ -134,9 +146,9 @@ export function MentorshipFollowUpPanel({
                   <PersonAvatar name={pair.studentName} tone="student" size="sm" />
                   <div className="min-w-0">
                     <p className="truncate font-semibold text-[#171717]">{pair.studentName}</p>
-                    <p className="truncate text-xs text-[#737373]">Mentor: {pair.mentorName}</p>
+                    <p className="truncate text-xs text-[#737373]">{t('mentorship.followUp.mentorLabel', { name: pair.mentorName })}</p>
                     <div className="mt-2">
-                      <CheckInStatusBadge status={pair.inPersonStatus.status} message={`In person · ${pair.inPersonStatus.message}`} />
+                      <CheckInStatusBadge status={pair.inPersonStatus.status} message={t('mentorship.followUp.inPersonPrefix', { message: pair.inPersonStatus.message })} />
                     </div>
                   </div>
                 </div>
@@ -146,7 +158,7 @@ export function MentorshipFollowUpPanel({
                     onClick={() => onOpenCheckin(pair.id)}
                     className="rounded-lg bg-[#b91c1c] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#991b1b]"
                   >
-                    Log meeting
+                    {t('mentorship.followUp.logMeeting')}
                   </button>
                   <button
                     type="button"
@@ -154,7 +166,7 @@ export function MentorshipFollowUpPanel({
                     className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d4] px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                   >
                     <Mail className="h-3.5 w-3.5" />
-                    Contact
+                    {t('mentorship.followUp.contact')}
                   </button>
                 </div>
               </div>
@@ -166,17 +178,17 @@ export function MentorshipFollowUpPanel({
       <SectionCard className="overflow-hidden">
         <div className="flex items-center justify-between border-b border-[#e5e5e5] px-4 py-3">
           <div>
-            <h3 className="font-semibold text-[#171717]">All pairs</h3>
-            <p className="text-sm text-[#737373]">{filteredStudents.length} shown · sorted by urgency</p>
+            <h3 className="font-semibold text-[#171717]">{t('mentorship.followUp.allPairs.title')}</h3>
+            <p className="text-sm text-[#737373]">{t('mentorship.followUp.allPairs.shown', { count: filteredStudents.length })}</p>
           </div>
         </div>
         <div className="overflow-x-auto">
           <table className="min-w-[760px] divide-y divide-[#e5e5e5] text-sm">
             <thead className="bg-[#fafafa]">
               <tr>
-                {['Student', 'Mentor', 'Last in-person meeting', 'Overall', 'Actions'].map(column => (
+                {followUpColumns.map(column => (
                   <th key={column} className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                    {column}
+                    {t(column)}
                   </th>
                 ))}
               </tr>
@@ -209,7 +221,7 @@ export function MentorshipFollowUpPanel({
                         onClick={() => onOpenCheckin(pair.id)}
                         className="rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                       >
-                        Log meeting
+                        {t('mentorship.followUp.logMeeting')}
                       </button>
                       <button
                         type="button"
@@ -217,7 +229,7 @@ export function MentorshipFollowUpPanel({
                         className="inline-flex items-center gap-1 rounded-lg border border-[#d4d4d4] px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                       >
                         <Mail className="h-3.5 w-3.5" />
-                        Contact
+                        {t('mentorship.followUp.contact')}
                       </button>
                     </div>
                   </td>
@@ -228,8 +240,8 @@ export function MentorshipFollowUpPanel({
                   <td colSpan={5} className="px-4 py-10">
                     <EmptyState
                       icon={query ? Search : CheckCircle}
-                      title={query ? 'No pairs match your search' : 'No pairs in this filter'}
-                      description={query ? 'Try another student or mentor name.' : 'Switch filters to see more students.'}
+                      title={query ? t('mentorship.followUp.emptySearch.title') : t('mentorship.followUp.emptyFilter.title')}
+                      description={query ? t('mentorship.followUp.emptySearch.desc') : t('mentorship.followUp.emptyFilter.desc')}
                     />
                   </td>
                 </tr>
@@ -243,7 +255,7 @@ export function MentorshipFollowUpPanel({
         <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-4 py-3 text-sm text-[#166534]">
           <div className="flex items-center gap-2 font-semibold">
             <CheckCircle className="h-4 w-4" />
-            All assigned pairs are meeting in-person meeting expectations.
+            {t('mentorship.followUp.allMeetingExpectations')}
           </div>
         </div>
       )}

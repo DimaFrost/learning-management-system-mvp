@@ -36,6 +36,8 @@ import type {
   User,
 } from '../../types/lms';
 import { formatCurrency, formatDate, formatDateCapitalized } from '../../i18n/formatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { PluralKey, TranslationKey } from '../../i18n/translations';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
 import type { useAttendance } from '../../hooks/useAttendance';
@@ -170,6 +172,9 @@ type MetricInsight = {
   tone: keyof typeof toneClasses;
 };
 
+type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
+type TCountFunction = (key: PluralKey, count: number, params?: Record<string, string | number>) => string;
+
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toneClasses = {
@@ -213,27 +218,63 @@ function parseDateKey(value: string) {
   return new Date(year, month - 1, day);
 }
 
-function formatRelativeDueDate(dueDate: string, today: string) {
+function formatRelativeDueDate(dueDate: string, today: string, t: TFunction, tCount: TCountFunction) {
   const due = parseDateKey(dueDate);
   const base = parseDateKey(today);
   const diffDays = Math.round((due.getTime() - base.getTime()) / DAY_MS);
   const absDays = Math.abs(diffDays);
 
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays === -1) return 'Yesterday';
-
-  const formatUnit = (days: number) => {
-    if (days >= 14 && days % 7 === 0) {
-      const weeks = days / 7;
-      return `${weeks} week${weeks === 1 ? '' : 's'}`;
-    }
-    return `${days} day${days === 1 ? '' : 's'}`;
-  };
+  if (diffDays === 0) return t('common.today');
+  if (diffDays === 1) return t('common.tomorrow');
+  if (diffDays === -1) return t('time.yesterday');
 
   return diffDays > 0
-    ? `In ${formatUnit(diffDays)}`
-    : `${formatUnit(absDays)} overdue`;
+    ? (diffDays >= 14 && diffDays % 7 === 0
+      ? tCount('admin.dashboard.inWeeks', diffDays / 7)
+      : tCount('admin.dashboard.inDays', diffDays))
+    : tCount('admin.dashboard.daysOverdue', absDays);
+}
+
+function formatClassDate(date: string, t: TFunction) {
+  if (!date) return t('admin.dashboard.unscheduled');
+  return formatPlatformDate(date);
+}
+
+function formatDateHeading(date: string, t: TFunction) {
+  if (!date) return t('admin.dashboard.unscheduled');
+  const value = new Date(`${date}T00:00:00`);
+  const today = startOfToday();
+  const dayOffset = Math.round((value.getTime() - today.getTime()) / DAY_MS);
+  const relativeLabels: Record<number, TranslationKey> = {
+    0: 'common.today',
+    1: 'common.tomorrow',
+    2: 'admin.dashboard.inTwoDays',
+    3: 'admin.dashboard.inThreeDays',
+    4: 'admin.dashboard.inFourDays',
+    5: 'admin.dashboard.inFiveDays',
+    6: 'admin.dashboard.inSixDays',
+    7: 'admin.dashboard.inAWeek',
+  };
+
+  const key = relativeLabels[dayOffset];
+  return key ? t(key) : formatPlatformDate(date);
+}
+
+function formatDateParts(date: string, t: TFunction) {
+  if (!date) {
+    return {
+      day: '--',
+      month: '',
+      weekday: t('admin.dashboard.unscheduled'),
+    };
+  }
+
+  const value = new Date(`${date}T00:00:00`);
+  return {
+    day: formatDate(value, { day: 'numeric' }),
+    month: formatDate(value, { month: 'short' }),
+    weekday: formatDate(value, { weekday: 'short' }),
+  };
 }
 
 function formatTuitionAmount(amount: number, currencyCode = 'EUR') {
@@ -273,54 +314,13 @@ function getMonthCalendarDays(month: Date) {
   });
 }
 
-function formatClassDate(date: string) {
-  if (!date) return 'Unscheduled';
-  return formatPlatformDate(date);
-}
-
-function formatDateHeading(date: string) {
-  if (!date) return 'Unscheduled';
-  const value = new Date(`${date}T00:00:00`);
-  const today = startOfToday();
-  const dayOffset = Math.round((value.getTime() - today.getTime()) / DAY_MS);
-  const relativeLabels: Record<number, string> = {
-    0: 'Today',
-    1: 'Tomorrow',
-    2: 'In two days',
-    3: 'In three days',
-    4: 'In four days',
-    5: 'In five days',
-    6: 'In six days',
-    7: 'In a week',
-  };
-
-  return relativeLabels[dayOffset] ?? formatPlatformDate(date);
-}
-
-function formatDateParts(date: string) {
-  if (!date) {
-    return {
-      day: '--',
-      month: '',
-      weekday: 'Unscheduled',
-    };
-  }
-
-  const value = new Date(`${date}T00:00:00`);
-  return {
-    day: formatDate(value, { day: 'numeric' }),
-    month: formatDate(value, { month: 'short' }),
-    weekday: formatDate(value, { weekday: 'short' }),
-  };
-}
-
 function isSaturdayDate(date: string) {
   if (!date) return false;
   return new Date(`${date}T00:00:00`).getDay() === 6;
 }
 
-function getCourseYearLabel(course: Course) {
-  return course.courseType === 'first_year' ? 'First Year' : 'Second Year';
+function getCourseYearLabel(course: Course, t: TFunction) {
+  return course.courseType === 'first_year' ? t('common.yearGroup.first') : t('common.yearGroup.second');
 }
 
 function getYearRomanLabel(label: string) {
@@ -333,10 +333,12 @@ function YearRomanBadge({
   label,
   tone = 'neutral',
   compact = false,
+  t,
 }: {
   label: string;
   tone?: 'neutral' | 'blue' | 'orange';
   compact?: boolean;
+  t: TFunction;
 }) {
   const isSecond = label.includes('Second') && !label.includes('First & Second');
   const toneClass = tone === 'orange'
@@ -344,6 +346,7 @@ function YearRomanBadge({
     : isSecond
       ? 'border-[#a3a3a3] bg-[#e5e5e5] text-[#262626]'
       : 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]';
+  const isBothYears = label.includes('First & Second');
   return (
     <span
       className={`inline-flex shrink-0 items-center gap-1.5 rounded-md border leading-none ${toneClass} ${
@@ -353,7 +356,7 @@ function YearRomanBadge({
       aria-label={label}
     >
       <span className="font-serif font-semibold">{getYearRomanLabel(label)}</span>
-      <span className="font-sans font-semibold">{label.includes('First & Second') ? 'Years' : label}</span>
+      <span className="font-sans font-semibold">{isBothYears ? t('admin.dashboard.years') : label}</span>
     </span>
   );
 }
@@ -421,11 +424,12 @@ function getInitials(name: string) {
   return parts.slice(0, 2).map(part => part[0]?.toUpperCase()).join('');
 }
 
-function PersonAvatar({ person }: { person: UpcomingPerson }) {
+function PersonAvatar({ person, t }: { person: UpcomingPerson; t: TFunction }) {
+  const roleLabel = person.role === 'Speaker' ? t('admin.dashboard.role.speaker') : t('admin.dashboard.role.translator');
   return (
     <span
       className="group relative flex h-6 w-6 items-center justify-center overflow-hidden rounded-full border border-white bg-[#f5f5f5] text-[10px] font-semibold text-[#525252] shadow-[0_0_0_1px_rgba(229,229,229,0.9)]"
-      title={`${person.role}: ${person.name}`}
+      title={`${roleLabel}: ${person.name}`}
     >
       {person.avatarUrl ? (
         <img src={person.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -462,7 +466,7 @@ function getActivationJointKey(item: Pick<UpcomingItem, 'date' | 'title' | 'subj
   ].join('|');
 }
 
-function groupUpcomingItems(items: UpcomingItem[]): UpcomingDateGroup[] {
+function groupUpcomingItems(items: UpcomingItem[], t: TFunction): UpcomingDateGroup[] {
   const byDate = new Map<string, Map<string, UpcomingItem[]>>();
   const jointByDate = new Map<string, UpcomingItem[]>();
   const consumedJointIds = new Set<string>();
@@ -496,10 +500,10 @@ function groupUpcomingItems(items: UpcomingItem[]): UpcomingDateGroup[] {
       ...firstYear,
       id: `activation-${firstYear.jointKey}`,
       type: 'activation',
-      title: firstYear.title || 'Activation Saturday',
-      courseYearLabel: 'First & Second Years',
-      courseName: 'First + Second Year',
-      meta: 'Activation Saturday',
+      title: firstYear.title || t('admin.dashboard.activationSaturday'),
+      courseYearLabel: t('admin.dashboard.firstAndSecondYears'),
+      courseName: t('admin.dashboard.firstPlusSecondYear'),
+      meta: t('admin.dashboard.activationSaturday'),
       tone: 'orange',
     };
 
@@ -726,6 +730,8 @@ export function AdminDashboard({
   onOpenClass,
   onOpenSubject,
 }: AdminDashboardProps) {
+  const { t, tCount } = useLanguage();
+  const gradeSubmittedWorkTitle = t('admin.dashboard.gradeSubmittedWork');
   const [homeworkOps, setHomeworkOps] = useState<HomeworkOps>({
     assignments: 0,
     dueToday: 0,
@@ -901,11 +907,11 @@ export function AdminDashboard({
             title: cls.title || subject.title,
             date: cls.date,
             courseType: course.courseType,
-            courseYearLabel: getCourseYearLabel(course),
+            courseYearLabel: getCourseYearLabel(course, t),
             courseName: getCourseDisplayName(course),
             subjectTitle: subject.title,
             detail: `${subject.title} / ${cls.hour}`,
-            meta: 'Session',
+            meta: t('classwork.dueGroup.session'),
             tone: 'blue',
             speaker: jointCandidate.speaker,
             translator: jointCandidate.translator,
@@ -915,13 +921,14 @@ export function AdminDashboard({
       });
     });
 
-    return groupUpcomingItems(items);
+    return groupUpcomingItems(items, t);
   }, [
     activeWorkspace,
     currentUser.id,
     getCourseDisplayName,
     upcomingScopeCourses,
     users,
+    t,
   ]);
   const monthCalendarDays = useMemo(() => getMonthCalendarDays(calendarMonth), [calendarMonth]);
   const monthEventsByDate = useMemo(() => {
@@ -960,11 +967,11 @@ export function AdminDashboard({
             title: cls.title || subject.title,
             date: cls.date,
             courseType: course.courseType,
-            courseYearLabel: getCourseYearLabel(course),
+            courseYearLabel: getCourseYearLabel(course, t),
             courseName: getCourseDisplayName(course),
             subjectTitle: subject.title,
             detail: `${subject.title} / ${cls.hour}`,
-            meta: 'Session',
+            meta: t('classwork.dueGroup.session'),
             tone: 'blue',
             speaker: jointCandidate.speaker,
             translator: jointCandidate.translator,
@@ -980,13 +987,13 @@ export function AdminDashboard({
     });
 
     const events = new Map<string, MonthCalendarEvent[]>();
-    groupUpcomingItems(items).forEach(group => {
+    groupUpcomingItems(items, t).forEach(group => {
       const groupEvents: MonthCalendarEvent[] = [
         ...group.jointItems.map(item => ({
           id: item.id,
           title: item.title,
           type: 'activation' as const,
-          yearLabel: 'First & Second Years',
+          yearLabel: t('admin.dashboard.firstAndSecondYears'),
           tone: 'orange' as const,
           classId: item.classId,
           subjectId: item.subjectId,
@@ -1019,6 +1026,7 @@ export function AdminDashboard({
     getCourseDisplayName,
     upcomingScopeCourses,
     users,
+    t,
   ]);
   const selectedCalendarEvents = selectedCalendarDate
     ? monthEventsByDate.get(selectedCalendarDate) ?? []
@@ -1042,32 +1050,40 @@ export function AdminDashboard({
   const yearGroupHealthGaps = [
     ...activeCourses
       .filter(course => course.subjects.length === 0)
-      .map(course => `${getCourseDisplayName(course)} has no subjects yet.`),
+      .map(course => t('admin.dashboard.gapNoSubjects', { course: getCourseDisplayName(course) })),
     ...activeCourses.flatMap(course =>
       course.subjects
         .filter(subject => subject.classes.length === 0)
-        .map(subject => `${getCourseDisplayName(course)} / ${subject.title} has no sessions.`)
+        .map(subject => t('admin.dashboard.gapNoSessions', { course: getCourseDisplayName(course), subject: subject.title }))
     ),
     ...activeCourses.flatMap(course =>
       course.subjects.flatMap(subject =>
         subject.classes
           .filter(cls => !cls.teacherId || !cls.translatorId)
-          .map(cls => `${getCourseDisplayName(course)} / ${subject.title}: ${!cls.teacherId && !cls.translatorId ? 'teacher and translator missing' : !cls.teacherId ? 'teacher missing' : 'translator missing'}.`)
+          .map(cls => {
+            if (!cls.teacherId && !cls.translatorId) {
+              return t('admin.dashboard.gapStaffBothMissing', { course: getCourseDisplayName(course), subject: subject.title });
+            }
+            if (!cls.teacherId) {
+              return t('admin.dashboard.gapStaffTeacherMissing', { course: getCourseDisplayName(course), subject: subject.title });
+            }
+            return t('admin.dashboard.gapStaffTranslatorMissing', { course: getCourseDisplayName(course), subject: subject.title });
+          })
       )
     ),
     ...activeCourses
       .filter(course => !course.driveFolderId)
-      .map(course => `${getCourseDisplayName(course)} is missing its Drive folder.`),
+      .map(course => t('admin.dashboard.gapCourseDrive', { course: getCourseDisplayName(course) })),
     ...activeCourses.flatMap(course =>
       course.subjects
         .filter(subject => !subject.driveFolderId)
-        .map(subject => `${getCourseDisplayName(course)} / ${subject.title} is missing its subject Drive folder.`)
+        .map(subject => t('admin.dashboard.gapSubjectDrive', { course: getCourseDisplayName(course), subject: subject.title }))
     ),
     ...activeCourses.flatMap(course =>
       course.subjects.flatMap(subject =>
         subject.classes
           .filter(cls => !cls.materialsFolderId || !cls.homeworkFolderId)
-          .map(cls => `${getCourseDisplayName(course)} / ${subject.title}: class folders incomplete.`)
+          .map(cls => t('admin.dashboard.gapClassFolders', { course: getCourseDisplayName(course), subject: subject.title }))
       )
     ),
   ].slice(0, 8);
@@ -1087,18 +1103,18 @@ export function AdminDashboard({
   const dynamicGradingTodo: TodoItem | null = activeWorkspace === 'teacher' && homeworkOps.ungraded > 0 ? {
     id: -900001,
     batchId: null,
-    title: 'Grade submitted work',
-    description: `${homeworkOps.ungraded} submission${homeworkOps.ungraded === 1 ? '' : 's'} waiting for review.`,
+    title: gradeSubmittedWorkTitle,
+    description: tCount('admin.dashboard.submissionsWaiting', homeworkOps.ungraded),
     assignedTo: currentUser.id,
     assignedToName: currentUser.name,
     assignedToAvatarUrl: currentUser.avatarUrl ?? null,
     createdBy: currentUser.id,
-    createdByName: 'Classwork',
+    createdByName: t('admin.dashboard.classworkSource'),
     dueDate: homeworkOps.gradingDueDate ?? todayKey,
     priority: 'priority',
     status: 'open',
     assignmentType: 'person',
-    targetLabel: 'Submitted assignments',
+    targetLabel: t('admin.dashboard.submittedAssignments'),
     recipientCount: homeworkOps.ungraded,
     completedAt: null,
     createdAt: new Date().toISOString(),
@@ -1134,10 +1150,10 @@ export function AdminDashboard({
 
     return {
       key: courseType,
-      label: courseType === 'first_year' ? 'First Year' : 'Second Year',
-      name: duty?.studentName ?? 'Not assigned',
+      label: courseType === 'first_year' ? t('common.yearGroup.first') : t('common.yearGroup.second'),
+      name: duty?.studentName ?? t('admin.dashboard.notAssigned'),
       avatarUrl: user?.avatarUrl ?? null,
-      courseName: course ? getCourseDisplayName(course) : 'No active course',
+      courseName: course ? getCourseDisplayName(course) : t('admin.dashboard.noActiveCourse'),
       assigned: Boolean(duty),
       transferred: duty?.status === 'transferred',
     };
@@ -1188,47 +1204,47 @@ export function AdminDashboard({
   const schoolPulse = clampPercent(100 - Math.min(signalCount * 8, 70));
   const metricInsights: MetricInsight[] = [
     {
-      title: 'Year Group Health',
+      title: t('admin.dashboard.yearGroupHealth'),
       value: activeCourses.length,
-      detail: `${staffingGaps} staffing gaps`,
-      description: 'Shows how many active year groups are running and how complete their setup is. The progress bar combines year group, subject, class, staffing, and Drive folder readiness.',
-      notes: yearGroupHealthGaps.length > 0 ? yearGroupHealthGaps : ['Everything counted in this readiness score is complete.'],
+      detail: t('admin.dashboard.staffingGaps', { count: staffingGaps }),
+      description: t('admin.dashboard.yearGroupHealthDesc'),
+      notes: yearGroupHealthGaps.length > 0 ? yearGroupHealthGaps : [t('admin.dashboard.readinessComplete')],
       progressValue: courseReadiness,
-      progressLabel: `${courseReadiness}% year group readiness`,
-      actionLabel: 'Open curriculum',
+      progressLabel: t('admin.dashboard.yearGroupReadiness', { n: courseReadiness }),
+      actionLabel: t('admin.dashboard.openCurriculum'),
       view: 'curriculum',
       tone: 'blue',
     },
     {
-      title: 'Students',
+      title: t('common.students'),
       value: activeStudentIds.size,
-      detail: `${studentsWithoutMentor.length} without mentors`,
-      description: 'Counts active student enrollments across the school. The progress bar shows mentor coverage, so a lower bar means more students still need mentor assignment.',
+      detail: t('admin.dashboard.withoutMentors', { count: studentsWithoutMentor.length }),
+      description: t('admin.dashboard.studentsDesc'),
       progressValue: mentorCoverage,
-      progressLabel: `${mentorCoverage}% mentor coverage`,
-      actionLabel: 'Review students',
+      progressLabel: t('admin.dashboard.mentorCoverage', { n: mentorCoverage }),
+      actionLabel: t('admin.dashboard.reviewStudents'),
       view: 'users',
       tone: 'violet',
     },
     {
-      title: 'Mentors',
+      title: t('admin.dashboard.mentors'),
       value: activeMentors.length,
-      detail: `${recentMentorshipLogs} check-ins this week`,
-      description: 'Shows the number of users with the mentor role and recent mentorship activity. It helps you quickly see whether student support is being actively logged.',
+      detail: t('admin.dashboard.checkInsThisWeek', { count: recentMentorshipLogs }),
+      description: t('admin.dashboard.mentorsDesc'),
       progressValue: mentorCoverage,
-      progressLabel: `${mentorCoverage}% student coverage`,
-      actionLabel: 'Open mentorship',
+      progressLabel: t('admin.dashboard.studentCoverage', { n: mentorCoverage }),
+      actionLabel: t('admin.dashboard.openMentorship'),
       view: 'mentorship-overview',
       tone: 'green',
     },
     {
-      title: 'Duty Transfers',
+      title: t('admin.dashboard.dutyTransfers'),
       value: attendance.pendingTransferRequests.length,
-      detail: 'pending requests',
-      description: 'Counts weekly duty transfer requests still waiting for an administrator decision. The progress bar reuses attendance health as a nearby operational signal.',
+      detail: t('admin.dashboard.pendingRequests'),
+      description: t('admin.dashboard.dutyTransfersMetricDesc'),
       progressValue: attendanceHealth,
-      progressLabel: `${attendanceHealth}% attendance health`,
-      actionLabel: 'Review attendance',
+      progressLabel: t('admin.dashboard.attendanceHealth', { n: attendanceHealth }),
+      actionLabel: t('admin.dashboard.openAttendance'),
       view: 'attendance',
       tone: 'orange',
     },
@@ -1236,48 +1252,48 @@ export function AdminDashboard({
 
   const actionItems: ActionItem[] = [
     {
-      title: 'Access review',
-      detail: 'No role',
-      clearDetail: 'Clear',
-      description: 'Profiles that signed in but do not yet have an assigned school role.',
+      title: t('admin.dashboard.accessReview'),
+      detail: t('admin.dashboard.noRole'),
+      clearDetail: t('admin.dashboard.clear'),
+      description: t('admin.dashboard.accessReviewDesc'),
       count: pendingAccessUsers.length,
       icon: UserCog,
       tone: pendingAccessUsers.length > 0 ? 'orange' : 'green',
       view: 'users',
-      actionLabel: 'Review people',
+      actionLabel: t('admin.dashboard.reviewPeople'),
     },
     {
-      title: 'Attendance risk',
-      detail: 'Below threshold',
-      clearDetail: 'Clear',
-      description: 'Students currently below the configured graduation attendance threshold.',
+      title: t('admin.dashboard.attendanceRiskSignal'),
+      detail: t('admin.dashboard.belowThreshold'),
+      clearDetail: t('admin.dashboard.clear'),
+      description: t('admin.dashboard.attendanceRiskDesc'),
       count: atRiskStudents.length,
       icon: TrendingDown,
       tone: atRiskStudents.length > 0 ? 'orange' : 'green',
       view: 'attendance',
-      actionLabel: 'Open attendance',
+      actionLabel: t('admin.dashboard.openAttendance'),
     },
     {
-      title: 'Homework grading',
-      detail: 'Needs review',
-      clearDetail: 'Clear',
-      description: 'Submitted homework that has not been graded yet.',
+      title: t('admin.dashboard.homeworkGrading'),
+      detail: t('admin.dashboard.needsReview'),
+      clearDetail: t('admin.dashboard.clear'),
+      description: t('admin.dashboard.homeworkGradingDesc'),
       count: homeworkOps.ungraded,
       icon: ClipboardCheck,
       tone: homeworkOps.ungraded > 0 ? 'violet' : 'green',
       view: 'curriculum',
-      actionLabel: 'Open curriculum',
+      actionLabel: t('admin.dashboard.openCurriculum'),
     },
     {
-      title: 'Duty transfers',
-      detail: 'Pending',
-      clearDetail: 'Clear',
-      description: 'Weekly duty transfer requests waiting for an administrator decision.',
+      title: t('admin.dashboard.dutyTransfersSignal'),
+      detail: t('admin.dashboard.pending'),
+      clearDetail: t('admin.dashboard.clear'),
+      description: t('admin.dashboard.dutyTransfersDesc'),
       count: attendance.pendingTransferRequests.length,
       icon: ArrowLeftRight,
       tone: attendance.pendingTransferRequests.length > 0 ? 'blue' : 'green',
       view: 'attendance-duty',
-      actionLabel: 'Review transfers',
+      actionLabel: t('admin.dashboard.reviewTransfers'),
     },
   ];
 
@@ -1341,12 +1357,12 @@ export function AdminDashboard({
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Dashboard"
+        title={t('sidebar.dashboard')}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <GhostButton onClick={onOpenSearch}>Search</GhostButton>
+            <GhostButton onClick={onOpenSearch}>{t('common.search')}</GhostButton>
             <GhostButton onClick={() => onNavigate('announcements-new')}>
-              New post
+              {t('admin.dashboard.newPost')}
             </GhostButton>
           </div>
         }
@@ -1359,7 +1375,7 @@ export function AdminDashboard({
               <div className="flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                    School pulse
+                    {t('admin.dashboard.schoolPulse')}
                   </p>
                   <button
                     type="button"
@@ -1372,11 +1388,11 @@ export function AdminDashboard({
                     <span className="flex items-baseline gap-2">
                       <span className="text-4xl font-semibold leading-none text-[#171717]">{signalCount}</span>
                       <span className="text-sm font-medium text-[#525252]">
-                        {signalCount === 1 ? 'open signal' : 'open signals'}
+                        {tCount('admin.dashboard.openSignal', signalCount)}
                       </span>
                     </span>
                     <span className="mt-1 block text-xs text-[#737373]">
-                      {signalCount === 0 ? 'All clear across tracked operations' : 'Click to review what needs attention'}
+                      {signalCount === 0 ? t('admin.dashboard.allClear') : t('admin.dashboard.clickToReview')}
                     </span>
                   </button>
                 </div>
@@ -1386,7 +1402,7 @@ export function AdminDashboard({
                     style={{
                       background: `conic-gradient(${signalCount > 0 ? '#ea580c' : '#16a34a'} ${schoolPulse * 3.6}deg, #f5f5f5 0deg)`,
                     }}
-                    title={`School pulse ${schoolPulse}%`}
+                    title={t('admin.dashboard.schoolPulsePercent', { n: schoolPulse })}
                   >
                     <div className="grid h-14 w-14 place-items-center rounded-full bg-white">
                       <span className="text-sm font-semibold text-[#171717]">{schoolPulse}%</span>
@@ -1402,7 +1418,7 @@ export function AdminDashboard({
                           ? 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
                           : 'cursor-default text-[#d4d4d4]'
                       }`}
-                      aria-label="Previous signal"
+                      aria-label={t('admin.dashboard.prevSignal')}
                     >
                       <ChevronUp className="h-3 w-3" />
                     </button>
@@ -1422,7 +1438,9 @@ export function AdminDashboard({
                                 ? 'border-[#fed7aa] bg-white shadow-[0_6px_16px_rgba(234,88,12,0.1)] hover:border-[#fdba74] hover:bg-[#fff7ed]'
                                 : 'cursor-default border-[#e5e5e5] bg-white'
                             }`}
-                            title={active ? `${item.title}: ${item.count} ${item.detail.toLowerCase()}` : `${item.title}: ${item.clearDetail}`}
+                            title={active
+                              ? t('admin.dashboard.signalActiveTitle', { title: item.title, count: item.count, detail: item.detail.toLowerCase() })
+                              : t('admin.dashboard.signalClearTitle', { title: item.title, detail: item.clearDetail })}
                           >
                             <Icon className={`h-4 w-4 ${active ? toneClasses[item.tone].split(' ')[1] : 'text-[#16a34a]'}`} />
                             {active && (
@@ -1443,7 +1461,7 @@ export function AdminDashboard({
                           ? 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
                           : 'cursor-default text-[#d4d4d4]'
                       }`}
-                      aria-label="Next signal"
+                      aria-label={t('admin.dashboard.nextSignal')}
                     >
                       <ChevronDown className="h-3 w-3" />
                     </button>
@@ -1471,19 +1489,19 @@ export function AdminDashboard({
             <div className="grid w-full gap-2 divide-y divide-[#e5e5e5] lg:grid-cols-[0.9fr_1.1fr] lg:divide-x lg:divide-y-0">
               <div className="min-w-0">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">To-dos</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('sidebar.todos')}</p>
                   <button
                     type="button"
                     onClick={() => onNavigate('todos')}
                     className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
                   >
-                    {openTodos.length + (dynamicGradingTodo ? 1 : 0)} open
+                    {t('admin.dashboard.openCount', { count: openTodos.length + (dynamicGradingTodo ? 1 : 0) })}
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {todosLoading ? (
                     <div className="col-span-2 flex min-h-[3.5rem] items-center justify-center rounded-xl border border-[#e5e5e5] bg-white text-sm text-[#737373]">
-                      Loading to-dos...
+                      {t('todos.loading')}
                     </div>
                   ) : todoPreview.length === 0 ? (
                     <button
@@ -1495,19 +1513,19 @@ export function AdminDashboard({
                         <CheckCircle2 className="h-4 w-4" />
                       </span>
                       <div className="min-w-0">
-                        <p className="text-xs font-semibold text-[#171717]">All caught up for today</p>
-                        <p className="text-[11px] text-[#15803d]">Open the board to plan ahead.</p>
+                        <p className="text-xs font-semibold text-[#171717]">{t('student.dashboard.caughtUpTitle')}</p>
+                        <p className="text-[11px] text-[#15803d]">{t('student.dashboard.caughtUpHint')}</p>
                       </div>
                     </button>
                   ) : (
                     todoPreview.map(todo => {
                       const overdue = todo.dueDate < todayKey;
-                      const relativeDueDate = formatRelativeDueDate(todo.dueDate, todayKey);
+                      const relativeDueDate = formatRelativeDueDate(todo.dueDate, todayKey, t, tCount);
                       return (
                       <button
                         key={todo.id}
                         type="button"
-                        onClick={() => onNavigate(todo.readOnly && todo.title === 'Grade submitted work' ? 'classwork' : 'todos')}
+                        onClick={() => onNavigate(todo.readOnly && todo.title === gradeSubmittedWorkTitle ? 'classwork' : 'todos')}
                         className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
                           overdue
                             ? 'border-[#fed7aa] hover:bg-[#fff7ed]'
@@ -1546,7 +1564,7 @@ export function AdminDashboard({
 
               <div className="min-w-0 pt-2 lg:pl-3 lg:pt-0">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">On Duty</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.dashboard.onDuty')}</p>
                   <button
                     type="button"
                     onClick={() => onNavigate('attendance-duty')}
@@ -1555,9 +1573,9 @@ export function AdminDashboard({
                         ? 'bg-[#fff7ed] text-[#ea580c] hover:bg-[#ffedd5]'
                         : 'bg-[#f5f5f5] text-[#525252] hover:bg-[#e5e5e5]'
                     }`}
-                    title="Open duty transfers"
+                    title={t('admin.dashboard.openDutyTransfers')}
                   >
-                    {attendance.pendingTransferRequests.length} transfer{attendance.pendingTransferRequests.length === 1 ? '' : 's'}
+                    {attendance.pendingTransferRequests.length} {tCount('admin.dashboard.transfer', attendance.pendingTransferRequests.length)}
                   </button>
                 </div>
                 <div className="grid gap-1.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
@@ -1574,12 +1592,12 @@ export function AdminDashboard({
                       <CompactAvatar name={keeper.name} avatarUrl={keeper.avatarUrl} />
                       <div className="min-w-0">
                         <div className="flex min-w-0 items-center gap-1.5">
-                          <YearRomanBadge label={keeper.label} compact />
+                          <YearRomanBadge label={keeper.label} compact t={t} />
                           {keeper.transferred && (
                             <span
                               className="grid h-5 w-5 place-items-center rounded-full bg-[#fff7ed] text-[#ea580c]"
-                              title="Transferred duty"
-                              aria-label="Transferred duty"
+                              title={t('admin.dashboard.transferredDuty')}
+                              aria-label={t('admin.dashboard.transferredDuty')}
                             >
                               <ArrowLeftRight className="h-3 w-3" />
                             </span>
@@ -1601,36 +1619,36 @@ export function AdminDashboard({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric
-          label="Year Group Health"
+          label={t('admin.dashboard.yearGroupHealth')}
           value={activeCourses.length}
-          detail={`${staffingGaps} staffing gaps`}
+          detail={t('admin.dashboard.staffingGaps', { count: staffingGaps })}
           progress={courseReadiness}
           icon={BookOpen}
           tone="blue"
           onClick={() => setSelectedMetricInsight(metricInsights[0])}
         />
         <MiniMetric
-          label="Students"
+          label={t('common.students')}
           value={activeStudentIds.size}
-          detail={`${studentsWithoutMentor.length} without mentors`}
+          detail={t('admin.dashboard.withoutMentors', { count: studentsWithoutMentor.length })}
           progress={mentorCoverage}
           icon={GraduationCap}
           tone="violet"
           onClick={() => setSelectedMetricInsight(metricInsights[1])}
         />
         <MiniMetric
-          label="Mentors"
+          label={t('admin.dashboard.mentors')}
           value={activeMentors.length}
-          detail={`${recentMentorshipLogs} check-ins this week`}
+          detail={t('admin.dashboard.checkInsThisWeek', { count: recentMentorshipLogs })}
           progress={mentorCoverage}
           icon={UserCheck}
           tone="green"
           onClick={() => setSelectedMetricInsight(metricInsights[2])}
         />
         <MiniMetric
-          label="Duty Transfers"
+          label={t('admin.dashboard.dutyTransfers')}
           value={attendance.pendingTransferRequests.length}
-          detail="pending requests"
+          detail={t('admin.dashboard.pendingRequests')}
           progress={attendanceHealth}
           icon={ClipboardList}
           tone="orange"
@@ -1640,25 +1658,25 @@ export function AdminDashboard({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <SectionCard
-          title="Upcoming"
-          subtitle="Next 7 days preview"
-          action={<GhostButton onClick={() => onNavigate('curriculum')}>Curriculum</GhostButton>}
+          title={t('staffDashboard.upcoming.title')}
+          subtitle={t('admin.dashboard.upcomingSubtitle')}
+          action={<GhostButton onClick={() => onNavigate('curriculum')}>{t('sidebar.curriculum')}</GhostButton>}
           className="xl:h-[480px]"
           bodyClassName="min-h-0 flex-1"
         >
           <div className="tbo-scrollbar h-full space-y-2 overflow-y-auto pr-1">
             {homeworkOps.loading ? (
               <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
-                Loading upcoming items...
+                {t('admin.dashboard.loadingUpcoming')}
               </div>
             ) : upcomingGroups.length === 0 ? (
               <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
-                Nothing is scheduled in the next 7 days.
+                {t('admin.dashboard.nothingScheduled7Days')}
               </div>
             ) : (
               <>
                 {upcomingGroups.map(group => {
-                const dateParts = formatDateParts(group.date);
+                const dateParts = formatDateParts(group.date, t);
                 const itemCount = group.jointItems.length + group.years.reduce(
                   (count, yearGroup) => count + yearGroup.items.length,
                   0
@@ -1672,7 +1690,7 @@ export function AdminDashboard({
                   >
                     <div className="flex items-center gap-3 self-stretch rounded-lg bg-[#fafafa] px-2.5 py-2 sm:flex-col sm:items-start sm:justify-center">
                       <p className="text-xs font-semibold text-[#2563eb]">
-                        {formatDateHeading(group.date)}
+                        {formatDateHeading(group.date, t)}
                       </p>
                       <div className="flex items-baseline gap-1">
                         <span className="text-3xl font-semibold leading-none text-[#171717]">{dateParts.day}</span>
@@ -1686,8 +1704,8 @@ export function AdminDashboard({
                       {group.jointItems.map(item => (
                         <div key={item.id} className="col-span-full self-start overflow-hidden rounded-lg bg-[#fff7ed] ring-1 ring-[#fed7aa] lg:col-span-2">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <YearRomanBadge label="First & Second Years" tone="orange" compact />
-                            <span className="text-[11px] text-[#c2410c]">Joint</span>
+                            <YearRomanBadge label={t('admin.dashboard.firstAndSecondYears')} tone="orange" compact t={t} />
+                            <span className="text-[11px] text-[#c2410c]">{t('admin.dashboard.joint')}</span>
                           </div>
                           <div className="bg-white">
                             <button
@@ -1706,8 +1724,8 @@ export function AdminDashboard({
                               </div>
                               {item.speaker || item.translator ? (
                                 <div className="flex -space-x-1.5 justify-self-start sm:justify-self-end">
-                                  {item.speaker ? <PersonAvatar person={item.speaker} /> : null}
-                                  {item.translator ? <PersonAvatar person={item.translator} /> : null}
+                                  {item.speaker ? <PersonAvatar person={item.speaker} t={t} /> : null}
+                                  {item.translator ? <PersonAvatar person={item.translator} t={t} /> : null}
                                 </div>
                               ) : null}
                             </button>
@@ -1717,7 +1735,7 @@ export function AdminDashboard({
                       {group.years.map(yearGroup => (
                         <div key={`${group.date}-${yearGroup.yearLabel}`} className="self-start overflow-hidden rounded-lg bg-[#fafafa] ring-1 ring-[#eeeeee]">
                           <div className="flex items-center justify-between gap-3 px-2.5 py-1.5">
-                            <YearRomanBadge label={yearGroup.yearLabel} compact />
+                            <YearRomanBadge label={yearGroup.yearLabel} compact t={t} />
                             <span className="text-[11px] text-[#a3a3a3]">{yearGroup.items.length}</span>
                           </div>
                           <div className="divide-y divide-[#eeeeee] bg-white">
@@ -1743,8 +1761,8 @@ export function AdminDashboard({
                                 </div>
                                 {(item.type === 'session' || item.type === 'activation') && (item.speaker || item.translator) ? (
                                   <div className="flex -space-x-1.5 justify-self-start sm:justify-self-end">
-                                    {item.speaker ? <PersonAvatar person={item.speaker} /> : null}
-                                    {item.translator ? <PersonAvatar person={item.translator} /> : null}
+                                    {item.speaker ? <PersonAvatar person={item.speaker} t={t} /> : null}
+                                    {item.translator ? <PersonAvatar person={item.translator} t={t} /> : null}
                                   </div>
                                 ) : null}
                               </button>
@@ -1762,24 +1780,24 @@ export function AdminDashboard({
         </SectionCard>
 
         <SectionCard
-          title="Month Calendar"
+          title={t('admin.dashboard.monthCalendar')}
           subtitle={formatMonthLabel(calendarMonth)}
           action={
             <div className="flex flex-wrap items-center justify-end gap-1.5">
               <span className="hidden items-center gap-1.5 rounded-full bg-[#dbeaff] px-2 py-1 text-[10px] font-semibold text-[#1e40af] sm:inline-flex">
                 <span className="h-1.5 w-1.5 rounded-full bg-[#2563eb]" />
-                Sessions
+                {t('admin.dashboard.sessionsLegend')}
               </span>
               <span className="hidden items-center gap-1.5 rounded-full bg-[#fff7ed] px-2 py-1 text-[10px] font-semibold text-[#c2410c] sm:inline-flex">
                 <Users className="h-3 w-3" />
-                Activation
+                {t('admin.dashboard.activationLegend')}
               </span>
               <div className="flex items-center gap-1">
                 <button
                   type="button"
                   onClick={() => setCalendarMonth(month => addMonths(month, -1))}
                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  aria-label="Previous month"
+                  aria-label={t('common.prevMonth')}
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </button>
@@ -1787,7 +1805,7 @@ export function AdminDashboard({
                   type="button"
                   onClick={() => setCalendarMonth(month => addMonths(month, 1))}
                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  aria-label="Next month"
+                  aria-label={t('common.nextMonth')}
                 >
                   <ChevronRight className="h-4 w-4" />
                 </button>
@@ -1800,7 +1818,7 @@ export function AdminDashboard({
               <div className="mb-3 flex items-start justify-between gap-3">
                 <div>
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                    {selectedCalendarEvents.length} event{selectedCalendarEvents.length === 1 ? '' : 's'}
+                    {tCount('student.calendar.eventCount', selectedCalendarEvents.length)}
                   </p>
                   <h3 className="mt-1 text-lg font-semibold text-[#171717]">{selectedCalendarDateLabel}</h3>
                 </div>
@@ -1808,7 +1826,7 @@ export function AdminDashboard({
                   type="button"
                   onClick={closeCalendarDetails}
                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  aria-label="Close calendar details"
+                  aria-label={t('admin.dashboard.closeCalendarDetails')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -1816,7 +1834,7 @@ export function AdminDashboard({
               <div className="tbo-scrollbar max-h-[390px] space-y-2 overflow-y-auto pr-1">
                 {selectedCalendarEvents.length === 0 ? (
                   <div className="rounded-xl bg-white p-4 text-sm text-[#737373]">
-                    Nothing scheduled.
+                    {t('admin.dashboard.nothingScheduled')}
                   </div>
                 ) : (
                   selectedCalendarEvents.map(event => (
@@ -1825,7 +1843,7 @@ export function AdminDashboard({
                       key={event.id}
                       onClick={() => openCalendarEvent(event)}
                       className="tbo-focus grid w-full gap-3 rounded-xl border border-[#e5e5e5] bg-white p-3 text-left transition hover:border-[#d4d4d4] hover:bg-[#fafafa] sm:grid-cols-[36px_1fr_auto] sm:items-center"
-                      aria-label={`Open ${event.title}`}
+                      aria-label={t('admin.dashboard.openEvent', { title: event.title })}
                     >
                       <span className={`grid h-9 w-9 place-items-center rounded-lg ${toneClasses[event.tone]}`}>
                         {event.type === 'activation' ? (
@@ -1837,10 +1855,10 @@ export function AdminDashboard({
                       <div className="min-w-0">
                         <div className="flex flex-wrap items-center gap-2">
                           <p className="truncate text-sm font-semibold text-[#171717]">{event.title}</p>
-                          <YearRomanBadge label={event.yearLabel} tone={event.type === 'activation' ? 'orange' : 'blue'} compact />
+                          <YearRomanBadge label={event.yearLabel} tone={event.type === 'activation' ? 'orange' : 'blue'} compact t={t} />
                         </div>
                         <p className="mt-1 text-xs text-[#737373]">
-                          {event.type === 'activation' ? 'Activation Saturday' : 'Session'}
+                          {event.type === 'activation' ? t('admin.dashboard.activationSaturday') : t('classwork.dueGroup.session')}
                         </p>
                       </div>
                       <ArrowUpRight className="hidden h-4 w-4 text-[#a3a3a3] sm:block" />
@@ -1851,9 +1869,9 @@ export function AdminDashboard({
             </div>
           ) : (
           <div className="grid grid-cols-7 grid-rows-[auto_repeat(5,minmax(0,1fr))] gap-1.5">
-            {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(day => (
+            {(['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const).map(day => (
               <div key={day} className="rounded-md bg-[#fafafa] px-1 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.08em] text-[#a3a3a3]">
-                {day}
+                {t(`common.weekday.short.${day}`)}
               </div>
             ))}
             {monthCalendarDays.map(day => {
@@ -1874,7 +1892,7 @@ export function AdminDashboard({
                         : 'border-[#eeeeee] bg-white hover:border-[#d4d4d4] hover:bg-[#fafafa]'
                       : 'border-transparent bg-[#fafafa] text-[#c8c8c8]'
                   } ${hasEvents ? 'shadow-[0_1px_0_rgba(0,0,0,0.03)]' : ''} ${day.isToday ? 'ring-1 ring-[#2563eb]' : ''} ${selectedCalendarDate === day.date ? 'ring-2 ring-[#171717]' : ''}`}
-                  aria-label={`Open ${events.length} events for ${day.date}`}
+                  aria-label={t('student.calendar.openDay', { count: events.length, date: day.date })}
                 >
                   <div className="flex items-center justify-between gap-1">
                     <span className={`grid h-5 min-w-5 place-items-center rounded-md px-1 text-[11px] font-semibold ${
@@ -1924,46 +1942,46 @@ export function AdminDashboard({
             <Banknote className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">Tuition</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">{t('sidebar.tuition')}</p>
             <p className="mt-1 text-sm font-semibold text-[#171717]">
-              {tuition.summary.unpaidStudents} unpaid · {tuition.summary.overdueStudents} overdue
+              {t('admin.dashboard.unpaidOverdue', { unpaid: tuition.summary.unpaidStudents, overdue: tuition.summary.overdueStudents })}
             </p>
           </div>
         </div>
         <div className="grid grid-cols-2 gap-2 md:min-w-[20rem]">
           <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-[#bbf7d0]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">Collected</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">{t('admin.dashboard.collected')}</p>
             <p className="mt-1 text-sm font-semibold text-[#171717]">{formatTuitionAmount(tuition.summary.collected, tuitionCurrency)}</p>
           </div>
           <div className="rounded-xl bg-white px-3 py-2 ring-1 ring-[#fed7aa]">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Remaining</p>
+            <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">{t('admin.dashboard.remaining')}</p>
             <p className="mt-1 text-sm font-semibold text-[#171717]">{formatTuitionAmount(tuition.summary.remaining, tuitionCurrency)}</p>
           </div>
         </div>
       </button>
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-        <SectionCard title="Year Group Health" subtitle="Setup">
+        <SectionCard title={t('admin.dashboard.yearGroupHealth')} subtitle={t('admin.dashboard.setup')}>
           <div className="space-y-4">
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-xl bg-[#f5f5f5] p-3">
                 <Users className="mb-2 h-4 w-4 text-[#2563eb]" />
                 <p className="text-xl font-semibold text-[#171717]">{staffingGaps}</p>
-                <p className="text-xs text-[#737373]">Staff</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.staff')}</p>
               </div>
               <div className="rounded-xl bg-[#f5f5f5] p-3">
                 <ShieldCheck className="mb-2 h-4 w-4 text-[#16a34a]" />
                 <p className="text-xl font-semibold text-[#171717]">{driveGaps}</p>
-                <p className="text-xs text-[#737373]">Drive</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.drive')}</p>
               </div>
               <div className="rounded-xl bg-[#f5f5f5] p-3">
                 <BookOpen className="mb-2 h-4 w-4 text-[#7c3aed]" />
                 <p className="text-xl font-semibold text-[#171717]">{activeSubjectCount}</p>
-                <p className="text-xs text-[#737373]">Subjects</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.subjects')}</p>
               </div>
             </div>
             <MeterRow
-              label="Readiness"
+              label={t('admin.dashboard.readiness')}
               value={courseReadiness}
               caption={`${courseReadiness}%`}
               tone={courseReadiness > 80 ? 'green' : 'blue'}
@@ -1971,20 +1989,20 @@ export function AdminDashboard({
             <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
                 <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                  What is missing
+                  {t('admin.dashboard.whatIsMissing')}
                 </p>
                 <button
                   type="button"
                   onClick={() => setSelectedMetricInsight(metricInsights[0])}
                   className="text-xs font-semibold text-[#2563eb] hover:text-[#1d4ed8]"
                 >
-                  Details
+                  {t('admin.dashboard.details')}
                 </button>
               </div>
               {yearGroupHealthGaps.length === 0 ? (
                 <div className="flex items-center gap-2 rounded-lg bg-[#dcfce7] px-3 py-2 text-sm font-medium text-[#166534]">
                   <CheckCircle2 className="h-4 w-4" />
-                  No setup blockers found.
+                  {t('admin.dashboard.noSetupBlockers')}
                 </div>
               ) : (
                 <ul className="space-y-1.5">
@@ -1996,7 +2014,7 @@ export function AdminDashboard({
                   ))}
                   {yearGroupHealthGaps.length > 4 && (
                     <li className="text-xs font-medium text-[#737373]">
-                      +{yearGroupHealthGaps.length - 4} more setup items
+                      {t('admin.dashboard.moreSetupItems', { count: yearGroupHealthGaps.length - 4 })}
                     </li>
                   )}
                 </ul>
@@ -2006,15 +2024,15 @@ export function AdminDashboard({
         </SectionCard>
 
         <SectionCard
-          title="Attendance Risk"
-          subtitle="Threshold"
-          action={<GhostButton onClick={() => onNavigate('attendance')}>Review</GhostButton>}
+          title={t('admin.dashboard.attendanceRisk')}
+          subtitle={t('admin.dashboard.threshold')}
+          action={<GhostButton onClick={() => onNavigate('attendance')}>{t('admin.dashboard.review')}</GhostButton>}
         >
           <div className="space-y-2">
             {atRiskStudents.length === 0 ? (
               <div className="flex items-center gap-2 rounded-xl bg-[#dcfce7] p-3 text-sm font-medium text-[#166534]">
                 <CheckCircle2 className="h-4 w-4" />
-                No students are currently below threshold.
+                {t('admin.dashboard.noStudentsBelowThreshold')}
               </div>
             ) : (
               atRiskStudents.map(student => (
@@ -2040,26 +2058,26 @@ export function AdminDashboard({
           </div>
         </SectionCard>
 
-        <SectionCard title="Homework Operations" subtitle="Review load">
+        <SectionCard title={t('admin.dashboard.homeworkOperations')} subtitle={t('admin.dashboard.reviewLoad')}>
           <div className="grid grid-cols-2 gap-2">
             <div className="rounded-xl bg-[#f5f5f5] p-3">
-              <p className="text-xs text-[#737373]">Assignments</p>
+              <p className="text-xs text-[#737373]">{t('admin.dashboard.assignments')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.assignments}</p>
             </div>
             <div className="rounded-xl bg-[#dbeaff] p-3">
-              <p className="text-xs text-[#1e40af]">Due soon</p>
+              <p className="text-xs text-[#1e40af]">{t('admin.dashboard.dueSoon')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.dueSoon}</p>
             </div>
             <div className="rounded-xl bg-[#fff7ed] p-3">
-              <p className="text-xs text-[#c2410c]">Overdue</p>
+              <p className="text-xs text-[#c2410c]">{t('common.overdue')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.overdue}</p>
             </div>
             <div className="rounded-xl bg-[#f3e8ff] p-3">
-              <p className="text-xs text-[#6d28d9]">Ungraded</p>
+              <p className="text-xs text-[#6d28d9]">{t('admin.dashboard.ungraded')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.ungraded}</p>
             </div>
             <div className="rounded-xl bg-[#dcfce7] p-3">
-              <p className="text-xs text-[#166534]">Returned</p>
+              <p className="text-xs text-[#166534]">{t('admin.dashboard.returned')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{homeworkOps.loading ? '...' : homeworkOps.returned}</p>
             </div>
           </div>
@@ -2068,64 +2086,64 @@ export function AdminDashboard({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[0.9fr_1.1fr]">
         <SectionCard
-          title="Mentorship Follow-Up"
-          subtitle="Cadence and student care signals"
-          action={<GhostButton onClick={() => onNavigate('mentorship-follow-up')}>Follow-up</GhostButton>}
+          title={t('admin.dashboard.mentorshipFollowUp')}
+          subtitle={t('admin.dashboard.mentorshipFollowUpSubtitle')}
+          action={<GhostButton onClick={() => onNavigate('mentorship-follow-up')}>{t('admin.dashboard.followUp')}</GhostButton>}
         >
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">No recent check-in</p>
+              <p className="text-xs text-[#737373]">{t('admin.dashboard.noRecentCheckIn')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{studentsWithoutRecentMentorship.length}</p>
             </div>
             <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">Open next steps</p>
+              <p className="text-xs text-[#737373]">{t('admin.dashboard.openNextSteps')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{openNextSteps}</p>
             </div>
             <div className="rounded-xl border border-[#e5e5e5] p-3">
-              <p className="text-xs text-[#737373]">Concern logs</p>
+              <p className="text-xs text-[#737373]">{t('admin.dashboard.concernLogs')}</p>
               <p className="mt-1 text-2xl font-semibold text-[#171717]">{concernLogs}</p>
             </div>
           </div>
         </SectionCard>
 
         <SectionCard
-          title="Communications Center"
-          subtitle="Pinned school context and unread conversations"
-          action={<GhostButton onClick={() => onNavigate('messages')}>Messages</GhostButton>}
+          title={t('admin.dashboard.communicationsCenter')}
+          subtitle={t('admin.dashboard.communicationsSubtitle')}
+          action={<GhostButton onClick={() => onNavigate('messages')}>{t('student.messages')}</GhostButton>}
         >
           <div className="grid gap-3 md:grid-cols-3">
             <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
               <Megaphone className="h-4 w-4 text-[#2563eb]" />
               <div>
                 <p className="text-sm font-semibold text-[#171717]">{pinnedAnnouncements.length}</p>
-                <p className="text-xs text-[#737373]">Pinned posts</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.pinnedPosts')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
               <Mail className="h-4 w-4 text-[#7c3aed]" />
               <div>
                 <p className="text-sm font-semibold text-[#171717]">{staffAnnouncements.length}</p>
-                <p className="text-xs text-[#737373]">Staff notices</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.staffNotices')}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-xl bg-[#f5f5f5] p-3">
               <MessageSquare className="h-4 w-4 text-[#ea580c]" />
               <div>
                 <p className="text-sm font-semibold text-[#171717]">{totalUnread}</p>
-                <p className="text-xs text-[#737373]">Unread messages</p>
+                <p className="text-xs text-[#737373]">{t('admin.dashboard.unreadMessages')}</p>
               </div>
             </div>
           </div>
         </SectionCard>
       </div>
 
-      <SectionCard title="Quick Actions" subtitle="Common administrator moves">
+      <SectionCard title={t('admin.dashboard.quickActions')} subtitle={t('admin.dashboard.quickActionsSubtitle')}>
         <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {[
-            { label: 'Review people', view: 'users', icon: Users },
-            { label: 'Plan curriculum', view: 'curriculum', icon: Calendar },
-            { label: 'Check attendance', view: 'attendance', icon: BarChart3 },
-            { label: 'Post to Stream', view: 'announcements', icon: Sparkles },
+            { label: t('admin.dashboard.reviewPeople'), view: 'users', icon: Users },
+            { label: t('admin.dashboard.planCurriculum'), view: 'curriculum', icon: Calendar },
+            { label: t('admin.dashboard.checkAttendance'), view: 'attendance', icon: BarChart3 },
+            { label: t('admin.dashboard.postToStream'), view: 'announcements', icon: Sparkles },
           ].map(action => (
             <button
               key={action.label}
@@ -2149,7 +2167,7 @@ export function AdminDashboard({
             type="button"
             className="absolute inset-0 cursor-default"
             onClick={closeMetricInsight}
-            aria-label="Close metric explanation"
+            aria-label={t('admin.dashboard.closeMetricExplanation')}
           />
           <div
             role="dialog"
@@ -2160,7 +2178,7 @@ export function AdminDashboard({
             <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                  Dashboard metric
+                  {t('admin.dashboard.dashboardMetric')}
                 </p>
                 <h3 id="metric-insight-title" className="mt-1 text-lg font-semibold text-[#171717]">
                   {selectedMetricInsight.title}
@@ -2170,7 +2188,7 @@ export function AdminDashboard({
                 type="button"
                 onClick={closeMetricInsight}
                 className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -2184,7 +2202,7 @@ export function AdminDashboard({
               {selectedMetricInsight.notes && selectedMetricInsight.notes.length > 0 && (
                 <div className="rounded-xl border border-[#e5e5e5] bg-white p-3">
                   <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                    What is holding this back
+                    {t('admin.dashboard.whatIsHoldingBack')}
                   </p>
                   <ul className="space-y-1.5 text-sm text-[#525252]">
                     {selectedMetricInsight.notes.map(note => (
@@ -2230,7 +2248,7 @@ export function AdminDashboard({
             type="button"
             className="absolute inset-0 cursor-default"
             onClick={closeSignalModal}
-            aria-label="Close open signals"
+            aria-label={t('admin.dashboard.closeOpenSignals')}
           />
           <div
             role="dialog"
@@ -2241,17 +2259,17 @@ export function AdminDashboard({
             <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                  {signalCount} open signals
+                  {t('admin.dashboard.openSignalsCount', { count: signalCount })}
                 </p>
                 <h3 id="open-signals-title" className="mt-1 text-lg font-semibold text-[#171717]">
-                  Open Signals
+                  {t('admin.dashboard.openSignalsTitle')}
                 </h3>
               </div>
               <button
                 type="button"
                 onClick={closeSignalModal}
                 className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -2295,7 +2313,7 @@ export function AdminDashboard({
                     aria-expanded={clearSignalsOpen}
                   >
                     <CheckCircle2 className="h-3.5 w-3.5" />
-                    {clearSignalItems.length} clear signals hidden
+                    {t('admin.dashboard.clearSignalsHidden', { count: clearSignalItems.length })}
                   </button>
 
                   {clearSignalsOpen && (

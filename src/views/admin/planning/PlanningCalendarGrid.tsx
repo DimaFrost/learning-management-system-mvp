@@ -23,6 +23,8 @@ import type {
 import type { CourseType, User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { isDateInBreak } from '../../../utils/scheduling';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { translate } from '../../../i18n/translate';
 import { formatDate } from '../../../i18n/formatters';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 
@@ -73,7 +75,7 @@ function secondHourKeyForSide(side: CourseSide): SlotLocation['hourSlotKey'] {
 
 function slotPreview(slot: PlanningSlot, users: User[]) {
   return {
-    subjectTitle: slot.subjectTitle.trim() || '(empty)',
+    subjectTitle: slot.subjectTitle.trim() || translate('planning.grid.emptySlot'),
     teacherName: users.find(u => u.id === slot.teacherId)?.name ?? null,
     translatorName: users.find(u => u.id === slot.translatorId)?.name ?? null,
   };
@@ -229,11 +231,11 @@ function getSlotIssues(
 ): string[] {
   const issues: string[] = [];
   const hasSubject = !!slot.subjectTitle.trim();
-  if (hasSubject && !slot.teacherId) issues.push('Missing teacher');
-  if (hasSubject && !slot.translatorId) issues.push('Missing translator');
-  if (teacherConflict) issues.push('Teacher conflict');
-  if (translatorConflict) issues.push('Translator conflict');
-  if (slot.subjectId === null && hasSubject) issues.push('New subject');
+  if (hasSubject && !slot.teacherId) issues.push(translate('planning.grid.issue.missingTeacher'));
+  if (hasSubject && !slot.translatorId) issues.push(translate('planning.grid.issue.missingTranslator'));
+  if (teacherConflict) issues.push(translate('planning.grid.issue.teacherConflict'));
+  if (translatorConflict) issues.push(translate('planning.grid.issue.translatorConflict'));
+  if (slot.subjectId === null && hasSubject) issues.push(translate('planning.grid.issue.newSubject'));
   return issues;
 }
 
@@ -285,8 +287,8 @@ function isWeekComplete(group: { entries: CalendarEntry[] }, users: User[]): boo
 }
 
 function getStaffName(users: User[], userId: string | null): string {
-  if (!userId) return 'Vacant';
-  return users.find(u => u.id === userId)?.name ?? 'Unknown';
+  if (!userId) return translate('curriculum.vacant');
+  return users.find(u => u.id === userId)?.name ?? translate('common.unknown');
 }
 
 function getStaffUser(users: User[], userId: string | null): User | null {
@@ -312,7 +314,7 @@ function PlannerStaffAvatar({
   return (
     <span
       className="inline-flex h-5 w-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white text-[8px] font-semibold text-[#57534e] ring-1 ring-[#d8cdbb]"
-      title={`${role}: ${name}`}
+      title={translate('planning.grid.staffRole', { role, name })}
     >
       {user.avatarUrl ? (
         <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
@@ -435,6 +437,7 @@ interface DayCellProps {
 }
 
 function DayCell({ row, rowSpan }: DayCellProps) {
+  const { t } = useLanguage();
   return (
     <td
       rowSpan={rowSpan}
@@ -453,7 +456,7 @@ function DayCell({ row, rowSpan }: DayCellProps) {
           {row.date && !row.isValidScheduleDay && (
             <p className="text-[10px] text-red-600 mt-0.5 flex items-center gap-0.5 leading-tight">
               <AlertTriangle className="w-2.5 h-2.5 flex-shrink-0" />
-              Unusual
+              {t('planning.grid.unusual')}
             </p>
           )}
         </div>
@@ -474,7 +477,7 @@ function RemoveCell({ row, rowSpan, onRemoveRow }: RemoveCellProps) {
   const handleRemove = () => {
     if (rowHasExistingClass(row)) {
       const ok = window.confirm(
-        'This row contains saved sessions. Remove anyway?'
+        translate('planning.grid.removeRowConfirm')
       );
       if (!ok) return;
     }
@@ -490,7 +493,7 @@ function RemoveCell({ row, rowSpan, onRemoveRow }: RemoveCellProps) {
         type="button"
         onClick={handleRemove}
         className="p-1.5 text-gray-400 hover:text-red-600 rounded hover:bg-red-50 transition-colors"
-        aria-label="Remove row"
+        aria-label={translate('planning.grid.removeRow')}
       >
         <Trash2 className="w-4 h-4" />
       </button>
@@ -533,6 +536,7 @@ function SlotHourFields({
   onShowToolbar,
   plannerMode,
 }: SlotHourFieldsProps) {
+  const { t } = useLanguage();
   const filled = !!slot.subjectTitle.trim();
   const teachers = users.filter(u => teacherMatchesCourseType(u, COURSE_TYPE_BY_SIDE[side]));
   const translators = users.filter(u => hasRole(u, 'translator'));
@@ -600,14 +604,14 @@ function SlotHourFields({
                     e.clientY
                   );
                 }}
-                title="Move both sessions"
+                title={t('planning.grid.moveBothSessions')}
                 className={`inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-semibold text-[#9f5f26] transition hover:bg-[#fff4e5] ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
-                aria-label="Drag to move both sessions of this day"
+                aria-label={t('planning.grid.dragMoveBoth')}
               >
                 <MoveVertical className="h-3.5 w-3.5" />
-                Day
+                {t('planning.grid.day')}
               </button>
             )}
             {filled && (
@@ -628,14 +632,14 @@ function SlotHourFields({
                     e.clientY
                   );
                 }}
-                title="Move this session"
+                title={t('planning.grid.moveSession')}
                 className={`inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10px] font-semibold text-[#5f5750] transition hover:bg-[#f4f1ec] ${
                   isDragging ? 'cursor-grabbing' : 'cursor-grab'
                 }`}
-                aria-label="Drag to reorder this session"
+                aria-label={t('planning.grid.dragMoveSession')}
               >
                 <GripVertical className="h-3.5 w-3.5" />
-                Session
+                {t('planning.grid.session')}
               </button>
             )}
           </div>
@@ -652,12 +656,12 @@ function SlotHourFields({
                   subjectId: null,
                 })
               }
-              placeholder="Type or select subject..."
+              placeholder={t('planning.grid.subjectPlaceholder')}
               className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
             />
             {slot.subjectId === null && slot.subjectTitle.trim() && (
               <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
-                new
+                {t('planning.grid.newBadge')}
               </span>
             )}
           </div>
@@ -666,7 +670,7 @@ function SlotHourFields({
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className={`truncate text-xs font-semibold ${filled ? 'text-[#24211e]' : 'text-[#a8a29e]'}`}>
-                  {filled ? slot.subjectTitle : 'Empty session'}
+                  {filled ? slot.subjectTitle : t('planning.grid.emptySession')}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-1">
@@ -686,8 +690,8 @@ function SlotHourFields({
                       onShowToolbar(cellKey);
                     }}
                     className="inline-flex h-5 w-5 items-center justify-center rounded-full text-[#a8a29e] opacity-0 transition hover:bg-[#f4f1ec] hover:text-[#57534e] group-hover/card:opacity-100"
-                    aria-label="Show move tools"
-                    title="Move tools"
+                    aria-label={t('planning.grid.showMoveTools')}
+                    title={t('planning.grid.moveTools')}
                   >
                     <MoveVertical className="h-3.5 w-3.5" />
                   </button>
@@ -701,7 +705,7 @@ function SlotHourFields({
           dragState.hoverTargetKey ===
             (dragState.blockSize === 2 ? row.rowId : `${row.rowId}:${slotKey}`) && (
             <div className="pointer-events-none absolute inset-1 z-20 flex items-center justify-center rounded-lg border border-dashed border-amber-400 bg-amber-50/90 text-[11px] font-semibold text-amber-800">
-              Drop here
+              {t('planning.grid.dropHere')}
             </div>
           )}
       </td>
@@ -720,7 +724,7 @@ function SlotHourFields({
               teacherConflict ? 'ring-2 ring-red-400' : ''
             }`}
           >
-            <option value="">— Vacant —</option>
+            <option value="">{t('planning.grid.vacantOption')}</option>
             {teachers.map(u => (
               <option key={u.id} value={u.id}>
                 {u.name}
@@ -728,14 +732,14 @@ function SlotHourFields({
             ))}
           </select>
           {teacherConflict && (
-            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+            <span className="text-red-600 text-[10px]" title={t('planning.grid.multiRoleWarning')}>
               ⚠️
             </span>
           )}
         </div>
         ) : (
           <span className={`flex min-w-0 items-center gap-1.5 text-xs ${slot.teacherId ? 'text-[#44403c]' : 'text-[#a8a29e]'}`}>
-            <PlannerStaffAvatar user={teacherUser} role="Teacher" />
+            <PlannerStaffAvatar user={teacherUser} role={t('edit.class.teacher')} />
             <span className="truncate">{getStaffName(users, slot.teacherId)}</span>
           </span>
         )}
@@ -755,7 +759,7 @@ function SlotHourFields({
               translatorConflict ? 'ring-2 ring-red-400' : ''
             }`}
           >
-            <option value="">— Vacant —</option>
+            <option value="">{t('planning.grid.vacantOption')}</option>
             {translators.map(u => (
               <option key={u.id} value={u.id}>
                 {u.name}
@@ -763,14 +767,14 @@ function SlotHourFields({
             ))}
           </select>
           {translatorConflict && (
-            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+            <span className="text-red-600 text-[10px]" title={t('planning.grid.multiRoleWarning')}>
               ⚠️
             </span>
           )}
         </div>
         ) : (
           <span className={`flex min-w-0 items-center gap-1.5 text-xs ${slot.translatorId ? 'text-[#44403c]' : 'text-[#a8a29e]'}`}>
-            <PlannerStaffAvatar user={translatorUser} role="Translator" />
+            <PlannerStaffAvatar user={translatorUser} role={t('edit.class.translator')} />
             <span className="truncate">{getStaffName(users, slot.translatorId)}</span>
           </span>
         )}
@@ -800,8 +804,7 @@ function BreakBannerRow({ breakItem, onEdit, onDelete }: BreakBannerRowProps) {
       >
         <div className="flex flex-wrap items-center justify-between gap-2">
           <span className="text-sm font-semibold text-slate-700">
-            Break: {range}
-            {labelSuffix}
+            {translate('planning.grid.breakLabel', { range, suffix: labelSuffix })}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -809,14 +812,14 @@ function BreakBannerRow({ breakItem, onEdit, onDelete }: BreakBannerRowProps) {
               onClick={onEdit}
               className="px-2 py-1 text-xs font-medium text-slate-700 bg-white border border-slate-300 rounded hover:bg-slate-50"
             >
-              Edit
+              {translate('planning.grid.edit')}
             </button>
             <button
               type="button"
               onClick={onDelete}
               className="px-2 py-1 text-xs font-medium text-red-700 bg-white border border-red-200 rounded hover:bg-red-50"
             >
-              Delete
+              {translate('common.delete')}
             </button>
           </div>
         </div>
@@ -842,6 +845,7 @@ function PlanningActionToolbar({
   onAddBreak,
   onManageBreaks,
 }: PlanningActionToolbarProps) {
+  const { t } = useLanguage();
   const [addMenuOpen, setAddMenuOpen] = useState(false);
   const addMenuRef = useRef<HTMLDivElement | null>(null);
 
@@ -875,7 +879,7 @@ function PlanningActionToolbar({
           aria-haspopup="menu"
         >
           <Plus className="h-4 w-4" />
-          Add
+          {t('planning.grid.add')}
           <ChevronDown className="h-3.5 w-3.5" />
         </button>
         {addMenuOpen && (
@@ -890,7 +894,7 @@ function PlanningActionToolbar({
               role="menuitem"
             >
               <CalendarPlus className="h-4 w-4 text-[#9f5f26]" />
-              Date
+              {t('planning.grid.addDate')}
             </button>
             <button
               type="button"
@@ -900,7 +904,7 @@ function PlanningActionToolbar({
               role="menuitem"
             >
               <Plus className="h-4 w-4 text-[#9f5f26]" />
-              Subject
+              {t('planning.grid.addSubject')}
             </button>
             <button
               type="button"
@@ -909,7 +913,7 @@ function PlanningActionToolbar({
               role="menuitem"
             >
               <CalendarPlus className="h-4 w-4 text-[#9f5f26]" />
-              Activation Saturday
+              {t('planning.grid.addActivationSaturday')}
             </button>
             <button
               type="button"
@@ -918,7 +922,7 @@ function PlanningActionToolbar({
               role="menuitem"
             >
               <CalendarRange className="h-4 w-4 text-[#9f5f26]" />
-              Break
+              {t('planning.grid.addBreak')}
             </button>
           </div>
         )}
@@ -929,7 +933,7 @@ function PlanningActionToolbar({
         className="inline-flex items-center gap-2 rounded-xl border border-[#ded7cd] bg-white px-3 py-2 text-sm font-semibold text-[#6f6256] transition hover:bg-[#f7f1e8]"
       >
         <CalendarRange className="h-4 w-4" />
-        Breaks
+        {t('planning.grid.breaks')}
       </button>
     </div>
   );
@@ -1086,6 +1090,7 @@ function JointSlotFields({
   onUpdateSlot,
   onSwapSlot,
 }: JointSlotFieldsProps) {
+  const { t } = useLanguage();
   const slot = row.jointSlot;
   const slotKey: PlanningSlotKey = 'jointSlot';
   const filled = !!slot.subjectTitle.trim();
@@ -1142,12 +1147,12 @@ function JointSlotFields({
                 subjectId: null,
               })
             }
-            placeholder="Type or select subject..."
+            placeholder={t('planning.grid.subjectPlaceholder')}
             className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 focus:ring-2 focus:ring-amber-500 focus:border-transparent bg-white"
           />
           {slot.subjectId === null && slot.subjectTitle.trim() && (
             <span className="flex-shrink-0 text-[10px] font-medium text-amber-700 bg-amber-50 px-1 py-0.5 rounded">
-              (new)
+              {t('planning.grid.newBadgeParen')}
             </span>
           )}
         </div>
@@ -1155,7 +1160,7 @@ function JointSlotFields({
 
       <td colSpan={2} className={`${cellBase} min-w-[88px]`} {...dragProps}>
         <div className="flex items-center gap-1 min-w-0">
-          <span className="flex-shrink-0 text-xs text-gray-600">Teacher</span>
+          <span className="flex-shrink-0 text-xs text-gray-600">{t('edit.class.teacher')}</span>
           <select
             value={slot.teacherId ?? ''}
             onChange={e =>
@@ -1167,7 +1172,7 @@ function JointSlotFields({
               staffConflict ? 'ring-2 ring-red-400' : ''
             }`}
           >
-            <option value="">— Vacant —</option>
+            <option value="">{t('planning.grid.vacantOption')}</option>
             {teachers.map(u => (
               <option key={u.id} value={u.id}>
                 {u.name}
@@ -1175,7 +1180,7 @@ function JointSlotFields({
             ))}
           </select>
           {staffConflict && (
-            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+            <span className="text-red-600 text-[10px]" title={t('planning.grid.multiRoleWarning')}>
               ⚠️
             </span>
           )}
@@ -1184,7 +1189,7 @@ function JointSlotFields({
 
       <td colSpan={2} className={`${cellBase} min-w-[88px]`} {...dragProps}>
         <div className="flex items-center gap-1 min-w-0">
-          <span className="flex-shrink-0 text-xs text-gray-600">Translator</span>
+          <span className="flex-shrink-0 text-xs text-gray-600">{t('edit.class.translator')}</span>
           <select
             value={slot.translatorId ?? ''}
             onChange={e =>
@@ -1196,7 +1201,7 @@ function JointSlotFields({
               staffConflict ? 'ring-2 ring-red-400' : ''
             }`}
           >
-            <option value="">— Vacant —</option>
+            <option value="">{t('planning.grid.vacantOption')}</option>
             {translators.map(u => (
               <option key={u.id} value={u.id}>
                 {u.name}
@@ -1204,7 +1209,7 @@ function JointSlotFields({
             ))}
           </select>
           {staffConflict && (
-            <span className="text-red-600 text-[10px]" title="Assigned to multiple roles in this hour">
+            <span className="text-red-600 text-[10px]" title={t('planning.grid.multiRoleWarning')}>
               ⚠️
             </span>
           )}
@@ -1239,10 +1244,11 @@ function SaturdayDateRow({
   onSelectBlock,
   plannerMode,
 }: SaturdayDateRowProps) {
+  const { t } = useLanguage();
   const slot = row.jointSlot;
   const activationKey = `${row.rowId}:activation`;
   const isEditing = plannerMode === 'edit' || selectedBlockKey === activationKey;
-  const subject = slot.subjectTitle.trim() || 'Activation Saturday';
+  const subject = slot.subjectTitle.trim() || t('planning.grid.activationSaturday');
   const teacherUser = getStaffUser(users, slot.teacherId);
   const translatorUser = getStaffUser(users, slot.translatorId);
   const teacher = getStaffName(users, slot.teacherId);
@@ -1277,7 +1283,7 @@ function SaturdayDateRow({
           <div className="flex min-w-0 flex-wrap items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-2">
               <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">
-                Activation Saturday
+                {t('planning.grid.activationSaturday')}
               </span>
               <span className="truncate text-xs font-semibold text-[#24211e]">
                 {subject}
@@ -1285,13 +1291,13 @@ function SaturdayDateRow({
             </div>
             <div className="flex min-w-0 items-center gap-2 text-xs text-[#78716c]">
               <span className="flex min-w-0 items-center gap-1.5">
-                <PlannerStaffAvatar user={teacherUser} role="Teacher" />
-                <span className="truncate">Teacher: {teacher}</span>
+                <PlannerStaffAvatar user={teacherUser} role={t('edit.class.teacher')} />
+                <span className="truncate">{t('planning.grid.staffRole', { role: t('edit.class.teacher'), name: teacher })}</span>
               </span>
               <span className="h-1 w-1 rounded-full bg-[#d6cfc5]" />
               <span className="flex min-w-0 items-center gap-1.5">
-                <PlannerStaffAvatar user={translatorUser} role="Translator" />
-                <span className="truncate">Translator: {translator}</span>
+                <PlannerStaffAvatar user={translatorUser} role={t('edit.class.translator')} />
+                <span className="truncate">{t('planning.grid.staffRole', { role: t('edit.class.translator'), name: translator })}</span>
               </span>
             </div>
           </div>
@@ -1310,7 +1316,7 @@ function SaturdayDateRow({
           colSpan={6}
           className="border-b border-r border-gray-200 px-2 py-2 align-middle bg-amber-50 text-center"
         >
-          <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">Activation Saturday</span>
+          <span className="inline-flex rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200">{t('planning.grid.activationSaturday')}</span>
         </td>
         <RemoveCell row={row} rowSpan={2} onRemoveRow={onRemoveRow} />
       </tr>
@@ -1367,6 +1373,7 @@ export function PlanningCalendarGrid({
   onUpdateBreak,
   onRemoveBreak,
 }: PlanningCalendarGridProps) {
+  const { t, tCount } = useLanguage();
   const [saturdayModalOpen, setSaturdayModalOpen] = useState(false);
   const [saturdayDraftDate, setSaturdayDraftDate] = useState('');
   const [saturdayModalError, setSaturdayModalError] = useState<string | null>(null);
@@ -1706,14 +1713,14 @@ export function PlanningCalendarGrid({
         <PlanningActionToolbar {...toolbarProps} />
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span className="shrink-0 text-xs font-semibold uppercase tracking-[0.12em] text-[#78716c]">
-            Weeks
+            {t('planning.grid.weeks')}
           </span>
           {weekGroups.length > 8 && (
             <button
               type="button"
               onClick={() => scrollWeekStrip(-1)}
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-[#6f6256] transition hover:bg-[#f7f1e8]"
-              aria-label="Previous weeks"
+              aria-label={t('planning.grid.prevWeeks')}
             >
               <ChevronLeft className="h-3.5 w-3.5" />
             </button>
@@ -1739,16 +1746,16 @@ export function PlanningCalendarGrid({
                   }`}
                   title={
                     isCurrentWeek
-                      ? 'Current week'
+                      ? t('planning.grid.currentWeek')
                       : collapsedWeeks.has(group.weekStart)
-                      ? 'Week is collapsed'
-                      : 'Jump to week'
+                      ? t('planning.grid.weekCollapsed')
+                      : t('planning.grid.jumpToWeek')
                   }
                 >
                   W{index + 1}
                   {isCurrentWeek && (
                     <span className="ml-1 rounded-full bg-white/15 px-1 text-[10px] font-bold">
-                      Now
+                      {t('time.now')}
                     </span>
                   )}
                 </button>
@@ -1760,7 +1767,7 @@ export function PlanningCalendarGrid({
               type="button"
               onClick={() => scrollWeekStrip(1)}
               className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-[#ded7cd] bg-white text-[#6f6256] transition hover:bg-[#f7f1e8]"
-              aria-label="Next weeks"
+              aria-label={t('planning.grid.nextWeeks')}
             >
               <ChevronRight className="h-3.5 w-3.5" />
             </button>
@@ -1785,12 +1792,12 @@ export function PlanningCalendarGrid({
               }`}
             >
               {mode === 'plan' ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Pencil className="h-3.5 w-3.5" />}
-              {mode}
+              {t(`planning.grid.mode.${mode}` as TranslationKey)}
             </button>
           ))}
         </div>
       </div>
-      <p className="text-xs text-gray-500 lg:hidden">Swipe horizontally to see the full calendar →</p>
+      <p className="text-xs text-gray-500 lg:hidden">{t('planning.grid.swipeHint')}</p>
       <div
         ref={planningTableRef}
         className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.04)]"
@@ -1803,25 +1810,25 @@ export function PlanningCalendarGrid({
                 rowSpan={2}
                 className={`border-b border-r border-gray-200 px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 w-[108px] min-w-[108px] max-w-[108px] ${STICKY_DATE_HEAD}`}
               >
-                Date
+                {t('planning.grid.col.date')}
               </th>
               <th
                 rowSpan={2}
                 className={`border-b border-r border-gray-200 px-2 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-700 w-[52px] min-w-[52px] max-w-[52px] ${STICKY_DAY_HEAD}`}
               >
-                Day
+                {t('planning.grid.col.day')}
               </th>
               <th
                 colSpan={3}
                 className="border-b border-r border-gray-200 bg-blue-50 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-blue-900"
               >
-                FIRST YEAR
+                {t('planning.grid.col.firstYear')}
               </th>
               <th
                 colSpan={3}
                 className="border-b border-r border-gray-200 bg-emerald-50 px-2 py-3 text-center text-[11px] font-semibold uppercase tracking-[0.12em] text-emerald-900"
               >
-                SECOND YEAR
+                {t('planning.grid.col.secondYear')}
               </th>
               <th
                 rowSpan={2}
@@ -1830,22 +1837,22 @@ export function PlanningCalendarGrid({
             </tr>
             <tr className="bg-gray-50">
               <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Session
+                {t('planning.grid.col.session')}
               </th>
               <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Teacher
+                {t('edit.class.teacher')}
               </th>
               <th className="border-b border-r border-gray-200 bg-blue-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Translator
+                {t('edit.class.translator')}
               </th>
               <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Session
+                {t('planning.grid.col.session')}
               </th>
               <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Teacher
+                {t('edit.class.teacher')}
               </th>
               <th className="border-b border-r border-gray-200 bg-emerald-50/50 px-2 py-2 text-[11px] font-semibold text-gray-700">
-                Translator
+                {t('edit.class.translator')}
               </th>
             </tr>
           </thead>
@@ -1856,7 +1863,7 @@ export function PlanningCalendarGrid({
                   colSpan={9}
                   className="border border-gray-200 px-4 py-8 text-center text-gray-500 italic"
                 >
-                  No dates yet. Add a date to start planning.
+                  {t('planning.grid.noDatesYet')}
                 </td>
               </tr>
             )}
@@ -1874,29 +1881,29 @@ export function PlanningCalendarGrid({
                           className="inline-flex items-center gap-2 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#171717] ring-1 ring-[#e5e5e5] transition hover:bg-[#f4f1ec]"
                         >
                           {collapsed ? <ChevronRight className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                          Week {groupIndex + 1}
+                          {t('planning.grid.weekNumber', { n: groupIndex + 1 })}
                         </button>
                         <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-[#737373]">
-                          <span className="font-semibold text-[#6f6256]">Starts {formatDisplayDate(group.weekStart)}</span>
+                          <span className="font-semibold text-[#6f6256]">{t('planning.grid.weekStarts', { date: formatDisplayDate(group.weekStart) })}</span>
                           {(summary?.missingTeacherCount ?? 0) > 0 && (
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-amber-200">
-                              {summary?.missingTeacherCount} missing teacher
+                              {tCount('planning.grid.missingTeacher', summary?.missingTeacherCount ?? 0, { count: summary?.missingTeacherCount ?? 0 })}
                             </span>
                           )}
                           {(summary?.missingTranslatorCount ?? 0) > 0 && (
                             <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-800 ring-1 ring-amber-200">
-                              {summary?.missingTranslatorCount} missing translator
+                              {tCount('planning.grid.missingTranslator', summary?.missingTranslatorCount ?? 0, { count: summary?.missingTranslatorCount ?? 0 })}
                             </span>
                           )}
                           {(summary?.newSubjectCount ?? 0) > 0 && (
                             <span className="rounded-full bg-blue-50 px-2 py-0.5 text-blue-800 ring-1 ring-blue-200">
-                              {summary?.newSubjectCount} new subject
+                              {tCount('planning.grid.newSubjectCount', summary?.newSubjectCount ?? 0, { count: summary?.newSubjectCount ?? 0 })}
                             </span>
                           )}
                           {summary && !summary.hasIssues && summary.sessionCount > 0 && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-emerald-800 ring-1 ring-emerald-200">
                               <CheckCircle2 className="h-3 w-3" />
-                              Clear
+                              {t('planning.grid.clear')}
                             </span>
                           )}
                         </div>
@@ -1931,7 +1938,7 @@ export function PlanningCalendarGrid({
                     colSpan={9}
                     className="bg-amber-50 border border-amber-200 px-3 py-1.5 font-semibold text-amber-900"
                   >
-                    Unscheduled
+                    {t('planning.grid.unscheduled')}
                   </td>
                 </tr>
                 {unscheduled.map(row => (
@@ -1965,12 +1972,12 @@ export function PlanningCalendarGrid({
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                {editingBreakId ? 'Edit Break' : 'Add A Break'}
+                {editingBreakId ? t('planning.grid.break.editTitle') : t('planning.grid.break.addTitle')}
               </h3>
               <div className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Start date
+                    {t('planning.grid.break.startDate')}
                   </label>
                   <input
                     type="date"
@@ -1984,7 +1991,7 @@ export function PlanningCalendarGrid({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    End date
+                    {t('planning.grid.break.endDate')}
                   </label>
                   <input
                     type="date"
@@ -1998,13 +2005,13 @@ export function PlanningCalendarGrid({
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Label (optional)
+                    {t('planning.grid.break.labelOptional')}
                   </label>
                   <input
                     type="text"
                     value={breakLabel}
                     onChange={e => setBreakLabel(e.target.value)}
-                    placeholder="e.g. Summer break"
+                    placeholder={t('planning.grid.break.labelPlaceholder')}
                     className="w-full text-sm border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>
@@ -2018,14 +2025,14 @@ export function PlanningCalendarGrid({
                   onClick={closeBreakForm}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleSubmitBreakForm}
                   className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
                 >
-                  {editingBreakId ? 'Save' : 'Add'}
+                  {editingBreakId ? t('common.save') : t('planning.grid.add')}
                 </button>
               </div>
             </div>
@@ -2037,9 +2044,9 @@ export function PlanningCalendarGrid({
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg shadow-xl max-w-lg w-full mx-4">
             <div className="p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Manage Breaks</h3>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">{t('planning.grid.break.manageTitle')}</h3>
               {breaks.length === 0 ? (
-                <p className="text-sm text-gray-500 italic">No breaks defined yet.</p>
+                <p className="text-sm text-gray-500 italic">{t('planning.grid.break.noneYet')}</p>
               ) : (
                 <ul className="space-y-2 max-h-64 overflow-y-auto">
                   {breaks.map(b => {
@@ -2062,14 +2069,14 @@ export function PlanningCalendarGrid({
                             onClick={() => openEditBreakForm(b)}
                             className="px-2 py-1 text-xs font-medium text-slate-700 border border-slate-300 rounded hover:bg-slate-50"
                           >
-                            Edit
+                            {t('planning.grid.edit')}
                           </button>
                           <button
                             type="button"
                             onClick={() => onRemoveBreak(b.breakId)}
                             className="px-2 py-1 text-xs font-medium text-red-700 border border-red-200 rounded hover:bg-red-50"
                           >
-                            Delete
+                            {t('common.delete')}
                           </button>
                         </div>
                       </li>
@@ -2083,7 +2090,7 @@ export function PlanningCalendarGrid({
                   onClick={() => setManageBreaksOpen(false)}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
                 <button
                   type="button"
@@ -2093,7 +2100,7 @@ export function PlanningCalendarGrid({
                   }}
                   className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
                 >
-                  Add Break
+                  {t('planning.grid.break.addBreak')}
                 </button>
               </div>
             </div>
@@ -2111,19 +2118,19 @@ export function PlanningCalendarGrid({
         >
           <div className="bg-white border-2 border-amber-400 rounded-lg shadow-2xl p-3 min-w-[200px] opacity-95">
             <div className="text-xs font-semibold text-amber-600 mb-1">
-              {dragState.blockSize === 2 ? 'Moving full day' : 'Moving session'}
+              {dragState.blockSize === 2 ? t('planning.grid.drag.movingFullDay') : t('planning.grid.drag.movingSession')}
             </div>
             <div className="text-sm font-medium text-gray-900">
               {dragState.preview.subjectTitle}
             </div>
             <div className="text-xs text-gray-500 mt-0.5">
               {dragState.preview.teacherName && (
-                <>Teacher: {dragState.preview.teacherName}</>
+                <>{t('planning.grid.staffRole', { role: t('edit.class.teacher'), name: dragState.preview.teacherName })}</>
               )}
               {dragState.preview.translatorName && (
                 <>
                   {dragState.preview.teacherName ? ' · ' : ''}
-                  Translator: {dragState.preview.translatorName}
+                  {t('planning.grid.staffRole', { role: t('edit.class.translator'), name: dragState.preview.translatorName })}
                 </>
               )}
             </div>
@@ -2134,12 +2141,12 @@ export function PlanningCalendarGrid({
                 </div>
                 <div className="text-xs text-gray-500 mt-0.5">
                   {dragState.preview.secondTeacherName && (
-                    <>Teacher: {dragState.preview.secondTeacherName}</>
+                    <>{t('planning.grid.staffRole', { role: t('edit.class.teacher'), name: dragState.preview.secondTeacherName })}</>
                   )}
                   {dragState.preview.secondTranslatorName && (
                     <>
                       {dragState.preview.secondTeacherName ? ' · ' : ''}
-                      Translator: {dragState.preview.secondTranslatorName}
+                      {t('planning.grid.staffRole', { role: t('edit.class.translator'), name: dragState.preview.secondTranslatorName })}
                     </>
                   )}
                 </div>
@@ -2154,10 +2161,10 @@ export function PlanningCalendarGrid({
           <div className="bg-white rounded-lg shadow-xl max-w-md w-full mx-4">
             <div className="p-6">
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Add Activation Saturday
+                {t('planning.grid.activationSaturday.addTitle')}
               </h3>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Date
+                {t('planning.grid.addDate')}
               </label>
               <input
                 type="date"
@@ -2177,14 +2184,14 @@ export function PlanningCalendarGrid({
                   onClick={closeSaturdayModal}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
                 <button
                   type="button"
                   onClick={handleAddActivationSaturday}
                   className="px-4 py-2 text-sm font-medium text-white bg-amber-600 border border-transparent rounded-md hover:bg-amber-700"
                 >
-                  Add
+                  {t('planning.grid.add')}
                 </button>
               </div>
             </div>
