@@ -7,8 +7,10 @@ import {
   Edit3,
 } from 'lucide-react';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
+import { getEngagementLabel } from '../admin/mentorshipShared';
 
 interface MentorDashboardProps {
   currentUser: User;
@@ -31,6 +33,8 @@ export function MentorDashboard({
   getCourseDisplayName,
   onOpenCheckin,
 }: MentorDashboardProps) {
+  const { t, tCount } = useLanguage();
+
   const getMyStudents = () => {
     const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
     const mentorEnrollments = courseStudents.filter(cs =>
@@ -87,10 +91,15 @@ export function MentorDashboard({
   };
 
   const engagementStats = getEngagementStats();
+  const avgEngagementLabel = engagementStats.very_high || engagementStats.excellent
+    ? t('mentor.dashboard.engagementSummary.veryHigh')
+    : engagementStats.good
+      ? t('mentor.dashboard.engagementSummary.good')
+      : t('mentor.dashboard.engagementSummary.needsFocus');
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">Mentor Dashboard</h2>
+      <h2 className="text-2xl font-bold text-gray-900">{t('mentor.dashboard.title')}</h2>
 
       {/* Overview Statistics */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -100,7 +109,7 @@ export function MentorDashboard({
               <UserCheck className="w-6 h-6 text-blue-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">My Students</p>
+              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.myStudents')}</p>
               <p className="text-2xl font-bold text-gray-900">{myStudents.length}</p>
             </div>
           </div>
@@ -112,7 +121,7 @@ export function MentorDashboard({
               <MessageSquare className="w-6 h-6 text-green-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Total Check-ins</p>
+              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.totalCheckins')}</p>
               <p className="text-2xl font-bold text-gray-900">{myLogs.length}</p>
             </div>
           </div>
@@ -124,7 +133,7 @@ export function MentorDashboard({
               <Clock className="w-6 h-6 text-purple-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">This Month</p>
+              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.thisMonth')}</p>
               <p className="text-2xl font-bold text-gray-900">
                 {myLogs.filter(log => {
                   const logDate = new Date(log.date);
@@ -142,13 +151,9 @@ export function MentorDashboard({
               <GraduationCap className="w-6 h-6 text-yellow-600" />
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">Avg Engagement</p>
+              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.avgEngagement')}</p>
               <p className="text-2xl font-bold text-gray-900">
-                {engagementStats.very_high || engagementStats.excellent
-                  ? 'Very high'
-                  : engagementStats.good
-                    ? 'Good'
-                    : 'Needs Focus'}
+                {avgEngagementLabel}
               </p>
             </div>
           </div>
@@ -157,20 +162,22 @@ export function MentorDashboard({
 
       {/* In-person meeting expectations */}
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">In-Person Meeting Expectations</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.inPersonExpectations.title')}</h3>
         <p className="text-sm text-gray-600 mb-4">
-          Follow-up status is based on face-to-face meetings. Digital check-ins are optional and do not affect at-risk flags.
+          {t('mentor.dashboard.inPersonExpectations.desc')}
         </p>
         <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg max-w-xl">
           <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
             <Users className="w-6 h-6 text-white" />
           </div>
           <div>
-            <h4 className="font-medium text-green-900">In-Person Meetings</h4>
+            <h4 className="font-medium text-green-900">{t('mentor.dashboard.inPersonMeetings.title')}</h4>
             <p className="text-sm text-green-700">
-              Expected: Every {cadenceSettings.inPerson.expectedDays} days |
-              Warning: {cadenceSettings.inPerson.warningDays}+ days |
-              Critical: {cadenceSettings.inPerson.criticalDays}+ days
+              {t('mentor.dashboard.inPersonMeetings.cadence', {
+                expectedDays: cadenceSettings.inPerson.expectedDays,
+                warningDays: cadenceSettings.inPerson.warningDays,
+                criticalDays: cadenceSettings.inPerson.criticalDays,
+              })}
             </p>
           </div>
         </div>
@@ -179,7 +186,7 @@ export function MentorDashboard({
       {/* Recent Activity and Student Overview */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Recent Check-ins</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.recentCheckins')}</h3>
           <div className="space-y-3">
             {recentLogs.map(log => {
               const student = getUserById(log.studentId);
@@ -199,13 +206,13 @@ export function MentorDashboard({
               );
             })}
             {recentLogs.length === 0 && (
-              <p className="text-gray-500 text-center py-4">No recent check-ins</p>
+              <p className="text-gray-500 text-center py-4">{t('mentor.dashboard.noRecentCheckins')}</p>
             )}
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Student Engagement Overview</h3>
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.studentEngagementOverview')}</h3>
           <div className="space-y-3">
             {myStudents.map(enrollment => {
               const studentLogs = myLogs.filter(log => log.studentId === enrollment.studentId);
@@ -220,10 +227,10 @@ export function MentorDashboard({
                 <div key={enrollment.studentId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{enrollment.student?.name}</p>
-                    <p className="text-xs text-gray-500">{studentLogs.length} check-ins</p>
+                    <p className="text-xs text-gray-500">{tCount('mentor.dashboard.checkinsCount', studentLogs.length)}</p>
                   </div>
                   <div className={`text-sm font-medium ${progressColor}`}>
-                    {engagement ? engagement.replace(/_/g, ' ') : 'No data'}
+                    {engagement ? getEngagementLabel(engagement) : t('mentor.dashboard.noData')}
                   </div>
                 </div>
               );
@@ -234,7 +241,7 @@ export function MentorDashboard({
 
       {/* Detailed Student Management */}
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">My Students - Detailed View</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.detailedView')}</h3>
 
         <div className="space-y-4">
           {myStudents.map(studentData => (
@@ -244,11 +251,11 @@ export function MentorDashboard({
                   <h4 className="text-lg font-semibold text-gray-900">{studentData.student?.name}</h4>
                   <p className="text-sm text-gray-600">{studentData.student?.email}</p>
                   <div className="text-sm text-gray-500 mt-1">
-                    <p className="font-medium">Courses ({studentData.courses.length}):</p>
+                    <p className="font-medium">{t('mentor.dashboard.courses', { count: studentData.courses.length })}</p>
                     <div className="mt-1 space-y-1">
                       {studentData.courses.map((course, index) => (
                         <p key={course.id} className="text-xs">
-                          • {getCourseDisplayName(course)} • Enrolled: {studentData.enrollments[index]?.enrollmentDate}
+                          • {getCourseDisplayName(course)} • {t('mentor.dashboard.enrolled', { date: studentData.enrollments[index]?.enrollmentDate ?? '' })}
                         </p>
                       ))}
                     </div>
@@ -259,13 +266,13 @@ export function MentorDashboard({
                     className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
                     onClick={() => onOpenCheckin(studentData.studentId)}
                   >
-                    Log Check-in
+                    {t('mentor.dashboard.logCheckin')}
                   </button>
                 </div>
               </div>
 
               <div className="mt-4 pt-4 border-t border-gray-200">
-                <h5 className="font-medium text-gray-900 mb-2">Recent Check-ins</h5>
+                <h5 className="font-medium text-gray-900 mb-2">{t('mentor.dashboard.recentCheckins')}</h5>
                 {mentorshipLogs
                   .filter(log => log.studentId === studentData.studentId)
                   .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
@@ -274,7 +281,7 @@ export function MentorDashboard({
                     <div key={log.id} className="bg-white rounded p-3 mb-2">
                       <div className="flex items-center justify-between mb-1">
                         <span className="text-sm font-medium text-gray-900">
-                          {log.type === 'digital' ? '💻 Digital' : '🤝 In-person'} Check-in
+                          {log.type === 'digital' ? t('mentor.dashboard.digitalCheckin') : t('mentor.dashboard.inPersonCheckin')} {t('mentor.dashboard.checkinSuffix')}
                         </span>
                         <div className="flex items-center space-x-2">
                           <span className="text-xs text-gray-500">{log.date}</span>
@@ -282,7 +289,7 @@ export function MentorDashboard({
                             <button
                               onClick={() => onOpenCheckin(log.studentId, log)}
                               className="text-blue-600 hover:text-blue-800 text-xs"
-                              title="Edit check-in"
+                              title={t('mentor.dashboard.editCheckinTitle')}
                             >
                               <Edit3 className="w-3 h-3" />
                             </button>
@@ -291,7 +298,7 @@ export function MentorDashboard({
                       </div>
                       <p className="text-sm text-gray-600">{log.mainTopic || log.notes}</p>
                       {log.meetingMonth && (
-                        <p className="text-xs text-gray-500 mt-1">Month: {log.meetingMonth}</p>
+                        <p className="text-xs text-gray-500 mt-1">{t('mentor.dashboard.month', { month: log.meetingMonth })}</p>
                       )}
                       {(log.engagement || log.studentProgress) && (
                         <div className="mt-2">
@@ -301,7 +308,7 @@ export function MentorDashboard({
                             log.engagement === 'moderate' || log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
                             'bg-red-100 text-red-800'
                           }`}>
-                            {(log.engagement || log.studentProgress || '').replace(/_/g, ' ')}
+                            {getEngagementLabel(log.engagement || log.studentProgress || '')}
                           </span>
                         </div>
                       )}
@@ -309,7 +316,7 @@ export function MentorDashboard({
                   ))
                 }
                 {mentorshipLogs.filter(log => log.studentId === studentData.studentId).length === 0 && (
-                  <p className="text-gray-500 text-sm">No check-ins yet</p>
+                  <p className="text-gray-500 text-sm">{t('mentor.dashboard.noCheckinsYet')}</p>
                 )}
               </div>
             </div>
@@ -318,7 +325,7 @@ export function MentorDashboard({
           {myStudents.length === 0 && (
             <div className="text-center py-12">
               <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">No students assigned yet.</p>
+              <p className="text-gray-500">{t('mentor.dashboard.noStudentsAssigned')}</p>
             </div>
           )}
         </div>

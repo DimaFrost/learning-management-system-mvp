@@ -1,5 +1,8 @@
 import type { LucideIcon } from 'lucide-react';
 import { Search } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
+import type { TranslationKey } from '../../i18n/translations';
 
 export function getInitials(name: string): string {
   return name
@@ -8,6 +11,21 @@ export function getInitials(name: string): string {
     .slice(0, 2)
     .map(part => part[0]?.toUpperCase() ?? '')
     .join('');
+}
+
+const ENGAGEMENT_LABEL_KEYS: Record<string, TranslationKey> = {
+  very_high: 'mentorship.engagement.veryHigh',
+  excellent: 'mentorship.engagement.excellent',
+  good: 'mentorship.engagement.good',
+  moderate: 'mentorship.engagement.moderate',
+  needs_improvement: 'mentorship.engagement.needsImprovement',
+  low: 'mentorship.engagement.low',
+  concern: 'mentorship.engagement.concern',
+};
+
+export function getEngagementLabel(level: string): string {
+  const key = ENGAGEMENT_LABEL_KEYS[level];
+  return key ? translate(key) : level.replace(/_/g, ' ');
 }
 
 export function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
@@ -41,12 +59,14 @@ export function PersonAvatar({
 export function SearchField({
   value,
   onChange,
-  placeholder = 'Search by name…',
+  placeholder,
 }: {
   value: string;
   onChange: (value: string) => void;
   placeholder?: string;
 }) {
+  const { t } = useLanguage();
+
   return (
     <label className="relative block">
       <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
@@ -54,7 +74,7 @@ export function SearchField({
         type="search"
         value={value}
         onChange={event => onChange(event.target.value)}
-        placeholder={placeholder}
+        placeholder={placeholder ?? t('mentorship.search.placeholder')}
         className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm text-[#171717] placeholder:text-[#a3a3a3] focus:border-[#171717] focus:outline-none focus:ring-2 focus:ring-[#171717]/10"
       />
     </label>
@@ -99,15 +119,16 @@ export function FilterChip({
 }
 
 export function OverallStatusBadge({ status }: { status: string }) {
+  const { t } = useLanguage();
   const styles: Record<string, string> = {
     at_risk: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
     lagging: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]',
     on_track: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
   };
   const labels: Record<string, string> = {
-    at_risk: 'At risk',
-    lagging: 'Lagging',
-    on_track: 'On track',
+    at_risk: t('mentorship.status.atRisk'),
+    lagging: t('mentorship.status.lagging'),
+    on_track: t('mentorship.status.onTrack'),
   };
 
   return (

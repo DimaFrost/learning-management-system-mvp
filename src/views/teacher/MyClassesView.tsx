@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import {
   CalendarDays,
   CheckCircle2,
@@ -8,6 +8,8 @@ import {
   Search,
   User as UserIcon,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import type { User, Class, Course, Subject } from '../../types/lms';
 import { getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatDate } from '../../i18n/formatters';
@@ -37,23 +39,6 @@ function dayLabel(date: string) {
   return formatDate(parsed, { weekday: 'short' });
 }
 
-function relativeDate(date: string, today: string) {
-  const target = new Date(`${date}T00:00:00`).getTime();
-  const current = new Date(`${today}T00:00:00`).getTime();
-  const diff = Math.round((target - current) / 86400000);
-  if (diff === 0) return 'Today';
-  if (diff === 1) return 'Tomorrow';
-  if (diff === -1) return 'Yesterday';
-  if (diff > 1 && diff < 7) return `In ${diff} days`;
-  if (diff < -1 && diff > -7) return `${Math.abs(diff)} days ago`;
-  return formatPlatformDate(date);
-}
-
-function hourLabel(hour: Class['hour']) {
-  if (hour === 'both') return 'Joint';
-  return hour === 'first' ? 'First session' : 'Second session';
-}
-
 function groupByDate(rows: SessionRow[]) {
   const groups = new Map<string, SessionRow[]>();
   rows.forEach(row => {
@@ -77,12 +62,30 @@ export function MyClassesView({
   getCourseDisplayName,
   onOpenClass,
 }: MyClassesViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [query, setQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'upcoming' | 'all' | 'past'>('upcoming');
   const [pastExpanded, setPastExpanded] = useState(false);
   const today = new Date().toISOString().split('T')[0];
   const isTeacher = currentUser.roles.includes('teacher');
   const isTranslator = currentUser.roles.includes('translator');
+
+  const hourLabel = useCallback((hour: Class['hour']) => {
+    if (hour === 'both') return t('teacher.mySessions.hour.joint');
+    return hour === 'first' ? t('absence.firstSession') : t('absence.secondSession');
+  }, [t]);
+
+  const relativeDate = useCallback((date: string, todayValue: string) => {
+    const target = new Date(`${date}T00:00:00`).getTime();
+    const current = new Date(`${todayValue}T00:00:00`).getTime();
+    const diff = Math.round((target - current) / 86400000);
+    if (diff === 0) return t('common.today');
+    if (diff === 1) return t('common.tomorrow');
+    if (diff === -1) return t('time.yesterday');
+    if (diff > 1 && diff < 7) return tCount('teacher.mySessions.inDays', diff);
+    if (diff < -1 && diff > -7) return tCount('time.daysAgo', Math.abs(diff));
+    return formatPlatformDate(date);
+  }, [t, tCount]);
 
   const sessions = useMemo<SessionRow[]>(() => {
     if (!isTeacher && !isTranslator) return [];
@@ -122,6 +125,12 @@ export function MyClassesView({
 
   const visibleGroups = groupByDate(filteredSessions);
   const pastPreviewGroups = groupByDate(pastSessions.slice().sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8));
+
+  const timeframeOptions = useMemo<Array<{ value: typeof timeframe; labelKey: TranslationKey }>>(() => [
+    { value: 'upcoming', labelKey: 'staffDashboard.upcoming.title' },
+    { value: 'all', labelKey: 'teacher.mySessions.filter.all' },
+    { value: 'past', labelKey: 'classDetail.status.past' },
+  ], [language]);
 
   const renderSessionRow = (session: SessionRow) => {
     const teacher = getUserById(session.teacherId);
@@ -188,27 +197,27 @@ export function MyClassesView({
             <div className="flex min-w-0 items-center gap-3">
               <UserAvatar user={currentUser} size="md" />
               <div className="min-w-0">
-                <h1 className="tbo-display text-3xl text-[#171717]">My Sessions</h1>
+                <h1 className="tbo-display text-3xl text-[#171717]">{t('sidebar.mySessions')}</h1>
                 <p className="truncate text-xs font-semibold text-[#737373]">{currentUser.name}</p>
               </div>
             </div>
             <p className="mt-1 max-w-2xl text-sm text-[#737373]">
-              Sessions assigned to you, grouped by date so your next teaching moments are easy to find.
+              {t('teacher.mySessions.subtitle')}
             </p>
           </div>
           <div className="flex flex-col gap-2 lg:items-end">
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
                 <span className="text-lg leading-none">{upcomingSessions.length}</span>
-                Upcoming
+                {t('staffDashboard.upcoming.title')}
               </span>
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
                 <span className="text-lg leading-none">{nextSession ? relativeDate(nextSession.date, today) : '-'}</span>
-                Next
+                {t('teacher.mySessions.next')}
               </span>
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#78716c] bg-[#f5f5f4] px-3 text-sm font-semibold text-[#57534e]">
                 <span className="text-lg leading-none">{pastSessions.length}</span>
-                Past
+                {t('classDetail.status.past')}
               </span>
             </div>
           </div>
@@ -222,7 +231,7 @@ export function MyClassesView({
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search my sessions"
+              placeholder={t('teacher.mySessions.searchPlaceholder')}
               className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717] placeholder:text-[#a3a3a3]"
             />
           </div>
@@ -231,9 +240,9 @@ export function MyClassesView({
             onChange={event => setTimeframe(event.target.value as typeof timeframe)}
             className="tbo-focus h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-medium text-[#171717]"
           >
-            <option value="upcoming">Upcoming</option>
-            <option value="all">All sessions</option>
-            <option value="past">Past</option>
+            {timeframeOptions.map(option => (
+              <option key={option.value} value={option.value}>{t(option.labelKey)}</option>
+            ))}
           </select>
         </div>
       </section>
@@ -256,8 +265,8 @@ export function MyClassesView({
       ) : (
         <div className="rounded-2xl border border-dashed border-[#ded7cd] bg-[#fbfaf7] px-6 py-12 text-center">
           <CalendarDays className="mx-auto h-10 w-10 text-[#a8a29e]" />
-          <p className="mt-3 text-sm font-semibold text-[#171717]">No sessions found</p>
-          <p className="mt-1 text-sm text-[#737373]">Try another filter or search term.</p>
+          <p className="mt-3 text-sm font-semibold text-[#171717]">{t('teacher.mySessions.empty.title')}</p>
+          <p className="mt-1 text-sm text-[#737373]">{t('teacher.mySessions.empty.hint')}</p>
         </div>
       )}
 
@@ -270,7 +279,7 @@ export function MyClassesView({
           >
             <span className="inline-flex items-center gap-2 text-sm font-semibold text-[#44403c]">
               <CheckCircle2 className="h-4 w-4 text-[#16a34a]" />
-              Recent past sessions
+              {t('teacher.mySessions.recentPast')}
             </span>
             <ChevronDown className={`h-4 w-4 text-[#737373] transition ${pastExpanded ? 'rotate-180' : ''}`} />
           </button>

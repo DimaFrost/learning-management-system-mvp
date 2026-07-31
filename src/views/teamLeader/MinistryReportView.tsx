@@ -13,6 +13,7 @@ import {
   Users,
   XCircle,
 } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 import type {
   AttendanceStatus,
   Course,
@@ -61,6 +62,7 @@ function ReportTextArea({
   value,
   onChange,
   required,
+  requiredLabel,
   rows = 3,
 }: {
   label: string;
@@ -68,13 +70,14 @@ function ReportTextArea({
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  requiredLabel: string;
   rows?: number;
 }) {
   return (
     <label className="block rounded-2xl border border-[#eadfd2] bg-[#fffdf8] p-3">
       <span className="flex items-center justify-between gap-3">
         <span className="text-sm font-semibold text-[#171717]">{label}</span>
-        {required ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">Required</span> : null}
+        {required ? <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#c2410c]">{requiredLabel}</span> : null}
       </span>
       <span className="mt-1 block text-xs leading-5 text-[#737373]">{hint}</span>
       <textarea
@@ -132,6 +135,8 @@ export function MinistryReportView({
   loading = false,
   onSubmit,
 }: MinistryReportViewProps) {
+  const { t, tCount } = useLanguage();
+
   const leaderTeams = useMemo(
     () => ministryTeams.filter(team =>
       team.active &&
@@ -232,15 +237,15 @@ export function MinistryReportView({
     setError(null);
     setMessage(null);
     if (!selectedTeam) {
-      setError('You are not assigned to a ministry team yet.');
+      setError(t('ministry.report.error.noTeam'));
       return;
     }
     if (!generalView.trim() || !timelyActions.trim()) {
-      setError('General view and timely actions are required.');
+      setError(t('ministry.report.error.requiredFields'));
       return;
     }
     if (assignedStudents.length === 0) {
-      setError('No students are assigned to this team for the selected date.');
+      setError(t('ministry.report.error.noStudents'));
       return;
     }
 
@@ -259,24 +264,24 @@ export function MinistryReportView({
         })),
       });
       resetForm();
-      setMessage('Report submitted.');
+      setMessage(t('ministry.report.success'));
     } catch (submitError) {
       console.error(submitError);
-      setError('Could not submit the report. Please try again.');
+      setError(t('ministry.report.error.submitFailed'));
     } finally {
       setSubmitting(false);
     }
   };
 
   if (loading) {
-    return <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">Loading ministry report...</div>;
+    return <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">{t('ministry.report.loading')}</div>;
   }
 
   if (leaderTeams.length === 0) {
     return (
       <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6">
-        <h2 className="text-2xl font-semibold text-[#171717]">Ministry report</h2>
-        <p className="mt-2 text-sm text-[#737373]">No ministry team is assigned to this account yet.</p>
+        <h2 className="text-2xl font-semibold text-[#171717]">{t('ministry.report.title')}</h2>
+        <p className="mt-2 text-sm text-[#737373]">{t('ministry.report.noTeamAssigned')}</p>
       </div>
     );
   }
@@ -288,25 +293,25 @@ export function MinistryReportView({
           <div className="p-5">
             <span className="inline-flex items-center gap-2 rounded-full border border-[#fed7aa] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c2410c]">
               <HeartHandshake className="h-3.5 w-3.5" />
-              Team leader
+              {t('ministry.report.badge')}
             </span>
-            <h2 className="mt-3 text-2xl font-semibold text-[#171717]">Ministry report</h2>
+            <h2 className="mt-3 text-2xl font-semibold text-[#171717]">{t('ministry.report.title')}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-[#6b5d52]">
-              Mark service attendance, summarize how the team served, and note what needs to happen before the next service.
+              {t('ministry.report.subtitle')}
             </p>
           </div>
           <div className="border-t border-[#eadfd2] bg-white/75 p-5 xl:border-l xl:border-t-0">
             <div className="grid grid-cols-3 gap-2 text-center">
               <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-3 text-[#15803d]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Present</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.present')}</p>
                 <p className="mt-1 text-2xl font-semibold leading-none">{counts.present}</p>
               </div>
               <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-3 text-[#c2410c]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Late</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.late')}</p>
                 <p className="mt-1 text-2xl font-semibold leading-none">{counts.late}</p>
               </div>
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3 text-[#737373]">
-                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Absent</p>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.absent')}</p>
                 <p className="mt-1 text-2xl font-semibold leading-none">{counts.absent}</p>
               </div>
             </div>
@@ -319,7 +324,7 @@ export function MinistryReportView({
           <section className="rounded-2xl border border-[#eadfd2] bg-white p-4 shadow-[0_18px_45px_rgba(120,53,15,0.05)]">
             <div className="grid gap-3 md:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Team</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('ministry.report.team')}</span>
                 <select
                   value={effectiveTeamId}
                   onChange={event => {
@@ -332,7 +337,7 @@ export function MinistryReportView({
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Service date</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('ministry.report.serviceDate')}</span>
                 <span className="relative block">
                   <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#c2410c]" />
                   <input
@@ -350,7 +355,7 @@ export function MinistryReportView({
             {existingReport ? (
               <div className="mt-3 flex items-start gap-2 rounded-xl border border-[#fed7aa] bg-[#fff7ed] px-3 py-2 text-sm text-[#9a3412]">
                 <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
-                A report already exists for this team and date. Submitting again may update the record depending on the current backend behavior.
+                {t('ministry.report.existingWarning')}
               </div>
             ) : null}
           </section>
@@ -360,13 +365,13 @@ export function MinistryReportView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
                   <Users className="h-3.5 w-3.5" />
-                  Affected students
+                  {t('ministry.report.affectedStudents')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{assignedStudents.length} students on this rotation</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{tCount('ministry.report.studentsOnRotation', assignedStudents.length)}</h3>
               </div>
               <div className="flex flex-wrap gap-2">
-                <button type="button" onClick={() => setAllStatuses('present')} className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-semibold text-[#15803d]">Mark all present</button>
-                <button type="button" onClick={() => setAllStatuses('absent')} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">Clear to absent</button>
+                <button type="button" onClick={() => setAllStatuses('present')} className="rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-1.5 text-xs font-semibold text-[#15803d]">{t('ministry.report.markAllPresent')}</button>
+                <button type="button" onClick={() => setAllStatuses('absent')} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">{t('ministry.report.clearToAbsent')}</button>
               </div>
             </div>
             <div className="divide-y divide-[#f3e8d8]">
@@ -378,51 +383,55 @@ export function MinistryReportView({
                       <UserAvatar user={student} size="sm" />
                       <div className="min-w-0">
                         <p className="truncate font-semibold text-[#171717]">{student.name}</p>
-                        {course ? <ActiveYearGroupBadge course={course} /> : <p className="text-xs text-[#737373]">No active year group</p>}
+                        {course ? <ActiveYearGroupBadge course={course} /> : <p className="text-xs text-[#737373]">{t('ministry.report.noActiveYearGroup')}</p>}
                       </div>
                     </div>
                     <div className="flex flex-wrap justify-end gap-1.5">
-                      <AttendanceChoice active={value === 'present'} tone="green" icon={Check} label="Present" onClick={() => setStudentStatus(student.id, value === 'present' ? '' : 'present')} />
-                      <AttendanceChoice active={value === 'late'} tone="orange" icon={Clock3} label="Late" onClick={() => setStudentStatus(student.id, value === 'late' ? '' : 'late')} />
-                      <AttendanceChoice active={value === 'absent'} tone="red" icon={XCircle} label="Absent" onClick={() => setStudentStatus(student.id, value === 'absent' ? '' : 'absent')} />
+                      <AttendanceChoice active={value === 'present'} tone="green" icon={Check} label={t('attendance.present')} onClick={() => setStudentStatus(student.id, value === 'present' ? '' : 'present')} />
+                      <AttendanceChoice active={value === 'late'} tone="orange" icon={Clock3} label={t('attendance.late')} onClick={() => setStudentStatus(student.id, value === 'late' ? '' : 'late')} />
+                      <AttendanceChoice active={value === 'absent'} tone="red" icon={XCircle} label={t('attendance.absent')} onClick={() => setStudentStatus(student.id, value === 'absent' ? '' : 'absent')} />
                     </div>
                   </div>
                 );
               })}
               {assignedStudents.length === 0 && (
-                <div className="px-4 py-10 text-center text-sm text-[#737373]">No students are assigned to this team on this date.</div>
+                <div className="px-4 py-10 text-center text-sm text-[#737373]">{t('ministry.report.noStudentsOnDate')}</div>
               )}
             </div>
           </section>
 
           <section className="grid gap-3">
             <ReportTextArea
-              label="General view"
-              hint="Short description of how the service went for your team."
+              label={t('attendance.ministry.report.generalView')}
+              hint={t('ministry.report.generalViewHint')}
               value={generalView}
               onChange={setGeneralView}
               required
+              requiredLabel={t('attendance.ministry.details.required')}
             />
             <ReportTextArea
-              label="Wins and testimonies"
-              hint="Anything encouraging, notable, or worth celebrating."
+              label={t('attendance.ministry.report.wins')}
+              hint={t('ministry.report.winsHint')}
               value={winsTestimonies}
               onChange={setWinsTestimonies}
+              requiredLabel={t('attendance.ministry.details.required')}
               rows={2}
             />
             <ReportTextArea
-              label="Challenges"
-              hint="Anything that made service difficult or needs pastoral/operational attention."
+              label={t('attendance.ministry.report.challenges')}
+              hint={t('ministry.report.challengesHint')}
               value={challenges}
               onChange={setChallenges}
+              requiredLabel={t('attendance.ministry.details.required')}
               rows={2}
             />
             <ReportTextArea
-              label="Timely actions"
-              hint="Actions needed this week before the coming Sunday, including materials, resources, or follow-up."
+              label={t('attendance.ministry.report.timelyActions')}
+              hint={t('ministry.report.timelyActionsHint')}
               value={timelyActions}
               onChange={setTimelyActions}
               required
+              requiredLabel={t('attendance.ministry.details.required')}
             />
           </section>
         </main>
@@ -431,22 +440,22 @@ export function MinistryReportView({
           <section className="rounded-2xl border border-[#eadfd2] bg-white p-4 shadow-[0_18px_45px_rgba(120,53,15,0.05)]">
             <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
               <ClipboardCheck className="h-3.5 w-3.5" />
-              Submit preview
+              {t('ministry.report.submitPreview')}
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{selectedTeam?.name ?? 'Team'}</h3>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{selectedTeam?.name ?? t('ministry.report.team')}</h3>
             <p className="mt-1 text-sm text-[#737373]">{dateLabel(serviceDate)}</p>
             <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
-              <span className="rounded-lg bg-[#dcfce7] px-2 py-2 font-semibold text-[#166534]">{counts.present} present</span>
-              <span className="rounded-lg bg-[#fff7ed] px-2 py-2 font-semibold text-[#c2410c]">{counts.late} late</span>
-              <span className="rounded-lg bg-[#f5f5f5] px-2 py-2 font-semibold text-[#737373]">{counts.absent} absent</span>
+              <span className="rounded-lg bg-[#dcfce7] px-2 py-2 font-semibold text-[#166534]">{t('ministry.report.countPresent', { count: counts.present })}</span>
+              <span className="rounded-lg bg-[#fff7ed] px-2 py-2 font-semibold text-[#c2410c]">{t('ministry.report.countLate', { count: counts.late })}</span>
+              <span className="rounded-lg bg-[#f5f5f5] px-2 py-2 font-semibold text-[#737373]">{t('ministry.report.countAbsent', { count: counts.absent })}</span>
             </div>
             {unmarkedCount > 0 ? (
               <p className="mt-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-xs leading-5 text-[#737373]">
-                {unmarkedCount} unmarked student{unmarkedCount === 1 ? '' : 's'} will be submitted as absent.
+                {tCount('ministry.report.unmarkedStudents', unmarkedCount)}
               </p>
             ) : null}
             <div className="mt-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-xs leading-5 text-[#737373]">
-              Required report sections completed: {completeSections} / 2.
+              {t('ministry.report.sectionsCompleted', { complete: completeSections })}
             </div>
             {(error || message) && (
               <div className={`mt-3 rounded-xl px-3 py-2 text-sm font-medium ${error ? 'bg-[#fee2e2] text-[#b91c1c]' : 'bg-[#dcfce7] text-[#166534]'}`}>
@@ -459,21 +468,21 @@ export function MinistryReportView({
               disabled={submitting || assignedStudents.length === 0}
               className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              <Send className="h-4 w-4" /> {submitting ? 'Submitting...' : 'Submit report'}
+              <Send className="h-4 w-4" /> {submitting ? t('ministry.report.submitting') : t('ministry.report.submit')}
             </button>
           </section>
 
           <section className="rounded-2xl border border-[#eadfd2] bg-white p-4 shadow-[0_18px_45px_rgba(120,53,15,0.05)]">
             <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
               <FileText className="h-3.5 w-3.5" />
-              Recent reports
+              {t('ministry.report.recentReports')}
             </p>
             <div className="tbo-scrollbar mt-3 max-h-[28rem] space-y-2 overflow-y-auto pr-1">
               {recentReports.map(({ session, team, present, late, absent }) => (
                 <div key={session.id} className="rounded-xl border border-[#eadfd2] bg-[#fffdf8] p-3">
                   <div className="flex items-start justify-between gap-3">
                     <div>
-                      <p className="font-semibold text-[#171717]">{team?.name ?? 'Team'}</p>
+                      <p className="font-semibold text-[#171717]">{team?.name ?? t('ministry.report.team')}</p>
                       <p className="text-xs text-[#737373]">{dateLabel(session.serviceDate)}</p>
                     </div>
                     <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#525252] ring-1 ring-[#eadfd2]">{formatPlatformDateTime(session.submittedAt)}</span>
@@ -485,7 +494,7 @@ export function MinistryReportView({
                   </div>
                 </div>
               ))}
-              {recentReports.length === 0 && <p className="rounded-xl border border-dashed border-[#d4d4d4] p-4 text-sm text-[#737373]">No reports submitted yet.</p>}
+              {recentReports.length === 0 && <p className="rounded-xl border border-dashed border-[#d4d4d4] p-4 text-sm text-[#737373]">{t('ministry.report.noReportsYet')}</p>}
             </div>
           </section>
         </aside>

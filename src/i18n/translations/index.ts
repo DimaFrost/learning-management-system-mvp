@@ -19,8 +19,10 @@ import { onboardingTranslations } from './onboarding';
 import { searchTranslations } from './search';
 import { sessionsTranslations } from './sessions';
 import { settingsTranslations } from './settings';
+import { ministryTranslations } from './ministry';
 import { staffDashboardTranslations } from './staffDashboard';
 import { studentTranslations } from './student';
+import { teacherTranslations } from './teacher';
 import { submissionDetailTranslations } from './submissionDetail';
 import { submissionsTranslations } from './submissions';
 import { todosTranslations } from './todos';
@@ -54,6 +56,8 @@ export const en = {
   ...settingsTranslations.en,
   ...submissionsTranslations.en,
   ...staffDashboardTranslations.en,
+  ...ministryTranslations.en,
+  ...teacherTranslations.en,
 };
 
 export type TranslationKey = keyof typeof en;
@@ -86,6 +90,8 @@ export const bg: Record<TranslationKey, string> = {
   ...settingsTranslations.bg,
   ...submissionsTranslations.bg,
   ...staffDashboardTranslations.bg,
+  ...ministryTranslations.bg,
+  ...teacherTranslations.bg,
 };
 
 type BaseKeyWithSuffix<Key, Suffix extends string> = Key extends `${infer Base}.${Suffix}`
