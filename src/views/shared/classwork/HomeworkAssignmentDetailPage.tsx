@@ -7,6 +7,8 @@ import { createHomeworkGoogleDoc } from '../../../utils/googleDocsV2';
 import { parseHomeworkInstructions } from '../../../utils/homeworkInstructions';
 import { resolveHomeworkSubmissionPreview } from '../../../utils/filePreview';
 import { getAdminIds, queueWorkflowEmail } from '../../../utils/notificationJobs';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { translate } from '../../../i18n/translate';
 import { formatDueDateTime, getDueCountdown, getHomeworkStatusLabel, getHomeworkStatusTone } from './helpers';
 import type { ClassworkScope, HomeworkDetailSelection, HomeworkRow } from './types';
 
@@ -53,9 +55,9 @@ function parseQuickChoiceAnswers(value: string | null | undefined): Record<strin
 function formatQuickChoiceAnswer(homework: HomeworkRow, submission: HomeworkSubmission): string {
   const questions = getQuickChoiceQuestions(homework);
   const answers = parseQuickChoiceAnswers(submission.selectedOption);
-  if (questions.length <= 1) return answers['q-0'] || submission.selectedOption || 'No option selected.';
+  if (questions.length <= 1) return answers['q-0'] || submission.selectedOption || translate('classwork.assignment.noOptionSelected');
   return questions
-    .map(question => `${question.prompt}: ${answers[question.id] || 'No answer'}`)
+    .map(question => `${question.prompt}: ${answers[question.id] || translate('classwork.assignment.noAnswer')}`)
     .join('\n');
 }
 
@@ -80,6 +82,7 @@ export function HomeworkAssignmentDetailPage({
   onRefresh: () => Promise<void>;
   initialReviewSubmissionId?: number | null;
 }) {
+  const { t } = useLanguage();
   const { homework, session, run } = selection;
   const parsed = parseHomeworkInstructions(homework.description);
   const [saving, setSaving] = useState(false);
@@ -124,7 +127,7 @@ export function HomeworkAssignmentDetailPage({
       await createHomeworkGoogleDoc(homework.id);
       await onRefresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not create the Google Doc.');
+      setError(err instanceof Error ? err.message : t('classwork.assignment.error.createDoc'));
     } finally {
       setSaving(false);
     }
@@ -143,7 +146,7 @@ export function HomeworkAssignmentDetailPage({
       })
       .eq('id', mySubmission.id);
     if (submitError) {
-      setError('Could not submit the assignment.');
+      setError(t('classwork.assignment.error.submit'));
     } else {
       const recipients = [
         ...getAdminIds(users),
@@ -157,9 +160,9 @@ export function HomeworkAssignmentDetailPage({
       void queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: recipients,
-        subject: `Assignment submitted: ${homework.title}`,
-        title: `${currentUser.name} submitted ${homework.title}`,
-        body: `${currentUser.name} submitted work for ${run.subjectTitle}.`,
+        subject: t('classwork.email.submitted.subject', { title: homework.title }),
+        title: t('classwork.email.submitted.title', { name: currentUser.name, title: homework.title }),
+        body: t('classwork.email.submitted.body', { name: currentUser.name, subject: run.subjectTitle }),
         kind: 'assignment',
       });
       await onRefresh();
@@ -185,7 +188,7 @@ export function HomeworkAssignmentDetailPage({
       updated_at: new Date().toISOString(),
     }, { onConflict: 'assignment_id,student_id' });
     if (submitError) {
-      setError('Could not submit the quick check.');
+      setError(t('classwork.assignment.error.submitQuickCheck'));
     } else {
       await onRefresh();
     }
@@ -210,7 +213,7 @@ export function HomeworkAssignmentDetailPage({
       })
       .eq('id', params.submissionId);
     if (gradeError) {
-      setError('Failed to save grade');
+      setError(t('classwork.assignment.error.saveGrade'));
       throw gradeError;
     }
     const gradedSubmission = submissions.find(submission => submission.id === params.submissionId);
@@ -218,11 +221,11 @@ export function HomeworkAssignmentDetailPage({
       void queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: [gradedSubmission.studentId],
-        subject: `Assignment graded: ${homework.title}`,
-        title: `${homework.title} has been graded`,
+        subject: t('classwork.email.graded.subject', { title: homework.title }),
+        title: t('classwork.email.graded.title', { title: homework.title }),
         body: params.gradeComment?.trim()
-          ? `Your assignment has been graded.\n\nFeedback: ${params.gradeComment.trim()}`
-          : 'Your assignment has been graded.',
+          ? t('classwork.email.graded.bodyWithFeedback', { feedback: params.gradeComment.trim() })
+          : t('classwork.email.graded.body'),
         kind: 'assignment',
       });
     }
@@ -239,7 +242,7 @@ export function HomeworkAssignmentDetailPage({
       })
       .eq('id', submissionId);
     if (returnError) {
-      setError('Failed to return submission');
+      setError(t('classwork.assignment.error.return'));
       throw returnError;
     }
     const returnedSubmission = submissions.find(submission => submission.id === submissionId);
@@ -247,9 +250,9 @@ export function HomeworkAssignmentDetailPage({
       void queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: [returnedSubmission.studentId],
-        subject: `Assignment returned: ${homework.title}`,
-        title: `${homework.title} was returned for revision`,
-        body: 'Please review the assignment feedback and update your work.',
+        subject: t('classwork.email.returned.subject', { title: homework.title }),
+        title: t('classwork.email.returned.title', { title: homework.title }),
+        body: t('classwork.email.returned.body'),
         kind: 'assignment',
       });
     }
@@ -264,7 +267,7 @@ export function HomeworkAssignmentDetailPage({
       content,
     });
     if (commentError) {
-      setError('Failed to post comment');
+      setError(t('classwork.assignment.error.postComment'));
       throw commentError;
     }
     const commentedSubmission = submissions.find(submission => submission.id === submissionId);
@@ -276,8 +279,8 @@ export function HomeworkAssignmentDetailPage({
       void queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: recipients,
-        subject: `Private comment: ${homework.title}`,
-        title: `${currentUser.name} added a private comment`,
+        subject: t('classwork.email.comment.subject', { title: homework.title }),
+        title: t('classwork.email.comment.title', { name: currentUser.name }),
         body: content,
         kind: 'assignment',
       });
@@ -292,7 +295,7 @@ export function HomeworkAssignmentDetailPage({
       .delete()
       .eq('id', commentId);
     if (commentError) {
-      setError('Failed to delete comment');
+      setError(t('classwork.assignment.error.deleteComment'));
       throw commentError;
     }
     await onRefresh();
@@ -325,7 +328,7 @@ export function HomeworkAssignmentDetailPage({
         className="tbo-focus inline-flex h-9 items-center gap-2 border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]"
       >
         <ArrowLeft className="h-4 w-4" />
-        Back to {run.subjectTitle}
+        {t('classwork.assignment.backToSubject', { subject: run.subjectTitle })}
       </button>
 
       <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -333,7 +336,7 @@ export function HomeworkAssignmentDetailPage({
           <section className="border-y border-[#d4d4d4] bg-white p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Assignment</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('classwork.assignment.eyebrow')}</p>
                 <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{homework.title}</h1>
                 <p className="mt-2 text-sm text-[#737373]">
                   {run.subjectTitle}{session ? ` · ${session.title}` : ''}
@@ -356,14 +359,14 @@ export function HomeworkAssignmentDetailPage({
           <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
               <ClipboardList className="h-4 w-4 text-[#8b5e34]" />
-              Instructions
+              {t('classwork.assignment.instructions')}
             </div>
             <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
-              {parsed.instructions || 'No instructions were added.'}
+              {parsed.instructions || t('classwork.assignment.noInstructions')}
             </p>
             {parsed.details.resources.length > 0 && (
               <div className="mt-4 border-t border-[#eee7dc] pt-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">Resources</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">{t('classwork.assignment.resources')}</p>
                 <div className="mt-2 grid gap-2">
                   {parsed.details.resources.map(resource => (
                     <a key={resource} href={resource} target="_blank" rel="noreferrer" className="tbo-focus inline-flex items-center gap-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
@@ -380,19 +383,19 @@ export function HomeworkAssignmentDetailPage({
             <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
               <div className="flex items-center justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[#171717]">Student work</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('classwork.assignment.studentWork')}</p>
                   <p className="mt-1 inline-flex items-center gap-1.5 text-xs text-[#737373]">
                     <CheckCircle2 className="h-3.5 w-3.5 text-[#1d4ed8]" />
                     {submittedCount}/{enrolledStudentIds.length || submissions.length}
                   </p>
                 </div>
                 <span className="rounded-full bg-[#eff6ff] px-3 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
-                  {homework.max_points ? `${homework.max_points} pts` : 'Completion'}
+                  {homework.max_points ? t('classwork.points.pts', { n: homework.max_points }) : t('classwork.points.completion')}
                 </span>
               </div>
               <div className="mt-4 divide-y divide-[#e5e5e5] border-y border-[#d4d4d4]">
                 {enrolledStudentIds.length === 0 ? (
-                  <p className="py-4 text-sm text-[#737373]">No enrolled students.</p>
+                  <p className="py-4 text-sm text-[#737373]">{t('classwork.assignment.noEnrolledStudents')}</p>
                 ) : enrolledStudentIds.map(studentId => {
                   const student = users.find(user => user.id === studentId);
                   const submission = submissions.find(item => item.studentId === studentId);
@@ -411,7 +414,7 @@ export function HomeworkAssignmentDetailPage({
                       <div className="flex min-w-0 items-center gap-2">
                         {student ? <UserAvatar user={student} size="sm" /> : null}
                         <div className="min-w-0">
-                          <span className="block truncate text-sm font-semibold text-[#171717]">{student?.name ?? 'Student'}</span>
+                          <span className="block truncate text-sm font-semibold text-[#171717]">{student?.name ?? t('classwork.assignment.studentFallback')}</span>
                           {studentStatus === 'graded' && submission?.points != null && (
                             <span className="text-xs text-[#737373]">
                               {submission.points}/{homework.max_points} pts
@@ -435,10 +438,10 @@ export function HomeworkAssignmentDetailPage({
 
         <aside className="space-y-3">
           <section className="border-y border-[#d4d4d4] bg-white p-4">
-            <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? 'Your work' : 'Assignment summary'}</p>
+            <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? t('classwork.assignment.yourWork') : t('classwork.assignment.summary')}</p>
             <div className="mt-3 space-y-2 text-sm text-[#525252]">
               <div className="flex items-center justify-between gap-2">
-                <span>Status</span>
+                <span>{t('common.status')}</span>
                 <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getHomeworkStatusTone(status ?? 'submitted')}`}>
                   {scope === 'student' ? getHomeworkStatusLabel(status ?? 'not_started') : (
                     <span className="inline-flex items-center gap-1.5">
@@ -449,12 +452,12 @@ export function HomeworkAssignmentDetailPage({
                 </span>
               </div>
               <div className="flex items-center justify-between gap-2">
-                <span>Points</span>
-                <span className="font-semibold text-[#171717]">{homework.max_points ? `${homework.max_points} pts` : 'Completion'}</span>
+                <span>{t('classwork.assignment.points')}</span>
+                <span className="font-semibold text-[#171717]">{homework.max_points ? t('classwork.points.pts', { n: homework.max_points }) : t('classwork.points.completion')}</span>
               </div>
               {run.course && (
                 <div className="flex items-center justify-between gap-2">
-                  <span>Year group</span>
+                  <span>{t('classwork.assignment.yearGroup')}</span>
                   <ActiveYearGroupBadge course={run.course} size="sm" />
                 </div>
               )}
@@ -464,7 +467,7 @@ export function HomeworkAssignmentDetailPage({
               <div className="mt-4 grid gap-2">
                 {isQuickCheck && (
                   <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-3">
-                    <p className="text-sm font-semibold text-[#14532d]">Quick check response</p>
+                    <p className="text-sm font-semibold text-[#14532d]">{t('classwork.assignment.quickCheckResponse')}</p>
                     {homework.question_type === 'multiple_choice' ? (
                       <div className="mt-3 space-y-4">
                         {quickChoiceQuestions.map((question, index) => (
@@ -493,7 +496,7 @@ export function HomeworkAssignmentDetailPage({
                         onChange={event => setQuickResponseText(event.target.value)}
                         rows={5}
                         className="tbo-focus mt-3 w-full rounded-xl border border-[#bbf7d0] bg-white px-3 py-2 text-sm"
-                        placeholder="Write your response..."
+                        placeholder={t('classwork.assignment.writeResponse')}
                       />
                     )}
                   </div>
@@ -501,13 +504,13 @@ export function HomeworkAssignmentDetailPage({
                 {!isQuickCheck && !mySubmission && (
                   <button type="button" onClick={createDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50">
                     <FileText className="h-4 w-4" />
-                    Create school Google Doc
+                    {t('classwork.assignment.createSchoolGoogleDoc')}
                   </button>
                 )}
                 {!isQuickCheck && openUrl && (
                   <button type="button" onClick={() => window.open(openUrl, '_blank')} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                     <ExternalLink className="h-4 w-4" />
-                    Open work
+                    {t('classwork.assignment.openWork')}
                   </button>
                 )}
                 {isQuickCheck && (!mySubmission || (mySubmission.status !== 'submitted' && mySubmission.status !== 'graded')) && (
@@ -520,13 +523,13 @@ export function HomeworkAssignmentDetailPage({
                     className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#047857] px-3 text-sm font-semibold text-white hover:bg-[#065f46] disabled:opacity-50"
                   >
                     <CheckCircle2 className="h-4 w-4" />
-                    Submit quick check
+                    {t('classwork.assignment.submitQuickCheck')}
                   </button>
                 )}
                 {!isQuickCheck && mySubmission && mySubmission.status !== 'submitted' && mySubmission.status !== 'graded' && (
                   <button type="button" onClick={submitDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#047857] px-3 text-sm font-semibold text-white hover:bg-[#065f46] disabled:opacity-50">
                     <CheckCircle2 className="h-4 w-4" />
-                    Submit
+                    {t('classwork.assignment.submit')}
                   </button>
                 )}
               </div>
@@ -575,6 +578,7 @@ function SubmissionReviewPage({
   onAddComment: (submissionId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [points, setPoints] = useState(submission.points ?? 0);
   const [gradeComment, setGradeComment] = useState(submission.gradeComment ?? '');
   const [submitting, setSubmitting] = useState(false);
@@ -621,14 +625,14 @@ function SubmissionReviewPage({
     <div className="space-y-5">
       <button type="button" onClick={onBack} className="tbo-focus inline-flex h-9 items-center gap-2 border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
         <ArrowLeft className="h-4 w-4" />
-        Back to student work
+        {t('classwork.review.backToStudentWork')}
       </button>
 
       <div className="grid min-h-[72vh] gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
         <section className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
           <div className="flex items-start justify-between gap-3 border-b border-[#e5e5e5] px-5 py-4">
             <div className="min-w-0">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Submission preview</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('classwork.review.previewEyebrow')}</p>
               <div className="mt-2 flex min-w-0 items-center gap-2">
                 {student ? <UserAvatar user={student} size="sm" /> : <span className="grid h-8 w-8 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#737373]">{submission.studentName.slice(0, 1)}</span>}
                 <h1 className="truncate text-xl font-semibold text-[#171717]">{submission.studentName}</h1>
@@ -638,7 +642,7 @@ function SubmissionReviewPage({
             {preview && (
               <a href={preview.url} target="_blank" rel="noreferrer" className="tbo-focus inline-flex h-9 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                 <ExternalLink className="h-4 w-4" />
-                Open
+                {t('classwork.review.open')}
               </a>
             )}
           </div>
@@ -647,29 +651,29 @@ function SubmissionReviewPage({
               <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#fafafa]">
                 <div className="flex items-center gap-2 text-sm text-[#737373]">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading preview...
+                  {t('classwork.review.loadingPreview')}
                 </div>
               </div>
             )}
             {homework.work_type === 'quick_check' ? (
               <div className="flex h-full items-center justify-center p-6">
                 <div className="w-full max-w-2xl rounded-2xl border border-[#d4d4d4] bg-white p-5">
-                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Quick check answer</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.review.quickCheckAnswer')}</p>
                   <p className="mt-3 whitespace-pre-wrap text-lg leading-7 text-[#171717]">
                     {homework.question_type === 'multiple_choice'
                       ? formatQuickChoiceAnswer(homework, submission)
-                      : submission.responseText || 'No response submitted.'}
+                      : submission.responseText || t('classwork.review.noResponse')}
                   </p>
                 </div>
               </div>
             ) : !preview || previewFailed ? (
               <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
                 <FileText className="h-8 w-8 text-[#a3a3a3]" />
-                <p className="text-sm font-semibold text-[#171717]">Preview is not available.</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('classwork.review.previewUnavailable')}</p>
                 {getSubmissionUrl(submission) && (
                   <a href={getSubmissionUrl(submission)!} target="_blank" rel="noreferrer" className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
                     <ExternalLink className="h-4 w-4" />
-                    Open in new tab
+                    {t('common.openInNewTab')}
                   </a>
                 )}
               </div>
@@ -690,14 +694,14 @@ function SubmissionReviewPage({
 
         <aside className="space-y-4">
           <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
-            <p className="text-sm font-semibold text-[#171717]">Quick grade</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('classwork.review.quickGrade')}</p>
             <p className="mt-1 text-xs text-[#737373]">{getHomeworkStatusLabel(submission.status)}</p>
             <form onSubmit={(event) => {
               event.preventDefault();
               void saveGrade();
             }} className="mt-5 space-y-5">
               <div>
-                <label htmlFor="review-points" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Points</label>
+                <label htmlFor="review-points" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('classwork.assignment.points')}</label>
                 <div className="flex items-baseline gap-2">
                   <input
                     id="review-points"
@@ -716,8 +720,8 @@ function SubmissionReviewPage({
               </div>
               <div>
                 <div className="mb-2">
-                  <label htmlFor="review-comment" className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Grade feedback</label>
-                  <p className="mt-1 text-xs text-[#737373]">Shown with the returned grade.</p>
+                  <label htmlFor="review-comment" className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('classwork.review.gradeFeedback')}</label>
+                  <p className="mt-1 text-xs text-[#737373]">{t('classwork.review.gradeFeedbackHint')}</p>
                 </div>
                 <textarea
                   id="review-comment"
@@ -725,12 +729,12 @@ function SubmissionReviewPage({
                   onChange={event => setGradeComment(event.target.value)}
                   rows={6}
                   className="tbo-focus w-full rounded-xl border border-[#d4d4d4] px-3 py-2 text-sm"
-                  placeholder="Final feedback for this submission..."
+                  placeholder={t('classwork.review.feedbackPlaceholder')}
                 />
               </div>
               <div className="grid gap-2">
                 <button type="submit" disabled={submitting} className="tbo-focus h-10 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50">
-                  {submitting ? 'Saving...' : 'Save grade'}
+                  {submitting ? t('classwork.review.saving') : t('classwork.review.saveGrade')}
                 </button>
                 {nextSubmission && (
                   <button
@@ -739,12 +743,12 @@ function SubmissionReviewPage({
                     onClick={() => void saveGrade(true)}
                     className="tbo-focus h-10 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe] disabled:opacity-50"
                   >
-                    {submitting ? 'Saving...' : `Save and review ${nextSubmission.studentName}`}
+                    {submitting ? t('classwork.review.saving') : t('classwork.review.saveAndReview', { name: nextSubmission.studentName })}
                   </button>
                 )}
                 {submission.status !== 'returned' && (
                   <button type="button" onClick={returnForRevision} disabled={submitting} className="tbo-focus h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50">
-                    Return for revision
+                    {t('classwork.review.returnForRevision')}
                   </button>
                 )}
               </div>
@@ -776,6 +780,7 @@ function PrivateCommentsPanel({
   onAddComment: (submissionId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
@@ -805,15 +810,15 @@ function PrivateCommentsPanel({
     <section className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-sm font-semibold text-[#171717]">Private comments</p>
-          <p className="mt-0.5 text-xs text-[#737373]">A thread between the student and staff.</p>
+          <p className="text-sm font-semibold text-[#171717]">{t('classwork.review.privateComments')}</p>
+          <p className="mt-0.5 text-xs text-[#737373]">{t('classwork.review.privateCommentsHint')}</p>
         </div>
         <MessageCircle className="h-4 w-4 text-[#a3a3a3]" />
       </div>
 
       <div className="mt-4 max-h-64 space-y-2 overflow-y-auto pr-1 tbo-scrollbar">
         {comments.length === 0 ? (
-          <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-3 text-sm text-[#737373]">No private comments yet.</p>
+          <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-3 text-sm text-[#737373]">{t('classwork.review.noPrivateComments')}</p>
         ) : comments.map(comment => {
           const author = users.find(user => user.id === comment.authorId) ?? null;
           const canDelete = comment.authorId === currentUser.id || currentUser.roles.includes('administrator');
@@ -836,7 +841,7 @@ function PrivateCommentsPanel({
                         onClick={() => void removeComment(comment.id)}
                         disabled={deletingId === comment.id}
                         className="tbo-focus grid h-6 w-6 flex-none place-items-center rounded-md text-[#a3a3a3] opacity-0 hover:bg-white hover:text-[#b91c1c] group-hover:opacity-100 disabled:opacity-40"
-                        aria-label="Delete comment"
+                        aria-label={t('classwork.review.deleteComment')}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </button>
@@ -860,7 +865,7 @@ function PrivateCommentsPanel({
               void submitComment();
             }
           }}
-          placeholder="Write a private comment..."
+          placeholder={t('classwork.review.commentPlaceholder')}
           className="tbo-focus h-10 min-w-0 flex-1 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm"
         />
         <button
@@ -870,7 +875,7 @@ function PrivateCommentsPanel({
           className="tbo-focus inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-40"
         >
           <Send className="h-4 w-4" />
-          Send
+          {t('common.send')}
         </button>
       </div>
     </section>

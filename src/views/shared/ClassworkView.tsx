@@ -9,6 +9,8 @@ import { formatPlatformDate } from '../../utils/dateUtils';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
 import { JoinLiveSessionBanner } from '../../components/student/JoinLiveSessionBanner';
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
 import {
   buildSubjectRuns,
   findClass,
@@ -19,6 +21,7 @@ import {
   getRunTimelineState,
   getScopedCourseIds,
   getStatusTone,
+  getHomeworkStatusLabel,
   getSubjectAssignmentStatus,
   groupByCalendarWeek,
   hasSessionHomework,
@@ -57,7 +60,7 @@ function mapHomeworkComment(row: HomeworkCommentRow) {
     id: row.id,
     submissionId: row.submission_id,
     authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? 'Unknown',
+    authorName: row.author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
@@ -89,28 +92,29 @@ interface ClassworkViewProps {
 const SUBJECTS_PER_PAGE = 6;
 
 function EmptyState() {
+  const { t } = useLanguage();
   return (
     <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center">
       <BookOpen className="mx-auto h-8 w-8 text-[#a3a3a3]" />
-      <p className="mt-3 text-sm font-semibold text-[#171717]">No classwork found.</p>
-      <p className="mt-1 text-sm text-[#737373]">Homework, reading, and materials will appear here when they match this view.</p>
+      <p className="mt-3 text-sm font-semibold text-[#171717]">{t('classwork.empty.title')}</p>
+      <p className="mt-1 text-sm text-[#737373]">{t('classwork.empty.subtitle')}</p>
     </div>
   );
 }
 
 function getDueGroup(item: ClassworkItem) {
-  if (item.kind === 'session') return 'Session';
-  if (!item.dueDate) return 'No due date';
+  if (item.kind === 'session') return translate('classwork.dueGroup.session');
+  if (!item.dueDate) return translate('classwork.dueGroup.noDueDate');
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const due = new Date(item.dueDate);
   due.setHours(0, 0, 0, 0);
   const diffDays = Math.round((due.getTime() - today.getTime()) / 86400000);
-  if (diffDays < 0) return 'Overdue';
-  if (diffDays === 0) return 'Today';
-  if (diffDays === 1) return 'Tomorrow';
-  if (diffDays <= 7) return 'This week';
-  return 'Later';
+  if (diffDays < 0) return translate('classwork.dueGroup.overdue');
+  if (diffDays === 0) return translate('common.today');
+  if (diffDays === 1) return translate('common.tomorrow');
+  if (diffDays <= 7) return translate('classwork.dueGroup.thisWeek');
+  return translate('common.later');
 }
 
 function SubjectAssignmentStatusIcon({
@@ -174,6 +178,7 @@ function ReadingDetailModal({
   onAddComment: (submissionId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
   const [saving, setSaving] = useState(false);
   const comments = submission?.comments ?? [];
@@ -191,11 +196,11 @@ function ReadingDetailModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label="Close reading detail" />
+      <button type="button" className="absolute inset-0 cursor-default" onClick={onClose} aria-label={t('classwork.reading.close')} />
       <section className="relative max-h-[92vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-2xl sm:max-w-3xl sm:rounded-2xl">
         <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Reading work</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('classwork.reading.eyebrow')}</p>
             <h3 className="mt-1 truncate text-2xl font-semibold text-[#171717]">{assignment.title}</h3>
             <p className="mt-1 text-sm text-[#737373]">{assignment.book.authors.join(', ') || assignment.book.title}</p>
           </div>
@@ -216,17 +221,17 @@ function ReadingDetailModal({
               </div>
               <div className="mt-3 space-y-2 text-sm">
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[#737373]">Due</span>
-                  <span className="font-semibold text-[#171717]">{assignment.dueDate ? formatPlatformDate(assignment.dueDate) : 'No due date'}</span>
+                  <span className="text-[#737373]">{t('classwork.reading.due')}</span>
+                  <span className="font-semibold text-[#171717]">{assignment.dueDate ? formatPlatformDate(assignment.dueDate) : t('common.noDueDate')}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[#737373]">Points</span>
-                  <span className="font-semibold text-[#171717]">{assignment.maxPoints ?? 'Completion'}</span>
+                  <span className="text-[#737373]">{t('classwork.reading.points')}</span>
+                  <span className="font-semibold text-[#171717]">{assignment.maxPoints ?? t('classwork.reading.completion')}</span>
                 </div>
                 <div className="flex items-center justify-between gap-2">
-                  <span className="text-[#737373]">Status</span>
-                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusTone((submission?.status ?? 'not started').replace('_', ' '))}`}>
-                    {(submission?.status ?? 'not started').replace('_', ' ')}
+                  <span className="text-[#737373]">{t('classwork.reading.status')}</span>
+                  <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${getStatusTone(submission?.status ?? 'not_started')}`}>
+                    {getHomeworkStatusLabel(submission?.status ?? 'not_started')}
                   </span>
                 </div>
               </div>
@@ -234,22 +239,22 @@ function ReadingDetailModal({
 
             <div className="space-y-4">
               <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
-                <p className="text-sm font-semibold text-[#171717]">Instructions</p>
-                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{assignment.instructions || 'No instructions were added.'}</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('classwork.reading.instructions')}</p>
+                <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{assignment.instructions || t('classwork.reading.noInstructions')}</p>
               </div>
 
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
                 <div className="flex items-center justify-between gap-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#171717]">Private comments</p>
-                    <p className="text-xs text-[#737373]">Visible only to the student and assigned staff.</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('classwork.reading.privateComments')}</p>
+                    <p className="text-xs text-[#737373]">{t('classwork.reading.privateCommentsHint')}</p>
                   </div>
                   <MessageCircle className="h-4 w-4 text-[#a3a3a3]" />
                 </div>
 
                 <div className="mt-4 space-y-2">
                   {comments.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-white px-3 py-3 text-sm text-[#737373]">No private comments yet.</p>
+                    <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-white px-3 py-3 text-sm text-[#737373]">{t('classwork.reading.noPrivateComments')}</p>
                   ) : comments.map(comment => (
                     <div key={comment.id} className="group rounded-xl border border-[#e5e5e5] bg-white px-3 py-2">
                       <div className="flex items-start justify-between gap-3">
@@ -258,7 +263,7 @@ function ReadingDetailModal({
                           <p className="mt-1 text-sm text-[#525252]">{comment.content}</p>
                         </div>
                         {(comment.authorId === currentUser.id || currentUser.roles.includes('administrator')) && (
-                          <button type="button" onClick={() => void onDeleteComment(comment.id)} className="text-xs font-semibold text-[#a3a3a3] opacity-0 hover:text-red-600 group-hover:opacity-100">Delete</button>
+                          <button type="button" onClick={() => void onDeleteComment(comment.id)} className="text-xs font-semibold text-[#a3a3a3] opacity-0 hover:text-red-600 group-hover:opacity-100">{t('common.delete')}</button>
                         )}
                       </div>
                     </div>
@@ -270,7 +275,7 @@ function ReadingDetailModal({
                     <input
                       value={draft}
                       onChange={event => setDraft(event.target.value)}
-                      placeholder="Write a private comment..."
+                      placeholder={t('classwork.reading.commentPlaceholder')}
                       className="tbo-focus h-10 min-w-0 flex-1 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm"
                     />
                     <button
@@ -280,12 +285,12 @@ function ReadingDetailModal({
                       className="tbo-focus inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white disabled:opacity-40"
                     >
                       <Send className="h-4 w-4" />
-                      Send
+                      {t('common.send')}
                     </button>
                   </div>
                 ) : (
                   <p className="mt-3 rounded-xl bg-white px-3 py-2 text-sm text-[#737373] ring-1 ring-[#e5e5e5]">
-                    A private thread will appear after the student starts or submits this reading.
+                    {t('classwork.reading.threadPending')}
                   </p>
                 )}
               </div>
@@ -316,6 +321,7 @@ export function ClassworkView({
   onInitialSubjectTargetHandled,
   gradebookConfig,
 }: ClassworkViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
   const [loadingHomework, setLoadingHomework] = useState(true);
@@ -477,7 +483,7 @@ export function ClassworkView({
         id: row.id,
         assignmentId: row.assignment_id,
         studentId: row.student_id,
-        studentName: row.student?.name ?? 'Unknown',
+        studentName: row.student?.name ?? translate('common.unknown'),
         submissionType: row.submission_type,
         driveFileId: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
@@ -561,7 +567,7 @@ export function ClassworkView({
             subjectId: subject.id,
             subjectTitle: subject.title,
             classInfo: { classId: cls.id, subjectId: subject.id, courseId: course.id },
-            status: 'Session',
+            status: translate('classwork.dueGroup.session'),
             pointsLabel: null,
             hasMaterials: classMaterialCount > 0,
             materialCount: classMaterialCount,
@@ -589,9 +595,9 @@ export function ClassworkView({
           dueDate: assignment.dueDate,
           course,
           subjectId: null,
-          subjectTitle: 'Reading assignments',
-          status: scope === 'student' ? (mySubmission?.status ?? 'not started').replace('_', ' ') : assignment.status,
-          pointsLabel: assignment.maxPoints ? `${assignment.maxPoints} pts` : 'Completion',
+          subjectTitle: translate('classwork.readingAssignments'),
+          status: scope === 'student' ? (mySubmission?.status ?? 'not_started') : assignment.status,
+          pointsLabel: assignment.maxPoints ? translate('classwork.points.pts', { n: assignment.maxPoints }) : translate('classwork.points.completion'),
           submission: mySubmission,
           assignment,
         });
@@ -615,7 +621,7 @@ export function ClassworkView({
       })
       .filter(item => !normalized || `${item.title} ${item.subtitle} ${item.course ? getCourseDisplayName(item.course) : ''}`.toLowerCase().includes(normalized))
       .sort((a, b) => (a.dueDate ?? '9999-99-99').localeCompare(b.dueDate ?? '9999-99-99') || a.title.localeCompare(b.title));
-  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, materialRows, query, scope, scopedCourseIds, teacherSubjectFilter]);
+  }, [bookAssignments, bookSubmissions, contentFilter, courses, currentUser.id, currentUser.roles, getCourseDisplayName, homeworkRows, kind, materialRows, query, scope, scopedCourseIds, teacherSubjectFilter, language]);
   const stats = {
     homework: homeworkRows.length,
     reading: items.filter(item => item.kind === 'reading').length,
@@ -632,7 +638,79 @@ export function ClassworkView({
   );
 
   const loading = loadingHomework || booksLoading;
-  const title = scope === 'student' ? 'My Classwork' : 'Classwork';
+  const title = scope === 'student' ? t('classwork.titleMy') : t('classwork.title');
+  const homeworkStatusPreview = useMemo(() => [
+    {
+      label: t('classwork.status.complete'),
+      icon: 'complete' as const,
+      containerClass: 'bg-[#ecfdf5] ring-[#bbf7d0]',
+      textClass: 'text-[#047857]',
+      title: t('classwork.status.completeTitle'),
+    },
+    {
+      label: t('classwork.status.actionNeeded'),
+      icon: 'action' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.actionNeededTitle'),
+    },
+    {
+      label: t('classwork.status.pendingDot'),
+      icon: 'action-dot' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.pendingDotTitle'),
+    },
+    {
+      label: t('classwork.status.pendingClock'),
+      icon: 'action-clock' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.pendingClockTitle'),
+    },
+    {
+      label: t('classwork.status.pendingMessage'),
+      icon: 'action-message' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.pendingMessageTitle'),
+    },
+    {
+      label: t('classwork.status.pendingEdit'),
+      icon: 'action-edit' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.pendingEditTitle'),
+    },
+    {
+      label: t('classwork.status.pendingEllipsis'),
+      icon: 'action-ellipsis' as const,
+      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
+      textClass: 'text-[#be5b65]',
+      title: t('classwork.status.pendingEllipsisTitle'),
+    },
+    {
+      label: t('classwork.status.reviewPending'),
+      icon: 'review' as const,
+      containerClass: 'bg-[#fffbeb] ring-[#fde68a]',
+      textClass: 'text-[#b45309]',
+      title: t('classwork.status.reviewPendingTitle'),
+    },
+    {
+      label: t('classwork.status.upcomingAssignments'),
+      icon: 'upcoming' as const,
+      containerClass: 'bg-[#eff6ff] ring-[#bfdbfe]',
+      textClass: 'text-[#2563eb]',
+      title: t('classwork.status.upcomingTitle'),
+    },
+    {
+      label: t('classwork.status.noAssignments'),
+      icon: 'none' as const,
+      containerClass: 'bg-[#fafafa] ring-[#e5e5e5]',
+      textClass: 'text-[#a3a3a3]',
+      title: t('classwork.status.noAssignmentsTitle'),
+    },
+  ], [t, language]);
 
   useEffect(() => {
     setSelectedSubjectRun(null);
@@ -686,78 +764,6 @@ export function ClassworkView({
       return;
     }
   };
-  const homeworkStatusPreview = [
-    {
-      label: 'Complete',
-      icon: 'complete' as const,
-      containerClass: 'bg-[#ecfdf5] ring-[#bbf7d0]',
-      textClass: 'text-[#047857]',
-      title: 'Assignments are complete on the student and staff side.',
-    },
-    {
-      label: 'Action needed',
-      icon: 'action' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'At least one assignment still needs your attention.',
-    },
-    {
-      label: 'Pending dot',
-      icon: 'action-dot' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'Alternative: soft dot for pending student work.',
-    },
-    {
-      label: 'Pending clock',
-      icon: 'action-clock' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'Alternative: clock for pending student work.',
-    },
-    {
-      label: 'Pending message',
-      icon: 'action-message' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'Alternative: message icon for pending student work.',
-    },
-    {
-      label: 'Pending edit',
-      icon: 'action-edit' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'Alternative: edit icon for pending student work.',
-    },
-    {
-      label: 'Pending ellipsis',
-      icon: 'action-ellipsis' as const,
-      containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
-      textClass: 'text-[#be5b65]',
-      title: 'Alternative: ellipsis icon for pending student work.',
-    },
-    {
-      label: 'Review pending',
-      icon: 'review' as const,
-      containerClass: 'bg-[#fffbeb] ring-[#fde68a]',
-      textClass: 'text-[#b45309]',
-      title: 'Students have nothing more to do on some work, but staff review or final grading is not complete.',
-    },
-    {
-      label: 'Upcoming assignments',
-      icon: 'upcoming' as const,
-      containerClass: 'bg-[#eff6ff] ring-[#bfdbfe]',
-      textClass: 'text-[#2563eb]',
-      title: 'Assignments are attached, but this subject has not started yet.',
-    },
-    {
-      label: 'No assignments',
-      icon: 'none' as const,
-      containerClass: 'bg-[#fafafa] ring-[#e5e5e5]',
-      textClass: 'text-[#a3a3a3]',
-      title: 'There are no assignments attached to this subject yet.',
-    },
-  ];
 
   if (selectedHomeworkDetail) {
     return (
@@ -793,7 +799,7 @@ export function ClassworkView({
         onCreateAssignment={createSubjectAssignment}
         assignmentSaving={assignmentSaving}
         gradebookConfig={gradebookConfig}
-        backLabel="Back to classwork"
+        backLabel={t('classwork.backToClasswork')}
       />
     );
   }
@@ -803,9 +809,9 @@ export function ClassworkView({
       <div className="border-l-2 border-[#171717] pl-4">
         <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Learning work</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('classwork.eyebrow')}</p>
             <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{title}</h1>
-            <p className="mt-1 max-w-2xl text-sm text-[#737373]">Review upcoming sessions, reading, homework, and materials.</p>
+            <p className="mt-1 max-w-2xl text-sm text-[#737373]">{t('classwork.subtitle')}</p>
           </div>
           <div className="flex flex-col gap-2 lg:items-end">
             {yearGroupFilterVisible && (
@@ -828,7 +834,7 @@ export function ClassworkView({
                         onChange={() => toggleYearGroup(course.id)}
                         className="h-3.5 w-3.5 rounded border-current text-[#171717] accent-[#171717]"
                       />
-                      {isSecond ? 'Second Year' : 'First Year'}
+                      {isSecond ? t('common.yearGroup.second') : t('common.yearGroup.first')}
                     </label>
                   );
                 })}
@@ -837,15 +843,15 @@ export function ClassworkView({
             <div className="flex flex-wrap items-center gap-2 lg:justify-end">
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
                 <span className="text-lg leading-none">{stats.homework}</span>
-                Homework
+                {t('classwork.stats.homework')}
               </span>
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
                 <span className="text-lg leading-none">{stats.reading}</span>
-                Reading
+                {t('classwork.stats.reading')}
               </span>
               <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
                 <span className="text-lg leading-none">{stats.materials}</span>
-                Materials
+                {t('classwork.stats.materials')}
               </span>
             </div>
           </div>
@@ -861,7 +867,7 @@ export function ClassworkView({
           <input
             value={query}
             onChange={event => setQuery(event.target.value)}
-            placeholder="Search classwork"
+            placeholder={t('classwork.search.placeholder')}
             className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717] placeholder:text-[#a3a3a3]"
           />
         </div>
@@ -873,40 +879,40 @@ export function ClassworkView({
                 onChange={event => setTeacherSubjectFilter(event.target.checked ? 'teaching' : 'year_group')}
                 className="h-4 w-4 rounded border-[#d4d4d4] text-[#171717] focus:ring-[#171717]"
               />
-              <span>My subjects</span>
+              <span>{t('classwork.filter.mySubjects')}</span>
               <span className="rounded-full bg-[#fafafa] px-1.5 py-0.5 text-[10px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
                 {teacherSubjectFilter === 'teaching' ? teacherTaughtSubjectCount : scopedSubjectIds.length}
               </span>
             </label>
           )}
           <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Type</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.filter.type')}</span>
             <select
               value={kind}
               onChange={event => setKind(event.target.value as ClassworkKindFilter)}
               className="tbo-focus h-8 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]"
-              aria-label="Classwork type"
+              aria-label={t('classwork.filter.typeAria')}
             >
-              <option value="all">All</option>
-              <option value="session">Sessions/classes</option>
-              <option value="homework">Homework</option>
-              <option value="reading">Reading</option>
-              <option value="material">Materials</option>
+              <option value="all">{t('classwork.filter.type.all')}</option>
+              <option value="session">{t('classwork.filter.type.sessions')}</option>
+              <option value="homework">{t('classwork.filter.type.homework')}</option>
+              <option value="reading">{t('classwork.filter.type.reading')}</option>
+              <option value="material">{t('classwork.filter.type.materials')}</option>
             </select>
           </label>
           <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Content</span>
+            <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.filter.content')}</span>
             <select
               value={contentFilter}
               onChange={event => setContentFilter(event.target.value as ContentFilter)}
               className="tbo-focus h-8 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]"
-              aria-label="Classwork content"
+              aria-label={t('classwork.filter.contentAria')}
             >
-              <option value="all">All</option>
-              <option value="homework">Has homework</option>
-              <option value="materials">Has materials</option>
-              <option value="extras">Has any extras</option>
-              <option value="none">No extras</option>
+              <option value="all">{t('classwork.filter.content.all')}</option>
+              <option value="homework">{t('classwork.filter.content.hasHomework')}</option>
+              <option value="materials">{t('classwork.filter.content.hasMaterials')}</option>
+              <option value="extras">{t('classwork.filter.content.hasExtras')}</option>
+              <option value="none">{t('classwork.filter.content.noExtras')}</option>
             </select>
           </label>
         </div>
@@ -914,7 +920,7 @@ export function ClassworkView({
 
       {false && (
         <div className="flex flex-wrap items-center gap-2 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-2">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Homework status preview</span>
+          <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.statusPreview.label')}</span>
           {homeworkStatusPreview.map(status => (
             <SubjectAssignmentStatusIcon key={status.label} status={status} collapsed={false} />
           ))}
@@ -922,7 +928,7 @@ export function ClassworkView({
       )}
 
       {loading ? (
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">Loading classwork...</div>
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">{t('classwork.loading')}</div>
       ) : items.length === 0 ? (
         <EmptyState />
       ) : (
@@ -931,9 +937,13 @@ export function ClassworkView({
             <div className="flex flex-wrap items-center justify-between gap-3 border-y border-[#d4d4d4] bg-white px-4 py-3">
               <div>
                 <p className="text-sm font-semibold text-[#171717]">
-                  Subjects {currentSubjectPage * SUBJECTS_PER_PAGE + 1}-{Math.min(subjectRuns.length, (currentSubjectPage + 1) * SUBJECTS_PER_PAGE)} of {subjectRuns.length}
+                  {t('classwork.subjects.pagination', {
+                    start: currentSubjectPage * SUBJECTS_PER_PAGE + 1,
+                    end: Math.min(subjectRuns.length, (currentSubjectPage + 1) * SUBJECTS_PER_PAGE),
+                    total: subjectRuns.length,
+                  })}
                 </p>
-                <p className="mt-0.5 text-xs text-[#737373]">Past subjects are compact by default.</p>
+                <p className="mt-0.5 text-xs text-[#737373]">{t('classwork.subjects.pastHint')}</p>
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -943,7 +953,7 @@ export function ClassworkView({
                   className="tbo-focus inline-flex h-9 items-center gap-1 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-40"
                 >
                   <ArrowLeft className="h-4 w-4" />
-                  Previous
+                  {t('common.previous')}
                 </button>
                 <span className="text-xs font-semibold text-[#737373]">{currentSubjectPage + 1}/{totalSubjectPages}</span>
                 <button
@@ -952,7 +962,7 @@ export function ClassworkView({
                   disabled={currentSubjectPage >= totalSubjectPages - 1}
                   className="tbo-focus inline-flex h-9 items-center gap-1 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-40"
                 >
-                  Next
+                  {t('common.next')}
                   <ChevronRight className="h-4 w-4" />
                 </button>
               </div>
@@ -1001,7 +1011,7 @@ export function ClassworkView({
                   type="button"
                   onClick={() => toggleRunCollapsed(run)}
                   className={collapsed ? 'hidden' : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'}
-                  aria-label={collapsed ? 'Expand subject' : 'Collapse subject'}
+                  aria-label={collapsed ? t('classwork.subjects.expand') : t('classwork.subjects.collapse')}
                 >
                   {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
@@ -1016,7 +1026,7 @@ export function ClassworkView({
                   >
                     {collapsed && <ChevronRight className="h-4 w-4 flex-none text-[#737373]" />}
                     <span className={`${collapsed ? 'shrink-0 tracking-[0.14em]' : 'flex flex-wrap items-center gap-2 tracking-[0.18em]'} text-[11px] font-semibold uppercase text-[#737373]`}>
-                      <span>{timelineState === 'current' ? 'Current - ' : timelineState === 'past' ? 'Past - ' : ''}{getRunDateRange(run)}</span>
+                      <span>{timelineState === 'current' ? t('classwork.timeline.current') : timelineState === 'past' ? t('classwork.timeline.past') : ''}{getRunDateRange(run)}</span>
                       {!collapsed && run.course ? (
                         <span className="normal-case tracking-normal">
                           <ActiveYearGroupBadge course={run.course} size="sm" />
@@ -1055,7 +1065,7 @@ export function ClassworkView({
                       className="tbo-focus inline-flex h-7 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-2.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5] hover:text-[#2563eb]"
                     >
                       <ExternalLink className="h-3.5 w-3.5" />
-                      Open subject
+                      {t('classwork.openSubject')}
                     </button>
                   )}
                     </div>
@@ -1067,7 +1077,7 @@ export function ClassworkView({
                       onClick={() => openSubject('materials')}
                       className="tbo-focus border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#c2410c] hover:text-[#9a3412]"
                     >
-                      {runMaterialsCount} material{runMaterialsCount === 1 ? '' : 's'}
+                      {tCount('classwork.materials.count', runMaterialsCount)}
                     </button>
                   )}
                   {runHasHomework && (
@@ -1076,11 +1086,11 @@ export function ClassworkView({
                       onClick={() => openSubject('homework')}
                       className="tbo-focus border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#1d4ed8] hover:text-[#1e40af]"
                     >
-                      {runHomeworkCount} assignment{runHomeworkCount === 1 ? '' : 's'}
+                      {tCount('classwork.assignments.count', runHomeworkCount)}
                     </button>
                   )}
                   <span className="border-l border-[#d4d4d4] pl-2 text-xs font-semibold text-[#525252]">
-                    {run.items.length} item{run.items.length === 1 ? '' : 's'}
+                    {tCount('classwork.items.count', run.items.length)}
                   </span>
                     </div>
                 </div>
@@ -1096,15 +1106,15 @@ export function ClassworkView({
                   <span />
                   <span className="flex justify-center">
                     {runHasMaterials ? (
-                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c2410c]">Materials</span>
+                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#c2410c]">{t('classwork.column.materials')}</span>
                     ) : null}
                   </span>
                   <span className="flex justify-center">
                     {runHasHomework ? (
-                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1d4ed8]">Assignments</span>
+                      <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1d4ed8]">{t('classwork.column.assignments')}</span>
                     ) : null}
                   </span>
-                  <span className="text-right">Teachers</span>
+                  <span className="text-right">{t('classwork.column.teachers')}</span>
                 </div>
                 {groupByCalendarWeek(run.items, item => item.dueDate).map(weekGroup => (
                   <Fragment key={weekGroup.weekStart}>
@@ -1158,13 +1168,13 @@ export function ClassworkView({
                         {item.title}
                       </span>
                       <span className="text-xs font-semibold capitalize text-[#525252]">
-                        {item.status}
+                        {item.kind === 'session' ? t('classwork.dueGroup.session') : getHomeworkStatusLabel(String(item.status))}
                       </span>
                       <span className="flex justify-center">
                         {item.kind === 'session' && hasSessionMaterials(item) ? (
                           <button
                             type="button"
-                            title="Open materials"
+                            title={t('classwork.openMaterials')}
                             onClick={event => {
                               event.stopPropagation();
                               openSubject('materials');
@@ -1179,7 +1189,7 @@ export function ClassworkView({
                         {item.kind === 'session' && hasSessionHomework(item) ? (
                           <button
                             type="button"
-                            title={`${item.homeworkCount} assignment${item.homeworkCount === 1 ? '' : 's'}`}
+                            title={tCount('classwork.assignments.count', item.homeworkCount ?? 0)}
                             onClick={event => {
                               event.stopPropagation();
                               if (attachedHomework.length === 1) {
@@ -1202,7 +1212,7 @@ export function ClassworkView({
                               onClick={() => item.assignment && setDetailAssignment(item.assignment)}
                               className="rounded-md border border-[#d4d4d4] bg-white px-3 py-1.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5]"
                             >
-                              Details
+                              {t('classwork.details')}
                             </button>
                             {scope !== 'student' && (
                               <button
@@ -1210,7 +1220,7 @@ export function ClassworkView({
                                 onClick={() => item.assignment && setReviewAssignment(item.assignment)}
                                 className="rounded-md border border-[#bbf7d0] bg-[#ecfdf5] px-3 py-1.5 text-xs font-semibold text-[#047857] hover:bg-[#d1fae5]"
                               >
-                                Review
+                                {t('classwork.review')}
                               </button>
                             )}
                           </span>

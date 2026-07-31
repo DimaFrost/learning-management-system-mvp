@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { ChevronLeft, Calendar, Clock, FolderOpen, Loader2, BookOpen, FileText, ShieldCheck } from 'lucide-react';
 import type { Class, Subject, Course, User, CourseStudent } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
@@ -11,6 +11,7 @@ import { StaffNotesTab } from '../../components/class/StaffNotesTab';
 import { HomeworkTab } from '../../components/class/HomeworkTab';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface ClassDetailViewProps {
   selectedClass: Class;
@@ -35,24 +36,6 @@ type TabId = 'materials' | 'staff' | 'homework';
 
 type ClassStatus = 'upcoming' | 'today' | 'past';
 
-function formatHour(hour: Class['hour']): string {
-  switch (hour) {
-    case 'first':
-      return 'First hour';
-    case 'second':
-      return 'Second hour';
-    case 'both':
-      return 'Both hours';
-  }
-}
-
-function getClassStatus(date: string): ClassStatus {
-  const today = new Date().toISOString().split('T')[0];
-  if (date > today) return 'upcoming';
-  if (date === today) return 'today';
-  return 'past';
-}
-
 function formatClassDate(date: string): string {
   return formatPlatformDate(date);
 }
@@ -68,11 +51,12 @@ function getInitials(name: string | null | undefined) {
     .join('') || '?';
 }
 
-const STATUS_BADGE: Record<ClassStatus, { label: string; className: string }> = {
-  upcoming: { label: 'Upcoming', className: 'bg-amber-100 text-amber-800' },
-  today: { label: 'Today', className: 'bg-green-100 text-green-800' },
-  past: { label: 'Past', className: 'bg-gray-100 text-gray-600' },
-};
+function getClassStatus(date: string): ClassStatus {
+  const today = new Date().toISOString().split('T')[0];
+  if (date > today) return 'upcoming';
+  if (date === today) return 'today';
+  return 'past';
+}
 
 export function ClassDetailView({
   selectedClass,
@@ -87,6 +71,7 @@ export function ClassDetailView({
   onProvisionDriveFolders,
   showConfirmation,
 }: ClassDetailViewProps) {
+  const { t, language } = useLanguage();
   const classContent = useClassContent(selectedClass.id, currentUser, courses);
   const homework = useHomework(selectedClass.id, currentUser, courses);
   const viewingAsStudent = activeWorkspace === 'student';
@@ -104,6 +89,18 @@ export function ClassDetailView({
           : currentUser.roles,
   };
 
+  const hourLabels = useMemo(() => ({
+    first: t('classDetail.hour.first'),
+    second: t('classDetail.hour.second'),
+    both: t('classDetail.hour.both'),
+  }), [language, t]);
+
+  const statusBadges = useMemo(() => ({
+    upcoming: { label: t('classDetail.status.upcoming'), className: 'bg-amber-100 text-amber-800' },
+    today: { label: t('classDetail.status.today'), className: 'bg-green-100 text-green-800' },
+    past: { label: t('classDetail.status.past'), className: 'bg-gray-100 text-gray-600' },
+  }), [language, t]);
+
   const canManageDriveFolders =
     !viewingAsStudent && (viewingAsAdmin || viewingAsTeacher);
   const driveFoldersMissing = !selectedClass.materialsFolderId;
@@ -116,7 +113,7 @@ export function ClassDetailView({
     const result = await onProvisionDriveFolders();
     setProvisioningFolders(false);
     if (!result.ok) {
-      setProvisionError(result.error ?? 'Failed to set up Google Drive folders');
+      setProvisionError(result.error ?? t('classDetail.drive.setupFailed'));
     }
   };
 
@@ -144,18 +141,18 @@ export function ClassDetailView({
   }, [activeTab, canSeeStaffNotes]);
 
   const getUserName = (id: string | null) =>
-    users.find(u => u.id === id)?.name ?? 'Unassigned';
+    users.find(u => u.id === id)?.name ?? t('classDetail.unassigned');
 
   const courseName = getCourseDisplayName(selectedCourse);
   const classDisplayTitle = getClassDisplayTitle(selectedClass, selectedSubject, effectiveUser.roles);
   const status = getClassStatus(selectedClass.date);
-  const statusBadge = STATUS_BADGE[status];
+  const statusBadge = statusBadges[status];
   const teacher = users.find(user => user.id === selectedClass.teacherId);
-  const tabs = [
-    { id: 'staff', label: 'Staff Notes', visible: canSeeStaffNotes, icon: <ShieldCheck className="h-4 w-4" /> },
-    { id: 'materials', label: 'Materials & Notes', visible: true, icon: <FileText className="h-4 w-4" /> },
-    { id: 'homework', label: 'Homework', visible: true, icon: <BookOpen className="h-4 w-4" /> },
-  ];
+  const tabs = useMemo(() => [
+    { id: 'staff', label: t('classDetail.tab.staffNotes'), visible: canSeeStaffNotes, icon: <ShieldCheck className="h-4 w-4" /> },
+    { id: 'materials', label: t('classDetail.tab.materialsNotes'), visible: true, icon: <FileText className="h-4 w-4" /> },
+    { id: 'homework', label: t('classDetail.tab.homework'), visible: true, icon: <BookOpen className="h-4 w-4" /> },
+  ], [canSeeStaffNotes, language, t]);
 
   return (
     <div className="space-y-5">
@@ -164,12 +161,12 @@ export function ClassDetailView({
           type="button"
           onClick={onBack}
           className="tbo-focus flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] transition-colors hover:border-[#d4d4d4] hover:bg-[#f5f5f5] hover:text-[#171717]"
-          aria-label="Go back"
+          aria-label={t('classDetail.back')}
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
         <nav className="min-w-0 overflow-x-auto whitespace-nowrap text-sm text-[#737373] scrollbar-hide">
-          <span className="cursor-default">Classwork</span>
+          <span className="cursor-default">{t('classDetail.breadcrumb.classwork')}</span>
           <span className="mx-2 text-[#d4d4d4]">/</span>
           <span className="cursor-default">{courseName}</span>
           <span className="mx-2 text-[#d4d4d4]">/</span>
@@ -187,7 +184,7 @@ export function ClassDetailView({
                 {statusBadge.label}
               </span>
               <span className="inline-flex items-center rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                {formatHour(selectedClass.hour)}
+                {hourLabels[selectedClass.hour]}
               </span>
             </div>
             <h1 className="tbo-display mt-3 text-3xl text-[#171717]">{classDisplayTitle}</h1>
@@ -209,7 +206,7 @@ export function ClassDetailView({
                 )}
               </span>
               <div className="min-w-0">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#059669]">Teacher</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#059669]">{t('classDetail.teacher')}</p>
                 <p className="truncate text-sm font-semibold text-[#171717]">{teacher?.name ?? getUserName(selectedClass.teacherId)}</p>
               </div>
             </div>
@@ -221,10 +218,10 @@ export function ClassDetailView({
         <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div>
             <p className="text-sm font-medium text-amber-900">
-              Google Drive folders are not set up for this session.
+              {t('classDetail.drive.notSetup')}
             </p>
             <p className="text-sm text-amber-800 mt-1">
-              Session materials and staff notes are saved in Google Drive folders.
+              {t('classDetail.drive.hint')}
             </p>
             {provisionError && (
               <p className="text-sm text-red-700 mt-2">{provisionError}</p>
@@ -241,7 +238,7 @@ export function ClassDetailView({
             ) : (
               <FolderOpen className="w-4 h-4" />
             )}
-            Set up Google Drive folders
+            {t('classDetail.drive.setup')}
           </button>
         </div>
       )}
@@ -257,7 +254,7 @@ export function ClassDetailView({
           tabs={tabs.filter(tab => tab.visible)}
           activeTab={activeTab}
           onTabChange={id => setActiveTab(id as TabId)}
-          ariaLabel="Session tabs"
+          ariaLabel={t('classDetail.tabs.aria')}
           activeClassName="border-[#2563eb] text-[#1d4ed8]"
           inactiveClassName="border-transparent text-[#737373] hover:text-[#1d4ed8]"
         />

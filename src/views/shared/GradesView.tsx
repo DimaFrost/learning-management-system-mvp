@@ -5,7 +5,9 @@ import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStuden
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { formatDate, formatTime } from '../../i18n/formatters';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
+import { translate } from '../../i18n/translate';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
 import type { HomeworkDetailSelection, HomeworkRow, SubjectRun } from './classwork/types';
 
@@ -59,12 +61,14 @@ type HomeworkCommentRow = {
   author?: { id: string; name: string } | null;
 };
 
+type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
 function mapHomeworkComment(row: HomeworkCommentRow) {
   return {
     id: row.id,
     submissionId: row.submission_id,
     authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? 'Unknown',
+    authorName: row.author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
@@ -144,37 +148,55 @@ function workStatusTone(status: string) {
   return 'bg-[#f5f5f5] text-[#525252] ring-[#e5e5e5]';
 }
 
-function workStatusLabel(status: string) {
+function workStatusLabel(status: string, t: TFunction) {
   const normalized = normalizeWorkStatus(status);
-  if (normalized === 'not_started') return 'Not started';
-  if (normalized === 'in_progress') return 'In progress';
-  if (normalized === 'complete') return 'Complete';
-  return normalized.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+  const keyMap: Record<string, TranslationKey> = {
+    not_started: 'grades.filter.status.notStarted',
+    in_progress: 'grades.filter.status.inProgress',
+    complete: 'grades.status.complete',
+    submitted: 'grades.filter.status.submitted',
+    returned: 'grades.filter.status.returned',
+    graded: 'grades.filter.status.graded',
+  };
+  const key = keyMap[normalized];
+  return key ? t(key) : normalized;
 }
 
-function gradeMeta(points: number | null, maxPoints: number | null | undefined, status: string) {
+function gradeMeta(points: number | null, maxPoints: number | null | undefined, status: string, t: TFunction) {
   if (maxPoints == null || maxPoints <= 0) {
     return { label: '', icon: MinusCircle, tone: 'text-[#737373]' };
   }
   if (normalizeWorkStatus(status) === 'graded' && points != null) {
     return { label: `${points}/${maxPoints}`, icon: null, tone: 'text-[#171717]' };
   }
-  return { label: 'Not graded', icon: Clock3, tone: 'text-[#c2410c]' };
+  return { label: t('grades.status.notGraded'), icon: Clock3, tone: 'text-[#c2410c]' };
+}
+
+function getGateStatusLabel(status: string, t: TFunction) {
+  const keyMap: Record<string, TranslationKey> = {
+    pass: 'grades.gateStatus.pass',
+    risk: 'grades.gateStatus.risk',
+    fail: 'grades.gateStatus.fail',
+    passing: 'grades.gateStatus.passing',
+    at_risk: 'grades.gateStatus.atRisk',
+    failing: 'grades.gateStatus.failing',
+  };
+  return keyMap[status] ? t(keyMap[status]) : status;
 }
 
 function monthLabel(month: string) {
   return formatDate(`${month}-01T00:00:00`, { month: 'short', year: 'numeric' });
 }
 
-function dueParts(date: string | null) {
-  if (!date) return { date: '-', time: 'No time' };
+function dueParts(date: string | null, t: TFunction) {
+  if (!date) return { date: '-', time: t('grades.noTime') };
   const value = new Date(date);
-  if (Number.isNaN(value.getTime())) return { date: '-', time: 'No time' };
+  if (Number.isNaN(value.getTime())) return { date: '-', time: t('grades.noTime') };
   const day = String(value.getDate()).padStart(2, '0');
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const time = date.includes('T')
     ? formatTime(value, { hour: '2-digit', minute: '2-digit', hour12: false })
-    : 'No time';
+    : t('grades.noTime');
   return { date: `${day}/${month}`, time };
 }
 
@@ -235,6 +257,13 @@ export function GradesView({
   onNavigate,
   gradebookConfig,
 }: GradesViewProps) {
+  const { t, tCount, language } = useLanguage();
+  const fallbackLabels = useMemo(() => ({
+    homework: t('grades.subject.fallbackHomework'),
+    reading: t('grades.subject.fallbackReading'),
+    googleDoc: t('grades.googleDoc'),
+    readingResponse: t('grades.detail.readingResponse'),
+  }), [language, t]);
   const [homeworkAssignments, setHomeworkAssignments] = useState<HomeworkAssignmentRow[]>([]);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkGradeRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -455,8 +484,8 @@ export function GradesView({
         id: `homework-${assignment.id}`,
         category: 'homework' as const,
         title: assignment.title,
-        subtitle: assignment.class?.subject?.title ?? 'Homework',
-        subject: assignment.class?.subject?.title ?? 'Homework',
+        subtitle: assignment.class?.subject?.title ?? fallbackLabels.homework,
+        subject: assignment.class?.subject?.title ?? fallbackLabels.homework,
         dueDate: assignment.due_date,
         status: submission?.status ?? 'not_started',
         points: submission?.points ?? null,
@@ -464,14 +493,14 @@ export function GradesView({
         hasComment: Boolean(submission?.grade_comment),
         hasFile: Boolean(submission?.submission_type || submission?.drive_view_url || submission?.google_doc_url || submission?.file_name),
         fileUrl: submission?.drive_view_url ?? submission?.google_doc_url ?? null,
-        fileName: submission?.file_name ?? (submission?.google_doc_url ? 'Google Doc' : null),
+        fileName: submission?.file_name ?? (submission?.google_doc_url ? fallbackLabels.googleDoc : null),
         comment: submission?.grade_comment ?? null,
         homeworkRow: toHomeworkRow(assignment),
         homeworkSubmission: submission && studentRow.student ? toHomeworkSubmission(submission, studentRow.student.name) : null,
         subjectRun: {
           key: `grades-${assignment.class?.subject?.id ?? assignment.id}`,
           subjectId: assignment.class?.subject?.id ?? assignment.subject_id ?? null,
-          subjectTitle: assignment.class?.subject?.title ?? 'Homework',
+          subjectTitle: assignment.class?.subject?.title ?? fallbackLabels.homework,
           course: studentRow.course,
           items: [],
         } satisfies SubjectRun,
@@ -481,7 +510,7 @@ export function GradesView({
         category: 'reading' as const,
         title: assignment.title,
         subtitle: assignment.book.authors.join(', ') || assignment.book.title,
-        subject: 'Reading',
+        subject: fallbackLabels.reading,
         dueDate: assignment.dueDate,
         status: submission?.status ?? 'not_started',
         points: submission?.points ?? null,
@@ -489,7 +518,7 @@ export function GradesView({
         hasComment: Boolean(submission?.gradeComment || submission?.reviewerNote || (submission?.comments?.length ?? 0) > 0),
         hasFile: Boolean(submission?.responseUrl || submission?.responseText),
         fileUrl: submission?.responseUrl ?? null,
-        fileName: submission?.responseUrl ? 'Reading response' : null,
+        fileName: submission?.responseUrl ? fallbackLabels.readingResponse : null,
         comment: submission?.gradeComment ?? submission?.reviewerNote ?? submission?.comments?.[0]?.content ?? null,
       })),
     ]
@@ -517,7 +546,7 @@ export function GradesView({
     return acc;
   }, { missing: 0, pending: 0, returned: 0, done: 0 });
   const groupedStudentWorkItems = filteredStudentWorkItems.reduce((groups, item) => {
-    const key = item.subject || (item.category === 'reading' ? 'Reading' : 'Homework');
+    const key = item.subject || (item.category === 'reading' ? fallbackLabels.reading : fallbackLabels.homework);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key)!.push(item);
     return groups;
@@ -590,23 +619,23 @@ export function GradesView({
         <div className="border-l-2 border-[#171717] pl-4">
           <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div>
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Learning record</p>
-              <h1 className="tbo-display mt-1 text-3xl text-[#171717]">My Grades</h1>
-              <p className="mt-1 max-w-2xl text-sm text-[#737373]">Track returned work, graded points, and graduation readiness separately.</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('grades.eyebrow.student')}</p>
+              <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('grades.titleMy')}</h1>
+              <p className="mt-1 max-w-2xl text-sm text-[#737373]">{t('grades.subtitle.student')}</p>
             </div>
             {studentRow ? (
               <div className="flex flex-wrap items-center gap-2 lg:justify-end">
                 <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">
                   <Award className="h-4 w-4" />
-                  <span>{studentRow.possible > 0 ? `${studentRow.academicPercent}%` : 'No graded work'}</span>
+                  <span>{studentRow.possible > 0 ? `${studentRow.academicPercent}%` : t('grades.noGradedWork')}</span>
                 </span>
                 <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857]">
                   <CheckCircle2 className="h-4 w-4" />
-                  <span>{studentWorkStats.done} finished</span>
+                  <span>{tCount('grades.finished', studentWorkStats.done)}</span>
                 </span>
                 <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c]">
                   <Clock3 className="h-4 w-4" />
-                  <span>{studentWorkStats.missing + studentWorkStats.returned} needs attention</span>
+                  <span>{t('grades.needsAttention', { count: studentWorkStats.missing + studentWorkStats.returned })}</span>
                 </span>
               </div>
             ) : null}
@@ -614,9 +643,9 @@ export function GradesView({
         </div>
 
         {loading ? (
-          <div className="border-y border-[#d4d4d4] bg-white p-6 text-sm text-[#737373]">Loading grades...</div>
+          <div className="border-y border-[#d4d4d4] bg-white p-6 text-sm text-[#737373]">{t('grades.loading')}</div>
         ) : !studentRow ? (
-          <div className="border-y border-[#d4d4d4] bg-white p-8 text-center text-sm text-[#737373]">No grades are available yet.</div>
+          <div className="border-y border-[#d4d4d4] bg-white p-8 text-center text-sm text-[#737373]">{t('grades.empty')}</div>
         ) : (
           <>
             <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
@@ -626,34 +655,34 @@ export function GradesView({
                   <input
                     value={studentWorkQuery}
                     onChange={event => setStudentWorkQuery(event.target.value)}
-                    placeholder="Search assignments"
+                    placeholder={t('grades.search.assignments')}
                     className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717] placeholder:text-[#a3a3a3]"
                   />
                 </div>
                 <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Category</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.filter.category')}</span>
                   <select value={studentWorkCategory} onChange={event => setStudentWorkCategory(event.target.value as StudentWorkCategoryFilter)} className="tbo-focus h-8 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]">
-                    <option value="all">All</option>
-                    <option value="homework">Homework</option>
-                    <option value="reading">Reading</option>
+                    <option value="all">{t('grades.filter.category.all')}</option>
+                    <option value="homework">{t('grades.filter.category.homework')}</option>
+                    <option value="reading">{t('grades.filter.category.reading')}</option>
                   </select>
                 </label>
                 <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Status</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.filter.status')}</span>
                   <select value={studentWorkStatus} onChange={event => setStudentWorkStatus(event.target.value as StudentWorkStatusFilter)} className="tbo-focus h-8 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]">
-                    <option value="all">All</option>
-                    <option value="not_started">Not started</option>
-                    <option value="in_progress">In progress</option>
-                    <option value="submitted">Submitted</option>
-                    <option value="returned">Returned</option>
-                    <option value="graded">Graded</option>
-                    <option value="complete">Complete</option>
+                    <option value="all">{t('grades.filter.status.all')}</option>
+                    <option value="not_started">{t('grades.filter.status.notStarted')}</option>
+                    <option value="in_progress">{t('grades.filter.status.inProgress')}</option>
+                    <option value="submitted">{t('grades.filter.status.submitted')}</option>
+                    <option value="returned">{t('grades.filter.status.returned')}</option>
+                    <option value="graded">{t('grades.filter.status.graded')}</option>
+                    <option value="complete">{t('grades.filter.status.complete')}</option>
                   </select>
                 </label>
                 <label className="flex h-10 items-center gap-2 border-l border-[#d4d4d4] pl-3">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Due</span>
+                  <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.filter.due')}</span>
                   <select value={studentWorkMonth} onChange={event => setStudentWorkMonth(event.target.value)} className="tbo-focus h-8 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]">
-                    <option value="all">All months</option>
+                    <option value="all">{t('grades.filter.due.allMonths')}</option>
                     {studentWorkMonths.map(month => (
                       <option key={month} value={month}>
                         {monthLabel(month)}
@@ -668,16 +697,16 @@ export function GradesView({
               <section className="space-y-4">
                 <div className="flex flex-wrap items-end justify-between gap-3 border-b border-[#d4d4d4] pb-3">
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Work list</p>
-                    <h2 className="mt-1 text-xl font-semibold text-[#171717]">Academic work</h2>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('grades.workList.eyebrow')}</p>
+                    <h2 className="mt-1 text-xl font-semibold text-[#171717]">{t('grades.workList.title')}</h2>
                   </div>
-                  <span className="text-sm font-semibold text-[#737373]">{filteredStudentWorkItems.length} of {studentWorkItems.length} shown</span>
+                  <span className="text-sm font-semibold text-[#737373]">{t('grades.workList.shown', { filtered: filteredStudentWorkItems.length, total: studentWorkItems.length })}</span>
                 </div>
                 <div className="space-y-4">
                   {studentWorkItems.length === 0 ? (
-                    <div className="border-y border-[#d4d4d4] bg-white p-8 text-sm text-[#737373]">No academic work has been assigned yet.</div>
+                    <div className="border-y border-[#d4d4d4] bg-white p-8 text-sm text-[#737373]">{t('grades.workList.empty')}</div>
                   ) : filteredStudentWorkItems.length === 0 ? (
-                    <div className="border-y border-[#d4d4d4] bg-white p-8 text-sm text-[#737373]">No assignments match these filters.</div>
+                    <div className="border-y border-[#d4d4d4] bg-white p-8 text-sm text-[#737373]">{t('grades.workList.noMatches')}</div>
                   ) : (
                     Array.from(groupedStudentWorkItems.entries()).map(([subject, items]) => {
                       const subjectDone = items.filter(item => {
@@ -711,7 +740,7 @@ export function GradesView({
                             type="button"
                             onClick={() => toggleGradeSubject(subject)}
                             className={collapsed ? 'hidden' : 'tbo-focus hidden h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] md:grid'}
-                            aria-label={collapsed ? 'Expand subject grades' : 'Collapse subject grades'}
+                            aria-label={collapsed ? t('grades.expandSubjectGrades') : t('grades.collapseSubjectGrades')}
                           >
                             {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </button>
@@ -731,9 +760,9 @@ export function GradesView({
                             </button>
                           </div>
                           <div className="flex flex-wrap items-center gap-2 md:justify-end">
-                            {!collapsed && <span className="text-xs font-semibold text-[#737373]">{subjectDone}/{items.length} finished</span>}
+                            {!collapsed && <span className="text-xs font-semibold text-[#737373]">{t('grades.subject.finished', { done: subjectDone, total: items.length })}</span>}
                             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${subjectNeedsAttention > 0 ? 'bg-[#fff7ed] text-[#c2410c]' : subjectDone === items.length ? 'bg-[#ecfdf5] text-[#047857]' : 'bg-[#f5f5f5] text-[#525252]'}`}>
-                              {subjectNeedsAttention > 0 ? `${subjectNeedsAttention} attention` : subjectDone === items.length ? 'Complete' : 'In progress'}
+                              {subjectNeedsAttention > 0 ? tCount('grades.subject.attention', subjectNeedsAttention) : subjectDone === items.length ? t('grades.subject.complete') : t('grades.subject.inProgress')}
                             </span>
                           </div>
                         </div>
@@ -742,18 +771,18 @@ export function GradesView({
                           className="-mx-4 hidden w-[calc(100%+2rem)] items-center gap-4 bg-[#fafafa] px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373] md:grid"
                           style={{ gridTemplateColumns: gridTemplate }}
                         >
-                          <span>Due</span>
+                          <span>{t('grades.column.due')}</span>
                           <span />
-                          <span>Work</span>
-                          <span className="text-center">Status</span>
-                          <span className="text-center">Grade</span>
-                          <span className="text-right">Extras</span>
+                          <span>{t('grades.column.work')}</span>
+                          <span className="text-center">{t('grades.column.status')}</span>
+                          <span className="text-center">{t('grades.column.grade')}</span>
+                          <span className="text-right">{t('grades.column.extras')}</span>
                         </div>
                           {items.map(item => {
                             const Icon = item.category === 'homework' ? FileText : BookOpen;
-                            const grade = gradeMeta(item.points, item.maxPoints, item.status);
+                            const grade = gradeMeta(item.points, item.maxPoints, item.status, t);
                             const GradeIcon = grade.icon;
-                            const due = dueParts(item.dueDate);
+                            const due = dueParts(item.dueDate, t);
                             return (
                               <div
                                 role="button"
@@ -787,10 +816,10 @@ export function GradesView({
                                 <div className="min-w-0">
                                   <p className="truncate text-sm font-semibold text-[#171717]">{item.title}</p>
                                   <div className="mt-1 flex flex-wrap items-center gap-2 text-xs font-semibold text-[#737373]">
-                                    <span>{item.category === 'homework' ? 'Assignment' : 'Reading'}</span>
+                                    <span>{item.category === 'homework' ? t('grades.type.assignment') : t('grades.type.reading')}</span>
                                   </div>
                                 </div>
-                                <span className={`justify-self-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${workStatusTone(item.status)}`}>{workStatusLabel(item.status)}</span>
+                                <span className={`justify-self-center rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${workStatusTone(item.status)}`}>{workStatusLabel(item.status, t)}</span>
                                 <span className={`inline-flex items-center justify-center gap-1.5 text-xs font-semibold ${grade.tone}`}>
                                   {GradeIcon ? <GradeIcon className="h-3.5 w-3.5" /> : null}
                                   {grade.label}
@@ -815,13 +844,13 @@ export function GradesView({
                   <div className="flex items-center justify-between gap-3">
                     <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
                       <GraduationCap className="h-4 w-4 text-[#737373]" />
-                      Readiness
+                      {t('grades.readiness')}
                       <button
                         type="button"
                         onClick={() => onNavigate?.('my-attendance-breakdown')}
                         className="tbo-focus grid h-5 w-5 place-items-center rounded-full bg-[#f5f5f5] text-[#737373] ring-1 ring-[#e5e5e5] hover:bg-white hover:text-[#171717]"
-                        aria-label="View attendance records"
-                        title="View attendance records"
+                        aria-label={t('grades.viewAttendance')}
+                        title={t('grades.viewAttendance')}
                       >
                         <ArrowUpRight className="h-3 w-3" />
                       </button>
@@ -837,34 +866,34 @@ export function GradesView({
                           <span className="truncate text-[#525252]">{gate.label}</span>
                         </span>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${gate.status === 'pass' ? 'bg-[#ecfdf5] text-[#047857]' : gate.status === 'risk' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
-                          {gate.status}
+                          {getGateStatusLabel(gate.status, t)}
                         </span>
                       </div>
                     ))}
                   </div>
                 </div>
                 <div className="border-y border-[#d4d4d4] bg-white p-4">
-                  <p className="text-sm font-semibold text-[#171717]">Work summary</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('grades.summary.title')}</p>
                   <div className="mt-3 space-y-2 text-sm text-[#525252]">
-                    <div className="flex justify-between"><span>Assigned homework</span><span className="font-semibold text-[#171717]">{studentRow.homeworkCount}</span></div>
-                    <div className="flex justify-between"><span>Submitted homework</span><span className="font-semibold text-[#171717]">{studentRow.submittedHomeworkCount}</span></div>
-                    <div className="flex justify-between"><span>Graded homework</span><span className="font-semibold text-[#171717]">{studentRow.gradedHomeworkCount}</span></div>
-                    <div className="flex justify-between"><span>Reading assignments</span><span className="font-semibold text-[#171717]">{studentRow.bookCount}</span></div>
+                    <div className="flex justify-between"><span>{t('grades.summary.assignedHomework')}</span><span className="font-semibold text-[#171717]">{studentRow.homeworkCount}</span></div>
+                    <div className="flex justify-between"><span>{t('grades.summary.submittedHomework')}</span><span className="font-semibold text-[#171717]">{studentRow.submittedHomeworkCount}</span></div>
+                    <div className="flex justify-between"><span>{t('grades.summary.gradedHomework')}</span><span className="font-semibold text-[#171717]">{studentRow.gradedHomeworkCount}</span></div>
+                    <div className="flex justify-between"><span>{t('grades.summary.readingAssignments')}</span><span className="font-semibold text-[#171717]">{studentRow.bookCount}</span></div>
                   </div>
                 </div>
               </aside>
             </div>
             {selectedGradeWorkItem ? (() => {
-              const grade = gradeMeta(selectedGradeWorkItem.points, selectedGradeWorkItem.maxPoints, selectedGradeWorkItem.status);
+              const grade = gradeMeta(selectedGradeWorkItem.points, selectedGradeWorkItem.maxPoints, selectedGradeWorkItem.status, t);
               const GradeIcon = grade.icon;
-              const due = dueParts(selectedGradeWorkItem.dueDate);
+              const due = dueParts(selectedGradeWorkItem.dueDate, t);
               const WorkIcon = selectedGradeWorkItem.category === 'homework' ? FileText : BookOpen;
               return (
                 <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 px-4 py-6 backdrop-blur-sm" role="dialog" aria-modal="true">
                   <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto border border-[#d4d4d4] bg-white shadow-2xl">
                     <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] bg-[#fafafa] px-5 py-4">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Grade detail</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('grades.detail.eyebrow')}</p>
                         <h3 className="mt-1 truncate text-xl font-semibold text-[#171717]">{selectedGradeWorkItem.title}</h3>
                         <p className="mt-1 text-sm font-semibold text-[#737373]">{selectedGradeWorkItem.subject}</p>
                       </div>
@@ -872,7 +901,7 @@ export function GradesView({
                         type="button"
                         onClick={() => setSelectedGradeWorkId(null)}
                         className="tbo-focus grid h-9 w-9 flex-none place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                        aria-label="Close grade detail"
+                        aria-label={t('grades.detail.close')}
                       >
                         <X className="h-4 w-4" />
                       </button>
@@ -880,25 +909,25 @@ export function GradesView({
 
                     <div className="grid gap-3 border-b border-[#e5e5e5] px-5 py-4 sm:grid-cols-4">
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Due</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.column.due')}</p>
                         <p className="mt-1 text-sm font-semibold text-[#171717]">{due.date}</p>
                         <p className="text-xs font-semibold text-[#737373]">{due.time}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Type</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('common.type')}</p>
                         <p className="mt-1 inline-flex items-center gap-1.5 text-sm font-semibold text-[#171717]">
                           <WorkIcon className={`h-4 w-4 ${selectedGradeWorkItem.category === 'homework' ? 'text-[#1d4ed8]' : 'text-[#047857]'}`} />
-                          {selectedGradeWorkItem.category === 'homework' ? 'Assignment' : 'Reading'}
+                          {selectedGradeWorkItem.category === 'homework' ? t('grades.type.assignment') : t('grades.type.reading')}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Status</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.column.status')}</p>
                         <p className={`mt-1 inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ${workStatusTone(selectedGradeWorkItem.status)}`}>
-                          {workStatusLabel(selectedGradeWorkItem.status)}
+                          {workStatusLabel(selectedGradeWorkItem.status, t)}
                         </p>
                       </div>
                       <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Grade</p>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('grades.column.grade')}</p>
                         <p className={`mt-1 inline-flex items-center gap-1.5 text-sm font-semibold ${grade.tone}`}>
                           {GradeIcon ? <GradeIcon className="h-4 w-4" /> : null}
                           {grade.label}
@@ -908,7 +937,7 @@ export function GradesView({
 
                     <div className="space-y-4 px-5 py-4">
                       <div>
-                        <p className="text-sm font-semibold text-[#171717]">Extras</p>
+                        <p className="text-sm font-semibold text-[#171717]">{t('grades.column.extras')}</p>
                         <div className="mt-2 space-y-2">
                           {selectedGradeWorkItem.fileUrl ? (
                             <a
@@ -919,23 +948,23 @@ export function GradesView({
                             >
                               <span className="inline-flex min-w-0 items-center gap-2">
                                 <Paperclip className="h-4 w-4 flex-none text-[#737373]" />
-                                <span className="truncate">{selectedGradeWorkItem.fileName ?? 'Open attached work'}</span>
+                                <span className="truncate">{selectedGradeWorkItem.fileName ?? t('grades.detail.openAttached')}</span>
                               </span>
                               <ExternalLink className="h-4 w-4 flex-none text-[#737373]" />
                             </a>
                           ) : (
-                            <div className="border border-dashed border-[#d4d4d4] px-3 py-2 text-sm text-[#737373]">No file or link is attached.</div>
+                            <div className="border border-dashed border-[#d4d4d4] px-3 py-2 text-sm text-[#737373]">{t('grades.detail.noFile')}</div>
                           )}
                           {selectedGradeWorkItem.comment ? (
                             <div className="border border-[#d4d4d4] bg-white px-3 py-2">
                               <p className="mb-1 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">
                                 <MessageSquare className="h-3.5 w-3.5" />
-                                Comment
+                                {t('common.comment')}
                               </p>
                               <p className="whitespace-pre-wrap text-sm text-[#171717]">{selectedGradeWorkItem.comment}</p>
                             </div>
                           ) : (
-                            <div className="border border-dashed border-[#d4d4d4] px-3 py-2 text-sm text-[#737373]">No teacher comment yet.</div>
+                            <div className="border border-dashed border-[#d4d4d4] px-3 py-2 text-sm text-[#737373]">{t('grades.detail.noTeacherComment')}</div>
                           )}
                         </div>
                       </div>
@@ -955,9 +984,9 @@ export function GradesView({
       <div className="rounded-2xl border border-[#e5e5e5] bg-white p-5 shadow-sm">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Academic record</p>
-            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{scope === 'student' ? 'My Grades' : 'Grades'}</h1>
-            <p className="mt-1 text-sm text-[#737373]">Academic grades stay separate from graduation readiness.</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('grades.eyebrow.staff')}</p>
+            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{scope === 'student' ? t('grades.titleMy') : t('grades.title')}</h1>
+            <p className="mt-1 text-sm text-[#737373]">{t('grades.subtitle.staff')}</p>
           </div>
           {scope !== 'student' ? (
             <button
@@ -966,7 +995,7 @@ export function GradesView({
               className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717] hover:bg-white"
             >
               <SlidersHorizontal className="h-4 w-4 text-[#2563eb]" />
-              Grade settings
+              {t('grades.settings')}
             </button>
           ) : null}
         </div>
@@ -976,17 +1005,17 @@ export function GradesView({
         <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
           <Award className="h-5 w-5 text-[#2563eb]" />
           <p className="mt-3 text-2xl font-semibold text-[#171717]">{percent(totals.earned, totals.possible)}%</p>
-          <p className="text-sm text-[#737373]">Academic average</p>
+          <p className="text-sm text-[#737373]">{t('grades.stats.academicAverage')}</p>
         </div>
         <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
           <BookOpen className="h-5 w-5 text-[#c2410c]" />
           <p className="mt-3 text-2xl font-semibold text-[#171717]">{totals.earned}/{totals.possible}</p>
-          <p className="text-sm text-[#737373]">Graded points</p>
+          <p className="text-sm text-[#737373]">{t('grades.stats.gradedPoints')}</p>
         </div>
         <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
           <ShieldCheck className="h-5 w-5 text-[#059669]" />
           <p className="mt-3 text-2xl font-semibold text-[#171717]">{totals.ready}/{rows.length}</p>
-          <p className="text-sm text-[#737373]">Ready on graduation gates</p>
+          <p className="text-sm text-[#737373]">{t('grades.stats.readyGates')}</p>
         </div>
       </div>
 
@@ -997,7 +1026,7 @@ export function GradesView({
             <input
               value={query}
               onChange={event => setQuery(event.target.value)}
-              placeholder="Search people"
+              placeholder={t('grades.search.people')}
               className="tbo-focus h-11 w-full rounded-2xl border border-[#e5e5e5] bg-white pl-10 pr-3 text-sm"
             />
           </div>
@@ -1005,8 +1034,8 @@ export function GradesView({
             <section className="rounded-2xl border border-[#d4d4d4] bg-white p-4 shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] pb-3">
                 <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">Grade setup</p>
-                  <h2 className="mt-1 text-lg font-semibold text-[#171717]">{selectedConfigCourse?.name ?? 'Year group'} grading</h2>
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('grades.setup.eyebrow')}</p>
+                  <h2 className="mt-1 text-lg font-semibold text-[#171717]">{t('grades.setup.title', { course: selectedConfigCourse?.name ?? t('grades.setup.yearGroupFallback') })}</h2>
                 </div>
                 <select
                   value={configCourseId}
@@ -1024,8 +1053,8 @@ export function GradesView({
                   <div className="flex items-start gap-2">
                     <Award className="mt-0.5 h-4 w-4 text-[#2563eb]" />
                     <div>
-                      <p className="text-sm font-semibold text-[#171717]">Overall grade</p>
-                      <p className="text-xs text-[#737373]">Choose how the academic percentage is calculated.</p>
+                      <p className="text-sm font-semibold text-[#171717]">{t('grades.setup.overallGrade')}</p>
+                      <p className="text-xs text-[#737373]">{t('grades.setup.overallGradeHint')}</p>
                     </div>
                   </div>
                   <select
@@ -1033,16 +1062,16 @@ export function GradesView({
                     onChange={event => setCalculationMethod(event.target.value as typeof calculationMethod)}
                     className="tbo-focus mt-3 h-10 w-full rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]"
                   >
-                    <option value="total_points">Total points</option>
-                    <option value="weighted_by_category">Weighted categories</option>
-                    <option value="no_overall_grade">No overall grade</option>
+                    <option value="total_points">{t('grades.setup.method.totalPoints')}</option>
+                    <option value="weighted_by_category">{t('grades.setup.method.weighted')}</option>
+                    <option value="no_overall_grade">{t('grades.setup.method.none')}</option>
                   </select>
                   <button
                     type="button"
                     onClick={saveGradeSetting}
                     className="tbo-focus mt-3 inline-flex h-9 items-center rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#2f2f2f]"
                   >
-                    Save method
+                    {t('grades.setup.saveMethod')}
                   </button>
                 </div>
 
@@ -1050,20 +1079,20 @@ export function GradesView({
                   <div className="flex items-start gap-2">
                     <BookOpen className="mt-0.5 h-4 w-4 text-[#c2410c]" />
                     <div>
-                      <p className="text-sm font-semibold text-[#171717]">Grade categories</p>
-                      <p className="text-xs text-[#737373]">Use weights when the method is weighted.</p>
+                      <p className="text-sm font-semibold text-[#171717]">{t('grades.setup.categories')}</p>
+                      <p className="text-xs text-[#737373]">{t('grades.setup.categoriesHint')}</p>
                     </div>
                   </div>
                   <div className="mt-3 grid gap-2">
-                    <input value={categoryDraft.name} onChange={event => setCategoryDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Category name" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                    <input value={categoryDraft.name} onChange={event => setCategoryDraft(prev => ({ ...prev, name: event.target.value }))} placeholder={t('grades.setup.categoryName')} className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
                     <div className="grid grid-cols-3 gap-2">
-                      <input value={categoryDraft.defaultPoints} onChange={event => setCategoryDraft(prev => ({ ...prev, defaultPoints: event.target.value }))} placeholder="Points" type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
-                      <input value={categoryDraft.weightPercent} onChange={event => setCategoryDraft(prev => ({ ...prev, weightPercent: event.target.value }))} placeholder="Weight %" type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
-                      <input value={categoryDraft.color} onChange={event => setCategoryDraft(prev => ({ ...prev, color: event.target.value }))} type="color" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white p-1" aria-label="Category color" />
+                      <input value={categoryDraft.defaultPoints} onChange={event => setCategoryDraft(prev => ({ ...prev, defaultPoints: event.target.value }))} placeholder={t('grades.setup.points')} type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <input value={categoryDraft.weightPercent} onChange={event => setCategoryDraft(prev => ({ ...prev, weightPercent: event.target.value }))} placeholder={t('grades.setup.weight')} type="number" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <input value={categoryDraft.color} onChange={event => setCategoryDraft(prev => ({ ...prev, color: event.target.value }))} type="color" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white p-1" aria-label={t('grades.setup.categoryColor')} />
                     </div>
                     <button type="button" onClick={saveGradeCategory} className="tbo-focus inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#fed7aa] bg-white px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#fff7ed]">
                       <Plus className="h-4 w-4" />
-                      Add category
+                      {t('grades.setup.addCategory')}
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1072,7 +1101,7 @@ export function GradesView({
                         <span className="h-2 w-2 rounded-full" style={{ backgroundColor: category.color }} />
                         {category.name}{category.weightPercent != null ? ` · ${category.weightPercent}%` : ''}
                       </span>
-                    )) : <span className="text-xs text-[#737373]">No categories yet.</span>}
+                    )) : <span className="text-xs text-[#737373]">{t('grades.setup.noCategories')}</span>}
                   </div>
                 </div>
 
@@ -1080,19 +1109,19 @@ export function GradesView({
                   <div className="flex items-start gap-2">
                     <CalendarDays className="mt-0.5 h-4 w-4 text-[#047857]" />
                     <div>
-                      <p className="text-sm font-semibold text-[#171717]">Grading periods</p>
-                      <p className="text-xs text-[#737373]">Group work by month, term, or school phase.</p>
+                      <p className="text-sm font-semibold text-[#171717]">{t('grades.setup.periods')}</p>
+                      <p className="text-xs text-[#737373]">{t('grades.setup.periodsHint')}</p>
                     </div>
                   </div>
                   <div className="mt-3 grid gap-2">
-                    <input value={periodDraft.name} onChange={event => setPeriodDraft(prev => ({ ...prev, name: event.target.value }))} placeholder="Period name" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
+                    <input value={periodDraft.name} onChange={event => setPeriodDraft(prev => ({ ...prev, name: event.target.value }))} placeholder={t('grades.setup.periodName')} className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
                     <div className="grid grid-cols-2 gap-2">
                       <input value={periodDraft.startDate} onChange={event => setPeriodDraft(prev => ({ ...prev, startDate: event.target.value }))} type="date" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
                       <input value={periodDraft.endDate} onChange={event => setPeriodDraft(prev => ({ ...prev, endDate: event.target.value }))} type="date" className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm" />
                     </div>
                     <button type="button" onClick={saveGradingPeriod} className="tbo-focus inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#bbf7d0] bg-white px-3 text-sm font-semibold text-[#047857] hover:bg-[#ecfdf5]">
                       <Plus className="h-4 w-4" />
-                      Add period
+                      {t('grades.setup.addPeriod')}
                     </button>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
@@ -1100,7 +1129,7 @@ export function GradesView({
                       <span key={period.id} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
                         {period.name}
                       </span>
-                    )) : <span className="text-xs text-[#737373]">No grading periods yet.</span>}
+                    )) : <span className="text-xs text-[#737373]">{t('grades.setup.noPeriods')}</span>}
                   </div>
                 </div>
               </div>
@@ -1111,9 +1140,9 @@ export function GradesView({
 
       <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-sm">
         {loading ? (
-          <div className="p-6 text-sm text-[#737373]">Loading grades...</div>
+          <div className="p-6 text-sm text-[#737373]">{t('grades.loading')}</div>
         ) : rows.length === 0 ? (
-          <div className="p-8 text-center text-sm text-[#737373]">No grades are available yet.</div>
+          <div className="p-8 text-center text-sm text-[#737373]">{t('grades.empty')}</div>
         ) : (
           <div className="divide-y divide-[#eeeeee]">
             {rows.map(row => {
@@ -1129,8 +1158,8 @@ export function GradesView({
                   </div>
                   <div>{row.course ? <ActiveYearGroupBadge course={row.course} size="sm" /> : <span className="text-sm text-[#a3a3a3]">-</span>}</div>
                   <div className="flex flex-wrap gap-2 text-xs font-semibold">
-                    <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[#525252]">{row.homeworkCount} homework</span>
-                    <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[#525252]">{row.bookCount} readings</span>
+                    <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[#525252]">{tCount('grades.row.homework', row.homeworkCount)}</span>
+                    <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[#525252]">{tCount('grades.row.readings', row.bookCount)}</span>
                   </div>
                   <div className="flex items-center gap-2 md:justify-end">
                     <span className={`rounded-full px-3 py-1 text-xs font-semibold ${statusTone(row.academicPercent)}`}>

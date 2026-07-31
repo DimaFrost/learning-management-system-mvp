@@ -18,6 +18,7 @@ import { formatFileSize } from '../../../utils/formatFileSize';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
 import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface MaterialsTabProps {
   classId: number;
@@ -77,6 +78,7 @@ export function MaterialsTab({
   selectedSubject,
   selectedClass,
 }: MaterialsTabProps) {
+  const { t, tCount } = useLanguage();
   const canManageNotes =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const isAdmin = hasRole(currentUser, 'administrator');
@@ -193,7 +195,7 @@ export function MaterialsTab({
     if (success) {
       setMaterialDocTitle('');
       setIsCreatingDoc(false);
-      await onMaterialsUploaded([`${title} (Google Doc)`]);
+      await onMaterialsUploaded([t('classwork.tabs.materials.googleDocFileName', { title })]);
     }
   };
 
@@ -206,12 +208,12 @@ export function MaterialsTab({
     <div className="space-y-8">
       <section className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-6">
         <h3 className="text-lg font-semibold text-gray-900">
-          Session Notes &amp; Materials
+          {t('classwork.tabs.materials.sessionTitle')}
         </h3>
 
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-base font-medium text-gray-800">Text Notes</h4>
+            <h4 className="text-base font-medium text-gray-800">{t('classwork.tabs.materials.textNotes')}</h4>
             {canManageNotes && !isAddingNote && (
               <button
                 type="button"
@@ -220,7 +222,7 @@ export function MaterialsTab({
                 className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
               >
                 <Plus className="w-4 h-4" />
-                Add Note
+                {t('classwork.tabs.materials.addNote')}
               </button>
             )}
           </div>
@@ -231,14 +233,14 @@ export function MaterialsTab({
                 type="text"
                 value={newNoteTitle}
                 onChange={e => setNewNoteTitle(e.target.value)}
-                placeholder="Title (optional)"
+                placeholder={t('classwork.tabs.materials.titleOptional')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <textarea
                 value={newNoteContent}
                 onChange={e => setNewNoteContent(e.target.value)}
                 rows={4}
-                placeholder="Note content..."
+                placeholder={t('classwork.tabs.materials.notePlaceholder')}
                 className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
               />
               <div className="flex gap-2">
@@ -248,7 +250,7 @@ export function MaterialsTab({
                   disabled={isBusy || !newNoteContent.trim()}
                   className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                 >
-                  Save
+                  {t('common.save')}
                 </button>
                 <button
                   type="button"
@@ -260,14 +262,14 @@ export function MaterialsTab({
                   disabled={isBusy}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
           )}
 
           {studentNotes.length === 0 ? (
-            <p className="text-sm text-gray-500">No notes yet.</p>
+            <p className="text-sm text-gray-500">{t('classwork.tabs.materials.noNotes')}</p>
           ) : (
             <div className="space-y-3">
               {studentNotes.map(note => (
@@ -281,7 +283,7 @@ export function MaterialsTab({
                         type="text"
                         value={editNoteTitle}
                         onChange={e => setEditNoteTitle(e.target.value)}
-                        placeholder="Title (optional)"
+                        placeholder={t('classwork.tabs.materials.titleOptional')}
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                       />
                       <textarea
@@ -297,7 +299,7 @@ export function MaterialsTab({
                           disabled={isBusy || !editNoteContent.trim()}
                           className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                         >
-                          Save
+                          {t('common.save')}
                         </button>
                         <button
                           type="button"
@@ -305,7 +307,7 @@ export function MaterialsTab({
                           disabled={isBusy}
                           className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                         >
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     </div>
@@ -332,7 +334,7 @@ export function MaterialsTab({
                               onClick={() => startEditNote(note)}
                               disabled={isBusy}
                               className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                              aria-label="Edit note"
+                              aria-label={t('classwork.tabs.materials.editNote')}
                             >
                               <Pencil className="w-4 h-4" />
                             </button>
@@ -341,7 +343,7 @@ export function MaterialsTab({
                               onClick={() => onDeleteNote(note.id)}
                               disabled={isBusy}
                               className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                              aria-label="Delete note"
+                              aria-label={t('common.delete')}
                             >
                               <Trash className="w-4 h-4" />
                             </button>
@@ -359,7 +361,7 @@ export function MaterialsTab({
         <div className="border-t border-gray-100 pt-6">
           <div className="flex items-center justify-between mb-4">
             <h4 className="text-base font-medium text-gray-800">
-              Drive Materials
+              {t('classwork.tabs.materials.driveMaterials')}
             </h4>
             {canManageNotes && (
               <div className="flex items-center gap-2">
@@ -377,7 +379,7 @@ export function MaterialsTab({
                   className="flex items-center gap-1.5 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2 text-sm font-medium text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                 >
                   <FileText className="w-4 h-4" />
-                  New Google Doc
+                  {t('classwork.subject.newGoogleDoc')}
                 </button>
                 <button
                   type="button"
@@ -386,7 +388,7 @@ export function MaterialsTab({
                   className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                 >
                   <Upload className="w-4 h-4" />
-                  Select Drive Files
+                  {t('classwork.tabs.materials.selectDriveFiles')}
                 </button>
               </div>
             )}
@@ -397,17 +399,20 @@ export function MaterialsTab({
               <div className="flex flex-col gap-3 md:flex-row md:items-end">
                 <div className="min-w-0 flex-1">
                   <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-blue-700">
-                    Material document
+                    {t('classwork.tabs.materials.materialDocument')}
                   </label>
                   <input
                     type="text"
                     value={materialDocTitle}
                     onChange={event => setMaterialDocTitle(event.target.value)}
-                    placeholder="Document title"
+                    placeholder={t('classwork.tabs.materials.documentTitle')}
                     className="mt-2 w-full rounded-lg border border-blue-200 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                   <p className="mt-2 text-xs text-blue-700">
-                    Saved under {getCourseDisplayName(selectedCourse)} / Materials / {selectedSubject.title}.
+                    {t('classwork.tabs.materials.savedUnder', {
+                      course: getCourseDisplayName(selectedCourse),
+                      subject: selectedSubject.title,
+                    })}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
@@ -417,7 +422,7 @@ export function MaterialsTab({
                     disabled={isBusy || !materialDocTitle.trim()}
                     className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50"
                   >
-                    Create
+                    {t('common.create')}
                   </button>
                   <button
                     type="button"
@@ -428,7 +433,7 @@ export function MaterialsTab({
                     disabled={isBusy}
                     className="rounded-lg px-4 py-2 text-sm font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-50"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                 </div>
               </div>
@@ -438,7 +443,7 @@ export function MaterialsTab({
           {canManageNotes && pendingFiles.length > 0 && (
             <div className="mb-4 p-4 rounded-lg border border-amber-200 bg-amber-50 space-y-3">
               <p className="text-sm font-medium text-gray-800">
-                Ready to upload ({pendingFiles.length})
+                {t('classwork.subject.readyToUpload', { count: pendingFiles.length })}
               </p>
               <ul className="space-y-2">
                 {pendingFiles.map((file, index) => {
@@ -459,7 +464,7 @@ export function MaterialsTab({
                         onClick={() => handleRemovePending(index)}
                         disabled={isBusy}
                         className="p-1 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50 flex-shrink-0"
-                        aria-label={`Remove ${file.name}`}
+                        aria-label={t('classwork.tabs.materials.removeFile', { name: file.name })}
                       >
                         <Trash className="w-4 h-4" />
                       </button>
@@ -474,7 +479,7 @@ export function MaterialsTab({
                   disabled={isBusy}
                   className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                 >
-                  Upload
+                  {t('classwork.subject.upload')}
                 </button>
                 <button
                   type="button"
@@ -482,14 +487,14 @@ export function MaterialsTab({
                   disabled={isBusy}
                   className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </button>
               </div>
             </div>
           )}
 
           {files.length === 0 ? (
-            <p className="text-sm text-gray-500">No materials uploaded yet.</p>
+            <p className="text-sm text-gray-500">{t('classwork.tabs.materials.noMaterials')}</p>
           ) : (
             <div className="space-y-3">
               {files.map(file => {
@@ -521,7 +526,7 @@ export function MaterialsTab({
                             onClick={() => setPreviewItem(preview)}
                             className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-sm font-semibold text-amber-700 hover:bg-amber-100"
                           >
-                            Preview
+                            {t('classwork.tabs.materials.preview')}
                           </button>
                         ) : null;
                       })()}
@@ -531,7 +536,7 @@ export function MaterialsTab({
                         className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
                       >
                         <ExternalLink className="w-4 h-4" />
-                        Open
+                        {t('common.open')}
                       </button>
                       {canDeleteFile(file) && (
                         <button
@@ -539,7 +544,7 @@ export function MaterialsTab({
                           onClick={() => onDeleteFile(file)}
                           disabled={isBusy}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                          aria-label="Delete file"
+                          aria-label={t('common.delete')}
                         >
                           <Trash className="w-4 h-4" />
                         </button>

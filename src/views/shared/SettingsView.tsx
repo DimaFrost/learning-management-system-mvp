@@ -11,6 +11,8 @@ import {
 } from '../../utils/googleDocsV2';
 import { Save, Bell, User as UserIcon, Camera, FileText, RefreshCcw, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { formatDateTime } from '../../i18n/formatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import type { WorkspaceId } from '../../types/workspace';
 
 interface SettingsViewProps {
@@ -21,32 +23,47 @@ interface SettingsViewProps {
 
 type NotificationPreferenceKey = keyof User['notificationPreferences'];
 
-const NOTIFICATION_TOGGLES: {
+const NOTIFICATION_TOGGLE_KEYS: {
   key: NotificationPreferenceKey;
-  label: string;
-  sublabel: string;
+  labelKey: TranslationKey;
+  sublabelKey: TranslationKey;
 }[] = [
   {
     key: 'announcements',
-    label: 'New Announcements',
-    sublabel: 'Receive an email when a new announcement is posted',
+    labelKey: 'settings.notifications.announcements',
+    sublabelKey: 'settings.notifications.announcementsHint',
   },
   {
     key: 'roleChange',
-    label: 'Role Changes',
-    sublabel: 'Receive an email when your role in the platform is updated',
+    labelKey: 'settings.notifications.roleChange',
+    sublabelKey: 'settings.notifications.roleChangeHint',
   },
   {
     key: 'enrollment',
-    label: 'Course Enrollment',
-    sublabel: 'Receive an email when you are added to a course',
+    labelKey: 'settings.notifications.enrollment',
+    sublabelKey: 'settings.notifications.enrollmentHint',
   },
   {
     key: 'messages',
-    label: 'Direct Messages',
-    sublabel: 'Receive an email when someone sends you a message',
+    labelKey: 'settings.notifications.messages',
+    sublabelKey: 'settings.notifications.messagesHint',
   },
 ];
+
+function getSuccessMessageKey(message: string | null): TranslationKey | null {
+  switch (message) {
+    case 'Profile updated.':
+      return 'settings.profile.updated';
+    case 'Profile photo updated.':
+      return 'settings.profile.photoUpdated';
+    case 'Profile photo removed.':
+      return 'settings.profile.photoRemoved';
+    case 'Preferences saved.':
+      return 'settings.notifications.saved';
+    default:
+      return null;
+  }
+}
 
 function NotificationToggle({
   label,
@@ -88,6 +105,7 @@ function NotificationToggle({
 }
 
 export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }: SettingsViewProps) {
+  const { t } = useLanguage();
   const { saving, error, successMessage, updateProfile, updateNotificationPreferences, uploadAvatar, removeAvatar } =
     useSettings(currentUser, onProfileUpdated);
 
@@ -120,9 +138,13 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
     const googleDocsMessage = params.get('google_docs_message');
 
     if (googleDocsStatus === 'connected') {
-      setDocsMessage(`Google Docs connected${googleDocsMessage ? ` as ${googleDocsMessage}` : ''}.`);
+      setDocsMessage(t('settings.googleDocs.connectedSuccess', {
+        account: googleDocsMessage
+          ? t('settings.googleDocs.connectedAs', { account: googleDocsMessage })
+          : '',
+      }));
     } else if (googleDocsStatus === 'error') {
-      setDocsError(googleDocsMessage || 'Google Docs authorization failed.');
+      setDocsError(googleDocsMessage || t('settings.googleDocs.authFailed'));
     }
 
     if (googleDocsStatus) {
@@ -146,8 +168,9 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
       .catch(() => {
         setDocsConnection(null);
       });
-  }, [canManageGoogleDocs]);
+  }, [canManageGoogleDocs, t]);
 
+  const successMessageKey = getSuccessMessageKey(successMessage);
   const isProfileSuccess =
     successMessage === 'Profile updated.' ||
     successMessage === 'Profile photo updated.' ||
@@ -169,7 +192,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
       const result = await startGoogleDocsOAuth(window.location.href);
       window.location.assign(result.authUrl);
     } catch (err) {
-      setDocsError(err instanceof Error ? err.message : 'Could not start Google Docs authorization.');
+      setDocsError(err instanceof Error ? err.message : t('settings.googleDocs.authStartFailed'));
       setDocsSaving(false);
     }
   };
@@ -181,10 +204,10 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
     try {
       const result = await testGoogleDocsSetup();
       setDocsDiagnostics(result.checks);
-      setDocsMessage(result.ok ? 'Google Docs setup is ready.' : 'Google Docs setup needs attention.');
+      setDocsMessage(result.ok ? t('settings.googleDocs.setupReady') : t('settings.googleDocs.setupNeedsAttention'));
     } catch (err) {
       setDocsDiagnostics(null);
-      setDocsError(err instanceof Error ? err.message : 'Could not test Google Docs setup.');
+      setDocsError(err instanceof Error ? err.message : t('settings.googleDocs.testFailed'));
     } finally {
       setDocsTesting(false);
     }
@@ -193,9 +216,9 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
+        <h2 className="text-2xl font-bold text-gray-900">{t('settings.title')}</h2>
         <p className="text-sm text-gray-500 mt-1">
-          Manage your profile and notification preferences
+          {t('settings.subtitle')}
         </p>
       </div>
 
@@ -208,13 +231,13 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
       <div className="bg-white rounded-lg shadow border border-gray-200 p-6 space-y-6">
         <div className="flex items-center gap-2">
           <UserIcon className="w-5 h-5 text-gray-700" />
-          <h3 className="text-lg font-semibold text-gray-900">Profile</h3>
+          <h3 className="text-lg font-semibold text-gray-900">{t('settings.profile.title')}</h3>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="settings-first-name" className="block text-sm font-medium text-gray-700 mb-1">
-              First Name
+              {t('settings.profile.firstName')}
             </label>
             <input
               id="settings-first-name"
@@ -227,7 +250,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
           </div>
           <div>
             <label htmlFor="settings-last-name" className="block text-sm font-medium text-gray-700 mb-1">
-              Last Name
+              {t('settings.profile.lastName')}
             </label>
             <input
               id="settings-last-name"
@@ -242,15 +265,15 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
 
         {!canEditProfileName && (
           <p className="text-xs text-gray-500">
-            Name can only be changed by an administrator.
+            {t('settings.profile.nameAdminOnly')}
           </p>
         )}
 
         <div>
-          <p className="block text-sm font-medium text-gray-700 mb-1">Email</p>
+          <p className="block text-sm font-medium text-gray-700 mb-1">{t('settings.profile.email')}</p>
           <p className="text-gray-900">{currentUser.email}</p>
           <p className="text-xs text-gray-500 mt-1">
-            Email is managed by Google and cannot be changed here.
+            {t('settings.profile.emailHint')}
           </p>
         </div>
 
@@ -258,7 +281,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
           {currentUser.avatarUrl ? (
             <img
               src={currentUser.avatarUrl}
-              alt="Profile photo"
+              alt={t('settings.profile.photoAlt')}
               className="w-24 h-24 rounded-full object-cover"
             />
           ) : (
@@ -275,7 +298,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
               const file = e.target.files?.[0];
               if (file) {
                 if (!file.type.startsWith('image/')) {
-                  setFilePickError('Please select an image file.');
+                  setFilePickError(t('settings.profile.selectImage'));
                   return;
                 }
                 setFilePickError(null);
@@ -292,31 +315,31 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
               className="inline-flex items-center justify-center border border-amber-600 text-amber-600 px-4 py-2 rounded-lg hover:bg-amber-50 disabled:opacity-50 text-sm font-medium"
             >
               <Camera className="w-4 h-4 mr-2" />
-              {saving ? 'Uploading...' : 'Change Photo'}
+              {saving ? t('settings.profile.uploading') : t('settings.profile.changePhoto')}
             </button>
             {currentUser.avatarUrl && (
               <button
                 type="button"
                 onClick={() => {
-                  if (window.confirm('Remove your profile photo?')) {
+                  if (window.confirm(t('settings.profile.removeConfirm'))) {
                     removeAvatar();
                   }
                 }}
                 disabled={saving}
                 className="text-sm text-red-600 hover:text-red-700 font-medium ml-3 disabled:opacity-50"
               >
-                Remove Photo
+                {t('settings.profile.removePhoto')}
               </button>
             )}
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            JPG, PNG or GIF · Max 2MB
+            {t('settings.profile.photoHint')}
           </p>
         </div>
 
-        {isProfileSuccess && (
+        {isProfileSuccess && successMessageKey && (
           <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-            {successMessage}
+            {t(successMessageKey)}
           </div>
         )}
 
@@ -328,7 +351,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
             className="w-full md:w-auto inline-flex items-center justify-center gap-2 bg-amber-600 text-white px-4 py-2 rounded-lg hover:bg-amber-700 disabled:opacity-50"
           >
             <Save className="w-4 h-4" />
-            <span>{saving ? 'Saving...' : 'Save'}</span>
+            <span>{saving ? t('common.saving') : t('common.save')}</span>
           </button>
         )}
       </div>
@@ -337,17 +360,17 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
         <div>
           <div className="flex items-center gap-2">
             <Bell className="w-5 h-5 text-gray-700" />
-            <h3 className="text-lg font-semibold text-gray-900">Email Notifications</h3>
+            <h3 className="text-lg font-semibold text-gray-900">{t('settings.notifications.title')}</h3>
           </div>
-          <p className="text-sm text-gray-500 mt-1">Choose which emails you want to receive.</p>
+          <p className="text-sm text-gray-500 mt-1">{t('settings.notifications.subtitle')}</p>
         </div>
 
         <div>
-          {NOTIFICATION_TOGGLES.map(toggle => (
+          {NOTIFICATION_TOGGLE_KEYS.map(toggle => (
             <NotificationToggle
               key={toggle.key}
-              label={toggle.label}
-              sublabel={toggle.sublabel}
+              label={t(toggle.labelKey)}
+              sublabel={t(toggle.sublabelKey)}
               checked={currentUser.notificationPreferences[toggle.key]}
               disabled={saving}
               onChange={() => handleTogglePreference(toggle.key)}
@@ -355,9 +378,9 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
           ))}
         </div>
 
-        {isPrefsSuccess && (
+        {isPrefsSuccess && successMessageKey && (
           <div className="bg-green-50 border border-green-200 rounded-lg px-4 py-3 text-sm text-green-700">
-            {successMessage}
+            {t(successMessageKey)}
           </div>
         )}
       </div>
@@ -370,14 +393,14 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                 <FileText className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-[#172554]">Google Docs</h3>
+                <h3 className="text-lg font-semibold text-[#172554]">{t('settings.googleDocs.title')}</h3>
                 <p className="mt-1 max-w-2xl text-sm text-[#1e40af]">
-                  Connect the school Google account used to create assignment documents in the Shared Drive.
+                  {t('settings.googleDocs.subtitle')}
                 </p>
               </div>
             </div>
             <div className="rounded-full border border-[#bfdbfe] bg-white px-3 py-1 text-xs font-semibold text-[#1d4ed8]">
-              Dedicated OAuth
+              {t('settings.googleDocs.oauthBadge')}
             </div>
           </div>
 
@@ -387,18 +410,20 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                 <ShieldCheck className={`h-5 w-5 ${docsConnection ? 'text-[#16a34a]' : 'text-[#a3a3a3]'}`} />
                 <div>
                   <p className="text-sm font-semibold text-[#171717]">
-                    {docsConnection ? docsConnection.connected_email : 'No Google account connected'}
+                    {docsConnection ? docsConnection.connected_email : t('settings.googleDocs.notConnected')}
                   </p>
                   <p className="text-xs text-[#737373]">
                     {docsConnection
-                      ? `Last saved ${formatDateTime(docsConnection.updated_at, {
-                          day: '2-digit',
-                          month: '2-digit',
-                          year: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })}`
-                      : 'Connect the school Google account to create student assignment documents.'}
+                      ? t('settings.googleDocs.lastSaved', {
+                          datetime: formatDateTime(docsConnection.updated_at, {
+                            day: '2-digit',
+                            month: '2-digit',
+                            year: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          }),
+                        })
+                      : t('settings.googleDocs.connectHint')}
                   </p>
                 </div>
               </div>
@@ -410,12 +435,16 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                   className="inline-flex items-center gap-2 rounded-lg border border-[#bfdbfe] bg-white px-3 py-2 text-sm font-semibold text-[#1d4ed8] hover:bg-[#eff6ff] disabled:opacity-50"
                 >
                   <RefreshCcw className="h-4 w-4" />
-                  {docsSaving ? 'Opening Google...' : docsConnection ? 'Reconnect Google' : 'Connect Google'}
+                  {docsSaving
+                    ? t('settings.googleDocs.opening')
+                    : docsConnection
+                      ? t('settings.googleDocs.reconnect')
+                      : t('settings.googleDocs.connect')}
                 </button>
                 {docsConnection ? (
                   <span className="inline-flex items-center gap-2 rounded-lg border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-sm font-semibold text-[#15803d]">
                     <CheckCircle2 className="h-4 w-4" />
-                    Connected
+                    {t('settings.googleDocs.connected')}
                   </span>
                 ) : null}
                 <button
@@ -425,7 +454,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                   className="inline-flex items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm font-semibold text-[#404040] hover:bg-[#f5f5f5] disabled:opacity-50"
                 >
                   <ShieldCheck className="h-4 w-4" />
-                  {docsTesting ? 'Testing...' : 'Test setup'}
+                  {docsTesting ? t('settings.googleDocs.testing') : t('settings.googleDocs.testSetup')}
                 </button>
               </div>
             </div>
@@ -448,7 +477,7 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                       <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${
                         check.ok ? 'bg-[#dcfce7] text-[#15803d]' : 'bg-[#fee2e2] text-[#b91c1c]'
                       }`}>
-                        {check.ok ? 'Ready' : 'Fix'}
+                        {check.ok ? t('settings.googleDocs.ready') : t('settings.googleDocs.fix')}
                       </span>
                     </div>
                     {check.name && <p className="mt-1 truncate text-xs font-medium text-[#525252]">{check.name}</p>}

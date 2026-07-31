@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase';
 import type { Class, Course, CourseStudent, User } from '../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 
 type AbsenceScope = 'admin' | 'student';
 
@@ -46,6 +48,8 @@ interface AbsenceNoticesViewProps {
   users: User[];
 }
 
+type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
 function todayKey() {
   return new Date().toISOString().split('T')[0];
 }
@@ -58,9 +62,18 @@ function isActivationSession(cls: Class) {
   return cls.hour === 'both' && isSaturday(cls.date);
 }
 
-function getHourLabel(hour: Class['hour']) {
-  if (hour === 'both') return 'Joint session';
-  return hour === 'first' ? 'First session' : 'Second session';
+function getHourLabel(hour: Class['hour'], t: TFunction) {
+  if (hour === 'both') return t('absence.jointSession');
+  return hour === 'first' ? t('absence.firstSession') : t('absence.secondSession');
+}
+
+function getNoticeStatusLabel(status: NoticeRow['status'], t: TFunction) {
+  const keyMap: Record<NoticeRow['status'], TranslationKey> = {
+    submitted: 'absence.status.submitted',
+    acknowledged: 'absence.status.acknowledged',
+    archived: 'absence.status.archived',
+  };
+  return t(keyMap[status]);
 }
 
 function collectStudentSessions(currentUser: User, courses: Course[], courseStudents: CourseStudent[]) {
@@ -106,6 +119,7 @@ function getSessionCourse(session: NoticeRow['sessions'] extends Array<infer T> 
 }
 
 export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents, users }: AbsenceNoticesViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [notices, setNotices] = useState<NoticeRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -115,6 +129,12 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
   const [query, setQuery] = useState('');
   const [eventFilter, setEventFilter] = useState<'all' | number>('all');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
+
+  const errorMessages = useMemo(() => ({
+    load: t('absence.error.load'),
+    chooseSession: t('absence.error.chooseSession'),
+    submit: t('absence.error.submit'),
+  }), [language, t]);
 
   const sessionOptions = useMemo(
     () => scope === 'student' ? collectStudentSessions(currentUser, courses, courseStudents) : collectSessions(courses),
@@ -145,13 +165,13 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
     const { data, error: loadError } = await queryBuilder;
     if (loadError) {
       console.error('Failed to load absence notices', loadError);
-      setError('Failed to load absence notices.');
+      setError(errorMessages.load);
       setNotices([]);
     } else {
       setNotices((data ?? []) as NoticeRow[]);
     }
     setLoading(false);
-  }, [currentUser.id, scope]);
+  }, [currentUser.id, errorMessages.load, scope]);
 
   useEffect(() => {
     void loadNotices();
@@ -159,7 +179,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
 
   const submitNotice = async () => {
     if (selectedClassIds.size === 0) {
-      setError('Choose at least one session.');
+      setError(errorMessages.chooseSession);
       return;
     }
     setSaving(true);
@@ -198,7 +218,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
       await loadNotices();
     } catch (err) {
       console.error(err);
-      setError('Could not submit absence notice. Please try again.');
+      setError(errorMessages.submit);
     } finally {
       setSaving(false);
     }
@@ -243,12 +263,12 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
     <div className="space-y-5">
       <section className="border-l-2 border-[#171717] pl-4">
         <div className="border-b border-[#d4d4d4] pb-4">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Attendance communication</p>
-          <h1 className="tbo-display mt-1 text-3xl text-[#171717]">Absence notices</h1>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('absence.eyebrow')}</p>
+          <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('absence.title')}</h1>
           <p className="mt-1 text-sm text-[#737373]">
             {scope === 'student'
-              ? 'Let the school know ahead of time when you expect to miss a session.'
-              : 'Review student absence notices for upcoming classes and Activation Saturdays.'}
+              ? t('absence.subtitle.student')
+              : t('absence.subtitle.admin')}
           </p>
         </div>
       </section>
@@ -265,16 +285,16 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
           <div className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm font-semibold text-[#171717]">Choose session(s)</p>
-                <p className="mt-1 text-xs text-[#737373]">Only today and future sessions are available.</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('absence.chooseSessions.title')}</p>
+                <p className="mt-1 text-xs text-[#737373]">{t('absence.chooseSessions.hint')}</p>
               </div>
               <span className="rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#b06000] ring-1 ring-[#fce8b2]">
-                {selectedClassIds.size} selected
+                {tCount('absence.selected', selectedClassIds.size)}
               </span>
             </div>
             <div className="mt-4 grid gap-2">
               {sessionOptions.length === 0 ? (
-                <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-5 text-sm text-[#737373]">No upcoming sessions were found for your year group.</p>
+                <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-5 text-sm text-[#737373]">{t('absence.noUpcomingSessions')}</p>
               ) : sessionOptions.map(session => (
                 <button
                   key={session.classId}
@@ -293,9 +313,9 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                     <span className="block truncate text-sm font-semibold text-[#171717]">{session.title}</span>
                     <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373]">
                       <span>{formatPlatformDate(session.date)}</span>
-                      <span>{getHourLabel(session.hour)}</span>
+                      <span>{getHourLabel(session.hour, t)}</span>
                       <span>{session.subjectTitle}</span>
-                      {session.isActivation && <span className="font-semibold text-[#b06000]">Activation Saturday</span>}
+                      {session.isActivation && <span className="font-semibold text-[#b06000]">{t('absence.activationSaturday')}</span>}
                     </span>
                   </span>
                   <ActiveYearGroupBadge course={session.course} size="sm" />
@@ -306,14 +326,14 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
 
           <aside className="space-y-3">
             <section className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
-              <p className="text-sm font-semibold text-[#171717]">Reason</p>
-              <p className="mt-1 text-xs text-[#737373]">Optional. Keep it short if no detail is needed.</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('absence.reason.title')}</p>
+              <p className="mt-1 text-xs text-[#737373]">{t('absence.reason.hint')}</p>
               <textarea
                 value={reason}
                 onChange={event => setReason(event.target.value)}
                 rows={6}
                 className="tbo-focus mt-3 w-full rounded-xl border border-[#d4d4d4] px-3 py-2 text-sm"
-                placeholder="Reason for absence..."
+                placeholder={t('absence.reason.placeholder')}
               />
               <button
                 type="button"
@@ -322,7 +342,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                 className="tbo-focus mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-40"
               >
                 <Send className="h-4 w-4" />
-                {saving ? 'Submitting...' : 'Submit notice'}
+                {saving ? t('absence.submitting') : t('absence.submit')}
               </button>
             </section>
           </aside>
@@ -337,7 +357,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Search student, reason, or session"
+                placeholder={t('absence.search.placeholder')}
                 className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717]"
               />
             </div>
@@ -346,7 +366,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
               onChange={event => setEventFilter(event.target.value === 'all' ? 'all' : Number(event.target.value))}
               className="tbo-focus h-9 rounded-md border border-[#e5e5e5] bg-[#fafafa] px-2 text-sm font-semibold text-[#171717]"
             >
-              <option value="all">All upcoming notices</option>
+              <option value="all">{t('absence.filter.allUpcoming')}</option>
               {nextFiveEvents.map(event => (
                 <option key={event.classId} value={event.classId}>
                   {formatPlatformDate(event.date)} - {event.title}
@@ -359,13 +379,13 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
 
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? 'Your notices' : 'Submitted notices'}</p>
+          <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? t('absence.list.yours') : t('absence.list.submitted')}</p>
           <span className="rounded-full bg-[#fafafa] px-3 py-1 text-xs font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">{filteredNotices.length}</span>
         </div>
         {loading ? (
-          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">Loading absence notices...</p>
+          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">{t('absence.loading')}</p>
         ) : filteredNotices.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center text-sm text-[#737373]">No absence notices found.</p>
+          <p className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white p-8 text-center text-sm text-[#737373]">{t('absence.empty')}</p>
         ) : filteredNotices.map(notice => {
           const expanded = expandedIds.has(notice.id);
           const student = users.find(user => user.id === notice.student_id);
@@ -383,15 +403,15 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                   <span className="grid h-8 w-8 place-items-center rounded-full bg-[#fef7e0] text-[#b06000]"><ClipboardList className="h-4 w-4" /></span>
                 )}
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-semibold text-[#171717]">{scope === 'admin' ? notice.student?.name ?? 'Unknown student' : `${sessions.length} session${sessions.length === 1 ? '' : 's'}`}</span>
+                  <span className="block truncate text-sm font-semibold text-[#171717]">{scope === 'admin' ? notice.student?.name ?? t('absence.unknownStudent') : tCount('absence.sessions', sessions.length)}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373]">
-                    <span>Submitted {formatPlatformDate(notice.submitted_at)}</span>
-                    {sessions[0]?.class?.date && <span>First session {formatPlatformDate(sessions[0].class.date)}</span>}
-                    <span className="capitalize">{notice.status}</span>
+                    <span>{t('absence.submitted', { date: formatPlatformDate(notice.submitted_at) })}</span>
+                    {sessions[0]?.class?.date && <span>{t('absence.firstSessionDate', { date: formatPlatformDate(sessions[0].class.date) })}</span>}
+                    <span>{getNoticeStatusLabel(notice.status, t)}</span>
                   </span>
                 </span>
                 <span className="flex items-center gap-2 md:justify-end">
-                  <span className="rounded-full bg-[#fef7e0] px-2.5 py-1 text-xs font-semibold text-[#b06000] ring-1 ring-[#fce8b2]">{sessions.length} selected</span>
+                  <span className="rounded-full bg-[#fef7e0] px-2.5 py-1 text-xs font-semibold text-[#b06000] ring-1 ring-[#fce8b2]">{tCount('absence.selected', sessions.length)}</span>
                   {expanded ? <ChevronDown className="h-4 w-4 text-[#737373]" /> : <ChevronRight className="h-4 w-4 text-[#737373]" />}
                 </span>
               </button>
@@ -399,7 +419,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                 <div className="border-t border-[#eeeeee] bg-[#fafafa] px-4 py-4">
                   {notice.reason && (
                     <div className="mb-3 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2">
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Reason</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('absence.reason.title')}</p>
                       <p className="mt-1 text-sm text-[#525252]">{notice.reason}</p>
                     </div>
                   )}
@@ -410,10 +430,10 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                       return (
                         <div key={session.id} className="grid gap-2 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-semibold text-[#171717]">{session.class?.title ?? 'Session'}</p>
+                            <p className="truncate text-sm font-semibold text-[#171717]">{session.class?.title ?? t('absence.sessionFallback')}</p>
                             <p className="mt-1 text-xs text-[#737373]">
-                              {formatPlatformDate(session.class?.date)} · {getHourLabel(session.class?.hour ?? 'first')} · {session.class?.subject?.title ?? 'Subject'}
-                              {activation ? ' · Activation Saturday' : ''}
+                              {formatPlatformDate(session.class?.date)} · {getHourLabel(session.class?.hour ?? 'first', t)} · {session.class?.subject?.title ?? t('absence.subjectFallback')}
+                              {activation ? ` · ${t('absence.activationSaturday')}` : ''}
                             </p>
                           </div>
                           {course && <ActiveYearGroupBadge course={course} size="sm" />}

@@ -1,15 +1,24 @@
+import { absenceTranslations } from './absence';
 import { announcementsTranslations } from './announcements';
 import { appTranslations } from './app';
 import { attendanceTranslations } from './attendance';
 import { authTranslations } from './auth';
+import { classDetailTranslations } from './classDetail';
+import { classworkTranslations } from './classwork';
 import { commonTranslations } from './common';
+import { gradesTranslations } from './grades';
 import { headerTranslations } from './header';
+import { messagesTranslations } from './messages';
 import { mentorshipTranslations } from './mentorship';
 import { navigationTranslations } from './navigation';
 import { onboardingTranslations } from './onboarding';
 import { searchTranslations } from './search';
 import { sessionsTranslations } from './sessions';
+import { settingsTranslations } from './settings';
+import { staffDashboardTranslations } from './staffDashboard';
 import { studentTranslations } from './student';
+import { submissionsTranslations } from './submissions';
+import { todosTranslations } from './todos';
 import { workspaceTranslations } from './workspace';
 
 export const en = {
@@ -26,6 +35,15 @@ export const en = {
   ...searchTranslations.en,
   ...attendanceTranslations.en,
   ...studentTranslations.en,
+  ...classworkTranslations.en,
+  ...classDetailTranslations.en,
+  ...gradesTranslations.en,
+  ...todosTranslations.en,
+  ...messagesTranslations.en,
+  ...absenceTranslations.en,
+  ...settingsTranslations.en,
+  ...submissionsTranslations.en,
+  ...staffDashboardTranslations.en,
 };
 
 export type TranslationKey = keyof typeof en;
@@ -44,6 +62,15 @@ export const bg: Record<TranslationKey, string> = {
   ...searchTranslations.bg,
   ...attendanceTranslations.bg,
   ...studentTranslations.bg,
+  ...classworkTranslations.bg,
+  ...classDetailTranslations.bg,
+  ...gradesTranslations.bg,
+  ...todosTranslations.bg,
+  ...messagesTranslations.bg,
+  ...absenceTranslations.bg,
+  ...settingsTranslations.bg,
+  ...submissionsTranslations.bg,
+  ...staffDashboardTranslations.bg,
 };
 
 type BaseKeyWithSuffix<Key, Suffix extends string> = Key extends `${infer Base}.${Suffix}`

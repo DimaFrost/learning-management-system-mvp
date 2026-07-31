@@ -32,6 +32,8 @@ import {
   type HomeworkGoogleDocStatus,
 } from '../../../utils/googleDocsV2';
 import { parseHomeworkInstructions } from '../../../utils/homeworkInstructions';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { translate } from '../../../i18n/translate';
 
 type ShowConfirmation = (
   title: string,
@@ -100,7 +102,7 @@ function getSubmissionUrl(submission: HomeworkSubmission): string | null {
 }
 
 function formatGoogleDocTime(value: string | null) {
-  if (!value) return 'Not available';
+  if (!value) return translate('classwork.tabs.homework.googleDoc.notAvailable');
   return formatDateTime(value, {
     day: '2-digit',
     month: '2-digit',
@@ -111,6 +113,7 @@ function formatGoogleDocTime(value: string | null) {
 }
 
 function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) {
+  const { t } = useLanguage();
   const [status, setStatus] = useState<HomeworkGoogleDocStatus | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -123,7 +126,7 @@ function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) 
       setStatus(await getHomeworkGoogleDocStatus(submission.id));
     } catch (err) {
       setStatus(null);
-      setError(err instanceof Error ? err.message : 'Could not load Google Doc details.');
+      setError(err instanceof Error ? err.message : t('classwork.tabs.homework.googleDocLoadError'));
     } finally {
       setLoading(false);
     }
@@ -146,10 +149,10 @@ function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) 
           </div>
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#171717]">
-              {status?.name ?? submission.fileName ?? 'School Google Doc'}
+              {status?.name ?? submission.fileName ?? t('classwork.tabs.homework.googleDoc.school')}
             </p>
             <p className="mt-1 text-xs text-[#737373]">
-              {loading ? 'Checking Google Drive...' : 'Stored in the school Google Drive'}
+              {loading ? t('classwork.tabs.homework.googleDoc.checking') : t('classwork.tabs.homework.googleDoc.stored')}
             </p>
           </div>
         </div>
@@ -161,7 +164,7 @@ function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) 
             className="inline-flex items-center gap-1.5 rounded-lg border border-[#d6cbbb] bg-white px-3 py-1.5 text-xs font-semibold text-[#6f533b] hover:bg-[#f5f1ea] disabled:opacity-50"
           >
             <RefreshCcw className="h-3.5 w-3.5" />
-            Refresh
+            {t('common.refresh')}
           </button>
           {openUrl && (
             <button
@@ -170,7 +173,7 @@ function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) 
               className="inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#262626]"
             >
               <ExternalLink className="h-3.5 w-3.5" />
-              Open
+              {t('common.open')}
             </button>
           )}
         </div>
@@ -185,25 +188,29 @@ function GoogleDocInfoPanel({ submission }: { submission: HomeworkSubmission }) 
           <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">
               <Clock3 className="h-3.5 w-3.5" />
-              Last edited
+              {t('classwork.tabs.homework.googleDoc.lastEdited')}
             </p>
             <p className="mt-1 text-xs font-semibold text-[#171717]">{formatGoogleDocTime(status?.modifiedTime ?? null)}</p>
-            {lastEditor?.name && <p className="mt-0.5 truncate text-[11px] text-[#737373]">by {lastEditor.name}</p>}
+            {lastEditor?.name && <p className="mt-0.5 truncate text-[11px] text-[#737373]">{t('classwork.tabs.homework.lastEditedBy', { name: lastEditor.name })}</p>}
           </div>
           <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">Owner</p>
-            <p className="mt-1 truncate text-xs font-semibold text-[#171717]">{owner?.name ?? 'School Drive'}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">{t('classwork.tabs.homework.googleDoc.owner')}</p>
+            <p className="mt-1 truncate text-xs font-semibold text-[#171717]">{owner?.name ?? t('classwork.tabs.homework.googleDoc.schoolDrive')}</p>
             {owner?.email && <p className="mt-0.5 truncate text-[11px] text-[#737373]">{owner.email}</p>}
           </div>
           <div className="rounded-xl border border-[#eee7dc] bg-white px-3 py-2">
             <p className="flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-[0.08em] text-[#8b5e34]">
               <ShieldCheck className="h-3.5 w-3.5" />
-              Your access
+              {t('classwork.tabs.homework.yourAccess')}
             </p>
             <p className={`mt-1 text-xs font-semibold ${status?.currentUserAccess.hasAccess ? 'text-[#15803d]' : 'text-[#b91c1c]'}`}>
-              {status?.currentUserAccess.hasAccess ? `Can open${status.currentUserAccess.role ? ` as ${status.currentUserAccess.role}` : ''}` : 'Needs sharing'}
+              {status?.currentUserAccess.hasAccess
+                ? status.currentUserAccess.role
+                  ? t('classwork.tabs.homework.canOpenAs', { role: status.currentUserAccess.role })
+                  : t('classwork.tabs.homework.canOpen')
+                : t('classwork.tabs.homework.needsSharing')}
             </p>
-            <p className="mt-0.5 text-[11px] text-[#737373]">{status?.currentUserAccess.message ?? 'Checking permissions...'}</p>
+            <p className="mt-0.5 text-[11px] text-[#737373]">{status?.currentUserAccess.message ?? t('classwork.tabs.homework.checkingPermissions')}</p>
           </div>
         </div>
       )}
@@ -224,15 +231,16 @@ function SubmissionStatusBadge({
   maxPoints?: number;
   points?: number | null;
 }) {
+  const { t } = useLanguage();
   const configs: Record<SubmissionStatus, { label: string; className: string }> = {
-    not_started: { label: 'Not started', className: 'bg-gray-100 text-gray-600' },
-    draft: { label: 'In progress', className: 'bg-blue-100 text-blue-800' },
-    submitted: { label: 'Submitted', className: 'bg-amber-100 text-amber-800' },
+    not_started: { label: t('classwork.submissionStatus.notStarted'), className: 'bg-gray-100 text-gray-600' },
+    draft: { label: t('classwork.submissionStatus.inProgress'), className: 'bg-blue-100 text-blue-800' },
+    submitted: { label: t('classwork.submissionStatus.submitted'), className: 'bg-amber-100 text-amber-800' },
     graded: {
-      label: `Graded (${points ?? 0}/${maxPoints ?? 100})`,
+      label: t('classwork.submissionStatus.gradedWithPoints', { points: points ?? 0, maxPoints: maxPoints ?? 100 }),
       className: 'bg-green-100 text-green-800',
     },
-    returned: { label: 'Returned', className: 'bg-orange-100 text-orange-800' },
+    returned: { label: t('classwork.submissionStatus.returned'), className: 'bg-orange-100 text-orange-800' },
   };
   const config = configs[status];
   return (
@@ -257,6 +265,7 @@ function SubmissionComments({
   onAddComment: (submissionId: number, content: string) => Promise<void>;
   onDeleteComment: (commentId: number) => Promise<void>;
 }) {
+  const { t } = useLanguage();
   const [draft, setDraft] = useState('');
   const isAdmin = hasRole(currentUser, 'administrator');
   const comments = submission.comments ?? [];
@@ -270,9 +279,9 @@ function SubmissionComments({
 
   return (
     <div className="border-t border-gray-100 pt-4 mt-4">
-      <h4 className="text-sm font-medium text-gray-900 mb-3">Comments</h4>
+      <h4 className="text-sm font-medium text-gray-900 mb-3">{t('classwork.tabs.homework.comments')}</h4>
       {comments.length === 0 ? (
-        <p className="text-sm text-gray-500 mb-3">No comments yet.</p>
+        <p className="text-sm text-gray-500 mb-3">{t('classwork.tabs.homework.noComments')}</p>
       ) : (
         <div className="space-y-2 mb-3">
           {comments.map(c => (
@@ -289,7 +298,7 @@ function SubmissionComments({
                     disabled={saving}
                     className="text-xs text-red-600 hover:text-red-800 disabled:opacity-50"
                   >
-                    Delete
+                    {t('common.delete')}
                   </button>
                 )}
               </div>
@@ -302,7 +311,7 @@ function SubmissionComments({
           value={draft}
           onChange={e => setDraft(e.target.value)}
           rows={2}
-          placeholder="Add a comment..."
+          placeholder={t('classwork.tabs.homework.addComment')}
           className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500"
         />
         <button
@@ -311,7 +320,7 @@ function SubmissionComments({
           disabled={saving || !draft.trim()}
           className="self-end px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
         >
-          Post
+          {t('common.post')}
         </button>
       </div>
     </div>
@@ -347,11 +356,12 @@ function StudentAssignmentCard({
   onDeleteComment: HomeworkTabProps['onDeleteComment'];
   currentUser: User;
 }) {
+  const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [googleDocUrl, setGoogleDocUrl] = useState('');
   const status: SubmissionStatus = submission?.status ?? 'not_started';
   const parsedDescription = parseHomeworkInstructions(assignment.description);
-  const submissionLabel = parsedDescription.details.submission ?? 'School Google Doc';
+  const submissionLabel = parsedDescription.details.submission ?? t('classwork.tabs.homework.googleDoc.school');
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -379,14 +389,14 @@ function StudentAssignmentCard({
   const linkDocSection = (
     <div className="space-y-2">
       <p className="text-sm text-gray-600">
-        Create a Google Doc in your own Google Drive, then paste the link here.
+        {t('classwork.tabs.homework.linkDocHint')}
       </p>
       <div className="flex flex-wrap gap-2">
         <input
           type="url"
           value={googleDocUrl}
           onChange={e => setGoogleDocUrl(e.target.value)}
-          placeholder="https://docs.google.com/document/d/..."
+          placeholder={t('classwork.tabs.homework.linkDocPlaceholder')}
           className="flex-1 min-w-[200px] rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
         />
         <button
@@ -395,7 +405,7 @@ function StudentAssignmentCard({
           disabled={saving || !googleDocUrl.trim()}
           className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
         >
-          Link Document
+          {t('classwork.tabs.homework.linkDocument')}
         </button>
       </div>
     </div>
@@ -435,7 +445,7 @@ function StudentAssignmentCard({
       <div className="space-y-4 p-5">
         {parsedDescription.instructions && (
           <div className="rounded-2xl border border-[#eee7dc] bg-[#fffdf9] p-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">Instructions</p>
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#8b5e34]">{t('classwork.tabs.homework.instructions')}</p>
             <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{parsedDescription.instructions}</p>
           </div>
         )}
@@ -456,7 +466,7 @@ function StudentAssignmentCard({
               disabled={saving}
               className="px-4 py-2 text-sm font-semibold text-white bg-[#2563eb] rounded-lg hover:bg-[#1d4ed8] disabled:opacity-50"
             >
-              Create school Google Doc
+              {t('classwork.assignment.createSchoolGoogleDoc')}
             </button>
             <button
               type="button"
@@ -464,7 +474,7 @@ function StudentAssignmentCard({
               disabled={saving}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              Upload File
+              {t('classwork.tabs.homework.uploadFile')}
             </button>
           </div>
           {linkDocSection}
@@ -477,7 +487,7 @@ function StudentAssignmentCard({
             <GoogleDocInfoPanel submission={submission} />
           )}
           <p className="text-sm text-gray-600">
-            Your document has been linked. Click Submit when you are ready.
+            {t('classwork.tabs.homework.docLinkedHint')}
           </p>
           <div className="flex flex-wrap gap-3">
             <button
@@ -487,7 +497,7 @@ function StudentAssignmentCard({
               }
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50"
             >
-              Continue Working
+              {t('classwork.tabs.homework.continueWorking')}
             </button>
             <button
               type="button"
@@ -495,7 +505,7 @@ function StudentAssignmentCard({
               disabled={saving}
               className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-lg hover:bg-amber-700 disabled:opacity-50"
             >
-              Submit
+              {t('common.submit')}
             </button>
           </div>
         </div>
@@ -507,7 +517,7 @@ function StudentAssignmentCard({
             <GoogleDocInfoPanel submission={submission} />
           )}
           <div className="p-4 rounded-lg bg-green-50 border border-green-200 text-sm text-green-800">
-            Submitted on{' '}
+            {t('classwork.tabs.homework.submittedOn')}{' '}
             {submission.submittedAt
               ? formatSubmittedDate(submission.submittedAt)
               : '—'}
@@ -518,7 +528,7 @@ function StudentAssignmentCard({
             className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
           >
             <ExternalLink className="w-4 h-4" />
-            View your submission
+            {t('classwork.tabs.homework.viewYourSubmission')}
           </button>
           <SubmissionComments
             submission={submission}
@@ -551,7 +561,7 @@ function StudentAssignmentCard({
             className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
           >
             <ExternalLink className="w-4 h-4" />
-            View Submission
+            {t('classwork.tabs.homework.viewSubmissionCapital')}
           </button>
           <SubmissionComments
             submission={submission}
@@ -569,7 +579,7 @@ function StudentAssignmentCard({
             <GoogleDocInfoPanel submission={submission} />
           )}
           <div className="p-4 rounded-lg bg-orange-50 border border-orange-200 text-sm text-orange-800">
-            Your submission has been returned for revision
+            {t('classwork.tabs.homework.returnedForRevision')}
             {submission.gradeComment && (
               <p className="mt-2 text-gray-700 whitespace-pre-wrap">
                 {submission.gradeComment}
@@ -590,7 +600,7 @@ function StudentAssignmentCard({
               disabled={saving}
               className="px-4 py-2 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
             >
-              Upload File
+              {t('classwork.tabs.homework.uploadFile')}
             </button>
           </div>
           {linkDocSection}
@@ -624,6 +634,7 @@ export function HomeworkTab({
   selectedSubject,
   selectedClass,
 }: HomeworkTabProps) {
+  const { t } = useLanguage();
   const isTeacherOrAdmin =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const isAdmin = hasRole(currentUser, 'administrator');
@@ -737,13 +748,13 @@ export function HomeworkTab({
             className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
           >
             <Plus className="w-4 h-4" />
-            Post Assignment
+            {t('classwork.tabs.homework.postAssignment')}
           </button>
         </div>
 
         {assignments.length === 0 ? (
           <p className="text-sm text-gray-500 text-center py-8">
-            No assignments posted yet.
+            {t('classwork.tabs.homework.noAssignmentsPosted')}
           </p>
         ) : (
           assignments.map(assignment => {
@@ -755,7 +766,7 @@ export function HomeworkTab({
             const canManageAssignment =
               isAdmin || assignment.authorId === currentUser.id;
             const parsedDescription = parseHomeworkInstructions(assignment.description);
-            const submissionLabel = parsedDescription.details.submission ?? 'School Google Doc';
+            const submissionLabel = parsedDescription.details.submission ?? t('classwork.tabs.homework.googleDoc.school');
 
             return (
               <div
@@ -768,7 +779,7 @@ export function HomeworkTab({
                       {assignment.title}
                     </h3>
                     <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-amber-50 text-amber-800">
-                      Due: {formatDueDate(assignment.dueDate)}
+                      {t('common.duePrefix')} {formatDueDate(assignment.dueDate)}
                     </span>
                     <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
                       {submissionLabel}
@@ -784,7 +795,7 @@ export function HomeworkTab({
                         }}
                         disabled={saving}
                         className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100"
-                        aria-label="Edit assignment"
+                        aria-label={t('classwork.tabs.homework.editAssignment')}
                       >
                         <Pencil className="w-4 h-4" />
                       </button>
@@ -793,7 +804,7 @@ export function HomeworkTab({
                         onClick={() => onDeleteAssignment(assignment.id)}
                         disabled={saving}
                         className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100"
-                        aria-label="Delete assignment"
+                        aria-label={t('classwork.tabs.homework.deleteAssignment')}
                       >
                         <Trash className="w-4 h-4" />
                       </button>
@@ -810,7 +821,7 @@ export function HomeworkTab({
                 <div>
                   <div className="flex justify-between text-sm text-gray-600 mb-1">
                     <span>
-                      {submittedCount} / {totalStudents} students submitted
+                      {t('classwork.tabs.homework.studentsSubmitted', { submitted: submittedCount, total: totalStudents })}
                     </span>
                   </div>
                   <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -829,13 +840,13 @@ export function HomeworkTab({
                   <ChevronDown
                     className={`w-4 h-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
                   />
-                  Student Submissions
+                  {t('classwork.tabs.homework.studentSubmissions')}
                 </button>
 
                 {isExpanded && (
                   <div className="border-t border-gray-100 pt-4 space-y-2">
                     {enrolledStudents.length === 0 ? (
-                      <p className="text-sm text-gray-500">No enrolled students.</p>
+                      <p className="text-sm text-gray-500">{t('classwork.assignment.noEnrolledStudents')}</p>
                     ) : (
                       enrolledStudents.map(student => {
                         const sub = getSubmission(assignment.id, student.id);
@@ -861,7 +872,7 @@ export function HomeworkTab({
                                   onClick={() => openDetailModal(sub, assignment)}
                                   className="text-sm text-amber-700 hover:text-amber-900 font-medium"
                                 >
-                                  View submission
+                                  {t('classwork.tabs.homework.viewSubmission')}
                                 </button>
                               )}
                               {sub && status === 'submitted' && (
@@ -871,7 +882,7 @@ export function HomeworkTab({
                                   disabled={saving}
                                   className="px-3 py-1 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
                                 >
-                                  Grade
+                                  {t('classwork.tabs.homework.grade')}
                                 </button>
                               )}
                             </div>
@@ -924,7 +935,7 @@ export function HomeworkTab({
     <div className="space-y-6">
       {assignments.length === 0 ? (
         <p className="text-sm text-gray-500 text-center py-8">
-          No homework assignments yet.
+          {t('classwork.tabs.homework.noAssignments')}
         </p>
       ) : (
         assignments.map(assignment => (

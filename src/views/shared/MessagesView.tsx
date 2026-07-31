@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   MessageSquare,
   Send,
@@ -15,6 +15,8 @@ import {
 import type { Conversation, Course, CourseStudent, Message, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { formatTime } from '../../i18n/formatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
 import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface MessagesViewProps {
@@ -47,12 +49,12 @@ function formatListTimestamp(dateString: string): string {
   startOfYesterday.setDate(startOfYesterday.getDate() - 1);
   const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  if (minutes < 1) return 'Just now';
-  if (minutes < 60) return `${minutes}m ago`;
+  if (minutes < 1) return translate('messages.time.justNow');
+  if (minutes < 60) return translate('messages.time.minutesAgo', { count: minutes });
   if (hours < 24 && startOfDate.getTime() === startOfToday.getTime()) {
-    return `${hours}h ago`;
+    return translate('messages.time.hoursAgo', { count: hours });
   }
-  if (startOfDate.getTime() === startOfYesterday.getTime()) return 'Yesterday';
+  if (startOfDate.getTime() === startOfYesterday.getTime()) return translate('time.yesterday');
   if (diffMs < 7 * 86400000) return formatPlatformDate(dateString);
   return formatPlatformDate(dateString);
 }
@@ -73,8 +75,8 @@ function formatDateDivider(dateString: string): string {
   startOfYesterday.setDate(startOfYesterday.getDate() - 1);
   const startOfDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
 
-  if (startOfDate.getTime() === startOfToday.getTime()) return 'Today';
-  if (startOfDate.getTime() === startOfYesterday.getTime()) return 'Yesterday';
+  if (startOfDate.getTime() === startOfToday.getTime()) return translate('common.today');
+  if (startOfDate.getTime() === startOfYesterday.getTime()) return translate('time.yesterday');
   const diffMs = startOfToday.getTime() - startOfDate.getTime();
   if (diffMs < 7 * 86400000) return formatPlatformDate(dateString);
   return formatPlatformDate(dateString);
@@ -202,6 +204,8 @@ interface MessageBubbleProps {
 }
 
 function MessageBubble({ message, isMine, onDelete }: MessageBubbleProps) {
+  const { t } = useLanguage();
+
   return (
     <div className={`group flex ${isMine ? 'justify-end' : 'justify-start'}`}>
       <div
@@ -221,7 +225,7 @@ function MessageBubble({ message, isMine, onDelete }: MessageBubbleProps) {
               type="button"
               onClick={() => onDelete(message.id)}
               className="opacity-0 group-hover:opacity-100 transition-opacity p-0.5 rounded hover:bg-amber-700"
-              aria-label="Delete message"
+              aria-label={t('messages.delete')}
             >
               <Trash2 className="w-3.5 h-3.5 text-amber-100" />
             </button>
@@ -240,6 +244,7 @@ interface ComposeAreaProps {
 }
 
 function ComposeArea({ newMessage, sending, onChange, onSend }: ComposeAreaProps) {
+  const { t } = useLanguage();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const adjustHeight = () => {
@@ -270,7 +275,7 @@ function ComposeArea({ newMessage, sending, onChange, onSend }: ComposeAreaProps
         onChange={e => onChange(e.target.value)}
         onInput={adjustHeight}
         onKeyDown={handleKeyDown}
-        placeholder="Write a message..."
+        placeholder={t('messages.compose.placeholder')}
         rows={1}
         className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm resize-none focus:ring-2 focus:ring-amber-500 focus:border-transparent max-h-24"
       />
@@ -279,7 +284,7 @@ function ComposeArea({ newMessage, sending, onChange, onSend }: ComposeAreaProps
         onClick={onSend}
         disabled={!newMessage.trim() || sending}
         className="p-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 disabled:opacity-50 disabled:cursor-not-allowed shrink-0"
-        aria-label="Send message"
+        aria-label={t('messages.send')}
       >
         <Send className="w-5 h-5" />
       </button>
@@ -300,6 +305,7 @@ export function MessagesView({
   onMarkAsRead,
   onDeleteMessage,
 }: MessagesViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [composeMode, setComposeMode] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -328,53 +334,59 @@ export function MessagesView({
   const threadMessages = selectedConversation?.messages ?? [];
 
   const otherUserName =
-    selectedConversation?.otherUserName ?? selectedUser?.name ?? 'Unknown';
+    selectedConversation?.otherUserName ?? selectedUser?.name ?? t('common.unknown');
 
   const activeUsers = users.filter(u => u.id !== currentUser.id);
-  const audienceOptions: AudienceOption[] = [
+  const audienceOptions: AudienceOption[] = useMemo(() => [
     {
       key: '@all',
       label: '@all',
-      helper: 'Everyone except you',
+      helper: t('messages.audience.all.helper'),
       icon: Users,
       recipientIds: activeUsers.map(user => user.id),
     },
     {
       key: '@students',
       label: '@students',
-      helper: 'All students',
+      helper: t('messages.audience.students.helper'),
       icon: GraduationCap,
       recipientIds: activeUsers.filter(user => user.roles.includes('student')).map(user => user.id),
     },
     {
       key: '@firstYears',
       label: '@firstYears',
-      helper: 'First Year students',
+      helper: t('messages.audience.firstYears.helper'),
       icon: GraduationCap,
       recipientIds: activeUsers.filter(user => firstYearStudentIds.has(user.id)).map(user => user.id),
     },
     {
       key: '@secondYears',
       label: '@secondYears',
-      helper: 'Second Year students',
+      helper: t('messages.audience.secondYears.helper'),
       icon: GraduationCap,
       recipientIds: activeUsers.filter(user => secondYearStudentIds.has(user.id)).map(user => user.id),
     },
     {
       key: '@teachers',
       label: '@teachers',
-      helper: 'Teachers',
+      helper: t('messages.audience.teachers.helper'),
       icon: UserCheck,
       recipientIds: activeUsers.filter(user => user.roles.includes('teacher')).map(user => user.id),
     },
     {
       key: '@staff',
       label: '@staff',
-      helper: 'Admins, teachers, mentors, translators, leaders',
+      helper: t('messages.audience.staff.helper'),
       icon: ShieldCheck,
       recipientIds: activeUsers.filter(user => user.roles.some(role => role !== 'student' && role !== 'dev')).map(user => user.id),
     },
-  ].map(option => ({ ...option, recipientIds: Array.from(new Set(option.recipientIds)) }));
+  ].map(option => ({ ...option, recipientIds: Array.from(new Set(option.recipientIds)) })), [
+    activeUsers,
+    firstYearStudentIds,
+    secondYearStudentIds,
+    language,
+    t,
+  ]);
 
   const composeCandidates = activeUsers
     .filter(u => u.id !== currentUser.id)
@@ -465,16 +477,16 @@ export function MessagesView({
           }`}
         >
           <div className="px-4 py-4 border-b border-gray-200 flex items-center justify-between gap-2">
-            <h2 className="text-2xl font-bold text-gray-900">Messages</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t('messages.title')}</h2>
             {canStartConversations && (
               <button
                 type="button"
                 onClick={handleNewMessage}
                 className="bg-amber-600 text-white p-2 rounded-lg hover:bg-amber-700 flex items-center gap-1.5 text-sm font-medium"
-                aria-label="New message"
+                aria-label={t('messages.newAria')}
               >
                 <Pencil className="w-4 h-4" />
-                <span className="hidden sm:inline">New Message</span>
+                <span className="hidden sm:inline">{t('messages.new')}</span>
               </button>
             )}
           </div>
@@ -486,7 +498,7 @@ export function MessagesView({
                 type="text"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Search conversations..."
+                placeholder={t('messages.search.placeholder')}
                 className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
               />
             </div>
@@ -498,17 +510,17 @@ export function MessagesView({
                 <div
                   className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
                   role="status"
-                  aria-label="Loading messages"
+                  aria-label={t('messages.loadingAria')}
                 />
-                <p className="text-sm text-gray-400 mt-3">Loading messages...</p>
+                <p className="text-sm text-gray-400 mt-3">{t('messages.loading')}</p>
               </div>
             ) : filteredConversations.length === 0 ? (
               <div className="text-center py-12 px-4">
                 <MessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
                 <p className="text-gray-500 text-sm">
                   {canStartConversations
-                    ? 'No messages yet. Start a conversation!'
-                    : 'No messages yet.'}
+                    ? t('messages.empty.canStart')
+                    : t('messages.empty.readOnly')}
                 </p>
               </div>
             ) : (
@@ -538,16 +550,16 @@ export function MessagesView({
                   type="button"
                   onClick={handleMobileBack}
                   className="lg:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-600"
-                  aria-label="Back to conversations"
+                  aria-label={t('messages.backToConversations')}
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
-                <h3 className="text-lg font-semibold text-gray-900 flex-1">New Message</h3>
+                <h3 className="text-lg font-semibold text-gray-900 flex-1">{t('messages.newMessage')}</h3>
                 <button
                   type="button"
                   onClick={handleCancelCompose}
                   className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
-                  aria-label="Cancel"
+                  aria-label={t('messages.cancel')}
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -555,7 +567,7 @@ export function MessagesView({
 
               <div className="px-4 py-3 border-b border-gray-200 space-y-3">
                 <div>
-                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">Groups</p>
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-gray-500">{t('messages.groups')}</p>
                   <div className="grid gap-2 sm:grid-cols-2">
                     {audienceOptions.map(audience => {
                       const Icon = audience.icon;
@@ -576,7 +588,7 @@ export function MessagesView({
                             </span>
                             <span className="min-w-0">
                               <span className="block text-sm font-semibold text-gray-900">{audience.label}</span>
-                              <span className="block truncate text-xs text-gray-500">{audience.recipientIds.length} recipients · {audience.helper}</span>
+                              <span className="block truncate text-xs text-gray-500">{t('messages.recipientsCount', { count: audience.recipientIds.length, helper: audience.helper })}</span>
                             </span>
                           </span>
                         </button>
@@ -590,7 +602,7 @@ export function MessagesView({
                     type="text"
                     value={composeSearchQuery}
                     onChange={e => setComposeSearchQuery(e.target.value)}
-                    placeholder="Or search for one person..."
+                    placeholder={t('messages.searchPerson.placeholder')}
                     className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent"
                   />
                 </div>
@@ -602,12 +614,12 @@ export function MessagesView({
                     <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4">
                       <p className="text-sm font-semibold text-blue-900">{selectedAudience.label}</p>
                       <p className="mt-1 text-sm text-blue-700">
-                        This message will be sent to {selectedAudience.recipientIds.length} people.
+                        {tCount('messages.willSendTo', selectedAudience.recipientIds.length)}
                       </p>
                     </div>
                   </div>
                 ) : composeCandidates.length === 0 ? (
-                  <p className="text-center text-gray-500 text-sm py-8">No users found.</p>
+                  <p className="text-center text-gray-500 text-sm py-8">{t('messages.noUsers')}</p>
                 ) : (
                   composeCandidates.map(user => (
                     <button
@@ -642,7 +654,7 @@ export function MessagesView({
                   type="button"
                   onClick={handleMobileBack}
                   className="lg:hidden p-1 rounded-lg hover:bg-gray-100 text-gray-600"
-                  aria-label="Back to conversations"
+                  aria-label={t('messages.backToConversations')}
                 >
                   <ArrowLeft className="w-5 h-5" />
                 </button>
@@ -659,7 +671,7 @@ export function MessagesView({
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-semibold text-gray-900 truncate">{selectedConversation?.audienceLabel ?? otherUserName}</p>
                   {selectedConversation?.audienceKey && (
-                    <p className="text-xs text-gray-500">{selectedConversation.recipientIds.length} recipients</p>
+                    <p className="text-xs text-gray-500">{tCount('messages.recipientsLabel', selectedConversation.recipientIds.length)}</p>
                   )}
                 </div>
               </div>
@@ -667,7 +679,7 @@ export function MessagesView({
               <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
                 {threadMessages.length === 0 ? (
                   <p className="text-center text-gray-400 text-sm py-8">
-                    No messages yet. Say hello!
+                    {t('messages.threadEmpty')}
                   </p>
                 ) : (
                   groupMessagesByDate(threadMessages).map(group => (
@@ -695,7 +707,7 @@ export function MessagesView({
 
               {selectedConversation?.audienceKey && (
                 <div className="border-t border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">
-                  Audience messages are broadcast copies. Replies happen as direct conversations with the admin.
+                  {t('messages.audienceNotice')}
                 </div>
               )}
 
@@ -715,8 +727,8 @@ export function MessagesView({
               <MessageSquare className="w-16 h-16 text-gray-300 mb-4" />
               <p className="text-gray-500">
                 {canStartConversations
-                  ? 'Select a conversation or start a new one'
-                  : 'Select a conversation'}
+                  ? t('messages.selectPrompt.canStart')
+                  : t('messages.selectPrompt.readOnly')}
               </p>
             </div>
           )}

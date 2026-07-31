@@ -7,6 +7,8 @@ import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
 import { queueWorkflowEmail } from '../../utils/notificationJobs';
 import type { HomeworkDetailSelection, HomeworkRow, SubjectRun } from './classwork/types';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
 
 type SubmissionsScope = 'admin' | 'teacher';
 
@@ -57,7 +59,7 @@ function mapHomeworkComment(row: HomeworkCommentRow) {
     id: row.id,
     submissionId: row.submission_id,
     authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? 'Unknown',
+    authorName: row.author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
@@ -96,12 +98,12 @@ function getAssignmentCourse(assignment: SubmissionQueueRow['assignment'], cours
   ) ?? null;
 }
 
-function toHomeworkSubmission(row: SubmissionQueueRow): HomeworkSubmission {
+function toHomeworkSubmission(row: SubmissionQueueRow, unknownStudentLabel: string): HomeworkSubmission {
   return {
     id: row.id,
     assignmentId: row.assignment_id,
     studentId: row.student_id,
-    studentName: row.student?.name ?? 'Unknown',
+    studentName: row.student?.name ?? unknownStudentLabel,
     submissionType: row.submission_type,
     driveFileId: null,
     driveViewUrl: row.drive_view_url,
@@ -123,6 +125,7 @@ function toHomeworkSubmission(row: SubmissionQueueRow): HomeworkSubmission {
 }
 
 export function SubmissionsView({ scope, currentUser, courses, courseStudents, users }: SubmissionsViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [rows, setRows] = useState<SubmissionQueueRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -131,6 +134,9 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
   const [expandedAssignmentIds, setExpandedAssignmentIds] = useState<Set<number>>(new Set());
   const [refreshKey, setRefreshKey] = useState(0);
   const [emailingKey, setEmailingKey] = useState<string | null>(null);
+
+  const unknownStudentLabel = useMemo(() => t('submissions.unknownStudent'), [language, t]);
+  const assignmentFallbackLabel = useMemo(() => t('submissions.assignmentFallback'), [language, t]);
 
   const scopedCourseIds = useMemo(() => getScopedCourseIds(scope, currentUser, courses), [courses, currentUser, scope]);
   const scopedStudentIds = useMemo(() => new Set(courseStudents
@@ -209,7 +215,7 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
     const run: SubjectRun = {
       key: `submission-${row.assignment.id}`,
       subjectId: row.assignment.subject_id,
-      subjectTitle: course?.subjects.find(subject => subject.id === row.assignment?.subject_id)?.title ?? 'Assignment',
+      subjectTitle: course?.subjects.find(subject => subject.id === row.assignment?.subject_id)?.title ?? assignmentFallbackLabel,
       course,
       items: [],
     };
@@ -253,11 +259,11 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
           .select('student_id, status')
           .eq('assignment_id', group.assignment.id)
           .in('student_id', courseStudentIds);
-        const rows = (data ?? []) as Array<{ student_id: string; status: string }>;
+        const submissionRows = (data ?? []) as Array<{ student_id: string; status: string }>;
         if (status === 'returned') {
-          recipientIds = rows.filter(row => row.status === 'returned').map(row => row.student_id);
+          recipientIds = submissionRows.filter(row => row.status === 'returned').map(row => row.student_id);
         } else {
-          const submitted = new Set(rows.filter(row => row.status !== 'returned').map(row => row.student_id));
+          const submitted = new Set(submissionRows.filter(row => row.status !== 'returned').map(row => row.student_id));
           recipientIds = courseStudentIds.filter(studentId => !submitted.has(studentId));
         }
       }
@@ -265,24 +271,26 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       const uniqueRecipients = Array.from(new Set(recipientIds));
       if (uniqueRecipients.length === 0) return;
 
-      const statusLabel = status === 'submitted'
-        ? 'submitted work'
+      const statusLabelKey = status === 'submitted'
+        ? 'submissions.emailStatus.submitted'
         : status === 'returned'
-          ? 'returned work'
-          : 'missing work';
+          ? 'submissions.emailStatus.returned'
+          : 'submissions.emailStatus.missing';
+      const statusLabel = t(statusLabelKey);
+      const title = group.assignment.title;
       await queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: uniqueRecipients,
-        subject: `Assignment reminder: ${group.assignment.title}`,
-        title: group.assignment.title,
+        subject: t('submissions.email.subject', { title }),
+        title,
         body: status === 'submitted'
-          ? `This is a note about your submitted work for ${group.assignment.title}.`
+          ? t('submissions.email.body.submitted', { title })
           : status === 'returned'
-            ? `Your work for ${group.assignment.title} was returned for revision. Please review it.`
-            : `You have not submitted ${group.assignment.title} yet. Please complete it as soon as possible.`,
+            ? t('submissions.email.body.returned', { title })
+            : t('submissions.email.body.missing', { title }),
         kind: 'assignment',
       });
-      window.alert(`Email queued for ${uniqueRecipients.length} student${uniqueRecipients.length === 1 ? '' : 's'} with ${statusLabel}.`);
+      window.alert(tCount('submissions.emailQueued', uniqueRecipients.length, { statusLabel }));
     } finally {
       setEmailingKey(null);
     }
@@ -305,7 +313,7 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
         currentUser={currentUser}
         users={users}
         courseStudents={courseStudents}
-        homeworkSubmissions={rows.map(toHomeworkSubmission)}
+        homeworkSubmissions={rows.map(row => toHomeworkSubmission(row, unknownStudentLabel))}
         initialReviewSubmissionId={selectedReviewSubmissionId}
         onBack={() => {
           setSelectedReviewSubmissionId(null);
@@ -323,12 +331,12 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       <div className="border-l-2 border-[#171717] pl-4">
         <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Review queue</p>
-            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">Submissions</h1>
-            <p className="mt-1 text-sm text-[#737373]">Submitted work waiting for staff review.</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('submissions.eyebrow')}</p>
+            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('submissions.title')}</h1>
+            <p className="mt-1 text-sm text-[#737373]">{t('submissions.subtitle')}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2 lg:justify-end">
-            <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">{submittedCount} ready to review</span>
+            <span className="inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8]">{tCount('submissions.readyToReview', submittedCount)}</span>
           </div>
         </div>
       </div>
@@ -336,18 +344,19 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-0 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-          <input value={query} onChange={event => setQuery(event.target.value)} placeholder="Search student or assignment" className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717]" />
+          <input value={query} onChange={event => setQuery(event.target.value)} placeholder={t('submissions.search.placeholder')} className="tbo-focus h-10 w-full border-0 border-b border-[#d4d4d4] bg-transparent pl-7 pr-3 text-sm font-medium text-[#171717]" />
         </div>
       </div>
 
       <div className="space-y-3">
         {loading ? (
-          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">Loading submissions...</p>
+          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-6 text-sm text-[#737373]">{t('submissions.loading')}</p>
         ) : groupedSubmissions.length === 0 ? (
-          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-sm text-[#737373]">No submissions need review.</p>
+          <p className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-sm text-[#737373]">{t('submissions.empty')}</p>
         ) : groupedSubmissions.map(group => {
           const expanded = expandedAssignmentIds.has(group.assignment.id);
           const submitted = group.rows.filter(row => row.status === 'submitted').length;
+          const reviewDate = group.assignment.grading_due_date ?? group.assignment.due_date;
           return (
             <section key={group.assignment.id} className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
               <div className="grid gap-3 px-4 py-3 md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center">
@@ -355,28 +364,28 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
                   type="button"
                   onClick={() => toggleAssignment(group.assignment.id)}
                   className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5]"
-                  aria-label={expanded ? 'Collapse assignment' : 'Expand assignment'}
+                  aria-label={expanded ? t('submissions.collapseAssignment') : t('submissions.expandAssignment')}
                 >
                   {expanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                 </button>
                 <button type="button" onClick={() => openSubmission(group.rows[0])} className="tbo-focus min-w-0 text-left">
                   <span className="block truncate text-sm font-semibold text-[#171717]">{group.assignment.title}</span>
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373]">
-                    <span>Review by {group.assignment.grading_due_date ?? group.assignment.due_date ?? 'no date'}</span>
+                    <span>{reviewDate ? t('submissions.reviewBy', { date: reviewDate }) : t('submissions.reviewByNoDate')}</span>
                     {group.course ? <ActiveYearGroupBadge course={group.course} size="sm" /> : null}
                   </span>
                 </button>
                 <div className="flex flex-wrap items-center gap-2 md:justify-end">
                   <button type="button" onClick={() => void emailAssignmentStatus(group, 'missing')} disabled={emailingKey === `${group.assignment.id}-missing`} className="tbo-focus rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5] disabled:opacity-50">
-                    Remind missing
+                    {t('submissions.remindMissing')}
                   </button>
                   <button type="button" onClick={() => void emailAssignmentStatus(group, 'submitted')} disabled={emailingKey === `${group.assignment.id}-submitted`} className="tbo-focus rounded-lg border border-[#bfdbfe] bg-[#eff6ff] px-2.5 py-1.5 text-xs font-semibold text-[#1d4ed8] hover:bg-[#dbeafe] disabled:opacity-50">
-                    Email submitted
+                    {t('submissions.emailSubmitted')}
                   </button>
                   <button type="button" onClick={() => void emailAssignmentStatus(group, 'returned')} disabled={emailingKey === `${group.assignment.id}-returned`} className="tbo-focus rounded-lg border border-[#e5e5e5] bg-white px-2.5 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50">
-                    Email returned
+                    {t('submissions.emailReturned')}
                   </button>
-                  <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{submitted} submitted</span>
+                  <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{tCount('submissions.submitted', submitted)}</span>
                   <ArrowUpRight className="h-4 w-4 text-[#a3a3a3]" />
                 </div>
               </div>
@@ -394,14 +403,14 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
                         <span className="flex min-w-0 items-center gap-3">
                           {student ? <UserAvatar user={student} size="sm" /> : <span className="h-8 w-8 rounded-full bg-[#f5f5f5]" />}
                           <span className="min-w-0">
-                            <span className="block truncate text-sm font-semibold text-[#171717]">{row.student?.name ?? 'Unknown student'}</span>
-                            <span className="block text-xs text-[#737373]">Open assignment to review this work</span>
+                            <span className="block truncate text-sm font-semibold text-[#171717]">{row.student?.name ?? unknownStudentLabel}</span>
+                            <span className="block text-xs text-[#737373]">{t('submissions.openToReview')}</span>
                           </span>
                         </span>
                         <span className="flex items-center justify-end gap-3">
                           <span className="inline-flex items-center gap-1.5 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
                             <FileText className="h-3.5 w-3.5" />
-                            Submitted
+                            {t('submissions.status.submitted')}
                           </span>
                           <ArrowUpRight className="h-4 w-4 text-[#a3a3a3]" />
                         </span>

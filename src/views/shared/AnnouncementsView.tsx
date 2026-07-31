@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Megaphone,
   Pin,
@@ -28,6 +28,7 @@ import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import { translate, translateCount } from '../../i18n/translate';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { formatFileSize } from '../../utils/formatFileSize';
@@ -82,29 +83,38 @@ interface AnnouncementsViewProps {
 
 type FilterValue = 'all' | Announcement['type'] | 'draft' | 'scheduled' | 'pending_review' | 'trash';
 
-const FILTER_OPTIONS: { value: FilterValue; label: string }[] = [
-  { value: 'all', label: 'All' },
-  { value: 'post', label: 'Posts' },
-  { value: 'homework', label: 'Homework' },
-  { value: 'material', label: 'Materials' },
-  { value: 'system', label: 'System' },
-  { value: 'scheduled', label: 'Scheduled' },
-  { value: 'pending_review', label: 'Pending review' },
-  { value: 'draft', label: 'Drafts' },
-  { value: 'trash', label: 'Trash' },
+const FILTER_VALUES: FilterValue[] = [
+  'all',
+  'post',
+  'homework',
+  'material',
+  'system',
+  'scheduled',
+  'pending_review',
+  'draft',
+  'trash',
 ];
 
-const REACTION_OPTIONS = ['👍', '❤️', '🙏', '🔥', '🎉'];
-
-const TYPE_BADGE: Record<
-  Announcement['type'],
-  { label: string }
-> = {
-  post: { label: 'Post' },
-  homework: { label: 'Homework' },
-  material: { label: 'Material' },
-  system: { label: 'System' },
+const FILTER_KEY_MAP: Record<FilterValue, TranslationKey> = {
+  all: 'announcements.filter.all',
+  post: 'announcements.filter.posts',
+  homework: 'announcements.filter.homework',
+  material: 'announcements.filter.materials',
+  system: 'announcements.filter.system',
+  scheduled: 'announcements.scheduled',
+  pending_review: 'announcements.filter.pendingReview',
+  draft: 'announcements.filter.drafts',
+  trash: 'announcements.trash',
 };
+
+const TYPE_LABEL_KEYS: Record<Announcement['type'], TranslationKey> = {
+  post: 'announcements.type.post',
+  homework: 'announcements.type.homework',
+  material: 'announcements.type.material',
+  system: 'announcements.type.system',
+};
+
+const REACTION_OPTIONS = ['👍', '❤️', '🙏', '🔥', '🎉'];
 
 const TYPE_BADGE_CLASS: Record<Announcement['type'], string> = {
   post: 'bg-[#dbeaff] text-[#171717]',
@@ -141,10 +151,10 @@ function getInitials(name: string | null | undefined): string {
 }
 
 function getAnnouncementStatusLabel(announcement: Announcement): string | null {
-  if (announcement.status === 'draft') return 'Draft';
-  if (announcement.status === 'scheduled') return 'Scheduled';
-  if (announcement.status === 'pending_review') return 'Pending review';
-  if (announcement.status === 'archived') return 'Trash';
+  if (announcement.status === 'draft') return translate('announcements.draft');
+  if (announcement.status === 'scheduled') return translate('announcements.scheduled');
+  if (announcement.status === 'pending_review') return translate('announcements.status.pendingReview');
+  if (announcement.status === 'archived') return translate('announcements.trash');
   return null;
 }
 
@@ -162,14 +172,14 @@ function getLocalizedAnnouncement(announcement: Announcement, language: AppLangu
     return {
       title: englishTitle,
       content: englishContent,
-      fallbackLanguage: language === 'bg' ? 'English' : null,
+      fallbackLanguage: language === 'bg' ? translate('common.language.english') : null,
     };
   }
 
   return {
-    title: bgTitle || englishTitle || 'Untitled post',
+    title: bgTitle || englishTitle || translate('announcements.untitledPost'),
     content: bgContent || englishContent || '',
-    fallbackLanguage: language === 'en' && bgTitle && bgContent ? 'Bulgarian' : null,
+    fallbackLanguage: language === 'en' && bgTitle && bgContent ? translate('common.language.bulgarian') : null,
   };
 }
 
@@ -182,12 +192,12 @@ function isAnnouncementEdited(announcement: Announcement): boolean {
 
 function getAudienceBadgeLabel(announcement: Announcement): string | null {
   const tokens = announcement.targetRoles ?? [];
-  if (tokens.some(token => token.startsWith('user:'))) return 'Custom';
-  if (tokens.includes('audience:staff')) return 'Staff';
-  if (tokens.includes('role:teacher')) return 'Teachers';
-  if (tokens.includes('course:first_year')) return 'First Year Students';
-  if (tokens.includes('course:second_year')) return 'Second Year Students';
-  if (announcement.isStaffOnly) return 'Staff only';
+  if (tokens.some(token => token.startsWith('user:'))) return translate('announcements.audience.custom');
+  if (tokens.includes('audience:staff')) return translate('announcements.audience.staff');
+  if (tokens.includes('role:teacher')) return translate('announcements.audience.teachers');
+  if (tokens.includes('course:first_year')) return translate('announcements.audience.firstYearStudents');
+  if (tokens.includes('course:second_year')) return translate('announcements.audience.secondYearStudents');
+  if (announcement.isStaffOnly) return translate('announcements.audience.staffOnly');
   return null;
 }
 
@@ -200,28 +210,28 @@ function getAttachmentOpenUrl(attachment: AnnouncementAttachment): string | null
 
 function getAttachmentLabel(attachment: AnnouncementAttachment): string {
   if (attachment.attachmentType === 'file') {
-    return attachment.fileName ?? 'File';
+    return attachment.fileName ?? translate('announcements.attachment.file');
   }
   if (attachment.attachmentType === 'google_doc') {
-    return attachment.linkTitle ?? 'Google Doc';
+    return attachment.linkTitle ?? translate('announcements.attachment.googleDoc');
   }
   if (attachment.attachmentType === 'google_sheet') {
-    return attachment.linkTitle ?? 'Google Sheet';
+    return attachment.linkTitle ?? translate('announcements.attachment.googleSheet');
   }
   if (attachment.attachmentType === 'link') {
-    return attachment.linkTitle ?? attachment.linkUrl ?? 'Link';
+    return attachment.linkTitle ?? attachment.linkUrl ?? translate('announcements.attachment.link');
   }
-  return attachment.linkTitle ?? 'Google Slides';
+  return attachment.linkTitle ?? translate('announcements.attachment.googleSlides');
 }
 
 function getAttachmentTypeLabel(attachment: AnnouncementAttachment): string {
   if (attachment.attachmentType === 'file') {
-    return attachment.mimeType?.startsWith('image/') ? 'Image' : 'File';
+    return attachment.mimeType?.startsWith('image/') ? translate('announcements.attachment.image') : translate('announcements.attachment.file');
   }
-  if (attachment.attachmentType === 'google_doc') return 'Google Doc';
-  if (attachment.attachmentType === 'google_sheet') return 'Google Sheet';
-  if (attachment.attachmentType === 'link') return 'Link';
-  return 'Google Slides';
+  if (attachment.attachmentType === 'google_doc') return translate('announcements.attachment.googleDoc');
+  if (attachment.attachmentType === 'google_sheet') return translate('announcements.attachment.googleSheet');
+  if (attachment.attachmentType === 'link') return translate('announcements.attachment.link');
+  return translate('announcements.attachment.googleSlides');
 }
 
 function AttachmentTypeIcon({ attachment }: { attachment: AnnouncementAttachment }) {
@@ -277,6 +287,7 @@ function AnnouncementAttachmentsRow({
   onDeleteAttachment,
   onPreviewAttachment,
 }: AnnouncementAttachmentsRowProps) {
+  const { t } = useLanguage();
   if (attachments.length === 0) return null;
 
   return (
@@ -315,7 +326,7 @@ function AnnouncementAttachmentsRow({
                   type="button"
                   onClick={() => onPreviewAttachment(preview)}
                   className="tbo-focus inline-flex min-w-0 items-center gap-2 text-left"
-                  title={`Preview ${getAttachmentLabel(attachment)}`}
+                  title={t('announcements.attachment.preview', { name: getAttachmentLabel(attachment) })}
                 >
                   {chipContent}
                 </button>
@@ -340,7 +351,7 @@ function AnnouncementAttachmentsRow({
                 type="button"
                 onClick={() => onDeleteAttachment(attachment.id, attachment.storagePath)}
                 className="grid h-6 w-6 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 hover:bg-[#fef2f2] hover:text-red-600 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100"
-                aria-label="Remove attachment"
+                aria-label={t('announcements.attachment.remove')}
               >
                 <X className="h-3.5 w-3.5" />
               </button>
@@ -397,8 +408,8 @@ function AnnouncementCard({
   onPreviewAttachment,
   canComment,
 }: AnnouncementCardProps) {
-  const { language, t } = useLanguage();
-  const typeBadge = TYPE_BADGE[announcement.type];
+  const { language, t, tCount } = useLanguage();
+  const typeLabel = t(TYPE_LABEL_KEYS[announcement.type]);
   const localized = getLocalizedAnnouncement(announcement, language);
   const course =
     announcement.courseId !== null
@@ -407,7 +418,7 @@ function AnnouncementCard({
   const comments = announcement.comments ?? [];
   const commentCount = comments.length;
   const canManage = isAdmin || announcement.authorId === currentUser.id;
-  const authorName = announcement.authorName ?? 'Unknown';
+  const authorName = announcement.authorName ?? t('common.unknown');
   const authorAvatarUrl = announcement.authorAvatarUrl ?? (announcement.authorId === currentUser.id ? currentUser.avatarUrl : null);
   const attachments = announcement.attachments ?? [];
   const fileAttachmentCount = attachments.filter(attachment => attachment.attachmentType === 'file').length;
@@ -444,7 +455,7 @@ function AnnouncementCard({
             className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium ${TYPE_BADGE_CLASS[announcement.type]}`}
           >
             <AnnouncementTypeIcon type={announcement.type} />
-            {typeBadge.label}
+            {typeLabel}
           </span>
           {statusLabel && (
             <span className="inline-flex items-center gap-1 rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium text-[#525252] ring-1 ring-[#e5e5e5]">
@@ -509,7 +520,7 @@ function AnnouncementCard({
               type="button"
               onClick={() => onTogglePin(announcement.id, announcement.isPinned)}
               className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fff7ed] hover:text-[#d97706]"
-              aria-label={announcement.isPinned ? 'Unpin post' : 'Pin post'}
+              aria-label={announcement.isPinned ? t('announcements.action.unpinPost') : t('announcements.action.pinPost')}
             >
               <Pin className="w-4 h-4" />
             </button>
@@ -519,10 +530,10 @@ function AnnouncementCard({
               type="button"
               onClick={() => onApprove(announcement.id)}
               className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#ecfdf5] px-2.5 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-[#d1fae5]"
-              aria-label="Approve post"
+              aria-label={t('announcements.action.approvePost')}
             >
               <CheckCircle2 className="h-4 w-4" />
-              Approve
+              {t('announcements.action.approve')}
             </button>
           )}
           {isArchived && isAdmin ? (
@@ -531,7 +542,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onRestore(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#ecfdf5] hover:text-emerald-700"
-                aria-label="Restore post"
+                aria-label={t('announcements.action.restorePost')}
               >
                 <RotateCcw className="h-4 w-4" />
               </button>
@@ -539,7 +550,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onPermanentDelete(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
-                aria-label="Permanently delete post"
+                aria-label={t('announcements.action.permanentlyDeletePost')}
               >
                 <Trash className="h-4 w-4" />
               </button>
@@ -550,7 +561,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onEdit(announcement)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#dbeaff] hover:text-[#2563eb]"
-                aria-label="Edit post"
+                aria-label={t('announcements.action.editPost')}
               >
                 <Pencil className="w-4 h-4" />
               </button>
@@ -558,7 +569,7 @@ function AnnouncementCard({
                 type="button"
                 onClick={() => onDelete(announcement.id)}
                 className="tbo-focus rounded-lg p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600"
-                aria-label="Delete post"
+                aria-label={t('announcements.action.deletePost')}
               >
                 <Trash className="w-4 h-4" />
               </button>
@@ -614,7 +625,7 @@ function AnnouncementCard({
                           ? 'border-[#e5e5e5] bg-white text-[#525252] hover:border-[#d4d4d4] hover:bg-[#f5f5f5]'
                           : 'border-transparent bg-transparent text-[#a3a3a3] hover:bg-white hover:text-[#525252]'
                     } disabled:cursor-not-allowed disabled:opacity-50`}
-                    aria-label={`React ${emoji}`}
+                    aria-label={t('announcements.reaction.react', { emoji })}
                   >
                     <span>{emoji}</span>
                     {count > 0 && <span className="text-xs font-semibold">{count}</span>}
@@ -622,7 +633,7 @@ function AnnouncementCard({
                   {count > 0 && (
                     <span className="pointer-events-none absolute bottom-full left-0 z-30 mb-2 hidden w-64 rounded-2xl border border-[#e5e5e5] bg-white p-3 text-left shadow-[0_16px_40px_rgba(15,23,42,0.14)] group-hover:block group-focus-within:block">
                       <span className="mb-2 flex items-center justify-between gap-3">
-                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{emoji} reactions</span>
+                        <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('announcements.reaction.header', { emoji })}</span>
                         <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#525252]">
                           {count}
                         </span>
@@ -638,7 +649,7 @@ function AnnouncementCard({
                         ))}
                         {hiddenReactionUserCount > 0 && (
                           <span className="rounded-lg bg-[#fafafa] px-2 py-1 text-xs font-medium text-[#737373]">
-                            +{hiddenReactionUserCount} more
+                            {tCount('announcements.reaction.more', hiddenReactionUserCount)}
                           </span>
                         )}
                       </span>
@@ -654,14 +665,14 @@ function AnnouncementCard({
             className="tbo-focus inline-flex items-center gap-2 rounded-lg text-sm font-medium text-[#525252] hover:text-[#171717]"
           >
             <MessageCircle className="h-4 w-4" />
-            {commentCount} comment{commentCount !== 1 ? 's' : ''}
+            {tCount('announcements.comments.count', commentCount)}
           </button>
         </div>
 
         {isCommentsExpanded && (
           <div className="mt-3 space-y-3">
             {comments.length === 0 ? (
-              <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-white px-3 py-3 text-sm text-[#737373]">No comments yet.</p>
+              <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-white px-3 py-3 text-sm text-[#737373]">{t('announcements.comments.empty')}</p>
             ) : (
               comments.map(comment => (
                 <div key={comment.id} className="rounded-xl border border-[#e5e5e5] bg-white p-3">
@@ -679,7 +690,7 @@ function AnnouncementCard({
                         onClick={() => onDeleteComment(comment.id)}
                         className="flex-shrink-0 rounded-md px-2 py-1 text-xs text-red-600 hover:bg-[#fef2f2] hover:text-red-800"
                       >
-                        Delete
+                        {t('common.delete')}
                       </button>
                     )}
                   </div>
@@ -699,7 +710,7 @@ function AnnouncementCard({
                       handlePostComment();
                     }
                   }}
-                  placeholder="Add a comment"
+                  placeholder={t('announcements.comments.placeholder')}
                   className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
                 />
                 <button
@@ -709,12 +720,12 @@ function AnnouncementCard({
                   className="tbo-focus inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
                 >
                   <Send className="h-3.5 w-3.5" />
-                  <span>Post</span>
+                  <span>{t('common.post')}</span>
                 </button>
               </div>
             ) : (
               <p className="rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 text-sm text-[#737373]">
-                Comments are closed for this Stream item.
+                {t('announcements.comments.closed')}
               </p>
             )}
           </div>
@@ -746,7 +757,7 @@ export function AnnouncementsView({
   openCreateOnMount = false,
   onCreateFlowClosed,
 }: AnnouncementsViewProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [filter, setFilter] = useState<FilterValue>('all');
   const [modalOpen, setModalOpen] = useState(openCreateOnMount);
   const [editingAnnouncement, setEditingAnnouncement] = useState<Announcement | null>(null);
@@ -788,11 +799,16 @@ export function AnnouncementsView({
     setModalOpen(true);
   }, [canCreateAnnouncement, openCreateOnMount]);
 
-  const visibleFilterOptions = FILTER_OPTIONS.filter(option => {
-    if (option.value === 'trash') return isAdmin;
-    if (option.value === 'scheduled' || option.value === 'draft' || option.value === 'pending_review') return canCreateAnnouncement;
-    return true;
-  });
+  const visibleFilterOptions = useMemo(
+    () => FILTER_VALUES
+      .filter(value => {
+        if (value === 'trash') return isAdmin;
+        if (value === 'scheduled' || value === 'draft' || value === 'pending_review') return canCreateAnnouncement;
+        return true;
+      })
+      .map(value => ({ value, label: t(FILTER_KEY_MAP[value]) })),
+    [canCreateAnnouncement, isAdmin, language, t],
+  );
 
   useEffect(() => {
     if (studentComposerCourseId && studentPostCourses.some(course => course.id === studentComposerCourseId)) return;
@@ -856,7 +872,7 @@ export function AnnouncementsView({
   const regularList = filteredList.filter(a => !a.isPinned);
 
   const activeFilterLabel =
-    FILTER_OPTIONS.find(option => option.value === filter)?.label.toLowerCase() ?? filter;
+    visibleFilterOptions.find(option => option.value === filter)?.label.toLowerCase() ?? filter;
 
   const toggleComments = (id: number) => {
     setExpandedComments(prev => {
@@ -967,8 +983,8 @@ export function AnnouncementsView({
                   type="button"
                   onClick={() => setSettingsOpen(true)}
                   className="tbo-focus grid h-10 w-10 place-items-center rounded-lg border border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  aria-label="Stream settings"
-                  title="Stream settings"
+                  aria-label={t('announcements.settings.buttonAria')}
+                  title={t('announcements.settings.buttonTitle')}
                 >
                   <Settings className="h-4 w-4" />
                 </button>
@@ -990,19 +1006,19 @@ export function AnnouncementsView({
 
       {settingsOpen && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/40 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSettingsOpen(false)} aria-label="Close stream settings" />
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSettingsOpen(false)} aria-label={t('announcements.settings.close')} />
           <section role="dialog" aria-modal="true" className="relative max-h-[90vh] w-full overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-2xl sm:max-w-2xl sm:rounded-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">Stream settings</p>
-                <h3 className="mt-1 text-xl font-semibold text-[#171717]">Student permissions</h3>
-                <p className="mt-1 text-sm text-[#737373]">Decide what students can do in each active year group.</p>
+                <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('announcements.settings.title')}</p>
+                <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('announcements.settings.heading')}</h3>
+                <p className="mt-1 text-sm text-[#737373]">{t('announcements.settings.subtitle')}</p>
               </div>
               <button
                 type="button"
                 onClick={() => setSettingsOpen(false)}
                 className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
-                aria-label="Close"
+                aria-label={t('common.close')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1026,21 +1042,21 @@ export function AnnouncementsView({
                     <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
                       <div className="min-w-0">
                         <span className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] ${tone.chip}`}>
-                          Year group
+                          {t('announcements.settings.yearGroup')}
                         </span>
                         <h4 className="mt-2 truncate text-base font-semibold text-[#171717]">{getCourseDisplayName(course)}</h4>
-                        <p className="mt-0.5 text-xs text-[#737373]">Default is comment only until changed.</p>
+                        <p className="mt-0.5 text-xs text-[#737373]">{t('announcements.settings.defaultHint')}</p>
                       </div>
                       <label className="block">
-                        <span className="mb-1 block text-xs font-semibold text-[#737373]">Student access</span>
+                        <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('announcements.settings.studentAccess')}</span>
                         <select
                           value={setting.permission}
                           onChange={event => streamSettings.updateSetting(course.id, { permission: event.target.value as any })}
                           className="h-10 w-full rounded-xl border border-white/70 bg-white px-3 text-sm font-semibold text-[#525252] shadow-sm sm:w-44"
                         >
-                          <option value="students_post_comment">Post & comment</option>
-                          <option value="students_comment">Comment only</option>
-                          <option value="staff_only">Staff only</option>
+                          <option value="students_post_comment">{t('announcements.settings.permission.postComment')}</option>
+                          <option value="students_comment">{t('announcements.settings.permission.commentOnly')}</option>
+                          <option value="staff_only">{t('announcements.settings.permission.staffOnly')}</option>
                         </select>
                       </label>
                     </div>
@@ -1054,8 +1070,8 @@ export function AnnouncementsView({
                           className="mt-1 h-4 w-4 rounded border-[#d4d4d4]"
                         />
                         <span>
-                          <span className="block text-sm font-semibold text-[#171717]">Approve student posts</span>
-                          <span className="text-xs text-[#737373]">Student posts wait for review before appearing.</span>
+                          <span className="block text-sm font-semibold text-[#171717]">{t('announcements.settings.approveStudentPosts')}</span>
+                          <span className="text-xs text-[#737373]">{t('announcements.settings.approveStudentPostsHint')}</span>
                         </span>
                       </label>
 
@@ -1067,27 +1083,27 @@ export function AnnouncementsView({
                           className="mt-1 h-4 w-4 rounded border-[#d4d4d4]"
                         />
                         <span>
-                          <span className="block text-sm font-semibold text-[#171717]">Student attachments</span>
-                          <span className="text-xs text-[#737373]">Allow files/links on student Stream posts.</span>
+                          <span className="block text-sm font-semibold text-[#171717]">{t('announcements.settings.studentAttachments')}</span>
+                          <span className="text-xs text-[#737373]">{t('announcements.settings.studentAttachmentsHint')}</span>
                         </span>
                       </label>
 
                       <label className="block rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
-                        <span className="mb-1 block text-sm font-semibold text-[#171717]">Email notifications</span>
+                        <span className="mb-1 block text-sm font-semibold text-[#171717]">{t('announcements.settings.emailNotifications')}</span>
                         <select
                           value={setting.emailNotifications}
                           onChange={event => streamSettings.updateSetting(course.id, { emailNotifications: event.target.value as any })}
                           className="h-10 w-full rounded-lg border border-[#e5e5e5] bg-white px-3 text-sm text-[#525252]"
                         >
-                          <option value="all_posts">All posts</option>
-                          <option value="staff_and_pinned">Staff and pinned</option>
-                          <option value="pinned_only">Pinned only</option>
-                          <option value="none">None</option>
+                          <option value="all_posts">{t('announcements.settings.email.allPosts')}</option>
+                          <option value="staff_and_pinned">{t('announcements.settings.email.staffAndPinned')}</option>
+                          <option value="pinned_only">{t('announcements.settings.email.pinnedOnly')}</option>
+                          <option value="none">{t('announcements.settings.email.none')}</option>
                         </select>
                       </label>
 
                       <label className="block rounded-xl border border-white/70 bg-white/85 p-3 shadow-sm">
-                        <span className="mb-1 block text-sm font-semibold text-[#171717]">Pinned post limit</span>
+                        <span className="mb-1 block text-sm font-semibold text-[#171717]">{t('announcements.settings.pinnedPostLimit')}</span>
                         <div className="flex items-center gap-3">
                           <input
                             type="range"
@@ -1115,7 +1131,7 @@ export function AnnouncementsView({
         <div className="tbo-panel p-4">
           <div className="flex flex-col gap-3">
             <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <p className="text-sm font-semibold text-[#171717]">Share with your year group</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('announcements.composer.shareTitle')}</p>
               {studentPostCourses.length > 1 && (
                 <select
                   value={studentComposerCourseId ?? ''}
@@ -1131,12 +1147,12 @@ export function AnnouncementsView({
             <textarea
               value={studentComposerText}
               onChange={event => setStudentComposerText(event.target.value)}
-              placeholder="Ask a question or share something with your class..."
+              placeholder={t('announcements.composer.placeholder')}
               className="tbo-focus min-h-24 rounded-xl border border-[#d4d4d4] bg-white p-3 text-sm"
             />
             {selectedStudentComposerSetting?.requireStudentPostApproval && (
               <div className="rounded-xl border border-[#fde68a] bg-[#fffbeb] px-3 py-2 text-xs font-medium text-[#92400e]">
-                Your post will be sent to an administrator for review before it appears in Stream.
+                {t('announcements.composer.reviewNotice')}
               </div>
             )}
             {canAttachToStudentPost && (
@@ -1144,7 +1160,7 @@ export function AnnouncementsView({
                 <label className="block">
                   <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#525252]">
                     <Upload className="h-3.5 w-3.5" />
-                    File
+                    {t('announcements.composer.file')}
                   </span>
                   <input
                     type="file"
@@ -1159,19 +1175,19 @@ export function AnnouncementsView({
                   <label className="block">
                     <span className="mb-1 flex items-center gap-1.5 text-xs font-semibold text-[#525252]">
                       <Link className="h-3.5 w-3.5" />
-                      Link
+                      {t('announcements.composer.link')}
                     </span>
                     <input
                       value={studentComposerLinkUrl}
                       onChange={event => setStudentComposerLinkUrl(event.target.value)}
-                      placeholder="https://..."
+                      placeholder={t('announcements.composer.linkUrlPlaceholder')}
                       className="tbo-focus h-9 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
                     />
                   </label>
                   <input
                     value={studentComposerLinkTitle}
                     onChange={event => setStudentComposerLinkTitle(event.target.value)}
-                    placeholder="Optional link title"
+                    placeholder={t('announcements.composer.linkTitlePlaceholder')}
                     className="tbo-focus h-9 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
                   />
                 </div>
@@ -1184,7 +1200,7 @@ export function AnnouncementsView({
                 disabled={!studentComposerText.trim() || studentComposerSaving}
                 className="tbo-focus rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-40"
               >
-                {studentComposerSaving ? 'Posting...' : 'Post'}
+                {studentComposerSaving ? t('announcements.composer.posting') : t('common.post')}
               </button>
             </div>
           </div>
@@ -1213,7 +1229,7 @@ export function AnnouncementsView({
           <div
             className="w-6 h-6 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin"
             role="status"
-            aria-label="Loading stream"
+            aria-label={t('announcements.loadingAria')}
           />
           <p className="mt-3 text-sm text-[#737373]">{t('announcements.loading')}</p>
         </div>

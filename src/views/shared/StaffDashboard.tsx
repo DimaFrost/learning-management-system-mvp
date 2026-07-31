@@ -4,6 +4,7 @@ import type { Class, Course, User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StaffAvatar } from '../../components/ui/StaffAvatar';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { isCourseActive } from '../../utils/courseUtils';
 import { isActivationSaturdayClass } from '../../utils/attendanceUtils';
@@ -149,10 +150,14 @@ function SessionList({
   sessions,
   onOpenClass,
   emptyMessage,
+  teacherRoleLabel,
+  translatorRoleLabel,
 }: {
   sessions: StaffSession[];
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
   emptyMessage: string;
+  teacherRoleLabel: string;
+  translatorRoleLabel: string;
 }) {
   const sessionsByDate = groupSessionsByDate(sessions);
 
@@ -202,10 +207,10 @@ function SessionList({
                   {(session.teacher || session.translator) ? (
                     <div className="flex flex-shrink-0 -space-x-1.5">
                       {session.teacher ? (
-                        <StaffAvatar name={session.teacher.name} avatarUrl={session.teacher.avatarUrl} role="Teacher" />
+                        <StaffAvatar name={session.teacher.name} avatarUrl={session.teacher.avatarUrl} role={teacherRoleLabel} />
                       ) : null}
                       {session.translator ? (
-                        <StaffAvatar name={session.translator.name} avatarUrl={session.translator.avatarUrl} role="Translator" />
+                        <StaffAvatar name={session.translator.name} avatarUrl={session.translator.avatarUrl} role={translatorRoleLabel} />
                       ) : null}
                     </div>
                   ) : null}
@@ -240,6 +245,8 @@ export function StaffDashboard({
   onOpenSearch,
   onOpenClass,
 }: StaffDashboardProps) {
+  const { t } = useLanguage();
+
   const allSessions = useMemo(
     () => buildSessions({ courses, users, getCourseDisplayName }),
     [courses, getCourseDisplayName, users]
@@ -258,11 +265,17 @@ export function StaffDashboard({
     [courses, currentUser.id, getCourseDisplayName, staffWorkspace, users]
   );
 
-  const title = staffWorkspace === 'teacher' ? 'Teacher Dashboard' : 'Translator Dashboard';
-  const mySectionTitle = staffWorkspace === 'teacher' ? 'My sessions' : 'My assignments';
+  const title = staffWorkspace === 'teacher'
+    ? t('staffDashboard.title.teacher')
+    : t('staffDashboard.title.translator');
+  const mySectionTitle = staffWorkspace === 'teacher'
+    ? t('staffDashboard.mySessions.title.teacher')
+    : t('staffDashboard.mySessions.title.translator');
   const myEmptyMessage = staffWorkspace === 'teacher'
-    ? 'You have no teaching sessions in the next 7 days.'
-    : 'You have no translation assignments in the next 7 days.';
+    ? t('staffDashboard.mySessions.empty.teacher')
+    : t('staffDashboard.mySessions.empty.translator');
+  const teacherRoleLabel = t('staffDashboard.role.teacher');
+  const translatorRoleLabel = t('staffDashboard.role.translator');
 
   return (
     <div className="space-y-5">
@@ -270,30 +283,32 @@ export function StaffDashboard({
         title={title}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <GhostButton onClick={onOpenSearch}>Search</GhostButton>
-            <GhostButton onClick={() => onNavigate('my-classes')}>All my sessions</GhostButton>
+            <GhostButton onClick={onOpenSearch}>{t('staffDashboard.search')}</GhostButton>
+            <GhostButton onClick={() => onNavigate('my-classes')}>{t('staffDashboard.allMySessions')}</GhostButton>
           </div>
         }
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         <SectionCard
-          title="Upcoming"
-          subtitle="All school sessions · next 7 days"
+          title={t('staffDashboard.upcoming.title')}
+          subtitle={t('staffDashboard.upcoming.subtitle')}
           className="xl:min-h-[420px]"
           bodyClassName="min-h-0 flex-1"
         >
           <SessionList
             sessions={allSessions}
             onOpenClass={onOpenClass}
-            emptyMessage="No school sessions scheduled in the next 7 days."
+            emptyMessage={t('staffDashboard.upcoming.empty')}
+            teacherRoleLabel={teacherRoleLabel}
+            translatorRoleLabel={translatorRoleLabel}
           />
         </SectionCard>
 
         <SectionCard
           title={mySectionTitle}
-          subtitle="Your sessions · next 7 days"
-          action={<GhostButton onClick={() => onNavigate('my-classes')}>View all</GhostButton>}
+          subtitle={t('staffDashboard.mySessions.subtitle')}
+          action={<GhostButton onClick={() => onNavigate('my-classes')}>{t('staffDashboard.viewAll')}</GhostButton>}
           className="xl:min-h-[420px]"
           bodyClassName="min-h-0 flex-1"
         >
@@ -301,6 +316,8 @@ export function StaffDashboard({
             sessions={mySessions}
             onOpenClass={onOpenClass}
             emptyMessage={myEmptyMessage}
+            teacherRoleLabel={teacherRoleLabel}
+            translatorRoleLabel={translatorRoleLabel}
           />
         </SectionCard>
       </div>

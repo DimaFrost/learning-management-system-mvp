@@ -14,6 +14,8 @@ import {
   X,
 } from 'lucide-react';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
 import type { TodoAssignmentCategory, TodoItem, TodoPriority, User } from '../../types/lms';
 import { formatPlatformDate } from '../../utils/dateUtils';
 
@@ -91,27 +93,20 @@ function getTodoGroupKey(todo: TodoItem): TodoGroupKey {
   return 'later';
 }
 
-const groupMeta: Record<TodoGroupKey, { label: string; className: string }> = {
-  overdue: {
-    label: 'Overdue',
-    className: 'text-[#c2410c]',
-  },
-  today: {
-    label: 'Today',
-    className: 'text-[#1d4ed8]',
-  },
-  tomorrow: {
-    label: 'Tomorrow',
-    className: 'text-[#15803d]',
-  },
-  later: {
-    label: 'Later',
-    className: 'text-[#525252]',
-  },
-  completed: {
-    label: 'Completed',
-    className: 'text-[#525252]',
-  },
+const groupClassNames: Record<TodoGroupKey, string> = {
+  overdue: 'text-[#c2410c]',
+  today: 'text-[#1d4ed8]',
+  tomorrow: 'text-[#15803d]',
+  later: 'text-[#525252]',
+  completed: 'text-[#525252]',
+};
+
+const groupLabelKeys: Record<TodoGroupKey, 'todos.group.overdue' | 'todos.group.today' | 'todos.group.tomorrow' | 'todos.group.later' | 'todos.group.completed'> = {
+  overdue: 'todos.group.overdue',
+  today: 'todos.group.today',
+  tomorrow: 'todos.group.tomorrow',
+  later: 'todos.group.later',
+  completed: 'todos.group.completed',
 };
 
 const categoryToneClasses: Record<TodoAssignmentCategory['tone'], string> = {
@@ -130,19 +125,19 @@ function getDueMeta(todo: TodoItem) {
   const today = todayKey();
   if (todo.status === 'completed') {
     return {
-      label: 'Done',
+      label: translate('todos.due.done'),
       className: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
     };
   }
   if (todo.dueDate < today) {
     return {
-      label: 'Overdue',
+      label: translate('todos.due.overdue'),
       className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]',
     };
   }
   if (todo.dueDate === today) {
     return {
-      label: 'Today',
+      label: translate('todos.due.today'),
       className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]',
     };
   }
@@ -193,6 +188,7 @@ export function TodosView({
   onToggleStatus,
   onDelete,
 }: TodosViewProps) {
+  const { t, tCount, language } = useLanguage();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedAssigneeIds, setSelectedAssigneeIds] = useState<string[]>([currentUser.id]);
@@ -224,16 +220,16 @@ export function TodosView({
   const selectedPersonLabel = useMemo(() => {
     if (selectedAssignees.length === 0) return '';
     if (selectedAssignees.length === 1) return selectedAssignees[0].name;
-    return `${selectedAssignees.length} people`;
-  }, [selectedAssignees]);
+    return tCount('todos.peopleCount', selectedAssignees.length);
+  }, [language, selectedAssignees, tCount]);
   const selectedCategoryLabel = useMemo(() => {
     const labels = assignmentCategories
       .filter(category => selectedCategoryIds.includes(category.id))
       .map(category => category.label);
     if (labels.length === 0) return '';
     if (labels.length === 1) return labels[0];
-    return `${labels.length} categories`;
-  }, [assignmentCategories, selectedCategoryIds]);
+    return tCount('todos.categoriesCount', labels.length);
+  }, [assignmentCategories, language, selectedCategoryIds, tCount]);
   const filteredAssignableUsers = useMemo(() => {
     const normalized = assigneeQuery.trim().toLowerCase();
     if (!normalized) return assignableUsers;
@@ -373,10 +369,48 @@ export function TodosView({
     }
   };
 
+  const statCards = useMemo(() => ([
+    {
+      label: t('todos.stats.open'),
+      value: counts.open,
+      icon: ClipboardList,
+      className: 'border-[#bfdbfe] bg-white',
+      iconClassName: 'bg-[#eff6ff] text-[#2563eb]',
+    },
+    {
+      label: t('todos.stats.today'),
+      value: counts.today,
+      icon: Calendar,
+      className: 'border-[#bbf7d0] bg-white',
+      iconClassName: 'bg-[#f0fdf4] text-[#16a34a]',
+    },
+    {
+      label: t('todos.stats.priority'),
+      value: counts.priority,
+      icon: AlertCircle,
+      className: 'border-[#fed7aa] bg-white',
+      iconClassName: 'bg-[#fff7ed] text-[#ea580c]',
+    },
+    {
+      label: overdueCount > 0 ? t('todos.stats.overdue') : t('todos.stats.done'),
+      value: overdueCount > 0 ? overdueCount : counts.completed,
+      icon: overdueCount > 0 ? AlertCircle : Check,
+      className: overdueCount > 0 ? 'border-[#fed7aa] bg-white' : 'border-[#e5e5e5] bg-white',
+      iconClassName: overdueCount > 0 ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#f5f5f5] text-[#525252]',
+    },
+  ] as const), [counts, language, overdueCount, t]);
+
+  const filterTabs = useMemo(() => ([
+    ['open', t('todos.filter.open'), counts.open],
+    ['today', t('todos.filter.today'), counts.today],
+    ['priority', t('todos.filter.priority'), counts.priority],
+    ['completed', t('todos.filter.done'), counts.completed],
+  ] as const), [counts, language, t]);
+
   return (
     <div className="space-y-5">
       <PageHeader
-        title="To-dos"
+        title={t('todos.title')}
         action={canCreate ? (
           <button
             type="button"
@@ -384,42 +418,13 @@ export function TodosView({
             className="tbo-focus inline-flex items-center gap-2 rounded-full bg-[#171717] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#404040]"
           >
             <Plus className="h-4 w-4" />
-            New to-do
+            {t('todos.new')}
           </button>
         ) : undefined}
       />
 
       <section className="grid gap-3 md:grid-cols-4">
-        {([
-          {
-            label: 'Open',
-            value: counts.open,
-            icon: ClipboardList,
-            className: 'border-[#bfdbfe] bg-white',
-            iconClassName: 'bg-[#eff6ff] text-[#2563eb]',
-          },
-          {
-            label: 'Today',
-            value: counts.today,
-            icon: Calendar,
-            className: 'border-[#bbf7d0] bg-white',
-            iconClassName: 'bg-[#f0fdf4] text-[#16a34a]',
-          },
-          {
-            label: 'Priority',
-            value: counts.priority,
-            icon: AlertCircle,
-            className: 'border-[#fed7aa] bg-white',
-            iconClassName: 'bg-[#fff7ed] text-[#ea580c]',
-          },
-          {
-            label: overdueCount > 0 ? 'Overdue' : 'Done',
-            value: overdueCount > 0 ? overdueCount : counts.completed,
-            icon: overdueCount > 0 ? AlertCircle : Check,
-            className: overdueCount > 0 ? 'border-[#fed7aa] bg-white' : 'border-[#e5e5e5] bg-white',
-            iconClassName: overdueCount > 0 ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#f5f5f5] text-[#525252]',
-          },
-        ] as const).map(item => {
+        {statCards.map(item => {
           const Icon = item.icon;
           return (
             <div key={item.label} className={`rounded-2xl border p-4 shadow-[0_1px_0_rgba(0,0,0,0.03)] ${item.className}`}>
@@ -441,12 +446,7 @@ export function TodosView({
         <div className="border-b border-[#e5e5e5] p-4">
           <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap items-center gap-2">
-              {([
-                ['open', 'Open', counts.open],
-                ['today', 'Today', counts.today],
-                ['priority', 'Priority', counts.priority],
-                ['completed', 'Done', counts.completed],
-              ] as const).map(([id, label, count]) => (
+              {filterTabs.map(([id, label, count]) => (
                 <button
                   key={id}
                   type="button"
@@ -469,7 +469,7 @@ export function TodosView({
               }`}
             >
               <Search className="h-4 w-4" />
-              Search
+              {t('todos.search')}
             </button>
           </div>
           {searchOpen && (
@@ -478,7 +478,7 @@ export function TodosView({
               <input
                 value={query}
                 onChange={event => setQuery(event.target.value)}
-                placeholder="Search by title, details, or assignee"
+                placeholder={t('todos.search.placeholder')}
                 className="tbo-focus w-full rounded-full border border-[#e5e5e5] bg-white py-2 pl-9 pr-10 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
               />
               {query && (
@@ -486,7 +486,7 @@ export function TodosView({
                   type="button"
                   onClick={() => setQuery('')}
                   className="tbo-focus absolute right-2 top-1/2 grid h-7 w-7 -translate-y-1/2 place-items-center rounded-full text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                  aria-label="Clear search"
+                  aria-label={t('todos.search.clear')}
                 >
                   <X className="h-4 w-4" />
                 </button>
@@ -505,27 +505,24 @@ export function TodosView({
 
             <div className="max-h-[34rem] overflow-y-auto pr-1 tbo-scrollbar">
               {loading ? (
-                <div className="grid h-56 place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] text-sm text-[#737373]">Loading to-dos...</div>
+                <div className="grid h-56 place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] text-sm text-[#737373]">{t('todos.loading')}</div>
               ) : filteredTodos.length === 0 ? (
                 <div className="grid h-56 place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] text-center">
                   <div>
                     <span className="mx-auto mb-3 grid h-10 w-10 place-items-center rounded-xl bg-white text-[#16a34a] shadow-[0_1px_0_rgba(0,0,0,0.04)]">
                       <Check className="h-5 w-5" />
                     </span>
-                    <p className="text-sm font-semibold text-[#171717]">No to-dos here</p>
-                    <p className="mt-1 text-xs text-[#737373]">Switch tabs or create a new item.</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('todos.empty.title')}</p>
+                    <p className="mt-1 text-xs text-[#737373]">{t('todos.empty.subtitle')}</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-5">
-                  {groupedTodos.map(group => {
-                    const meta = groupMeta[group.key];
-
-                    return (
+                  {groupedTodos.map(group => (
                       <section key={group.key} className="space-y-2">
                         <div className="flex items-center gap-2 px-1">
-                          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${meta.className}`}>
-                            {meta.label}
+                          <p className={`text-[11px] font-semibold uppercase tracking-[0.14em] ${groupClassNames[group.key]}`}>
+                            {t(groupLabelKeys[group.key])}
                           </p>
                           <span className="h-px flex-1 bg-[#eeeeee]" />
                           <span className="text-[11px] font-medium text-[#a3a3a3]">{group.items.length}</span>
@@ -548,8 +545,8 @@ export function TodosView({
                                 {todo.readOnly ? (
                                   <span
                                     className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-[#e9d5ff] bg-[#f3e8ff] text-[#7c3aed]"
-                                    aria-label="Scheduled assignment"
-                                    title="Scheduled assignment"
+                                    aria-label={t('todos.scheduled.aria')}
+                                    title={t('todos.scheduled.title')}
                                   >
                                     <Calendar className="h-4 w-4" />
                                   </span>
@@ -563,7 +560,7 @@ export function TodosView({
                                         ? 'border-[#bbf7d0] bg-[#f0fdf4] text-[#16a34a]'
                                         : 'border-[#d4d4d4] bg-white text-[#737373] hover:border-[#171717] hover:text-[#171717]'
                                     }`}
-                                    aria-label={todo.status === 'completed' ? 'Mark open' : 'Mark completed'}
+                                    aria-label={todo.status === 'completed' ? t('todos.markOpen') : t('todos.markCompleted')}
                                   >
                                     {todo.status === 'completed' ? <Check className="h-4 w-4" /> : <Circle className="h-4 w-4" />}
                                   </button>
@@ -575,12 +572,12 @@ export function TodosView({
                                     </p>
                                     {todo.priority === 'priority' && (
                                       <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[11px] font-medium text-[#c2410c]">
-                                        Priority
+                                        {t('todos.priority.badge')}
                                       </span>
                                     )}
                                     {todo.readOnly && (
                                       <span className="rounded-full bg-[#f3e8ff] px-2 py-0.5 text-[11px] font-medium text-[#7c3aed]">
-                                        Scheduled
+                                        {t('todos.scheduled.badge')}
                                       </span>
                                     )}
                                   </div>
@@ -589,7 +586,7 @@ export function TodosView({
                                   )}
                                   {todo.assignmentType === 'category' && todo.targetLabel && (
                                     <span className="mt-1 inline-flex w-fit items-center rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-medium text-[#737373]">
-                                      From {todo.targetLabel}
+                                      {t('todos.fromLabel', { label: todo.targetLabel })}
                                       {todo.recipientCount && todo.recipientCount > 1 ? ` (${todo.recipientCount})` : ''}
                                     </span>
                                   )}
@@ -605,7 +602,7 @@ export function TodosView({
                                 <div className="flex min-w-[9rem] items-center gap-2 rounded-full bg-[#fafafa] px-2 py-1">
                                   <TodoAvatar name={todo.assignedToName} avatarUrl={todo.assignedToAvatarUrl} />
                                   <div className="min-w-0">
-                                    <p className="truncate text-xs font-semibold text-[#171717]">{todo.assignedToName ?? 'Unknown'}</p>
+                                    <p className="truncate text-xs font-semibold text-[#171717]">{todo.assignedToName ?? t('common.unknown')}</p>
                                   </div>
                                 </div>
                                 {!todo.readOnly && (
@@ -614,7 +611,7 @@ export function TodosView({
                                     onClick={() => handleDelete(todo)}
                                     disabled={busyTodoId === todo.id}
                                     className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626] sm:opacity-0 sm:group-hover:opacity-100"
-                                    aria-label="Delete to-do"
+                                    aria-label={t('todos.delete')}
                                   >
                                     <Trash2 className="h-4 w-4" />
                                   </button>
@@ -624,8 +621,7 @@ export function TodosView({
                           })}
                         </div>
                       </section>
-                    );
-                  })}
+                    ))}
                 </div>
               )}
             </div>
@@ -641,9 +637,9 @@ export function TodosView({
                   <Plus className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-[#171717]">Create to-do</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('todos.create.title')}</p>
                   <p className="text-xs text-[#737373]">
-                    {isAdmin ? 'Assign work to anyone.' : 'Staff to-dos are personal.'}
+                    {isAdmin ? t('todos.create.subtitleAdmin') : t('todos.create.subtitleStaff')}
                   </p>
                 </div>
               </div>
@@ -654,7 +650,7 @@ export function TodosView({
                   setAssigneePickerOpen(false);
                 }}
                 className="tbo-focus grid h-9 w-9 place-items-center rounded-full text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close create to-do"
+                aria-label={t('todos.create.close')}
               >
                 <X className="h-5 w-5" />
               </button>
@@ -664,19 +660,19 @@ export function TodosView({
               <input
                 value={title}
                 onChange={event => setTitle(event.target.value)}
-                placeholder="What needs to be done?"
+                placeholder={t('todos.create.placeholderTitle')}
                 className="tbo-focus w-full rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
               />
               <textarea
                 value={description}
                 onChange={event => setDescription(event.target.value)}
-                placeholder="Add context if needed"
+                placeholder={t('todos.create.placeholderDescription')}
                 rows={4}
                 className="tbo-focus w-full resize-none rounded-xl border border-[#e5e5e5] bg-white px-3 py-2.5 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
               />
               <div className="grid gap-3 sm:grid-cols-2">
                 <label className="block">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Due</span>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.due')}</span>
                   <input
                     type="date"
                     value={dueDate}
@@ -685,7 +681,7 @@ export function TodosView({
                   />
                 </label>
                 <div className="block">
-                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Priority</span>
+                  <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.priority')}</span>
                   <button
                     type="button"
                     onClick={() => setPriority(current => current === 'priority' ? 'none' : 'priority')}
@@ -698,7 +694,7 @@ export function TodosView({
                   >
                     <span className="inline-flex min-w-0 items-center gap-2">
                       <AlertCircle className="h-4 w-4 flex-shrink-0" />
-                      <span>{priority === 'priority' ? 'Priority reminder' : 'No priority'}</span>
+                      <span>{priority === 'priority' ? t('todos.create.priorityOn') : t('todos.create.priorityOff')}</span>
                     </span>
                     <span className={`h-2 w-2 rounded-full ${priority === 'priority' ? 'bg-[#ea580c]' : 'bg-[#d4d4d4]'}`} />
                   </button>
@@ -708,11 +704,11 @@ export function TodosView({
                 <div className="space-y-3 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                   <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
                     <div>
-                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Type</span>
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.type')}</span>
                       <div className="inline-grid grid-cols-2 rounded-full border border-[#e5e5e5] bg-white p-1">
                         {([
-                          ['person', 'People'],
-                          ['category', 'Category'],
+                          ['person', t('todos.create.type.people')],
+                          ['category', t('todos.create.type.category')],
                         ] as const).map(([mode, label]) => (
                           <button
                             key={mode}
@@ -734,7 +730,7 @@ export function TodosView({
                       </div>
                     </div>
                     <div className="block min-w-0">
-                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Assign</span>
+                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.assign')}</span>
                       <div ref={assigneePickerRef} className="relative z-40">
                         <button
                           type="button"
@@ -759,8 +755,8 @@ export function TodosView({
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-semibold">
                               {assignmentMode === 'category'
-                                ? `${selectedCategoryUserIds.length} category recipient${selectedCategoryUserIds.length === 1 ? '' : 's'}`
-                                : selectedPersonLabel || 'Select people'}
+                                ? tCount('todos.create.categoryRecipients', selectedCategoryUserIds.length)
+                                : selectedPersonLabel || t('todos.create.selectPeople')}
                             </span>
                           </span>
                           <ChevronDown className={`h-4 w-4 flex-shrink-0 text-[#737373] transition-transform ${assigneePickerOpen ? 'rotate-180' : ''}`} />
@@ -775,7 +771,7 @@ export function TodosView({
                                   <input
                                     value={assigneeQuery}
                                     onChange={event => setAssigneeQuery(event.target.value)}
-                                    placeholder="Search people"
+                                    placeholder={t('todos.create.searchPeople')}
                                     className="tbo-focus h-9 w-full rounded-full border border-[#e5e5e5] bg-[#fafafa] pl-9 pr-3 text-sm text-[#171717] placeholder:text-[#a3a3a3]"
                                   />
                                 </div>
@@ -784,7 +780,7 @@ export function TodosView({
                             <div className="max-h-72 overflow-y-auto p-1.5 tbo-scrollbar">
                               {assignmentMode === 'person' ? (
                                 filteredAssignableUsers.length === 0 ? (
-                                  <p className="px-3 py-4 text-center text-sm text-[#737373]">No people found</p>
+                                  <p className="px-3 py-4 text-center text-sm text-[#737373]">{t('todos.create.noPeople')}</p>
                                 ) : filteredAssignableUsers.map(user => {
                                   const selected = selectedAssigneeIds.includes(user.id);
                                   return (
@@ -808,7 +804,7 @@ export function TodosView({
                                       <span className="min-w-0 flex-1">
                                         <span className="block truncate text-sm font-semibold">{user.name}</span>
                                         <span className="block truncate text-[11px] text-[#737373]">
-                                          {user.roles.filter(role => role !== 'dev').join(', ') || 'No role'}
+                                          {user.roles.filter(role => role !== 'dev').join(', ') || t('todos.create.noRole')}
                                         </span>
                                       </span>
                                       <span className={`grid h-6 w-6 flex-shrink-0 place-items-center rounded-full border ${
@@ -865,8 +861,10 @@ export function TodosView({
                             </div>
                             <div className="border-t border-[#eeeeee] px-3 py-2 text-xs font-medium text-[#737373]">
                               {selectedRecipientCount > 0
-                                ? `${selectedRecipientCount} unique recipient${selectedRecipientCount === 1 ? '' : 's'} selected`
-                                : `Select one or more ${assignmentMode === 'person' ? 'people' : 'categories'}.`}
+                                ? tCount('todos.create.recipientsSelected', selectedRecipientCount)
+                                : assignmentMode === 'person'
+                                  ? t('todos.create.selectRecipientsPeople')
+                                  : t('todos.create.selectRecipientsCategories')}
                             </div>
                           </div>
                         )}
@@ -882,7 +880,7 @@ export function TodosView({
                     onClick={() => setCreateModalOpen(false)}
                     className="tbo-focus rounded-full border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </button>
                   <button
                     type="submit"
@@ -894,7 +892,7 @@ export function TodosView({
                     }
                     className="tbo-focus rounded-full bg-[#171717] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#404040] disabled:cursor-not-allowed disabled:bg-[#d4d4d4]"
                   >
-                    {submitting ? 'Adding...' : 'Add to-do'}
+                    {submitting ? t('todos.create.adding') : t('todos.create.add')}
                   </button>
                 </div>
               </div>

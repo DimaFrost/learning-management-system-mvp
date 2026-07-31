@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react';
 import {
   ArrowLeft,
   BookOpen,
@@ -33,6 +33,8 @@ import type { useGradebookConfig } from '../../../hooks/useGradebookConfig';
 import { FilePreviewModal } from '../../../components/modals/FilePreviewModal';
 import { SubjectCurriculumPlan } from '../../../components/subject/SubjectCurriculumPlan';
 import { useSubjectMaterials } from '../../../hooks/useSubjectMaterials';
+import { useLanguage } from '../../../i18n/LanguageContext';
+import { translate } from '../../../i18n/translate';
 import { ensureStaffNoteAccess } from '../../../utils/googleDocsV2';
 import {
   findClass,
@@ -81,7 +83,7 @@ export function SubjectDetailPage({
   onCreateAssignment,
   assignmentSaving,
   gradebookConfig,
-  backLabel = 'Back to classwork',
+  backLabel = translate('classwork.backToClasswork'),
   curriculumActions,
   tabAccess = 'full',
 }: {
@@ -105,6 +107,7 @@ export function SubjectDetailPage({
   curriculumActions?: CurriculumSubjectActions;
   tabAccess?: 'full' | 'sessions-materials';
 }) {
+  const { t, tCount, language } = useLanguage();
   const sessionsMaterialsOnly = scope === 'translator' || tabAccess === 'sessions-materials';
   const resolveInitialTab = (tab?: SubjectTab): SubjectTab => {
     if (!tab) return 'sessions';
@@ -224,21 +227,21 @@ export function SubjectDetailPage({
   );
   const attendanceMarked = attendanceSummary.present + attendanceSummary.late + attendanceSummary.absent;
   const attendancePercent = attendanceMarked === 0 ? 0 : Math.round((attendanceSummary.credit / attendanceMarked) * 100);
-  const insightItems = [
+  const insightItems = useMemo(() => [
     homeworkItems.length > 0 && scope === 'student' && studentHomeworkCompleted < homeworkItems.length
-      ? `${homeworkItems.length - studentHomeworkCompleted} homework item${homeworkItems.length - studentHomeworkCompleted === 1 ? '' : 's'} still need attention`
+      ? tCount('classwork.subject.insightHomeworkAttention', homeworkItems.length - studentHomeworkCompleted)
       : null,
     homeworkItems.length > 0 && scope !== 'student'
-      ? `${staffSubmittedCount} homework submission${staffSubmittedCount === 1 ? '' : 's'} received`
+      ? tCount('classwork.subject.insightSubmissionsReceived', staffSubmittedCount)
       : null,
     homeworkItems.length > 0 && scope !== 'student' && expectedSubmissionCount > 0 && staffMissingCount > 0
-      ? `${staffMissingCount} expected submission${staffMissingCount === 1 ? '' : 's'} not received yet`
+      ? tCount('classwork.subject.insightSubmissionsMissing', staffMissingCount)
       : null,
     attendanceMarked > 0 && attendancePercent < 80
-      ? `Attendance is below 80% for marked records`
+      ? t('classwork.subject.insightAttendanceLow')
       : null,
-    !nextSession ? 'No upcoming session is scheduled' : null,
-  ].filter((item): item is string => Boolean(item));
+    !nextSession ? t('classwork.subject.insightNoUpcomingSession') : null,
+  ].filter((item): item is string => Boolean(item)), [attendanceMarked, attendancePercent, expectedSubmissionCount, homeworkItems.length, language, nextSession, scope, staffMissingCount, staffSubmittedCount, studentHomeworkCompleted, t, tCount]);
   const openSessionHomework = (item: ClassworkItem) => {
     const attached = homeworkItems.filter(({ homework }) => homework.class_id === item.classInfo?.classId);
     if (attached.length === 1) {
@@ -287,12 +290,12 @@ export function SubjectDetailPage({
     return () => { cancelled = true; };
   }, [currentUser.id, scope, sessionsMaterialsOnly, sessionClassIds.join(',')]);
 
-  const allTabs: Array<{ id: SubjectTab; label: string; count: number; icon: typeof CalendarDays }> = [
-    { id: 'sessions', label: 'Sessions', count: sessionItems.length, icon: CalendarDays },
-    { id: 'homework', label: 'Homework', count: homeworkItems.length, icon: BookOpen },
-    { id: 'materials', label: 'Materials', count: visibleMaterialsCount, icon: FileText },
-    { id: 'attendance', label: 'Attendance', count: attendanceMarked, icon: CheckCircle2 },
-  ];
+  const allTabs: Array<{ id: SubjectTab; label: string; count: number; icon: typeof CalendarDays }> = useMemo(() => [
+    { id: 'sessions', label: t('classwork.subject.tab.sessions'), count: sessionItems.length, icon: CalendarDays },
+    { id: 'homework', label: t('classwork.subject.tab.homework'), count: homeworkItems.length, icon: BookOpen },
+    { id: 'materials', label: t('classwork.subject.tab.materials'), count: visibleMaterialsCount, icon: FileText },
+    { id: 'attendance', label: t('classwork.subject.tab.attendance'), count: attendanceMarked, icon: CheckCircle2 },
+  ], [attendanceMarked, homeworkItems.length, language, sessionItems.length, t, visibleMaterialsCount]);
   const tabs = sessionsMaterialsOnly
     ? allTabs.filter(tab => tab.id === 'sessions' || tab.id === 'materials')
     : allTabs;
@@ -417,7 +420,7 @@ export function SubjectDetailPage({
         studentCount={enrolledStudentIds.length}
         saving={assignmentSaving}
         gradebookConfig={gradebookConfig}
-        backLabel="Subject homework"
+        backLabel={t('classwork.subject.backLabel')}
         onCancel={() => setComposerItem(null)}
         onSubmit={async data => {
           await onCreateAssignment(composerSubject.id, null, data);
@@ -441,7 +444,7 @@ export function SubjectDetailPage({
         </button>
         <div className="grid gap-4 border-b border-[#d4d4d4] pb-4 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
           <div className="min-w-0">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">Subject</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#737373]">{t('classwork.subject.eyebrow')}</p>
             <h1 className="tbo-display mt-1 truncate text-3xl text-[#171717]">{run.subjectTitle}</h1>
             <p className="mt-1 text-sm text-[#737373]">{getRunDateRange(run)}</p>
           </div>
@@ -466,7 +469,7 @@ export function SubjectDetailPage({
                     className="tbo-focus inline-flex h-9 items-center gap-2 border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]"
                   >
                     <Pencil className="h-4 w-4" />
-                    Edit subject
+                    {t('classwork.subject.editSubject')}
                   </button>
               )}
               {curriculumActions?.onAddSession && (
@@ -476,27 +479,27 @@ export function SubjectDetailPage({
                     className="tbo-focus inline-flex h-9 items-center gap-2 border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]"
                   >
                     <Plus className="h-4 w-4" />
-                    Add session
+                    {t('classwork.subject.addSession')}
                   </button>
               )}
               <button type="button" onClick={() => setActiveTab('sessions')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#1d4ed8] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]">
                 <span className="text-lg leading-none">{sessionItems.length}</span>
-                Sessions
+                {t('classwork.subject.tab.sessions')}
               </button>
               {!sessionsMaterialsOnly && (
               <button type="button" onClick={() => setActiveTab('homework')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#047857] bg-[#ecfdf5] px-3 text-sm font-semibold text-[#047857] hover:bg-[#d1fae5]">
                 <span className="text-lg leading-none">{homeworkItems.length}</span>
-                Homework
+                {t('classwork.subject.tab.homework')}
               </button>
               )}
               <button type="button" onClick={() => setActiveTab('materials')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#c2410c] bg-[#fff7ed] px-3 text-sm font-semibold text-[#c2410c] hover:bg-[#ffedd5]">
                 <span className="text-lg leading-none">{visibleMaterialsCount}</span>
-                Materials
+                {t('classwork.subject.tab.materials')}
               </button>
               {!sessionsMaterialsOnly && (
               <button type="button" onClick={() => setActiveTab('attendance')} className="tbo-focus inline-flex h-9 items-center gap-2 border-l-2 border-[#7c3aed] bg-[#f5f3ff] px-3 text-sm font-semibold text-[#6d28d9] hover:bg-[#ede9fe]">
                 <span className="text-lg leading-none">{attendanceMarked ? `${attendancePercent}%` : '-'}</span>
-                Attendance
+                {t('classwork.subject.tab.attendance')}
               </button>
               )}
             </div>
@@ -534,7 +537,7 @@ export function SubjectDetailPage({
                 className="tbo-focus ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626]"
               >
                 <Plus className="h-4 w-4" />
-                Add homework
+                {t('classwork.subject.addHomework')}
               </button>
             )}
             {activeTab === 'materials' && canManageMaterials && (
@@ -544,7 +547,7 @@ export function SubjectDetailPage({
                 className="tbo-focus ml-auto inline-flex h-9 items-center gap-2 rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626]"
               >
                 <Plus className="h-4 w-4" />
-                Add Materials
+                {t('classwork.subject.addMaterials')}
               </button>
             )}
           </div>
@@ -566,17 +569,17 @@ export function SubjectDetailPage({
                   <div className="flex items-start justify-between gap-3">
                     <div>
                       <h3 id="upload-materials-title" className="text-lg font-semibold text-[#171717]">
-                        Upload subject materials
+                        {t('classwork.subject.uploadMaterialsTitle')}
                       </h3>
                       <p className="mt-1 text-xs text-[#737373]">
-                        Student Materials are visible to students. Staff Notes stay private to teachers, admins, and translators.
+                        {t('classwork.subject.uploadMaterialsHint')}
                       </p>
                     </div>
                     <button
                       type="button"
                       onClick={closeMaterialsUpload}
                       className="tbo-focus text-[#a3a3a3] hover:text-[#171717]"
-                      aria-label="Close"
+                      aria-label={t('common.close')}
                     >
                       <X className="h-5 w-5" />
                     </button>
@@ -584,7 +587,7 @@ export function SubjectDetailPage({
 
                   <div className="hidden">
                     <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                      Related session (optional)
+                      {t('classwork.subject.relatedSessionOptional')}
                     </label>
                     <select
                       value={relatedClassId ?? ''}
@@ -594,7 +597,7 @@ export function SubjectDetailPage({
                       }}
                       className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
                     >
-                      <option value="">Subject level</option>
+                      <option value="">{t('classwork.subject.subjectLevel')}</option>
                       {sessionItems.map(item => (
                         <option key={item.id} value={item.classInfo!.classId}>
                           {item.title}
@@ -609,16 +612,16 @@ export function SubjectDetailPage({
                       [
                         {
                           id: 'student' as const,
-                          label: 'Student Materials',
-                          hint: 'Visible to students in this year group.',
+                          label: t('classwork.subject.studentMaterials'),
+                          hint: t('classwork.subject.studentMaterialsHint'),
                           icon: FileText,
                           activeClass: 'border-[#c2410c] border-l-[#c2410c] bg-[#fff7ed] text-[#9a3412] shadow-[inset_0_0_0_1px_#c2410c]',
                           idleClass: 'border-[#fed7aa] border-l-[#c2410c] bg-white text-[#9a3412] hover:bg-[#fff7ed]',
                         },
                         {
                           id: 'staff' as const,
-                          label: 'Staff Notes',
-                          hint: 'Private to staff working with this subject.',
+                          label: t('classwork.subject.staffNotes'),
+                          hint: t('classwork.subject.staffNotesHint'),
                           icon: ShieldCheck,
                           activeClass: 'border-[#1d4ed8] border-l-[#1d4ed8] bg-[#eff6ff] text-[#1d4ed8] shadow-[inset_0_0_0_1px_#1d4ed8]',
                           idleClass: 'border-[#bfdbfe] border-l-[#1d4ed8] bg-white text-[#1d4ed8] hover:bg-[#eff6ff]',
@@ -655,23 +658,23 @@ export function SubjectDetailPage({
 
                   <div className="mt-4">
                     <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                      Title
+                      {t('common.title')}
                     </label>
                     <input
                       type="text"
                       value={materialUploadTitle}
                       onChange={event => setMaterialUploadTitle(event.target.value)}
-                      placeholder={materialUploadKind === 'staff' ? 'Staff discussion guide' : 'Reading handout'}
+                      placeholder={materialUploadKind === 'staff' ? t('classwork.subject.titlePlaceholderStaff') : t('classwork.subject.titlePlaceholderStudent')}
                       className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
                     />
                     <p className="mt-1 text-xs text-[#737373]">
-                      Leave empty to use the original file name. For multiple files, the file name is added after this title.
+                      {t('classwork.subject.titleHint')}
                     </p>
                   </div>
 
                   <div className="mt-4">
                     <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                      Related session (optional)
+                      {t('classwork.subject.relatedSessionOptional')}
                     </label>
                     <select
                       value={relatedClassId ?? ''}
@@ -681,7 +684,7 @@ export function SubjectDetailPage({
                       }}
                       className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
                     >
-                      <option value="">Subject level</option>
+                      <option value="">{t('classwork.subject.subjectLevel')}</option>
                       {sessionItems.map(item => (
                         <option key={item.id} value={item.classInfo!.classId}>
                           {item.title}
@@ -706,7 +709,7 @@ export function SubjectDetailPage({
                       className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
                     >
                       <Upload className="h-4 w-4" />
-                      Select files
+                      {t('classwork.subject.selectFiles')}
                     </button>
                     <button
                       type="button"
@@ -718,7 +721,7 @@ export function SubjectDetailPage({
                       className="tbo-focus inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
                     >
                       <FileText className="h-4 w-4" />
-                      New Google Doc
+                      {t('classwork.subject.newGoogleDoc')}
                     </button>
                   </div>
 
@@ -726,13 +729,13 @@ export function SubjectDetailPage({
                     <div className="mt-3 flex flex-col gap-3 border-l-2 border-[#171717] bg-[#fafafa] p-3 md:flex-row md:items-end">
                       <div className="min-w-0 flex-1">
                         <label className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
-                          Document title
+                          {t('classwork.subject.documentTitle')}
                         </label>
                         <input
                           type="text"
                           value={materialDocTitle}
                           onChange={event => setMaterialDocTitle(event.target.value)}
-                          placeholder={materialUploadKind === 'staff' ? 'Staff note document' : 'Material document'}
+                          placeholder={materialUploadKind === 'staff' ? t('classwork.subject.docTitlePlaceholderStaff') : t('classwork.subject.docTitlePlaceholderStudent')}
                           className="tbo-focus mt-2 w-full border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717]"
                         />
                       </div>
@@ -743,7 +746,7 @@ export function SubjectDetailPage({
                           disabled={materialsSaving || !(materialDocTitle.trim() || materialUploadTitle.trim())}
                           className="tbo-focus inline-flex h-9 items-center rounded-lg bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
                         >
-                          Create
+                          {t('common.create')}
                         </button>
                         <button
                           type="button"
@@ -754,7 +757,7 @@ export function SubjectDetailPage({
                           disabled={materialsSaving}
                           className="tbo-focus inline-flex h-9 items-center rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50"
                         >
-                          Cancel
+                          {t('common.cancel')}
                         </button>
                       </div>
                     </div>
@@ -767,7 +770,7 @@ export function SubjectDetailPage({
                         : 'border-[#c2410c] bg-[#fff7ed]'
                     }`}>
                       <p className="text-sm font-semibold text-[#171717]">
-                        Ready to upload ({pendingMaterialFiles.length})
+                        {t('classwork.subject.readyToUpload', { count: pendingMaterialFiles.length })}
                       </p>
                       <ul className="space-y-1">
                         {pendingMaterialFiles.map((file, index) => (
@@ -778,7 +781,7 @@ export function SubjectDetailPage({
                               onClick={() => setPendingMaterialFiles(prev => prev.filter((_, i) => i !== index))}
                               className="tbo-focus text-xs font-semibold text-[#dc2626] hover:underline"
                             >
-                              Remove
+                              {t('common.remove')}
                             </button>
                           </li>
                         ))}
@@ -790,7 +793,7 @@ export function SubjectDetailPage({
                         className="hidden"
                       >
                         <Upload className="h-4 w-4" />
-                        {materialsSaving ? 'Uploading…' : 'Upload'}
+                        {materialsSaving ? t('classwork.subject.uploading') : t('classwork.subject.upload')}
                       </button>
                     </div>
                   )}
@@ -802,10 +805,10 @@ export function SubjectDetailPage({
                   <div className="mt-5 flex items-center justify-between gap-3 border-t border-[#e5e5e5] pt-4">
                     <p className="text-xs text-[#737373]">
                       {materialsSaving
-                        ? 'Uploading to Google Drive...'
+                        ? t('classwork.subject.uploadingDrive')
                         : pendingMaterialFiles.length > 0
-                          ? `${pendingMaterialFiles.length} file${pendingMaterialFiles.length === 1 ? '' : 's'} selected`
-                          : 'Select files or create a Google Doc.'}
+                          ? tCount('classwork.subject.filesSelected', pendingMaterialFiles.length)
+                          : t('classwork.subject.uploadHint')}
                     </p>
                     <div className="flex items-center gap-2">
                       <button
@@ -814,7 +817,7 @@ export function SubjectDetailPage({
                         disabled={materialsSaving}
                         className="tbo-focus inline-flex h-10 items-center rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                       <button
                         type="button"
@@ -823,7 +826,7 @@ export function SubjectDetailPage({
                         className="tbo-focus inline-flex h-10 min-w-[128px] items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
                       >
                         <Upload className={`h-4 w-4 ${materialsSaving ? 'animate-pulse' : ''}`} />
-                        {materialsSaving ? 'Uploading...' : 'Upload files'}
+                        {materialsSaving ? t('classwork.subject.uploading') : t('classwork.subject.uploadFiles')}
                       </button>
                     </div>
                   </div>
@@ -836,15 +839,15 @@ export function SubjectDetailPage({
             <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
-                  <p className="text-sm font-semibold text-[#172554]">Choose an optional session context</p>
-                  <p className="mt-1 text-xs text-[#1e40af]">Assignments appear under the subject. Pick a session only when the work clearly belongs to one class meeting.</p>
+                  <p className="text-sm font-semibold text-[#172554]">{t('classwork.subject.sessionPickerTitle')}</p>
+                  <p className="mt-1 text-xs text-[#1e40af]">{t('classwork.subject.sessionPickerHint')}</p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setAssignmentSessionPickerOpen(false)}
                   className="rounded-lg border border-[#bfdbfe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]"
                 >
-                  Close
+                  {t('common.close')}
                 </button>
               </div>
               <div className="mt-3 grid gap-2 md:grid-cols-2">
@@ -860,7 +863,7 @@ export function SubjectDetailPage({
                   >
                     <span className="block truncate text-sm font-semibold text-[#171717]">{item.title}</span>
                     <span className="mt-1 block text-xs font-medium text-[#737373]">
-                      {item.dueDate ? formatPlatformDate(item.dueDate) : 'No date'}
+                      {item.dueDate ? formatPlatformDate(item.dueDate) : t('classwork.subject.noDate')}
                     </span>
                   </button>
                 ))}
@@ -873,9 +876,9 @@ export function SubjectDetailPage({
               {sessionPageCount > 1 && (
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] px-4 py-3">
                   <div>
-                    <p className="text-sm font-semibold text-[#171717]">Session weeks</p>
+                    <p className="text-sm font-semibold text-[#171717]">{t('classwork.subject.sessionWeeks')}</p>
                     <p className="text-xs text-[#737373]">
-                      Page {sessionsPage + 1} of {sessionPageCount} · {sessionItems.length} sessions
+                      {t('classwork.subject.sessionWeeksPage', { page: sessionsPage + 1, total: sessionPageCount, count: sessionItems.length })}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -884,7 +887,7 @@ export function SubjectDetailPage({
                       onClick={() => setSessionsPage(page => Math.max(0, page - 1))}
                       disabled={sessionsPage === 0}
                       className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
-                      aria-label="Previous session weeks"
+                      aria-label={t('classwork.subject.prevSessionWeeks')}
                     >
                       <ChevronLeft className="h-4 w-4" />
                     </button>
@@ -893,7 +896,7 @@ export function SubjectDetailPage({
                       onClick={() => setSessionsPage(page => Math.min(sessionPageCount - 1, page + 1))}
                       disabled={sessionsPage >= sessionPageCount - 1}
                       className="tbo-focus grid h-9 w-9 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
-                      aria-label="Next session weeks"
+                      aria-label={t('classwork.subject.nextSessionWeeks')}
                     >
                       <ChevronRight className="h-4 w-4" />
                     </button>
@@ -943,7 +946,7 @@ export function SubjectDetailPage({
                           <span className="mt-1 block text-[11px] font-semibold uppercase leading-none text-[#737373]">{compactDate.month}</span>
                         </>
                       ) : (
-                        <span className="text-xs font-semibold text-[#737373]">Session</span>
+                        <span className="text-xs font-semibold text-[#737373]">{t('classwork.dueGroup.session')}</span>
                       )}
                     </span>
                     <span className={`grid h-7 w-7 place-items-center rounded-full ${
@@ -961,25 +964,30 @@ export function SubjectDetailPage({
                         <span className="mt-1 flex flex-wrap gap-1.5">
                           {sessionAttention.hasConflict && (
                             <span className="rounded-full bg-[#fef2f2] px-2 py-0.5 text-[10px] font-semibold text-[#dc2626] ring-1 ring-[#fecaca]">
-                              Conflict
+                              {t('classwork.subject.conflict')}
                             </span>
                           )}
                           {sessionAttention.hasVacantRoles && !sessionAttention.hasConflict && (
                             <span className="rounded-full bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
-                              Incomplete
+                              {t('classwork.subject.incomplete')}
                             </span>
                           )}
                         </span>
                       )}
                       <span className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#737373]">
-                        <span className="font-semibold capitalize text-[#525252]">{timelineState}</span>
+                        <span className="font-semibold capitalize text-[#525252]">
+                          {timelineState === 'past' ? t('classwork.subject.timeline.past')
+                            : timelineState === 'today' ? t('classwork.subject.timeline.today')
+                            : timelineState === 'upcoming' ? t('classwork.subject.timeline.upcoming')
+                            : t('classwork.subject.timeline.unscheduled')}
+                        </span>
                         {hasSessionMaterials(item) && (
                           <button
                             type="button"
                             onClick={() => setActiveTab('materials')}
                             className="tbo-focus inline-flex items-center gap-1 font-semibold text-[#c2410c] hover:text-[#9a3412]"
                           >
-                            <FileText className="h-3.5 w-3.5" />Materials
+                            <FileText className="h-3.5 w-3.5" />{t('classwork.subject.tab.materials')}
                           </button>
                         )}
                         {!sessionsMaterialsOnly && hasSessionHomework(item) && (
@@ -988,11 +996,11 @@ export function SubjectDetailPage({
                             onClick={() => openSessionHomework(item)}
                             className="tbo-focus inline-flex items-center gap-1 font-semibold text-[#1d4ed8] hover:text-[#1e40af]"
                           >
-                            <BookOpen className="h-3.5 w-3.5" />{item.homeworkCount} homework
+                            <BookOpen className="h-3.5 w-3.5" />{tCount('classwork.subject.homeworkCount', item.homeworkCount ?? 0)}
                           </button>
                         )}
                         {!hasSessionMaterials(item) && (sessionsMaterialsOnly || !hasSessionHomework(item)) && (
-                          <span>No extras attached</span>
+                          <span>{t('classwork.subject.noExtras')}</span>
                         )}
                       </span>
                     </span>
@@ -1003,7 +1011,7 @@ export function SubjectDetailPage({
                           type="button"
                           onClick={() => curriculumActions.onEditSession(item.classInfo!.classId)}
                           className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5]"
-                          title={curriculumActions.translatorAssignOnly ? 'Assign translator' : 'Edit session'}
+                          title={curriculumActions.translatorAssignOnly ? t('classwork.subject.assignTranslator') : t('classwork.subject.editSession')}
                         >
                           <Pencil className="h-4 w-4" />
                         </button>
@@ -1012,14 +1020,14 @@ export function SubjectDetailPage({
                           type="button"
                           onClick={() => curriculumActions.onDeleteSession?.(item.classInfo!.classId)}
                           className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fecaca] text-[#dc2626] hover:bg-[#fef2f2]"
-                          title="Delete session"
+                          title={t('classwork.subject.deleteSession')}
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
                         )}
                       </span>
                     ) : (
-                      <span className="text-xs font-semibold text-[#737373]">Session</span>
+                      <span className="text-xs font-semibold text-[#737373]">{t('classwork.dueGroup.session')}</span>
                     )}
                   </div>
                 );
@@ -1033,11 +1041,13 @@ export function SubjectDetailPage({
           {activeTab === 'homework' && (
             <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
               {homeworkItems.length === 0 ? (
-                <div className="py-8 text-sm text-[#737373]">No homework is attached to this subject yet.</div>
+                <div className="py-8 text-sm text-[#737373]">{t('classwork.subject.noHomework')}</div>
               ) : homeworkItems.map(({ homework, session, mySubmission, submissions }) => {
+                const submittedCount = submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length;
+                const totalSubmissions = enrolledStudentIds.length || submissions.length;
                 const status = scope === 'student'
                   ? (mySubmission?.status ?? 'not_started')
-                  : `${submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length}/${enrolledStudentIds.length || submissions.length} submitted`;
+                  : null;
                 return (
                 <button
                   key={homework.id}
@@ -1049,18 +1059,23 @@ export function SubjectDetailPage({
                   <span className="min-w-0">
                     <span className="block truncate text-sm font-semibold text-[#171717]">{homework.title}</span>
                     <span className="mt-1 block truncate text-xs text-[#737373]">
-                      Attached to {session?.title ?? 'a session/class'}
+                      {session?.title
+                        ? t('classwork.subject.attachedTo', { session: session.title })
+                        : t('classwork.subject.attachedTo', { session: t('classwork.subject.attachedToFallback') })}
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-[#525252]">{homework.due_date ? formatPlatformDate(homework.due_date) : 'No due date'}</span>
+                  <span className="text-xs font-semibold text-[#525252]">{homework.due_date ? formatPlatformDate(homework.due_date) : t('common.noDueDate')}</span>
                   <span className="flex items-center justify-end gap-2 text-xs font-semibold text-[#1d4ed8]">
-                    <span className={`rounded-full px-2.5 py-1 ring-1 ${
-                      scope === 'student' ? getHomeworkStatusTone(status) : 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]'
-                    }`}>
-                      {scope === 'student' ? getHomeworkStatusLabel(status) : (
+                    <span
+                      className={`rounded-full px-2.5 py-1 ring-1 ${
+                        scope === 'student' ? getHomeworkStatusTone(status ?? 'not_started') : 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]'
+                      }`}
+                      title={scope === 'student' ? undefined : t('classwork.tabs.homework.studentsSubmitted', { submitted: submittedCount, total: totalSubmissions })}
+                    >
+                      {scope === 'student' ? getHomeworkStatusLabel(status ?? 'not_started') : (
                         <span className="inline-flex items-center gap-1.5">
                           <CheckCircle2 className="h-3.5 w-3.5" />
-                          {submissions.filter(submission => submission.status === 'submitted' || submission.status === 'graded').length}/{enrolledStudentIds.length || submissions.length}
+                          {submittedCount}/{totalSubmissions}
                         </span>
                       )}
                     </span>
@@ -1076,7 +1091,7 @@ export function SubjectDetailPage({
               {run.subjectId != null && (
                 <section className="border-l-2 border-[#171717] pl-4">
                   <div className="mb-2 flex items-center justify-between gap-2">
-                    <h3 className="text-sm font-semibold text-[#171717]">Curriculum Plan</h3>
+                    <h3 className="text-sm font-semibold text-[#171717]">{t('classwork.subject.curriculumPlan')}</h3>
                   </div>
                   <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
                     <SubjectCurriculumPlan
@@ -1090,20 +1105,20 @@ export function SubjectDetailPage({
 
               {materialsLoading ? (
                 <div className="border-y border-[#d4d4d4] bg-white px-4 py-8 text-sm text-[#737373]">
-                  Loading materials...
+                  {t('classwork.subject.loadingMaterials')}
                 </div>
               ) : (
                 <>
                   <section className="border-l-2 border-[#c2410c] pl-4">
                     <div className="mb-2 flex items-center justify-between gap-2">
-                      <h3 className="text-sm font-semibold text-[#171717]">Student Materials</h3>
+                      <h3 className="text-sm font-semibold text-[#171717]">{t('classwork.subject.studentMaterials')}</h3>
                       <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
                         {studentMaterialFiles.length}
                       </span>
                     </div>
                     <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
                       {studentMaterialFiles.length === 0 ? (
-                        <div className="py-6 text-sm text-[#737373]">No student materials yet.</div>
+                        <div className="py-6 text-sm text-[#737373]">{t('classwork.subject.noStudentMaterials')}</div>
                       ) : studentMaterialFiles.map(file => {
                         const FileGlyph = getMaterialFileIcon(file.mimeType);
                         const relatedSession = getRelatedSessionLabel(file.classId);
@@ -1139,7 +1154,7 @@ export function SubjectDetailPage({
                                 rel="noreferrer"
                                 onClick={event => event.stopPropagation()}
                                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                title="Open in new tab"
+                                title={t('common.openInNewTab')}
                               >
                                 <ExternalLink className="h-3.5 w-3.5" />
                               </a>
@@ -1151,7 +1166,7 @@ export function SubjectDetailPage({
                                     void deleteSubjectFile(file);
                                   }}
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                  title="Delete"
+                                  title={t('common.delete')}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                 </button>
@@ -1166,14 +1181,14 @@ export function SubjectDetailPage({
                   {canSeeStaffNotes && (
                     <section className="border-l-2 border-[#1d4ed8] pl-4">
                       <div className="mb-2 flex items-center justify-between gap-2">
-                        <h3 className="text-sm font-semibold text-[#171717]">Staff Notes</h3>
+                        <h3 className="text-sm font-semibold text-[#171717]">{t('classwork.subject.staffNotes')}</h3>
                         <span className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
                           {staffNoteFiles.length}
                         </span>
                       </div>
                       <div className="divide-y divide-[#e5e5e5] border-y border-[#d4d4d4] bg-white px-4">
                         {staffNoteFiles.length === 0 ? (
-                          <div className="py-6 text-sm text-[#737373]">No staff notes yet.</div>
+                          <div className="py-6 text-sm text-[#737373]">{t('classwork.subject.noStaffNotes')}</div>
                         ) : staffNoteFiles.map(file => {
                           const FileGlyph = getMaterialFileIcon(file.mimeType);
                           const relatedSession = getRelatedSessionLabel(file.classId);
@@ -1210,7 +1225,7 @@ export function SubjectDetailPage({
                                     void openMaterialFile(file);
                                   }}
                                   className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                                  title="Open in new tab"
+                                  title={t('common.openInNewTab')}
                                 >
                                   <ExternalLink className="h-3.5 w-3.5" />
                                 </button>
@@ -1222,7 +1237,7 @@ export function SubjectDetailPage({
                                       void deleteSubjectFile(file);
                                     }}
                                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                                    title="Delete"
+                                    title={t('common.delete')}
                                   >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </button>
@@ -1242,26 +1257,26 @@ export function SubjectDetailPage({
           {activeTab === 'attendance' && (
             <div className="border-y border-[#d4d4d4] bg-white p-4">
               {attendanceLoading ? (
-                <p className="text-sm text-[#737373]">Loading attendance...</p>
+                <p className="text-sm text-[#737373]">{t('classwork.subject.loadingAttendance')}</p>
               ) : (
                 <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
                   <div className="border-l-2 border-[#171717] bg-[#fafafa] p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">Attendance credit</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.subject.attendanceCredit')}</p>
                     <p className="mt-2 text-4xl font-semibold text-[#171717]">{attendancePercent}%</p>
-                    <p className="mt-1 text-xs text-[#737373]">{attendanceMarked} marked record{attendanceMarked === 1 ? '' : 's'}</p>
+                    <p className="mt-1 text-xs text-[#737373]">{tCount('classwork.subject.markedRecords', attendanceMarked)}</p>
                   </div>
                   <div className="grid gap-2 sm:grid-cols-3">
                     <div className="bg-[#ecfdf5] p-4 text-[#047857] ring-1 ring-[#bbf7d0]">
                       <p className="text-2xl font-semibold">{attendanceSummary.present}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">Present</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.present')}</p>
                     </div>
                     <div className="bg-[#fff7ed] p-4 text-[#c2410c] ring-1 ring-[#fed7aa]">
                       <p className="text-2xl font-semibold">{attendanceSummary.late}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">Late</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.late')}</p>
                     </div>
                     <div className="bg-[#fef2f2] p-4 text-[#b91c1c] ring-1 ring-[#fecaca]">
                       <p className="text-2xl font-semibold">{attendanceSummary.absent}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">Absent</p>
+                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.absent')}</p>
                     </div>
                   </div>
                 </div>
@@ -1274,11 +1289,11 @@ export function SubjectDetailPage({
           <div className="border-y border-[#d4d4d4] bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
               <TrendingUp className="h-4 w-4 text-[#737373]" />
-              {scope === 'student' ? 'Your progress' : 'Subject insight'}
+              {scope === 'student' ? t('classwork.subject.yourProgress') : t('classwork.subject.insight')}
             </div>
             <div className="mt-3 space-y-2">
               {insightItems.length === 0 ? (
-                <p className="text-sm text-[#737373]">Everything currently visible here looks settled.</p>
+                <p className="text-sm text-[#737373]">{t('classwork.subject.insightSettled')}</p>
               ) : insightItems.map(item => (
                 <div key={item} className="border-l-2 border-[#171717] bg-[#fafafa] px-3 py-2 text-sm text-[#525252]">
                   {item}
@@ -1290,11 +1305,11 @@ export function SubjectDetailPage({
           <div className="border-y border-[#d4d4d4] bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
               <Users className="h-4 w-4 text-[#737373]" />
-              Teachers
+              {t('classwork.column.teachers')}
             </div>
             <div className="mt-3 space-y-2">
               {runTeachers.length === 0 ? (
-                <p className="text-sm text-[#737373]">No teacher assigned yet.</p>
+                <p className="text-sm text-[#737373]">{t('classwork.subject.noTeacher')}</p>
               ) : runTeachers.map(teacher => (
                 <div key={teacher.id} className="flex items-center gap-2">
                   <UserAvatar user={teacher} size="sm" />
@@ -1307,50 +1322,50 @@ export function SubjectDetailPage({
           <div className="border-y border-[#d4d4d4] bg-white p-4">
             <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
               <ClipboardList className="h-4 w-4 text-[#737373]" />
-              Subject summary
+              {t('classwork.subject.summary')}
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
-              <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{sessionItems.length} sessions</span>
+              <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">{tCount('classwork.subject.sessionsCount', sessionItems.length)}</span>
               {!sessionsMaterialsOnly && (
-              <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857] ring-1 ring-[#bbf7d0]">{homeworkItems.length} homework</span>
+              <span className="rounded-full bg-[#ecfdf5] px-2.5 py-1 text-xs font-semibold text-[#047857] ring-1 ring-[#bbf7d0]">{tCount('classwork.subject.homeworkSummary', homeworkItems.length)}</span>
               )}
-              <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">{visibleMaterialsCount} materials</span>
+              <span className="rounded-full bg-[#fff7ed] px-2.5 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">{tCount('classwork.subject.materialsSummary', visibleMaterialsCount)}</span>
             </div>
             <div className="mt-4 space-y-2 text-sm text-[#525252]">
               <div className="flex items-center justify-between gap-2">
-                <span>Date range</span>
+                <span>{t('classwork.subject.dateRange')}</span>
                 <span className="font-semibold text-[#171717]">{getRunDateRange(run)}</span>
               </div>
               {!sessionsMaterialsOnly && (
               <div className="flex items-center justify-between gap-2">
-                <span>Attendance</span>
-                <span className="font-semibold text-[#171717]">{attendanceMarked ? `${attendancePercent}%` : 'Not marked'}</span>
+                <span>{t('classwork.subject.tab.attendance')}</span>
+                <span className="font-semibold text-[#171717]">{attendanceMarked ? `${attendancePercent}%` : t('classwork.subject.notMarked')}</span>
               </div>
               )}
             </div>
           </div>
 
           <div className="border-y border-[#d4d4d4] bg-white p-4">
-            <p className="text-sm font-semibold text-[#171717]">Quick links</p>
+            <p className="text-sm font-semibold text-[#171717]">{t('classwork.subject.quickLinks')}</p>
             <div className="mt-3 grid gap-2">
               {scope !== 'student' && !sessionsMaterialsOnly && (
                 <button type="button" onClick={() => onNavigate?.('curriculum')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                  Open planning
+                  {t('classwork.subject.openPlanning')}
                 </button>
               )}
               {!sessionsMaterialsOnly && (
               <>
               <button type="button" onClick={() => onNavigate?.(scope === 'student' ? 'my-grades' : 'grades')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                Open grades
+                {t('classwork.subject.openGrades')}
               </button>
               <button type="button" onClick={() => onNavigate?.(scope === 'student' ? 'my-attendance' : 'attendance')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                Open attendance
+                {t('classwork.subject.openAttendance')}
               </button>
               </>
               )}
               {sessionsMaterialsOnly && (
                 <button type="button" onClick={() => onNavigate?.(scope === 'translator' ? 'my-classes' : 'curriculum-overview')} className="tbo-focus border border-[#d4d4d4] bg-white px-3 py-2 text-left text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                  {scope === 'translator' ? 'Back to sessions' : 'Open curriculum'}
+                  {scope === 'translator' ? t('classwork.subject.backToSessions') : t('classwork.subject.openCurriculum')}
                 </button>
               )}
             </div>

@@ -15,6 +15,7 @@ import type { Class, ClassNote, ClassFile, User, Course, Subject } from '../../.
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
 import { formatPlatformDate } from '../../../utils/dateUtils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface StaffNotesTabProps {
   currentUser: User;
@@ -94,6 +95,7 @@ function StaffNotesColumn({
   onUploadFile,
   onDeleteFile,
 }: StaffNotesColumnProps) {
+  const { t } = useLanguage();
   const isAdmin = hasRole(currentUser, 'administrator');
 
   const [isAddingNote, setIsAddingNote] = useState(false);
@@ -169,7 +171,7 @@ function StaffNotesColumn({
 
       <div>
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-base font-medium text-gray-800">Text Notes</h4>
+          <h4 className="text-base font-medium text-gray-800">{t('classwork.tabs.materials.textNotes')}</h4>
           {canManage && !isAddingNote && (
             <button
               type="button"
@@ -178,7 +180,7 @@ function StaffNotesColumn({
               className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium disabled:opacity-50"
             >
               <Plus className="w-4 h-4" />
-              Add Note
+              {t('classwork.tabs.materials.addNote')}
             </button>
           )}
         </div>
@@ -189,14 +191,14 @@ function StaffNotesColumn({
               type="text"
               value={newNoteTitle}
               onChange={e => setNewNoteTitle(e.target.value)}
-              placeholder="Title (optional)"
+              placeholder={t('classwork.tabs.materials.titleOptional')}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <textarea
               value={newNoteContent}
               onChange={e => setNewNoteContent(e.target.value)}
               rows={4}
-              placeholder="Note content..."
+              placeholder={t('classwork.tabs.materials.notePlaceholder')}
               className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
             />
             <div className="flex gap-2">
@@ -206,7 +208,7 @@ function StaffNotesColumn({
                 disabled={saving || !newNoteContent.trim()}
                 className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
               >
-                Save
+                {t('common.save')}
               </button>
               <button
                 type="button"
@@ -218,7 +220,7 @@ function StaffNotesColumn({
                 disabled={saving}
                 className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -241,7 +243,7 @@ function StaffNotesColumn({
                       type="text"
                       value={editNoteTitle}
                       onChange={e => setEditNoteTitle(e.target.value)}
-                      placeholder="Title (optional)"
+                      placeholder={t('classwork.tabs.materials.titleOptional')}
                       className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500"
                     />
                     <textarea
@@ -257,7 +259,7 @@ function StaffNotesColumn({
                         disabled={saving || !editNoteContent.trim()}
                         className="bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
                       >
-                        Save
+                        {t('common.save')}
                       </button>
                       <button
                         type="button"
@@ -265,7 +267,7 @@ function StaffNotesColumn({
                         disabled={saving}
                         className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </button>
                     </div>
                   </div>
@@ -291,7 +293,7 @@ function StaffNotesColumn({
                           onClick={() => startEditNote(note)}
                           disabled={saving}
                           className="p-1.5 text-gray-400 hover:text-amber-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                          aria-label="Edit note"
+                          aria-label={t('classwork.tabs.materials.editNote')}
                         >
                           <Pencil className="w-4 h-4" />
                         </button>
@@ -300,7 +302,7 @@ function StaffNotesColumn({
                           onClick={() => onDeleteNote(note.id)}
                           disabled={saving}
                           className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                          aria-label="Delete note"
+                          aria-label={t('common.delete')}
                         >
                           <Trash className="w-4 h-4" />
                         </button>
@@ -316,7 +318,7 @@ function StaffNotesColumn({
 
       <div className="border-t border-gray-100 pt-6">
         <div className="flex items-center justify-between mb-4">
-          <h4 className="text-base font-medium text-gray-800">Drive Files</h4>
+          <h4 className="text-base font-medium text-gray-800">{t('classwork.tabs.staff.driveFiles')}</h4>
           {canManage && (
             <div className="flex items-center gap-2">
               <input
@@ -332,7 +334,7 @@ function StaffNotesColumn({
                 className="flex items-center gap-1.5 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
-                Upload to Drive
+                {t('classwork.tabs.staff.uploadToDrive')}
               </button>
             </div>
           )}
@@ -367,7 +369,7 @@ function StaffNotesColumn({
                       className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
                     >
                       <ExternalLink className="w-4 h-4" />
-                      Open
+                      {t('common.open')}
                     </button>
                     {canDeleteFile(file) && (
                       <button
@@ -375,7 +377,7 @@ function StaffNotesColumn({
                         onClick={() => onDeleteFile(file)}
                         disabled={saving}
                         className="p-1.5 text-gray-400 hover:text-red-600 rounded-md hover:bg-gray-100 disabled:opacity-50"
-                        aria-label="Delete file"
+                        aria-label={t('common.delete')}
                       >
                         <Trash className="w-4 h-4" />
                       </button>
@@ -405,6 +407,7 @@ export function StaffNotesTab({
   onUploadFile,
   onDeleteFile,
 }: StaffNotesTabProps) {
+  const { t } = useLanguage();
   const canManageTeacherNotes =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const canManageTranslatorNotes =
@@ -432,8 +435,8 @@ export function StaffNotesTab({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
       <StaffNotesColumn
-        title="Teacher Notes"
-        emptyLabel="No teacher notes yet."
+        title={t('classwork.tabs.staff.teacherNotes')}
+        emptyLabel={t('classwork.tabs.staff.emptyTeacher')}
         noteType="teacher_note"
         fileType="teacher_note"
         canManage={canManageTeacherNotes}
@@ -442,8 +445,8 @@ export function StaffNotesTab({
         {...sharedColumnProps}
       />
       <StaffNotesColumn
-        title="Translator Notes"
-        emptyLabel="No translator notes yet."
+        title={t('classwork.tabs.staff.translatorNotes')}
+        emptyLabel={t('classwork.tabs.staff.emptyTranslator')}
         noteType="translator_note"
         fileType="translator_note"
         canManage={canManageTranslatorNotes}

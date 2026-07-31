@@ -71,7 +71,18 @@ export function getHomeworkStatusTone(status: string) {
   return 'bg-[#f5f5f5] text-[#525252] ring-[#e5e5e5]';
 }
 
+const HOMEWORK_STATUS_KEYS: Record<string, 'classwork.submissionStatus.notStarted' | 'classwork.submissionStatus.inProgress' | 'classwork.submissionStatus.submitted' | 'classwork.submissionStatus.graded' | 'classwork.submissionStatus.returned'> = {
+  not_started: 'classwork.submissionStatus.notStarted',
+  draft: 'classwork.submissionStatus.inProgress',
+  submitted: 'classwork.submissionStatus.submitted',
+  graded: 'classwork.submissionStatus.graded',
+  returned: 'classwork.submissionStatus.returned',
+};
+
 export function getHomeworkStatusLabel(status: string) {
+  const normalized = status.toLowerCase().replace(/\s+/g, '_');
+  const key = HOMEWORK_STATUS_KEYS[normalized];
+  if (key) return translate(key);
   return status.replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
 }
 
@@ -93,9 +104,9 @@ export function formatDueDateTime(dateString: string | null) {
 }
 
 export function getDueCountdown(dateString: string | null) {
-  if (!dateString) return 'No due date set';
+  if (!dateString) return translate('classwork.helpers.noDueDateSet');
   const due = new Date(dateString);
-  if (Number.isNaN(due.getTime())) return 'No due date set';
+  if (Number.isNaN(due.getTime())) return translate('classwork.helpers.noDueDateSet');
   const diffMs = due.getTime() - Date.now();
   const absMs = Math.abs(diffMs);
   const totalMinutes = Math.max(0, Math.floor(absMs / 60000));
@@ -107,9 +118,10 @@ export function getDueCountdown(dateString: string | null) {
     hours > 0 || days > 0 ? `${hours}h` : null,
     `${minutes}m`,
   ].filter(Boolean);
-  if (diffMs < 0) return `Overdue by ${parts.join(' ')}`;
-  if (totalMinutes === 0) return 'Due now';
-  return `${parts.join(' ')} left`;
+  const duration = parts.join(' ');
+  if (diffMs < 0) return translate('classwork.helpers.overdueBy', { duration });
+  if (totalMinutes === 0) return translate('classwork.helpers.dueNow');
+  return translate('classwork.helpers.timeLeft', { duration });
 }
 
 export function getRunDateRange(run: SubjectRun) {
@@ -117,7 +129,7 @@ export function getRunDateRange(run: SubjectRun) {
     .map(item => item.dueDate)
     .filter((date): date is string => Boolean(date))
     .sort((a, b) => a.localeCompare(b));
-  if (dates.length === 0) return 'No dates';
+  if (dates.length === 0) return translate('classwork.helpers.noDates');
   const first = formatPlatformDate(dates[0]);
   const last = formatPlatformDate(dates[dates.length - 1]);
   return first === last ? first : `${first} - ${last}`;
@@ -212,11 +224,11 @@ export function getSubjectAssignmentStatus(params: {
 
   if (assignments.length === 0) {
     return {
-      label: 'No assignments',
+      label: translate('classwork.status.noAssignments'),
       icon: 'none' as const,
       containerClass: 'bg-[#fafafa] ring-[#e5e5e5]',
       textClass: 'text-[#a3a3a3]',
-      title: 'There are no assignments attached to this subject yet.',
+      title: translate('classwork.status.noAssignmentsTitle'),
     };
   }
 
@@ -226,11 +238,11 @@ export function getSubjectAssignmentStatus(params: {
   if (params.scope === 'student') {
     if (params.timelineState === 'upcoming') {
       return {
-        label: 'Upcoming assignments',
+        label: translate('classwork.status.upcomingAssignments'),
         icon: 'upcoming' as const,
         containerClass: 'bg-[#eff6ff] ring-[#bfdbfe]',
         textClass: 'text-[#2563eb]',
-        title: 'Assignments are attached, but this subject has not started yet.',
+        title: translate('classwork.status.upcomingTitle'),
       };
     }
 
@@ -240,11 +252,11 @@ export function getSubjectAssignmentStatus(params: {
     });
     if (hasPending) {
       return {
-        label: 'Action needed',
+        label: translate('classwork.status.actionNeeded'),
         icon: 'action' as const,
         containerClass: 'bg-[#fff1f2] ring-[#fecdd3]',
         textClass: 'text-[#be5b65]',
-        title: 'At least one assignment still needs your attention.',
+        title: translate('classwork.status.actionNeededTitle'),
       };
     }
   }
@@ -252,24 +264,32 @@ export function getSubjectAssignmentStatus(params: {
   const needsStaffReview = submissions.some(submission => submission.status === 'submitted' || submission.status === 'returned');
   if (needsStaffReview) {
     return {
-      label: 'Review pending',
+      label: translate('classwork.status.reviewPending'),
       icon: 'review' as const,
       containerClass: 'bg-[#fffbeb] ring-[#fde68a]',
       textClass: 'text-[#b45309]',
-      title: 'Students have nothing more to do on some work, but staff review or final grading is not complete.',
+      title: translate('classwork.status.reviewPendingTitle'),
     };
   }
 
   return {
-    label: 'Complete',
+    label: translate('classwork.status.complete'),
     icon: 'complete' as const,
     containerClass: 'bg-[#ecfdf5] ring-[#bbf7d0]',
     textClass: 'text-[#047857]',
-    title: 'Assignments are complete on the student and staff side.',
+    title: translate('classwork.status.completeTitle'),
   };
 }
 
 export const UNSCHEDULED_WEEK_KEY = 'unscheduled';
+
+/** Session timeline labels resolve through the active language at access time. */
+export const SUBJECT_TIMELINE_LABELS: Record<'past' | 'today' | 'upcoming' | 'unscheduled', string> = {
+  get past() { return translate('classwork.subject.timeline.past'); },
+  get today() { return translate('classwork.subject.timeline.today'); },
+  get upcoming() { return translate('classwork.subject.timeline.upcoming'); },
+  get unscheduled() { return translate('classwork.subject.timeline.unscheduled'); },
+};
 
 /** Monday YYYY-MM-DD for the calendar week that contains the date (Tue/Thu share a week). */
 export function weekStartKey(dateStr: string | null | undefined): string {
@@ -308,7 +328,7 @@ export function groupByCalendarWeek<T>(
 
   const groups: CalendarWeekGroup<T>[] = scheduled.map(([weekStart, weekItems], index) => ({
     weekStart,
-    weekLabel: `Week ${index + 1}`,
+    weekLabel: translate('classwork.helpers.weekNumber', { n: index + 1 }),
     items: weekItems,
   }));
 
@@ -316,7 +336,7 @@ export function groupByCalendarWeek<T>(
   if (unscheduled?.length) {
     groups.push({
       weekStart: UNSCHEDULED_WEEK_KEY,
-      weekLabel: 'Unscheduled',
+      weekLabel: translate('classwork.helpers.unscheduled'),
       items: unscheduled,
     });
   }

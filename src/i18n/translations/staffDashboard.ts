@@ -1,0 +1,38 @@
+import { defineTranslations } from '../defineTranslations';
+
+export const staffDashboardTranslations = defineTranslations({
+  en: {
+    'staffDashboard.title.teacher': 'Teacher Dashboard',
+    'staffDashboard.title.translator': 'Translator Dashboard',
+    'staffDashboard.search': 'Search',
+    'staffDashboard.allMySessions': 'All my sessions',
+    'staffDashboard.viewAll': 'View all',
+    'staffDashboard.upcoming.title': 'Upcoming',
+    'staffDashboard.upcoming.subtitle': 'All school sessions · next 7 days',
+    'staffDashboard.upcoming.empty': 'No school sessions scheduled in the next 7 days.',
+    'staffDashboard.mySessions.title.teacher': 'My sessions',
+    'staffDashboard.mySessions.title.translator': 'My assignments',
+    'staffDashboard.mySessions.subtitle': 'Your sessions · next 7 days',
+    'staffDashboard.mySessions.empty.teacher': 'You have no teaching sessions in the next 7 days.',
+    'staffDashboard.mySessions.empty.translator': 'You have no translation assignments in the next 7 days.',
+    'staffDashboard.role.teacher': 'Teacher',
+    'staffDashboard.role.translator': 'Translator',
+  },
+  bg: {
+    'staffDashboard.title.teacher': 'Табло на преподавателя',
+    'staffDashboard.title.translator': 'Табло на преводача',
+    'staffDashboard.search': 'Търсене',
+    'staffDashboard.allMySessions': 'Всички мои сесии',
+    'staffDashboard.viewAll': 'Виж всички',
+    'staffDashboard.upcoming.title': 'Предстоящи',
+    'staffDashboard.upcoming.subtitle': 'Всички училищни сесии · следващите 7 дни',
+    'staffDashboard.upcoming.empty': 'Няма планирани училищни сесии за следващите 7 дни.',
+    'staffDashboard.mySessions.title.teacher': 'Моите сесии',
+    'staffDashboard.mySessions.title.translator': 'Моите задания',
+    'staffDashboard.mySessions.subtitle': 'Вашите сесии · следващите 7 дни',
+    'staffDashboard.mySessions.empty.teacher': 'Нямате преподавателски сесии през следващите 7 дни.',
+    'staffDashboard.mySessions.empty.translator': 'Нямате преводни задания през следващите 7 дни.',
+    'staffDashboard.role.teacher': 'Преподавател',
+    'staffDashboard.role.translator': 'Преводач',
+  },
+});
