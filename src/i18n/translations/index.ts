@@ -1,11 +1,15 @@
 import { absenceTranslations } from './absence';
 import { announcementsTranslations } from './announcements';
 import { appTranslations } from './app';
+import { assignmentTranslations } from './assignment';
 import { attendanceTranslations } from './attendance';
 import { authTranslations } from './auth';
 import { classDetailTranslations } from './classDetail';
 import { classworkTranslations } from './classwork';
 import { commonTranslations } from './common';
+import { editTranslations } from './edit';
+import { filePreviewTranslations } from './filePreview';
+import { gradeModalTranslations } from './gradeModal';
 import { gradesTranslations } from './grades';
 import { headerTranslations } from './header';
 import { messagesTranslations } from './messages';
@@ -17,6 +21,7 @@ import { sessionsTranslations } from './sessions';
 import { settingsTranslations } from './settings';
 import { staffDashboardTranslations } from './staffDashboard';
 import { studentTranslations } from './student';
+import { submissionDetailTranslations } from './submissionDetail';
 import { submissionsTranslations } from './submissions';
 import { todosTranslations } from './todos';
 import { workspaceTranslations } from './workspace';
@@ -38,6 +43,11 @@ export const en = {
   ...classworkTranslations.en,
   ...classDetailTranslations.en,
   ...gradesTranslations.en,
+  ...gradeModalTranslations.en,
+  ...assignmentTranslations.en,
+  ...editTranslations.en,
+  ...submissionDetailTranslations.en,
+  ...filePreviewTranslations.en,
   ...todosTranslations.en,
   ...messagesTranslations.en,
   ...absenceTranslations.en,
@@ -65,6 +75,11 @@ export const bg: Record<TranslationKey, string> = {
   ...classworkTranslations.bg,
   ...classDetailTranslations.bg,
   ...gradesTranslations.bg,
+  ...gradeModalTranslations.bg,
+  ...assignmentTranslations.bg,
+  ...editTranslations.bg,
+  ...submissionDetailTranslations.bg,
+  ...filePreviewTranslations.bg,
   ...todosTranslations.bg,
   ...messagesTranslations.bg,
   ...absenceTranslations.bg,

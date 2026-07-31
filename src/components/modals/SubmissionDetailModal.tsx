@@ -8,6 +8,8 @@ import type {
 } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 
 interface SubmissionDetailModalProps {
   isOpen: boolean;
@@ -22,20 +24,16 @@ interface SubmissionDetailModalProps {
   onDeleteComment: (commentId: number) => Promise<void>;
 }
 
-function formatDate(dateString: string): string {
-  return formatPlatformDate(dateString);
-}
-
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {
   return submission.driveViewUrl ?? submission.googleDocUrl;
 }
 
-const STATUS_LABELS: Record<SubmissionStatus, string> = {
-  not_started: 'Not started',
-  draft: 'In progress',
-  submitted: 'Submitted',
-  graded: 'Graded',
-  returned: 'Returned',
+const STATUS_LABEL_KEYS: Record<SubmissionStatus, TranslationKey> = {
+  not_started: 'classwork.submissionStatus.notStarted',
+  draft: 'classwork.submissionStatus.inProgress',
+  submitted: 'classwork.submissionStatus.submitted',
+  graded: 'classwork.submissionStatus.graded',
+  returned: 'classwork.submissionStatus.returned',
 };
 
 export function SubmissionDetailModal({
@@ -50,6 +48,7 @@ export function SubmissionDetailModal({
   onAddComment,
   onDeleteComment,
 }: SubmissionDetailModalProps) {
+  const { t } = useLanguage();
   const [commentDraft, setCommentDraft] = useState('');
   const [posting, setPosting] = useState(false);
 
@@ -77,14 +76,14 @@ export function SubmissionDetailModal({
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-lg font-semibold text-gray-900">Submission Details</h3>
+              <h3 className="text-lg font-semibold text-gray-900">{t('submission.detail.title')}</h3>
               <p className="text-sm text-gray-500 mt-1">{submission.studentName}</p>
             </div>
             <button
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -93,24 +92,26 @@ export function SubmissionDetailModal({
           <div className="space-y-4">
             <div className="flex flex-wrap gap-2 text-sm">
               <span className="px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                {STATUS_LABELS[submission.status]}
+                {t(STATUS_LABEL_KEYS[submission.status])}
               </span>
               {submission.submissionType && (
                 <span className="px-2.5 py-0.5 rounded-full bg-amber-50 text-amber-800">
-                  {submission.submissionType === 'file' ? 'File upload' : 'Google Doc'}
+                  {submission.submissionType === 'file'
+                    ? t('submission.detail.type.fileUpload')
+                    : t('grades.googleDoc')}
                 </span>
               )}
             </div>
 
             {submission.fileName && (
               <p className="text-sm text-gray-700">
-                <span className="font-medium">File:</span> {submission.fileName}
+                <span className="font-medium">{t('submission.detail.fileLabel')}</span> {submission.fileName}
               </p>
             )}
 
             {submission.submittedAt && (
               <p className="text-sm text-gray-500">
-                Submitted on {formatDate(submission.submittedAt)}
+                {t('classwork.tabs.homework.submittedOn')} {formatPlatformDate(submission.submittedAt)}
               </p>
             )}
 
@@ -134,7 +135,7 @@ export function SubmissionDetailModal({
                 className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium"
               >
                 <ExternalLink className="w-4 h-4" />
-                Open submission
+                {t('submission.detail.openSubmission')}
               </button>
             )}
 
@@ -146,7 +147,7 @@ export function SubmissionDetailModal({
                     onClick={onGrade}
                     className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700"
                   >
-                    Grade
+                    {t('classwork.tabs.homework.grade')}
                   </button>
                 )}
                 {onReturn &&
@@ -156,16 +157,16 @@ export function SubmissionDetailModal({
                       onClick={() => onReturn(submission.id).then(onClose)}
                       className="px-4 py-2 text-sm font-medium text-orange-700 bg-orange-50 border border-orange-200 rounded-md hover:bg-orange-100"
                     >
-                      Return for Revision
+                      {t('gradeModal.returnForRevision')}
                     </button>
                   )}
               </div>
             )}
 
             <div className="border-t border-gray-100 pt-4">
-              <h4 className="text-sm font-medium text-gray-900 mb-3">Comments</h4>
+              <h4 className="text-sm font-medium text-gray-900 mb-3">{t('classwork.tabs.homework.comments')}</h4>
               {comments.length === 0 ? (
-                <p className="text-sm text-gray-500 mb-3">No comments yet.</p>
+                <p className="text-sm text-gray-500 mb-3">{t('classwork.tabs.homework.noComments')}</p>
               ) : (
                 <div className="space-y-3 mb-4">
                   {comments.map(comment => (
@@ -176,7 +177,7 @@ export function SubmissionDetailModal({
                             {comment.content}
                           </p>
                           <p className="text-xs text-gray-500 mt-1">
-                            {comment.authorName} · {formatDate(comment.createdAt)}
+                            {comment.authorName} · {formatPlatformDate(comment.createdAt)}
                           </p>
                         </div>
                         {(isAdmin || comment.authorId === currentUser.id) && (
@@ -184,7 +185,7 @@ export function SubmissionDetailModal({
                             type="button"
                             onClick={() => onDeleteComment(comment.id)}
                             className="p-1 text-gray-400 hover:text-red-600"
-                            aria-label="Delete comment"
+                            aria-label={t('classwork.review.deleteComment')}
                           >
                             <Trash className="w-4 h-4" />
                           </button>
@@ -199,7 +200,7 @@ export function SubmissionDetailModal({
                   value={commentDraft}
                   onChange={e => setCommentDraft(e.target.value)}
                   rows={2}
-                  placeholder="Add a comment..."
+                  placeholder={t('classwork.tabs.homework.addComment')}
                   className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-amber-500"
                 />
                 <button
@@ -208,7 +209,7 @@ export function SubmissionDetailModal({
                   disabled={posting || !commentDraft.trim()}
                   className="self-end px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
                 >
-                  Post
+                  {t('common.post')}
                 </button>
               </div>
             </div>

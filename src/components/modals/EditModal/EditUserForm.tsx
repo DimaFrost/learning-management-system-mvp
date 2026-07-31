@@ -1,9 +1,10 @@
 import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, Wifi, X } from 'lucide-react';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Course, CourseStudent, CourseType, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
 import { getCourseDisplayName, isCourseActive } from '../../../utils/courseUtils';
 import { RoleChip, UserAvatar } from '../../../views/admin/users/usersShared';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface EditUserFormProps {
   formData: FormData;
@@ -57,6 +58,7 @@ export function EditUserForm({
   courses,
   getUserById,
 }: EditUserFormProps) {
+  const { t, tCount, language } = useLanguage();
   const [teamDropdownOpen, setTeamDropdownOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'student' | 'teacher' | 'mentor' | 'team_leader' | null>(null);
   const [menteeSearch, setMenteeSearch] = useState('');
@@ -69,28 +71,28 @@ export function EditUserForm({
   const hasTeacherRole = formData.roles?.includes('teacher') || false;
   const hasMentorRole = formData.roles?.includes('mentor') || false;
   const hasTeamLeaderRole = formData.roles?.includes('team_leader') || false;
-  const roleSettingsTabs = [
+  const roleSettingsTabs = useMemo(() => [
     hasStudentRole ? {
       id: 'student' as const,
-      label: 'Student',
+      label: t('edit.user.tab.student'),
       icon: BookOpen,
       activeClassName: 'border-[#94a3b8] bg-[#f1f5f9] text-[#334155] shadow-sm ring-1 ring-[#cbd5e1]',
     } : null,
     hasTeacherRole ? {
       id: 'teacher' as const,
-      label: 'Teaching',
+      label: t('edit.user.tab.teaching'),
       icon: GraduationCap,
       activeClassName: 'border-[#93c5fd] bg-[#eff6ff] text-[#1d4ed8] shadow-sm ring-1 ring-[#bfdbfe]',
     } : null,
     hasMentorRole ? {
       id: 'mentor' as const,
-      label: 'Mentorship',
+      label: t('edit.user.tab.mentorship'),
       icon: HeartHandshake,
       activeClassName: 'border-[#86efac] bg-[#f0fdf4] text-[#15803d]',
     } : null,
     hasTeamLeaderRole ? {
       id: 'team_leader' as const,
-      label: 'Teams',
+      label: t('edit.user.tab.teams'),
       icon: ShieldCheck,
       activeClassName: 'border-[#fed7aa] bg-[#fff7ed] text-[#ea580c]',
     } : null,
@@ -99,11 +101,11 @@ export function EditUserForm({
     label: string;
     icon: typeof BookOpen;
     activeClassName: string;
-  }>;
-  const activeYearGroupChoices = [
+  }>, [hasStudentRole, hasTeacherRole, hasMentorRole, hasTeamLeaderRole, language, t]);
+  const activeYearGroupChoices = useMemo(() => [
     {
       key: 'first_year',
-      label: 'First Year',
+      label: t('common.yearGroup.first'),
       numeral: 'I',
       course: courses.find(course => isCourseActive(course) && course.courseType === 'first_year'),
       tone: 'border-[#d4d4d4] bg-[#fafafa] text-[#404040] hover:border-[#94a3b8] hover:bg-[#f8fafc]',
@@ -111,13 +113,18 @@ export function EditUserForm({
     },
     {
       key: 'second_year',
-      label: 'Second Year',
+      label: t('common.yearGroup.second'),
       numeral: 'II',
       course: courses.find(course => isCourseActive(course) && course.courseType === 'second_year'),
       tone: 'border-[#a3a3a3] bg-[#f5f5f5] text-[#262626] hover:border-[#78716c] hover:bg-[#fafaf9]',
       selectedTone: 'border-[#92400e] bg-[#fffbeb] text-[#92400e] shadow-sm ring-2 ring-[#fde68a]',
     },
-  ];
+  ], [courses, language, t]);
+  const menteeYearFilters = useMemo(() => [
+    { id: 'both' as const, label: t('edit.user.filterBoth') },
+    { id: 'first_year' as const, label: t('edit.user.filterFirstYear') },
+    { id: 'second_year' as const, label: t('edit.user.filterSecondYear') },
+  ], [language, t]);
   const activeEnrollments = editedUser
     ? courseStudents.filter(enrollment => {
         if (enrollment.studentId !== editedUser.id || enrollment.status !== 'active') return false;
@@ -269,10 +276,10 @@ export function EditUserForm({
           )}
           <div className="min-w-0">
             <p className="text-sm font-semibold text-[#171717]">
-              {editedUser ? 'Edit person profile' : 'Create person profile'}
+              {editedUser ? t('edit.user.editProfile') : t('edit.user.createProfile')}
             </p>
             <p className="truncate text-xs text-[#737373]">
-              {formData.email || 'Add email and roles to create access'}
+              {formData.email || t('edit.user.profileHint')}
             </p>
           </div>
         </div>
@@ -281,14 +288,14 @@ export function EditUserForm({
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
               <UserIcon className="h-3.5 w-3.5" />
-              Name
+              {t('edit.user.name')}
             </span>
             <input
               type="text"
               value={formData.name || ''}
               onChange={event => onChange('name', event.target.value)}
               className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
-              placeholder="Enter full name"
+              placeholder={t('edit.user.namePlaceholder')}
             />
             {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
           </label>
@@ -296,14 +303,14 @@ export function EditUserForm({
           <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
               <Mail className="h-3.5 w-3.5" />
-              Email
+              {t('edit.user.email')}
             </span>
             <input
               type="email"
               value={formData.email || ''}
               onChange={event => onChange('email', event.target.value)}
               className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
-              placeholder="Enter email address"
+              placeholder={t('edit.user.emailPlaceholder')}
             />
             {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
           </label>
@@ -311,21 +318,21 @@ export function EditUserForm({
           <label className="block sm:col-span-2">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
               <Phone className="h-3.5 w-3.5" />
-              Phone
+              {t('edit.user.phone')}
             </span>
             <input
               type="tel"
               value={formData.phone || ''}
               onChange={event => onChange('phone', event.target.value)}
               className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
-              placeholder="Add phone number"
+              placeholder={t('edit.user.phonePlaceholder')}
             />
           </label>
         </div>
       </div>
 
       <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
-        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Roles</p>
+        <p className="mb-3 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('edit.user.roles')}</p>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {editableRoles.map(role => {
             const selected = formData.roles?.includes(role) || false;
@@ -378,7 +385,7 @@ export function EditUserForm({
 
           {activeSettingsTab === 'student' && (
             <div className="space-y-3">
-            <AssignmentPanel icon={BookOpen} title="Student year group" detail="Choose the active year group for this student. This saves when you press Update.">
+            <AssignmentPanel icon={BookOpen} title={t('edit.user.studentYearGroup')} detail={t('edit.user.studentYearGroupHint')}>
               <div className="grid gap-2 sm:grid-cols-2">
                 {activeYearGroupChoices.map(choice => {
                   const selected = !!choice.course && Number(draftYearGroupId) === choice.course.id;
@@ -408,11 +415,11 @@ export function EditUserForm({
                         <span className="mt-0.5 block text-xs text-[#737373]">
                           {choice.course
                             ? selected
-                              ? 'Selected for update'
+                              ? t('edit.user.selectedForUpdate')
                               : enrollment
-                                ? `Currently active since ${enrollment.enrollmentDate}`
-                                : 'Available active year group'
-                            : 'No active year group found'}
+                                ? t('edit.user.activeSince', { date: enrollment.enrollmentDate })
+                                : t('edit.user.availableYearGroup')
+                            : t('edit.user.noActiveYearGroup')}
                         </span>
                       </span>
                     </button>
@@ -421,7 +428,7 @@ export function EditUserForm({
               </div>
             </AssignmentPanel>
 
-            <AssignmentPanel icon={Wifi} title="Online student" detail="Online students join sessions remotely and are graded against the online attendance requirements. This saves when you press Update.">
+            <AssignmentPanel icon={Wifi} title={t('edit.user.onlineStudent')} detail={t('edit.user.onlineStudentHint')}>
               <button
                 type="button"
                 onClick={() => onChange('isOnlineStudent', !(formData.isOnlineStudent ?? false))}
@@ -441,12 +448,12 @@ export function EditUserForm({
                 </span>
                 <span className="min-w-0">
                   <span className="block text-sm font-semibold">
-                    {formData.isOnlineStudent ? 'Online student' : 'In-person student'}
+                    {formData.isOnlineStudent ? t('edit.user.onlineStudentLabel') : t('edit.user.inPersonStudentLabel')}
                   </span>
                   <span className="mt-0.5 block text-xs text-[#737373]">
                     {formData.isOnlineStudent
-                      ? 'Sees the join link for live sessions and uses online attendance requirements'
-                      : 'Attends on site and uses the regular attendance requirements'}
+                      ? t('edit.user.onlineStudentDetail')
+                      : t('edit.user.inPersonStudentDetail')}
                   </span>
                 </span>
               </button>
@@ -455,7 +462,7 @@ export function EditUserForm({
           )}
 
           {activeSettingsTab === 'teacher' && (
-            <AssignmentPanel icon={GraduationCap} title="Teaching year groups" detail="Choose which active year groups this teacher can teach and plan for. This saves when you press Update.">
+            <AssignmentPanel icon={GraduationCap} title={t('edit.user.teachingYearGroups')} detail={t('edit.user.teachingYearGroupsHint')}>
               <div className="grid gap-2 sm:grid-cols-2">
                 {activeYearGroupChoices.map(choice => {
                   const selected = draftTeachingCourseTypes.includes(choice.key as CourseType);
@@ -482,9 +489,9 @@ export function EditUserForm({
                         <span className="mt-0.5 block text-xs text-[#737373]">
                           {choice.course
                             ? selected
-                              ? 'Visible in planning dropdowns'
-                              : 'Hide from this year group'
-                            : 'No active year group found'}
+                              ? t('edit.user.visibleInPlanning')
+                              : t('edit.user.hiddenFromYearGroup')
+                            : t('edit.user.noActiveYearGroup')}
                         </span>
                       </span>
                     </button>
@@ -493,14 +500,14 @@ export function EditUserForm({
               </div>
               {draftTeachingCourseTypes.length === 0 && (
                 <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">
-                  No teaching year group selected yet.
+                  {t('edit.user.noTeachingYearGroup')}
                 </p>
               )}
             </AssignmentPanel>
           )}
 
           {activeSettingsTab === 'mentor' && (
-            <AssignmentPanel icon={HeartHandshake} title="Mentorship" detail="Search students, filter by year group, and choose mentees to assign when you press Update.">
+            <AssignmentPanel icon={HeartHandshake} title={t('edit.user.mentorship')} detail={t('edit.user.mentorshipHint')}>
               <div className="flex flex-wrap gap-1.5">
                 {menteeEnrollments.length > 0 ? (
                   menteeEnrollments.map(enrollment => {
@@ -508,12 +515,12 @@ export function EditUserForm({
                     const course = courses.find(item => item.id === enrollment.courseId);
                     return (
                       <span key={`${enrollment.studentId}-${enrollment.courseId}`} className="rounded-md border border-[#bbf7d0] bg-[#f0fdf4] px-2 py-1 text-[11px] font-semibold text-[#15803d]">
-                        {student?.name ?? 'Unknown'}{course ? ` / ${getCourseDisplayName(course)}` : ''}
+                        {student?.name ?? t('edit.user.unknown')}{course ? ` / ${getCourseDisplayName(course)}` : ''}
                       </span>
                     );
                   })
                 ) : (
-                  <span className="text-sm text-[#737373]">No mentees assigned.</span>
+                  <span className="text-sm text-[#737373]">{t('edit.user.noMentees')}</span>
                 )}
               </div>
 
@@ -543,7 +550,9 @@ export function EditUserForm({
                     className="flex h-11 w-full items-center justify-between rounded-xl border border-[#d4d4d4] bg-white px-3 text-left text-sm hover:bg-[#fafafa]"
                   >
                     <span className="font-medium text-[#171717]">
-                      {draftMenteeKeys.length > 0 ? `${draftMenteeKeys.length} selected` : 'Search and select mentees'}
+                      {draftMenteeKeys.length > 0
+                        ? tCount('edit.user.menteesSelected', draftMenteeKeys.length)
+                        : t('edit.user.searchSelectMentees')}
                     </span>
                     <Search className="h-4 w-4 text-[#737373]" />
                   </button>
@@ -557,19 +566,15 @@ export function EditUserForm({
                             value={menteeSearch}
                             onChange={event => setMenteeSearch(event.target.value)}
                             className="h-9 min-w-0 flex-1 bg-transparent text-sm outline-none"
-                            placeholder="Search students"
+                            placeholder={t('edit.user.searchStudents')}
                           />
                         </div>
                         <div className="mt-2 grid grid-cols-3 gap-1">
-                          {[
-                            { id: 'both', label: 'Both' },
-                            { id: 'first_year', label: 'I Year' },
-                            { id: 'second_year', label: 'II Year' },
-                          ].map(filter => (
+                          {menteeYearFilters.map(filter => (
                             <button
                               key={filter.id}
                               type="button"
-                              onClick={() => setMenteeYearFilter(filter.id as typeof menteeYearFilter)}
+                              onClick={() => setMenteeYearFilter(filter.id)}
                               className={`rounded-lg px-2 py-1.5 text-xs font-semibold ${
                                 menteeYearFilter === filter.id ? 'bg-[#171717] text-white' : 'bg-[#f5f5f5] text-[#525252]'
                               }`}
@@ -598,21 +603,21 @@ export function EditUserForm({
                           );
                         })}
                         {filteredMenteeOptions.length === 0 && (
-                          <p className="p-3 text-sm text-[#737373]">No matching students.</p>
+                          <p className="p-3 text-sm text-[#737373]">{t('edit.user.noMatchingStudents')}</p>
                         )}
                       </div>
                     </div>
                   )}
                 </div>
                 <span className="flex h-11 items-center rounded-xl bg-[#f5f5f5] px-3 text-sm font-semibold text-[#737373]">
-                  {draftMenteeKeys.length} pending
+                  {t('edit.user.pendingCount', { count: draftMenteeKeys.length })}
                 </span>
               </div>
             </AssignmentPanel>
           )}
 
           {activeSettingsTab === 'team_leader' && (
-            <AssignmentPanel icon={ShieldCheck} title="Team leadership" detail="Choose one or more ministry teams this user can lead. This saves when you press Update.">
+            <AssignmentPanel icon={ShieldCheck} title={t('edit.user.teamLeadership')} detail={t('edit.user.teamLeadershipHint')}>
               <div ref={teamDropdownRef} className="relative">
                 <button
                   type="button"
@@ -622,10 +627,10 @@ export function EditUserForm({
                 >
                   <span className="min-w-0 truncate font-medium text-[#171717]">
                     {selectedDraftTeams.length > 0
-                      ? `${selectedDraftTeams.length} team${selectedDraftTeams.length === 1 ? '' : 's'} selected`
+                      ? tCount('edit.user.teamsSelected', selectedDraftTeams.length)
                       : activeMinistryTeams.length > 0
-                        ? 'Select ministry teams'
-                        : 'No active ministry teams'}
+                        ? t('edit.user.selectMinistryTeams')
+                        : t('edit.user.noActiveMinistryTeams')}
                   </span>
                   <span className="ml-3 rounded-full bg-[#f5f5f5] px-2 py-0.5 text-xs font-semibold text-[#737373]">
                     {selectedDraftTeams.length}/{activeMinistryTeams.length}
@@ -654,7 +659,7 @@ export function EditUserForm({
                           <span className="min-w-0 flex-1">
                             <span className="block truncate text-sm font-semibold text-[#171717]">{team.name}</span>
                             <span className="block text-xs text-[#737373]">
-                              {memberCount} team user{memberCount === 1 ? '' : 's'}
+                              {tCount('edit.user.teamUsers', memberCount)}
                             </span>
                           </span>
                         </button>
@@ -673,12 +678,12 @@ export function EditUserForm({
                   ))
                 ) : (
                   <span className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-2 text-sm text-[#737373]">
-                    No teams selected yet.
+                    {t('edit.user.noTeamsSelected')}
                   </span>
                 )}
               </div>
               {activeMinistryTeams.length === 0 && (
-                <p className="rounded-xl border border-dashed border-[#d4d4d4] p-3 text-sm text-[#737373]">No active ministry teams yet.</p>
+                <p className="rounded-xl border border-dashed border-[#d4d4d4] p-3 text-sm text-[#737373]">{t('edit.user.noActiveMinistryTeamsYet')}</p>
               )}
             </AssignmentPanel>
           )}

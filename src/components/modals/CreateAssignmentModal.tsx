@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { X } from 'lucide-react';
 import type { HomeworkAssignment } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 function toDatetimeLocalValue(iso: string): string {
   const d = new Date(iso);
@@ -33,6 +34,7 @@ export function CreateAssignmentModal({
   onClose,
   onSubmit,
 }: CreateAssignmentModalProps) {
+  const { t } = useLanguage();
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -69,10 +71,10 @@ export function CreateAssignmentModal({
     const newErrors: { title?: string; maxPoints?: string } = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('assignment.create.error.titleRequired');
     }
     if (maxPoints < 0 || maxPoints > 1000) {
-      newErrors.maxPoints = 'Points must be between 0 and 1000';
+      newErrors.maxPoints = t('assignment.create.error.pointsRange');
     }
 
     if (Object.keys(newErrors).length > 0) {
@@ -104,13 +106,13 @@ export function CreateAssignmentModal({
         <div className="p-6">
           <div className="flex justify-between items-start mb-6">
             <h3 className="text-lg font-semibold text-gray-900">
-              {isEditing ? 'Edit Assignment' : 'Post Assignment'}
+              {isEditing ? t('assignment.create.editTitle') : t('classwork.tabs.homework.postAssignment')}
             </h3>
             <button
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -119,7 +121,7 @@ export function CreateAssignmentModal({
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="assignment-title" className="block text-sm font-medium text-gray-700 mb-1">
-                Title
+                {t('common.title')}
               </label>
               <input
                 id="assignment-title"
@@ -127,7 +129,7 @@ export function CreateAssignmentModal({
                 value={title}
                 onChange={e => setTitle(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Assignment title"
+                placeholder={t('assignment.create.titlePlaceholder')}
                 required
               />
               {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
@@ -135,7 +137,7 @@ export function CreateAssignmentModal({
 
             <div>
               <label htmlFor="assignment-description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description / instructions
+                {t('assignment.create.descriptionLabel')}
               </label>
               <textarea
                 id="assignment-description"
@@ -143,13 +145,13 @@ export function CreateAssignmentModal({
                 onChange={e => setDescription(e.target.value)}
                 rows={4}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Instructions for students..."
+                placeholder={t('assignment.create.descriptionPlaceholder')}
               />
             </div>
 
             <div>
               <label htmlFor="assignment-due-date" className="block text-sm font-medium text-gray-700 mb-1">
-                Due Date
+                {t('assignment.create.dueDate')}
               </label>
               <input
                 id="assignment-due-date"
@@ -162,7 +164,7 @@ export function CreateAssignmentModal({
 
             <div>
               <label htmlFor="assignment-max-points" className="block text-sm font-medium text-gray-700 mb-1">
-                Points
+                {t('classwork.assignment.points')}
               </label>
               <input
                 id="assignment-max-points"
@@ -182,14 +184,18 @@ export function CreateAssignmentModal({
                 onClick={onClose}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
               <button
                 type="submit"
                 disabled={submitting}
                 className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
               >
-                {submitting ? 'Saving...' : isEditing ? 'Save Changes' : 'Post Assignment'}
+                {submitting
+                  ? t('common.saving')
+                  : isEditing
+                    ? t('assignment.create.saveChanges')
+                    : t('classwork.tabs.homework.postAssignment')}
               </button>
             </div>
           </form>

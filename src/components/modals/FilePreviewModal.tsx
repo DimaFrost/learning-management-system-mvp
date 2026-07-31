@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Download, ExternalLink, FileText, Image as ImageIcon, Loader2, X } from 'lucide-react';
 import type { FilePreviewItem } from '../../utils/filePreview';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface FilePreviewModalProps {
   item: FilePreviewItem | null;
@@ -13,6 +14,7 @@ function PreviewIcon({ mode }: { mode: FilePreviewItem['mode'] }) {
 }
 
 export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
+  const { t } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
 
@@ -52,7 +54,7 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
         type="button"
         className="absolute inset-0"
         onClick={onClose}
-        aria-label="Close preview"
+        aria-label={t('filePreview.closePreview')}
       />
 
       <div className="relative z-10 flex h-full w-full max-w-6xl flex-col overflow-hidden bg-white shadow-[0_24px_80px_rgba(0,0,0,0.28)] sm:h-[min(92vh,900px)] sm:rounded-2xl sm:ring-1 sm:ring-[#e5e5e5]">
@@ -63,7 +65,9 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
             </span>
             <div className="min-w-0">
               <h2 className="truncate text-base font-semibold text-[#171717] sm:text-lg">{item.title}</h2>
-              <p className="mt-0.5 text-xs text-[#737373] sm:text-sm">{item.typeLabel} · Opens in platform preview</p>
+              <p className="mt-0.5 text-xs text-[#737373] sm:text-sm">
+                {t('filePreview.subtitle', { typeLabel: item.typeLabel })}
+              </p>
             </div>
           </div>
 
@@ -76,7 +80,7 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
               className="tbo-focus hidden items-center gap-1.5 rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] sm:inline-flex"
             >
               <Download className="h-4 w-4" />
-              Download
+              {t('filePreview.download')}
             </a>
             <a
               href={item.url}
@@ -85,13 +89,13 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
               className="tbo-focus hidden items-center gap-1.5 rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] md:inline-flex"
             >
               <ExternalLink className="h-4 w-4" />
-              Open in tab
+              {t('filePreview.openInTab')}
             </a>
             <button
               type="button"
               onClick={onClose}
               className="tbo-focus grid h-9 w-9 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="h-5 w-5" />
             </button>
@@ -103,16 +107,16 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-[#fafafa]">
               <div className="flex items-center gap-2 text-sm text-[#737373]">
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Loading preview…
+                {t('filePreview.loading')}
               </div>
             </div>
           )}
 
           {failed ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 px-6 text-center">
-              <p className="text-sm font-medium text-[#171717]">We couldn&apos;t load a preview for this file.</p>
+              <p className="text-sm font-medium text-[#171717]">{t('filePreview.failedTitle')}</p>
               <p className="max-w-md text-sm text-[#737373]">
-                You can still download it or open it in a new browser tab.
+                {t('filePreview.failedHint')}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <a
@@ -123,7 +127,7 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
                   className="inline-flex items-center gap-1.5 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#262626]"
                 >
                   <Download className="h-4 w-4" />
-                  Download
+                  {t('filePreview.download')}
                 </a>
                 <a
                   href={item.url}
@@ -132,7 +136,7 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
                   className="inline-flex items-center gap-1.5 rounded-lg border border-[#d4d4d4] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-white"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  Open in tab
+                  {t('filePreview.openInTab')}
                 </a>
               </div>
             </div>
@@ -172,7 +176,7 @@ export function FilePreviewModal({ item, onClose }: FilePreviewModalProps) {
             className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#171717] px-3 py-2 text-sm font-semibold text-white"
           >
             <Download className="h-4 w-4" />
-            Download
+            {t('filePreview.download')}
           </a>
           <a
             href={item.url}

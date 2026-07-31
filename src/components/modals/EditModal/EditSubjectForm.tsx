@@ -1,5 +1,6 @@
 import type { User } from '../../../types/lms';
 import type { FormData } from './EditModal';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 interface EditSubjectFormProps {
   formData: FormData;
@@ -19,11 +20,13 @@ export function EditSubjectForm({
   users,
   planningCourseOptions,
 }: EditSubjectFormProps) {
+  const { t } = useLanguage();
+
   return (
     <>
       {planningCourseOptions && (
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-2">Year Group</label>
+          <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.yearGroup')}</label>
           <select
             value={formData.courseId ?? ''}
             onChange={e =>
@@ -31,40 +34,40 @@ export function EditSubjectForm({
             }
             className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            <option value="">Select a year group</option>
+            <option value="">{t('edit.subject.selectYearGroup')}</option>
             {planningCourseOptions.firstYearId != null && (
-              <option value={planningCourseOptions.firstYearId}>First Year</option>
+              <option value={planningCourseOptions.firstYearId}>{t('common.yearGroup.first')}</option>
             )}
             {planningCourseOptions.secondYearId != null && (
-              <option value={planningCourseOptions.secondYearId}>Second Year</option>
+              <option value={planningCourseOptions.secondYearId}>{t('common.yearGroup.second')}</option>
             )}
           </select>
           {errors.courseId && <p className="text-red-500 text-sm mt-1">{errors.courseId}</p>}
         </div>
       )}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Subject Title</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.title')}</label>
         <input
           type="text"
           value={formData.title || ''}
           onChange={(e) => onChange('title', e.target.value)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter subject title"
+          placeholder={t('edit.subject.titlePlaceholder')}
         />
         {errors.title && <p className="text-red-500 text-sm mt-1">{errors.title}</p>}
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.description')}</label>
         <textarea
           value={formData.description || ''}
           onChange={(e) => onChange('description', e.target.value)}
           rows={3}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="Enter subject description"
+          placeholder={t('edit.subject.descriptionPlaceholder')}
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Start Date</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.startDate')}</label>
         <input
           type="date"
           value={formData.startDate || ''}
@@ -73,26 +76,26 @@ export function EditSubjectForm({
         />
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Number of Sessions</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.sessionCount')}</label>
         <input
           type="number"
           value={formData.duration || ''}
           onChange={(e) => onChange('duration', parseInt(e.target.value))}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          placeholder="e.g., 5"
+          placeholder={t('edit.subject.sessionCountPlaceholder')}
           min="1"
           max="20"
         />
-        <p className="text-xs text-gray-500 mt-1">This will pre-create the specified number of sessions</p>
+        <p className="text-xs text-gray-500 mt-1">{t('edit.subject.sessionCountHint')}</p>
       </div>
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">Primary Teacher</label>
+        <label className="block text-sm font-medium text-gray-700 mb-2">{t('edit.subject.primaryTeacher')}</label>
         <select
           value={formData.primaryTeacherId || ''}
           onChange={(e) => onChange('primaryTeacherId', e.target.value || null)}
           className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
         >
-          <option value="">Select a teacher</option>
+          <option value="">{t('edit.subject.selectTeacher')}</option>
           {users.filter(u => u.roles.includes('teacher')).map(teacher => (
             <option key={teacher.id} value={teacher.id}>{teacher.name}</option>
           ))}

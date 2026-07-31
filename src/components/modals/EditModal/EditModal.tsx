@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { X, Save } from 'lucide-react';
 import type { User, Class, Subject, Course, CourseStudent, EditingItem, MinistryTeam } from '../../../types/lms';
 import { EditCourseForm } from './EditCourseForm';
@@ -6,6 +6,7 @@ import { EditSubjectForm } from './EditSubjectForm';
 import { EditClassForm } from './EditClassForm';
 import { EditUserForm } from './EditUserForm';
 import { hasActiveCourseOfType } from '../../../utils/courseUtils';
+import { useLanguage } from '../../../i18n/LanguageContext';
 
 export interface FormData {
   [key: string]: any;
@@ -60,6 +61,7 @@ export function EditModal({
   checkDoubleBooking,
   getUserById,
 }: EditModalProps) {
+  const { t, language } = useLanguage();
   const [formData, setFormData] = useState<FormData>({});
   const [errors, setErrors] = useState<{[key: string]: string | null}>({});
 
@@ -101,14 +103,14 @@ export function EditModal({
 
     // Validation
     if (!formData.courseType && editingItem && editingItem.type === 'course') {
-      newErrors.courseType = 'Year Group Type is required';
+      newErrors.courseType = t('edit.error.courseTypeRequired');
     }
     if (!formData.graduationYear && editingItem && editingItem.type === 'course') {
-      newErrors.graduationYear = 'Year of Graduation is required';
+      newErrors.graduationYear = t('edit.error.graduationYearRequired');
     }
     if (editingItem?.type === 'course') {
-      if (!formData.startDate) newErrors.startDate = 'Start date is required';
-      if (!formData.endDate) newErrors.endDate = 'End date is required';
+      if (!formData.startDate) newErrors.startDate = t('edit.error.startDateRequired');
+      if (!formData.endDate) newErrors.endDate = t('edit.error.endDateRequired');
     }
     
     // Check for duplicate course type + graduation year combination
@@ -116,24 +118,25 @@ export function EditModal({
       const excludeCourseId = editingItem.data ? (editingItem.data as Course).id : undefined;
       const isDuplicate = checkCourseUniqueness(formData.courseType, formData.graduationYear, courses, excludeCourseId);
       const activeTypeExists = hasActiveCourseOfType(formData.courseType, courses, excludeCourseId);
+      const courseTypeLabel = formData.courseType === 'first_year'
+        ? t('common.yearGroup.first')
+        : t('common.yearGroup.second');
       
       if (isDuplicate) {
-        const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
-        newErrors.courseType = `${courseTypeLabel} ${formData.graduationYear} already exists`;
-        newErrors.graduationYear = `${courseTypeLabel} ${formData.graduationYear} already exists`;
+        newErrors.courseType = t('edit.error.yearGroupExists', { yearGroup: courseTypeLabel, year: formData.graduationYear });
+        newErrors.graduationYear = t('edit.error.yearGroupExists', { yearGroup: courseTypeLabel, year: formData.graduationYear });
       } else if (activeTypeExists) {
-        const courseTypeLabel = formData.courseType === 'first_year' ? 'First Year' : 'Second Year';
-        newErrors.courseType = `Archive the active ${courseTypeLabel} year group before creating another one.`;
+        newErrors.courseType = t('edit.error.archiveActiveYearGroup', { yearGroup: courseTypeLabel });
       }
     }
     if (!formData.name && editingItem && editingItem.type === 'user') {
-      newErrors.name = 'Name is required';
+      newErrors.name = t('edit.error.nameRequired');
     }
     if (!formData.email && editingItem && editingItem.type === 'user') {
-      newErrors.email = 'Email is required';
+      newErrors.email = t('edit.error.emailRequired');
     }
     if (!formData.title && editingItem && (editingItem.type === 'subject' || (editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only'))) {
-      newErrors.title = 'Title is required';
+      newErrors.title = t('edit.error.titleRequired');
     }
     if (
       editingItem?.type === 'subject' &&
@@ -141,21 +144,21 @@ export function EditModal({
       !editingItem.data &&
       !formData.courseId
     ) {
-      newErrors.courseId = 'Course is required';
+      newErrors.courseId = t('edit.error.courseRequired');
     }
     if (!formData.date && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
-      newErrors.date = 'Date is required';
+      newErrors.date = t('edit.error.dateRequired');
     }
     if (!formData.hour && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
-      newErrors.hour = 'Hour is required';
+      newErrors.hour = t('edit.error.hourRequired');
     }
     if (!formData.subjectId && editingItem && editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only') {
-      newErrors.subjectId = 'Subject is required';
+      newErrors.subjectId = t('edit.error.subjectRequired');
     }
     // Teacher and translator are no longer required - vacant roles are allowed and visually indicated
     if (formData.teacherId && formData.translatorId && formData.teacherId === formData.translatorId && editingItem && editingItem.type === 'class') {
-      newErrors.teacherId = 'Teacher and Translator cannot be the same person';
-      newErrors.translatorId = 'Teacher and Translator cannot be the same person';
+      newErrors.teacherId = t('edit.error.teacherTranslatorSame');
+      newErrors.translatorId = t('edit.error.teacherTranslatorSame');
     }
 
     // Check for double-booking conflicts when creating/editing classes
@@ -167,9 +170,9 @@ export function EditModal({
         const teacherConflict = checkDoubleBooking(formData.teacherId, formData.date, formData.hour, courses, excludeClassId);
         if (teacherConflict.hasConflict) {
           const conflictDetails = teacherConflict.conflictingClasses
-            .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
+            .map(cls => `${cls.title} (${cls.courseName}) - ${t('edit.conflictHourSuffix', { hour: cls.hour })}`)
             .join(', ');
-          newErrors.teacherId = `Teacher is already assigned to: ${conflictDetails}`;
+          newErrors.teacherId = t('edit.error.teacherConflict', { details: conflictDetails });
         }
       }
       
@@ -178,9 +181,9 @@ export function EditModal({
         const translatorConflict = checkDoubleBooking(formData.translatorId, formData.date, formData.hour, courses, excludeClassId);
         if (translatorConflict.hasConflict) {
           const conflictDetails = translatorConflict.conflictingClasses
-            .map(cls => `${cls.title} (${cls.courseName}) - ${cls.hour} hour`)
+            .map(cls => `${cls.title} (${cls.courseName}) - ${t('edit.conflictHourSuffix', { hour: cls.hour })}`)
             .join(', ');
-          newErrors.translatorId = `Translator is already assigned to: ${conflictDetails}`;
+          newErrors.translatorId = t('edit.error.translatorConflict', { details: conflictDetails });
         }
       }
     }
@@ -228,7 +231,7 @@ export function EditModal({
           const message =
             err instanceof Error && err.message
               ? err.message
-              : 'Failed to update session';
+              : t('edit.error.updateSessionFailed');
           setErrors(prev => ({
             ...prev,
             translatorId: editingItem.classEditMode === 'translator-only' ? message : prev.translatorId,
@@ -246,7 +249,7 @@ export function EditModal({
             const message =
               err instanceof Error && err.message
                 ? err.message
-                : 'Failed to add session';
+                : t('edit.error.addSessionFailed');
             setErrors(prev => ({ ...prev, form: message }));
             return;
           }
@@ -349,22 +352,29 @@ export function EditModal({
           }
   };
 
+  const isTranslatorOnlyClass =
+    editingItem?.type === 'class' && editingItem.classEditMode === 'translator-only';
+
+  const modalTitle = useMemo(() => {
+    if (!editingItem || editingItem.type === 'log') return '';
+    if (isTranslatorOnlyClass) return t('edit.title.assignTranslator');
+    const isEdit = !!editingItem.data;
+    switch (editingItem.type) {
+      case 'course':
+        return isEdit ? t('edit.title.editYearGroup') : t('edit.title.addYearGroup');
+      case 'subject':
+        return isEdit ? t('edit.title.editSubject') : t('edit.title.addSubject');
+      case 'class':
+        return isEdit ? t('edit.title.editSession') : t('edit.title.addSession');
+      case 'user':
+        return isEdit ? t('edit.title.editUser') : t('edit.title.addUser');
+      default:
+        return t('edit.title.fallback');
+    }
+  }, [editingItem, isTranslatorOnlyClass, language, t]);
+
   if (!editingItem || editingItem.type === 'log') return null;
   const isUserModal = editingItem.type === 'user';
-  const isTranslatorOnlyClass =
-    editingItem.type === 'class' && editingItem.classEditMode === 'translator-only';
-
-  const getModalTitle = () => {
-    if (isTranslatorOnlyClass) return 'Assign Translator';
-    const action = editingItem.data ? 'Edit' : 'Add';
-    switch (editingItem.type) {
-      case 'course': return `${action} Year Group`;
-      case 'subject': return `${action} Subject`;
-      case 'class': return `${action} Session`;
-      case 'user': return `${action} User`;
-      default: return 'Edit Item';
-    }
-  };
 
   const getFormFields = () => {
     switch (editingItem.type) {
@@ -418,14 +428,14 @@ export function EditModal({
         <div className="flex items-center justify-between gap-4 border-b border-[#e5e5e5] px-5 py-4">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-              {editingItem.data ? 'Editing' : 'Creating'}
+              {editingItem.data ? t('edit.mode.editing') : t('edit.mode.creating')}
             </p>
-            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{getModalTitle()}</h3>
+            <h3 className="mt-1 text-lg font-semibold text-[#171717]">{modalTitle}</h3>
           </div>
           <button 
             onClick={onClose}
             className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]"
-            aria-label="Close"
+            aria-label={t('common.close')}
           >
             <X className="w-5 h-5" />
           </button>
@@ -445,14 +455,14 @@ export function EditModal({
               onClick={onClose}
               className="rounded-lg border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               className="flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#262626]"
             >
               <Save className="w-4 h-4" />
-              <span>{editingItem.data ? 'Update' : 'Create'}</span>
+              <span>{editingItem.data ? t('common.update') : t('common.create')}</span>
             </button>
           </div>
         </form>

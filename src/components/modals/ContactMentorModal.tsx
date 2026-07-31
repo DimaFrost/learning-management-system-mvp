@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { X, Mail, Copy } from 'lucide-react';
 import type { User } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface ContactMentorModalProps {
   mentor: User | null;
@@ -8,6 +9,7 @@ interface ContactMentorModalProps {
 }
 
 export function ContactMentorModal({ mentor, onClose }: ContactMentorModalProps) {
+  const { t } = useLanguage();
   const [copied, setCopied] = useState(false);
   const copyTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,7 +53,7 @@ export function ContactMentorModal({ mentor, onClose }: ContactMentorModalProps)
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -59,7 +61,7 @@ export function ContactMentorModal({ mentor, onClose }: ContactMentorModalProps)
 
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t('mentor.contact.email')}</label>
               <div className="flex items-center gap-2">
                 <span className="flex-1 text-sm text-gray-900 break-all">{mentor.email}</span>
                 <button
@@ -67,13 +69,13 @@ export function ContactMentorModal({ mentor, onClose }: ContactMentorModalProps)
                   className="flex items-center gap-1 px-3 py-1.5 text-sm text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
                 >
                   <Copy className="w-4 h-4" />
-                  {copied ? 'Copied!' : 'Copy'}
+                  {copied ? t('mentor.contact.copied') : t('mentor.contact.copy')}
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Roles</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('mentor.contact.roles')}</label>
               <div className="flex flex-wrap gap-1">
                 {mentor.roles.map(role => (
                   <span
@@ -93,7 +95,7 @@ export function ContactMentorModal({ mentor, onClose }: ContactMentorModalProps)
               className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
             >
               <Mail className="w-4 h-4" />
-              Send Email
+              {t('mentor.contact.sendEmail')}
             </button>
           </div>
         </div>

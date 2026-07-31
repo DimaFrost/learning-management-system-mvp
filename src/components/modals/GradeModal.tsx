@@ -2,6 +2,7 @@ import { useState, useEffect, type FormEvent } from 'react';
 import { X, ExternalLink } from 'lucide-react';
 import type { HomeworkAssignment, HomeworkSubmission } from '../../types/lms';
 import { formatPlatformDate } from '../../utils/dateUtils';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface GradeModalProps {
   submission: HomeworkSubmission | null;
@@ -15,10 +16,6 @@ interface GradeModalProps {
   onReturn: (submissionId: number) => Promise<void>;
 }
 
-function formatGradedDate(dateString: string): string {
-  return formatPlatformDate(dateString);
-}
-
 function getSubmissionUrl(submission: HomeworkSubmission): string | null {
   return submission.driveViewUrl ?? submission.googleDocUrl;
 }
@@ -30,6 +27,7 @@ export function GradeModal({
   onGrade,
   onReturn,
 }: GradeModalProps) {
+  const { t } = useLanguage();
   const [points, setPoints] = useState(0);
   const [gradeComment, setGradeComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -54,7 +52,7 @@ export function GradeModal({
     e.preventDefault();
 
     if (points < 0 || points > maxPoints) {
-      setErrors({ points: `Points must be between 0 and ${maxPoints}` });
+      setErrors({ points: t('gradeModal.error.pointsRange', { maxPoints }) });
       return;
     }
 
@@ -96,7 +94,7 @@ export function GradeModal({
               type="button"
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600"
-              aria-label="Close"
+              aria-label={t('common.close')}
             >
               <X className="w-5 h-5" />
             </button>
@@ -109,20 +107,20 @@ export function GradeModal({
               className="flex items-center gap-1.5 text-sm text-amber-700 hover:text-amber-900 font-medium mb-6"
             >
               <ExternalLink className="w-4 h-4" />
-              Open submission
+              {t('gradeModal.openSubmission')}
             </button>
           )}
 
           {isAlreadyGraded && (
             <p className="text-sm text-gray-500 mb-4">
-              Last graded: {formatGradedDate(submission.gradedAt!)}
+              {t('gradeModal.lastGraded', { date: formatPlatformDate(submission.gradedAt!) })}
             </p>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
               <label htmlFor="grade-points" className="block text-sm font-medium text-gray-700 mb-2">
-                Points
+                {t('classwork.assignment.points')}
               </label>
               <div className="flex items-baseline gap-2">
                 <input
@@ -151,7 +149,7 @@ export function GradeModal({
 
             <div>
               <label htmlFor="grade-comment" className="block text-sm font-medium text-gray-700 mb-1">
-                Grade comment
+                {t('gradeModal.gradeComment')}
               </label>
               <textarea
                 id="grade-comment"
@@ -159,7 +157,7 @@ export function GradeModal({
                 onChange={e => setGradeComment(e.target.value)}
                 rows={4}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
-                placeholder="Optional feedback for the student..."
+                placeholder={t('gradeModal.feedbackPlaceholder')}
               />
             </div>
 
@@ -171,7 +169,7 @@ export function GradeModal({
                   disabled={submitting}
                   className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 disabled:opacity-50"
                 >
-                  Return for Revision
+                  {t('gradeModal.returnForRevision')}
                 </button>
               )}
               <button
@@ -179,7 +177,7 @@ export function GradeModal({
                 disabled={submitting}
                 className="px-4 py-2 text-sm font-medium text-white bg-amber-600 rounded-md hover:bg-amber-700 disabled:opacity-50"
               >
-                {submitting ? 'Saving...' : 'Save Grade'}
+                {submitting ? t('common.saving') : t('gradeModal.saveGrade')}
               </button>
             </div>
           </form>

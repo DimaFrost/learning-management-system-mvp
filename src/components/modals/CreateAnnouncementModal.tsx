@@ -25,6 +25,9 @@ import { hasRole } from '../../utils/userUtils';
 import { formatPlatformDateTime } from '../../utils/dateUtils';
 import { canPreviewInApp, canPreviewLocalFile, resolveAnnouncementPreview, resolveLocalFilePreview } from '../../utils/filePreview';
 import type { FilePreviewItem } from '../../utils/filePreview';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
+import type { TranslationKey } from '../../i18n/translations';
 import { FilePreviewModal } from './FilePreviewModal';
 
 type PendingAttachment = {
@@ -111,7 +114,7 @@ function getAttachmentLabel(attachment: AnnouncementAttachment | PendingAttachme
   if ('fileName' in attachment && attachment.fileName) return attachment.fileName;
   if ('file' in attachment && attachment.file) return attachment.file.name;
   if ('linkUrl' in attachment && attachment.linkUrl) return attachment.linkUrl;
-  return 'Attachment';
+  return translate('announcements.create.attachmentFallback');
 }
 
 function getAttachmentUrl(attachment: AnnouncementAttachment): string | null {
@@ -125,11 +128,13 @@ function getAttachmentTypeLabel(
 ): string {
   if (type === 'file') {
     const fileType = file?.type || mimeType || '';
-    return fileType.startsWith('image/') ? 'Image file' : 'File';
+    return fileType.startsWith('image/')
+      ? translate('announcements.create.attachmentType.imageFile')
+      : translate('announcements.attachment.file');
   }
-  if (type === 'google_doc') return 'Google Doc';
-  if (type === 'google_sheet') return 'Google Sheet';
-  return 'Google Slides';
+  if (type === 'google_doc') return translate('announcements.attachment.googleDoc');
+  if (type === 'google_sheet') return translate('announcements.attachment.googleSheet');
+  return translate('announcements.attachment.googleSlides');
 }
 
 function getAttachmentTone(type: AnnouncementAttachment['attachmentType'], mimeType?: string | null) {
@@ -230,18 +235,30 @@ function getAudienceTokens({
 }
 
 function getAudienceSummaryLabel(tokens: string[] | null) {
-  if (tokens === null) return 'All';
+  if (tokens === null) return translate('common.all');
   const labels: string[] = [];
-  if (tokens.includes(AUDIENCE_TOKEN.staff)) labels.push('Staff');
-  if (tokens.includes(AUDIENCE_TOKEN.teachers)) labels.push('Teachers');
-  if (tokens.includes(AUDIENCE_TOKEN.translators)) labels.push('Translators');
-  if (tokens.includes(AUDIENCE_TOKEN.first_year_students)) labels.push('First Year');
-  if (tokens.includes(AUDIENCE_TOKEN.second_year_students)) labels.push('Second Year');
-  if (tokens.some(token => token.startsWith(CUSTOM_USER_PREFIX))) labels.push('Custom');
-  return labels.length > 0 ? labels.join(', ') : 'No audience';
+  if (tokens.includes(AUDIENCE_TOKEN.staff)) labels.push(translate('announcements.audience.staff'));
+  if (tokens.includes(AUDIENCE_TOKEN.teachers)) labels.push(translate('announcements.audience.teachers'));
+  if (tokens.includes(AUDIENCE_TOKEN.translators)) labels.push(translate('announcements.create.audienceSummary.translators'));
+  if (tokens.includes(AUDIENCE_TOKEN.first_year_students)) labels.push(translate('announcements.create.audienceSummary.firstYear'));
+  if (tokens.includes(AUDIENCE_TOKEN.second_year_students)) labels.push(translate('announcements.create.audienceSummary.secondYear'));
+  if (tokens.some(token => token.startsWith(CUSTOM_USER_PREFIX))) labels.push(translate('announcements.audience.custom'));
+  return labels.length > 0 ? labels.join(', ') : translate('announcements.create.audienceSummary.noAudience');
 }
 
+const ROLE_LABEL_KEYS: Partial<Record<string, TranslationKey>> = {
+  administrator: 'announcements.create.role.administrator',
+  teacher: 'announcements.create.role.teacher',
+  translator: 'announcements.create.role.translator',
+  mentor: 'announcements.create.role.mentor',
+  team_leader: 'announcements.create.role.teamLeader',
+  student: 'announcements.create.role.student',
+  dev: 'announcements.create.role.dev',
+};
+
 function formatRoleLabel(role: string) {
+  const key = ROLE_LABEL_KEYS[role];
+  if (key) return translate(key);
   return role
     .split('_')
     .map(part => part.charAt(0).toUpperCase() + part.slice(1))
@@ -361,6 +378,7 @@ export function CreateAnnouncementModal({
   onDeleteAttachment,
   onSubmit,
 }: CreateAnnouncementModalProps) {
+  const { t, tCount, language } = useLanguage();
   const [title, setTitle] = useState('');
   const [content, setContent] = useState('');
   const [titleBg, setTitleBg] = useState('');
@@ -489,14 +507,16 @@ export function CreateAnnouncementModal({
     : null;
   const announcementStatus: Announcement['status'] =
     deliveryMode === 'draft' ? 'draft' : deliveryMode === 'schedule' ? 'scheduled' : 'published';
-  const deliveryLabel =
-    deliveryMode === 'draft'
-      ? 'Draft'
-      : deliveryMode === 'schedule' && scheduledAtLocal
-        ? formatPlatformDateTime(scheduledAtLocal)
-        : isEditingPublished
-          ? notifyAudience ? 'Published + email update' : 'Published'
-          : 'Publish now';
+  const deliveryLabel = useMemo(() => {
+    if (deliveryMode === 'draft') return t('announcements.draft');
+    if (deliveryMode === 'schedule' && scheduledAtLocal) return formatPlatformDateTime(scheduledAtLocal);
+    if (isEditingPublished) {
+      return notifyAudience
+        ? t('announcements.create.deliveryPublishedEmail')
+        : t('announcements.create.deliveryPublished');
+    }
+    return t('announcements.create.deliveryPublishNow');
+  }, [deliveryMode, scheduledAtLocal, isEditingPublished, notifyAudience, language, t]);
   const recipientCount = useMemo(() => {
     return getRecipientIds({
       targetRoles,
@@ -525,6 +545,146 @@ export function CreateAnnouncementModal({
     return customUserIds.map(id => byId.get(id)).filter((user): user is User => Boolean(user));
   }, [customUserIds, users]);
 
+  const audienceOptions = useMemo((): Array<{
+    id: AudienceGroup;
+    label: string;
+    description: string;
+    icon: typeof Globe2;
+    selected: boolean;
+    disabled: boolean;
+  }> => [
+    {
+      id: 'all',
+      label: t('common.all'),
+      description: t('announcements.create.audienceEveryone'),
+      icon: Globe2,
+      selected: effectiveAllAudienceSelected,
+      disabled: isTeacherNotAdmin,
+    },
+    {
+      id: 'staff',
+      label: t('announcements.audience.staff'),
+      description: effectiveStaffAudienceSelected
+        ? tCount('announcements.create.audienceSelected', effectiveStaffAudiences.length)
+        : t('announcements.create.audienceStaffGroups'),
+      icon: Users,
+      selected: effectiveStaffAudienceSelected,
+      disabled: isTeacherNotAdmin,
+    },
+    {
+      id: 'students',
+      label: t('announcements.create.audienceStudents'),
+      description: effectiveStudentAudienceSelected
+        ? tCount('announcements.create.audienceSelected', studentAudiences.length)
+        : t('announcements.create.audienceYearGroups'),
+      icon: Users,
+      selected: effectiveStudentAudienceSelected,
+      disabled: isTeacherNotAdmin,
+    },
+    {
+      id: 'custom',
+      label: t('announcements.audience.custom'),
+      description: tCount('announcements.create.audienceSelected', customUserIds.length),
+      icon: Search,
+      selected: effectiveCustomAudienceSelected,
+      disabled: isTeacherNotAdmin,
+    },
+  ], [
+    t,
+    tCount,
+    language,
+    effectiveAllAudienceSelected,
+    effectiveStaffAudienceSelected,
+    effectiveStaffAudiences.length,
+    effectiveStudentAudienceSelected,
+    studentAudiences.length,
+    customUserIds.length,
+    effectiveCustomAudienceSelected,
+    isTeacherNotAdmin,
+  ]);
+
+  const staffSubOptions = useMemo((): Array<{ id: AudienceSubChoice; label: string; description: string }> => [
+    { id: 'staff', label: t('announcements.create.staffAllStaff'), description: t('announcements.create.staffAllStaffHint') },
+    { id: 'teachers', label: t('announcements.audience.teachers'), description: t('announcements.create.staffTeachersHint') },
+    { id: 'translators', label: t('announcements.create.staffTranslators'), description: t('announcements.create.staffTranslatorsHint') },
+  ], [language, t]);
+
+  const studentSubOptions = useMemo((): Array<{ id: AudienceSubChoice; label: string; description: string }> => [
+    { id: 'first_year_students', label: t('common.yearGroup.first'), description: t('announcements.create.studentFirstYearHint') },
+    { id: 'second_year_students', label: t('common.yearGroup.second'), description: t('announcements.create.studentSecondYearHint') },
+  ], [language, t]);
+
+  const deliveryOptions = useMemo(() => [
+    {
+      id: 'now' as const,
+      label: isEditingPublished ? t('announcements.create.deliveryNow.labelPublished') : t('announcements.create.deliveryNow.label'),
+      description: isEditingPublished
+        ? t('announcements.create.deliveryNow.descriptionPublished')
+        : t('announcements.create.deliveryNow.description'),
+      icon: Clock,
+      theme: {
+        selected: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] shadow-[0_0_0_1px_rgba(22,101,52,0.08)]',
+        idle: 'border-[#dcfce7] bg-white hover:border-[#bbf7d0] hover:bg-[#f0fdf4]',
+        icon: 'bg-[#dcfce7] text-[#16a34a] ring-[#bbf7d0]',
+        check: 'text-[#16a34a]',
+      },
+    },
+    {
+      id: 'schedule' as const,
+      label: t('announcements.create.deliverySchedule.label'),
+      description: t('announcements.create.deliverySchedule.description'),
+      icon: CalendarClock,
+      theme: {
+        selected: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] shadow-[0_0_0_1px_rgba(29,78,216,0.08)]',
+        idle: 'border-[#dbeafe] bg-white hover:border-[#bfdbfe] hover:bg-[#eff6ff]',
+        icon: 'bg-[#dbeafe] text-[#2563eb] ring-[#bfdbfe]',
+        check: 'text-[#2563eb]',
+      },
+    },
+    {
+      id: 'draft' as const,
+      label: t('announcements.draft'),
+      description: t('announcements.create.deliveryDraft.description'),
+      icon: FileText,
+      theme: {
+        selected: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#6d28d9] shadow-[0_0_0_1px_rgba(109,40,217,0.08)]',
+        idle: 'border-[#ede9fe] bg-white hover:border-[#ddd6fe] hover:bg-[#f5f3ff]',
+        icon: 'bg-[#ede9fe] text-[#7c3aed] ring-[#ddd6fe]',
+        check: 'text-[#7c3aed]',
+      },
+    },
+  ], [isEditingPublished, language, t]);
+
+  const contentLanguageOptions = useMemo(() => ([
+    {
+      id: 'en' as const,
+      label: t('common.language.english'),
+      meta: t('announcements.create.metaDefault'),
+      complete: title.trim().length > 0 && content.trim().length > 0,
+    },
+    {
+      id: 'bg' as const,
+      label: t('common.language.bulgarian'),
+      meta: t('announcements.create.metaOptional'),
+      complete: titleBg.trim().length > 0 && contentBg.trim().length > 0,
+    },
+  ]), [content, contentBg, language, t, title, titleBg]);
+
+  const linkTypeOptions = useMemo(() => ([
+    { type: 'google_doc' as const, label: t('announcements.create.linkTypeDoc'), icon: FileText },
+    { type: 'google_sheet' as const, label: t('announcements.create.linkTypeSheet'), icon: Table },
+    { type: 'google_slide' as const, label: t('announcements.create.linkTypeSlide'), icon: Presentation },
+  ]), [language, t]);
+
+  const submitLabel = useMemo(() => {
+    if (submitting) return t('common.saving');
+    if (deliveryMode === 'draft') return t('announcements.create.saveDraft');
+    if (deliveryMode === 'schedule') {
+      return isEditing ? t('announcements.create.saveSchedule') : t('announcements.create.deliverySchedule.label');
+    }
+    return isEditing ? t('announcements.create.saveChanges') : t('common.post');
+  }, [deliveryMode, isEditing, language, submitting, t]);
+
   if (!isOpen) return null;
 
   const chooseFile = (file: File | null) => {
@@ -540,7 +700,7 @@ export function CreateAnnouncementModal({
 
   const handleAddSelectedFile = async () => {
     if (!selectedFile) {
-      setErrors(prev => ({ ...prev, file: 'Choose a file first' }));
+      setErrors(prev => ({ ...prev, file: t('announcements.create.error.chooseFile') }));
       return;
     }
 
@@ -574,7 +734,7 @@ export function CreateAnnouncementModal({
 
   const handleAddLink = async () => {
     if (!linkUrl.includes('docs.google.com')) {
-      setErrors(prev => ({ ...prev, link: 'Please paste a valid Google Docs link' }));
+      setErrors(prev => ({ ...prev, link: t('announcements.create.error.invalidGoogleLink') }));
       return;
     }
 
@@ -615,13 +775,13 @@ export function CreateAnnouncementModal({
     const bulgarianComplete = hasBulgarianTitle && hasBulgarianContent;
 
     if (!englishComplete && !bulgarianComplete) {
-      newErrors.language = 'Add a title and body in English, Bulgarian, or both.';
+      newErrors.language = t('announcements.create.error.languageRequired');
     } else {
       if ((hasEnglishTitle || hasEnglishContent) && !englishComplete) {
-        newErrors.language = 'English needs both a title and body, or leave both English fields empty.';
+        newErrors.language = t('announcements.create.error.englishIncomplete');
       }
       if ((hasBulgarianTitle || hasBulgarianContent) && !bulgarianComplete) {
-        newErrors.language = 'Bulgarian needs both a title and body, or leave both Bulgarian fields empty.';
+        newErrors.language = t('announcements.create.error.bulgarianIncomplete');
       }
     }
     if (
@@ -630,19 +790,19 @@ export function CreateAnnouncementModal({
       !effectiveStudentAudienceSelected &&
       !effectiveCustomAudienceSelected
     ) {
-      newErrors.course = 'Choose at least one audience';
+      newErrors.course = t('announcements.create.error.chooseAudience');
     } else if (effectiveStaffAudienceSelected && effectiveStaffAudiences.length === 0) {
-      newErrors.course = 'Choose at least one staff audience';
+      newErrors.course = t('announcements.create.error.chooseStaffAudience');
     } else if (effectiveStudentAudienceSelected && studentAudiences.length === 0) {
-      newErrors.course = 'Choose at least one student audience';
+      newErrors.course = t('announcements.create.error.chooseStudentAudience');
     } else if (effectiveCustomAudienceSelected && customUserIds.length === 0) {
-      newErrors.course = 'Select at least one recipient';
+      newErrors.course = t('announcements.create.error.selectRecipient');
     }
     if (deliveryMode === 'schedule') {
       if (!scheduledAtLocal) {
-        newErrors.schedule = 'Choose a schedule date and time';
+        newErrors.schedule = t('announcements.create.error.scheduleRequired');
       } else if (new Date(scheduledAtLocal).getTime() <= Date.now()) {
-        newErrors.schedule = 'Choose a future date and time';
+        newErrors.schedule = t('announcements.create.error.scheduleFuture');
       }
     }
 
@@ -688,97 +848,6 @@ export function CreateAnnouncementModal({
       setSubmitting(false);
     }
   };
-
-  const audienceOptions: Array<{
-    id: AudienceGroup;
-    label: string;
-    description: string;
-    icon: typeof Globe2;
-    selected: boolean;
-    disabled: boolean;
-  }> = [
-    {
-      id: 'all',
-      label: 'All',
-      description: 'Everyone',
-      icon: Globe2,
-      selected: effectiveAllAudienceSelected,
-      disabled: isTeacherNotAdmin,
-    },
-    {
-      id: 'staff',
-      label: 'Staff',
-      description: effectiveStaffAudienceSelected ? `${effectiveStaffAudiences.length} selected` : 'Staff groups',
-      icon: Users,
-      selected: effectiveStaffAudienceSelected,
-      disabled: isTeacherNotAdmin,
-    },
-    {
-      id: 'students',
-      label: 'Students',
-      description: effectiveStudentAudienceSelected ? `${studentAudiences.length} selected` : 'Year groups',
-      icon: Users,
-      selected: effectiveStudentAudienceSelected,
-      disabled: isTeacherNotAdmin,
-    },
-    {
-      id: 'custom',
-      label: 'Custom',
-      description: `${customUserIds.length} selected`,
-      icon: Search,
-      selected: effectiveCustomAudienceSelected,
-      disabled: isTeacherNotAdmin,
-    },
-  ];
-  const staffSubOptions: Array<{ id: AudienceSubChoice; label: string; description: string }> = [
-    { id: 'staff', label: 'All staff', description: 'Admins, mentors, teachers, team leaders' },
-    { id: 'teachers', label: 'Teachers', description: 'Teacher role only' },
-    { id: 'translators', label: 'Translators', description: 'Translator role only' },
-  ];
-  const studentSubOptions: Array<{ id: AudienceSubChoice; label: string; description: string }> = [
-    { id: 'first_year_students', label: 'First Year', description: 'Active first-year students' },
-    { id: 'second_year_students', label: 'Second Year', description: 'Active second-year students' },
-  ];
-  const deliveryOptions = [
-    {
-      id: 'now' as const,
-      label: isEditingPublished ? 'Published' : 'Publish now',
-      description: isEditingPublished
-        ? 'Save changes without sending a new email.'
-        : 'Visible immediately and queued for email notification.',
-      icon: Clock,
-      theme: {
-        selected: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#166534] shadow-[0_0_0_1px_rgba(22,101,52,0.08)]',
-        idle: 'border-[#dcfce7] bg-white hover:border-[#bbf7d0] hover:bg-[#f0fdf4]',
-        icon: 'bg-[#dcfce7] text-[#16a34a] ring-[#bbf7d0]',
-        check: 'text-[#16a34a]',
-      },
-    },
-    {
-      id: 'schedule' as const,
-      label: 'Schedule',
-      description: 'Publish and email at a future time.',
-      icon: CalendarClock,
-      theme: {
-        selected: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] shadow-[0_0_0_1px_rgba(29,78,216,0.08)]',
-        idle: 'border-[#dbeafe] bg-white hover:border-[#bfdbfe] hover:bg-[#eff6ff]',
-        icon: 'bg-[#dbeafe] text-[#2563eb] ring-[#bfdbfe]',
-        check: 'text-[#2563eb]',
-      },
-    },
-    {
-      id: 'draft' as const,
-      label: 'Draft',
-      description: 'Save privately without sending notifications.',
-      icon: FileText,
-      theme: {
-        selected: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#6d28d9] shadow-[0_0_0_1px_rgba(109,40,217,0.08)]',
-        idle: 'border-[#ede9fe] bg-white hover:border-[#ddd6fe] hover:bg-[#f5f3ff]',
-        icon: 'bg-[#ede9fe] text-[#7c3aed] ring-[#ddd6fe]',
-        check: 'text-[#7c3aed]',
-      },
-    },
-  ];
 
   const selectAudienceGroup = (group: AudienceGroup) => {
     if (isTeacherNotAdmin) return;
@@ -845,14 +914,14 @@ export function CreateAnnouncementModal({
             className="tbo-focus mb-3 inline-flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
           >
             <ArrowLeft className="h-4 w-4" />
-            Stream
+            {t('announcements.title')}
           </button>
           <h2 className="tbo-display text-2xl leading-tight text-[#171717] sm:text-3xl">
-            {isEditing ? 'Edit post' : 'New post'}
+            {isEditing ? t('announcements.action.editPost') : t('announcements.create.newPost')}
           </h2>
         </div>
         <div className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-[#737373] ring-1 ring-[#e5e5e5]">
-          {totalAttachments} attachment{totalAttachments === 1 ? '' : 's'}
+          {tCount('announcements.create.attachmentCount', totalAttachments)}
         </div>
       </div>
 
@@ -862,31 +931,18 @@ export function CreateAnnouncementModal({
             <div className="space-y-5">
               <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                 <div>
-                  <h3 className="text-sm font-semibold text-[#171717]">Content languages</h3>
-                  <p className="mt-0.5 text-xs text-[#737373]">English and Bulgarian are optional, but one complete language is required.</p>
+                  <h3 className="text-sm font-semibold text-[#171717]">{t('announcements.create.contentLanguages')}</h3>
+                  <p className="mt-0.5 text-xs text-[#737373]">{t('announcements.create.contentLanguagesHint')}</p>
                 </div>
                 <span className="w-fit rounded-full bg-[#f5f5f5] px-2.5 py-1 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
-                  EN / BG
+                  {t('announcements.create.enBgBadge')}
                 </span>
               </div>
               {errors.language && (
                 <p className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{errors.language}</p>
               )}
               <div className="inline-grid rounded-full border border-[#e5e5e5] bg-white p-1 sm:grid-cols-2">
-                {([
-                  {
-                    id: 'en',
-                    label: 'English',
-                    meta: 'Default',
-                    complete: title.trim().length > 0 && content.trim().length > 0,
-                  },
-                  {
-                    id: 'bg',
-                    label: 'Bulgarian',
-                    meta: 'Optional',
-                    complete: titleBg.trim().length > 0 && contentBg.trim().length > 0,
-                  },
-                ] as const).map(option => {
+                {contentLanguageOptions.map(option => {
                   const selected = contentLanguage === option.id;
                   return (
                     <button
@@ -915,13 +971,13 @@ export function CreateAnnouncementModal({
               <div className="space-y-4">
                 <div className={`${contentLanguage === 'en' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-[#171717]">English</span>
-                    <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-[11px] font-semibold text-[#1d4ed8]">Default</span>
+                    <span className="text-sm font-semibold text-[#171717]">{t('common.language.english')}</span>
+                    <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-[11px] font-semibold text-[#1d4ed8]">{t('announcements.create.metaDefault')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <label htmlFor="announcement-title" className="mb-1 block text-sm font-medium text-[#525252]">
-                        Title
+                        {t('common.title')}
                       </label>
                       <input
                         id="announcement-title"
@@ -929,13 +985,13 @@ export function CreateAnnouncementModal({
                         value={title}
                         onChange={e => setTitle(e.target.value)}
                         className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Post title"
+                        placeholder={t('announcements.create.postTitlePlaceholder')}
                       />
                     </div>
 
                     <div>
                       <label htmlFor="announcement-content" className="mb-1 block text-sm font-medium text-[#525252]">
-                        Body
+                        {t('announcements.create.body')}
                       </label>
                       <textarea
                         id="announcement-content"
@@ -943,7 +999,7 @@ export function CreateAnnouncementModal({
                         onChange={e => setContent(e.target.value)}
                         rows={8}
                         className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Write your post..."
+                        placeholder={t('announcements.create.postBodyPlaceholder')}
                       />
                     </div>
                   </div>
@@ -951,13 +1007,13 @@ export function CreateAnnouncementModal({
 
                 <div className={`${contentLanguage === 'bg' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-[#171717]">Bulgarian</span>
-                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">Optional</span>
+                    <span className="text-sm font-semibold text-[#171717]">{t('common.language.bulgarian')}</span>
+                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">{t('announcements.create.metaOptional')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
                       <label htmlFor="announcement-title-bg-clean" className="mb-1 block text-sm font-medium text-[#525252]">
-                        Bulgarian title
+                        {t('announcements.create.bulgarianTitle')}
                       </label>
                       <input
                         id="announcement-title-bg-clean"
@@ -965,13 +1021,13 @@ export function CreateAnnouncementModal({
                         value={titleBg}
                         onChange={e => setTitleBg(e.target.value)}
                         className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Post title in Bulgarian"
+                        placeholder={t('announcements.create.bulgarianTitlePlaceholder')}
                       />
                     </div>
 
                     <div>
                       <label htmlFor="announcement-content-bg-clean" className="mb-1 block text-sm font-medium text-[#525252]">
-                        Bulgarian body
+                        {t('announcements.create.bulgarianBody')}
                       </label>
                       <textarea
                         id="announcement-content-bg-clean"
@@ -979,7 +1035,7 @@ export function CreateAnnouncementModal({
                         onChange={e => setContentBg(e.target.value)}
                         rows={8}
                         className="tbo-focus w-full resize-none rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                        placeholder="Write your post in Bulgarian..."
+                        placeholder={t('announcements.create.bulgarianBodyPlaceholder')}
                       />
                     </div>
                   </div>
@@ -987,8 +1043,8 @@ export function CreateAnnouncementModal({
 
                 <div className="hidden">
                   <div className="mb-3 flex items-center justify-between gap-2">
-                    <span className="text-sm font-semibold text-[#171717]">Bulgarian</span>
-                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">Optional</span>
+                    <span className="text-sm font-semibold text-[#171717]">{t('common.language.bulgarian')}</span>
+                    <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">{t('announcements.create.metaOptional')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
@@ -1026,11 +1082,11 @@ export function CreateAnnouncementModal({
 
           <section className="tbo-panel p-5">
             <div className="mb-4">
-              <h3 className="text-sm font-semibold text-[#171717]">Delivery</h3>
+              <h3 className="text-sm font-semibold text-[#171717]">{t('announcements.create.delivery')}</h3>
               <p className="mt-0.5 text-xs text-[#737373]">
                 {isEditingPublished
-                  ? 'This post is already published. Saving changes updates it without notifying recipients again.'
-                  : 'Choose whether this is published now, scheduled, or saved as a draft.'}
+                  ? t('announcements.create.deliveryPublishedHint')
+                  : t('announcements.create.deliveryDraftHint')}
               </p>
             </div>
 
@@ -1063,7 +1119,7 @@ export function CreateAnnouncementModal({
             {deliveryMode === 'schedule' && (
               <div className="mt-4">
                 <label htmlFor="announcement-schedule" className="mb-1 block text-sm font-medium text-[#525252]">
-                  Scheduled date and time
+                  {t('announcements.create.scheduledDateTime')}
                 </label>
                 <input
                   id="announcement-schedule"
@@ -1081,8 +1137,8 @@ export function CreateAnnouncementModal({
           <section className="tbo-panel p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-[#171717]">Audience</h3>
-                <p className="mt-0.5 text-xs text-[#737373]">Choose who should see this post.</p>
+                <h3 className="text-sm font-semibold text-[#171717]">{t('announcements.create.audience')}</h3>
+                <p className="mt-0.5 text-xs text-[#737373]">{t('announcements.create.audienceHint')}</p>
               </div>
             </div>
 
@@ -1119,7 +1175,7 @@ export function CreateAnnouncementModal({
               <div className="mt-3 space-y-3 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                 {effectiveStaffAudienceSelected && (
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Staff</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('announcements.audience.staff')}</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {staffSubOptions.map(option => {
                         const selected = effectiveStaffAudiences.includes(option.id);
@@ -1149,7 +1205,7 @@ export function CreateAnnouncementModal({
 
                 {effectiveStudentAudienceSelected && (
                   <div>
-                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Students</p>
+                    <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('announcements.create.audienceStudents')}</p>
                     <div className="grid gap-2 sm:grid-cols-2">
                       {studentSubOptions.map(option => {
                         const selected = studentAudiences.includes(option.id);
@@ -1181,7 +1237,8 @@ export function CreateAnnouncementModal({
                     <span className="flex min-w-0 items-center gap-2">
                       <UserAvatarStack users={selectedCustomUsers} max={5} />
                       <span className="text-xs font-medium text-[#525252]">
-                        <span className="font-semibold text-[#171717]">{customUserIds.length}</span> custom recipient{customUserIds.length === 1 ? '' : 's'}
+                        <span className="font-semibold text-[#171717]">{customUserIds.length}</span>{' '}
+                        {tCount('announcements.create.customRecipientWord', customUserIds.length)}
                       </span>
                     </span>
                     <button
@@ -1189,7 +1246,7 @@ export function CreateAnnouncementModal({
                       onClick={() => setCustomPickerOpen(true)}
                       className="tbo-focus rounded-lg bg-[#f5f5f5] px-2.5 py-1 text-xs font-medium text-[#171717] ring-1 ring-[#e5e5e5] hover:bg-white"
                     >
-                      Edit recipients
+                      {t('announcements.create.editRecipients')}
                     </button>
                   </div>
                 )}
@@ -1201,10 +1258,10 @@ export function CreateAnnouncementModal({
           <section className="tbo-panel p-5">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h3 className="text-sm font-semibold text-[#171717]">Attachments</h3>
-                <p className="mt-0.5 text-xs text-[#737373]">Give every attachment a readable title.</p>
+                <h3 className="text-sm font-semibold text-[#171717]">{t('announcements.create.attachments')}</h3>
+                <p className="mt-0.5 text-xs text-[#737373]">{t('announcements.create.attachmentsHint')}</p>
               </div>
-              {attaching && <span className="text-xs font-medium text-[#737373]">Attaching...</span>}
+              {attaching && <span className="text-xs font-medium text-[#737373]">{t('announcements.create.attaching')}</span>}
             </div>
 
             <div className="grid gap-3 lg:grid-cols-2">
@@ -1226,8 +1283,8 @@ export function CreateAnnouncementModal({
                     <Upload className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block text-sm font-semibold text-[#171717]">Choose file</span>
-                    <span className="text-xs text-[#737373]">PDF, image, doc, or handout</span>
+                    <span className="block text-sm font-semibold text-[#171717]">{t('announcements.create.chooseFile')}</span>
+                    <span className="text-xs text-[#737373]">{t('announcements.create.chooseFileHint')}</span>
                   </span>
                 </button>
                 {selectedFile && (
@@ -1237,7 +1294,7 @@ export function CreateAnnouncementModal({
                       type="text"
                       value={fileTitle}
                       onChange={e => setFileTitle(e.target.value)}
-                      placeholder="Attachment title"
+                      placeholder={t('announcements.create.attachmentTitle')}
                       className="tbo-focus w-full rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
                     />
                     {errors.file && <p className="text-sm text-red-500">{errors.file}</p>}
@@ -1247,7 +1304,7 @@ export function CreateAnnouncementModal({
                       disabled={attaching}
                       className="tbo-focus w-full rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:opacity-50"
                     >
-                      Add file
+                      {t('announcements.create.addFile')}
                     </button>
                   </div>
                 )}
@@ -1263,18 +1320,14 @@ export function CreateAnnouncementModal({
                     <Link className="h-5 w-5" />
                   </span>
                   <span>
-                    <span className="block text-sm font-semibold text-[#171717]">Google link</span>
-                    <span className="text-xs text-[#737373]">Docs, Sheets, or Slides</span>
+                    <span className="block text-sm font-semibold text-[#171717]">{t('announcements.create.googleLink')}</span>
+                    <span className="text-xs text-[#737373]">{t('announcements.create.googleLinkHint')}</span>
                   </span>
                 </button>
                 {linkFormOpen && (
                   <div className="mt-3 space-y-3">
                     <div className="grid grid-cols-3 gap-2">
-                      {[
-                        { type: 'google_doc' as const, label: 'Doc', icon: FileText },
-                        { type: 'google_sheet' as const, label: 'Sheet', icon: Table },
-                        { type: 'google_slide' as const, label: 'Slide', icon: Presentation },
-                      ].map(({ type, label, icon: Icon }) => (
+                      {linkTypeOptions.map(({ type, label, icon: Icon }) => (
                         <button
                           key={type}
                           type="button"
@@ -1294,14 +1347,14 @@ export function CreateAnnouncementModal({
                       type="url"
                       value={linkUrl}
                       onChange={e => setLinkUrl(e.target.value)}
-                      placeholder="Paste Google link"
+                      placeholder={t('announcements.create.pasteGoogleLink')}
                       className="tbo-focus w-full rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
                     />
                     <input
                       type="text"
                       value={linkTitle}
                       onChange={e => setLinkTitle(e.target.value)}
-                      placeholder="Attachment title"
+                      placeholder={t('announcements.create.attachmentTitle')}
                       className="tbo-focus w-full rounded-lg border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
                     />
                     {errors.link && <p className="text-sm text-red-500">{errors.link}</p>}
@@ -1311,7 +1364,7 @@ export function CreateAnnouncementModal({
                       disabled={!linkUrl.trim() || attaching}
                       className="tbo-focus w-full rounded-lg bg-[#171717] px-3 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:opacity-50"
                     >
-                      Add link
+                      {t('announcements.create.addLink')}
                     </button>
                   </div>
                 )}
@@ -1341,17 +1394,17 @@ export function CreateAnnouncementModal({
                               if (preview) setPreviewItem(preview);
                             }}
                             className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                            aria-label="Preview attachment"
+                            aria-label={t('announcements.create.previewAttachment')}
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                         )}
                         {url && (
-                          <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]" aria-label="Open attachment in new tab">
+                          <a href={url} target="_blank" rel="noopener noreferrer" className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]" aria-label={t('announcements.create.openAttachmentNewTab')}>
                             <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         )}
-                        <button type="button" onClick={() => onDeleteAttachment(attachment.id, attachment.storagePath)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label="Remove attachment">
+                        <button type="button" onClick={() => onDeleteAttachment(attachment.id, attachment.storagePath)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label={t('announcements.attachment.remove')}>
                           <X className="h-3.5 w-3.5" />
                         </button>
                       </span>
@@ -1379,12 +1432,12 @@ export function CreateAnnouncementModal({
                               if (preview) setPreviewItem(preview);
                             }}
                             className="rounded-md p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                            aria-label="Preview attachment"
+                            aria-label={t('announcements.create.previewAttachment')}
                           >
                             <Eye className="h-3.5 w-3.5" />
                           </button>
                         )}
-                        <button type="button" onClick={() => removePending(pending.id)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label="Remove pending attachment">
+                        <button type="button" onClick={() => removePending(pending.id)} className="rounded-md p-1.5 text-[#a3a3a3] hover:bg-[#fef2f2] hover:text-red-600" aria-label={t('announcements.create.removePendingAttachment')}>
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       </span>
@@ -1402,9 +1455,9 @@ export function CreateAnnouncementModal({
               <div className="flex items-start gap-2">
                 <Pin className="mt-0.5 h-5 w-5 flex-shrink-0 text-[#d97706]" />
                 <div>
-                  <p className="text-sm font-semibold text-[#171717]">Pin this post</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('announcements.create.pinPost')}</p>
                   <p className="mt-0.5 text-xs leading-5 text-[#737373]">
-                    Pinned posts appear at the top of the stream.
+                    {t('announcements.create.pinPostHint')}
                   </p>
                 </div>
               </div>
@@ -1424,37 +1477,37 @@ export function CreateAnnouncementModal({
 
           <section className="tbo-panel p-5">
             <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold text-[#171717]">Summary</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('announcements.create.summary')}</p>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-[#dbeaff] px-2.5 py-1 text-xs font-semibold text-[#171717]">
                 <Users className="h-3.5 w-3.5 text-[#2563eb]" />
                 {recipientCount}
               </span>
             </div>
             <div className="mt-4 rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-              <p className="text-xs font-medium text-[#737373]">Recipients</p>
+              <p className="text-xs font-medium text-[#737373]">{t('announcements.create.recipients')}</p>
               <p className="mt-1 text-2xl font-semibold tracking-[-0.02em] text-[#171717]">
                 {recipientCount}
               </p>
               <p className="mt-1 text-xs leading-5 text-[#737373]">
-                Estimated from current people, roles, and active year group enrollments.
+                {t('announcements.create.recipientsEstimate')}
               </p>
             </div>
             <dl className="mt-3 space-y-2 text-sm">
               <div className="flex justify-between gap-3">
-                <dt className="text-[#737373]">Audience</dt>
+                <dt className="text-[#737373]">{t('announcements.create.summaryAudience')}</dt>
                 <dd className="max-w-[190px] text-right font-medium text-[#171717]">{getAudienceSummaryLabel(targetRoles)}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[#737373]">Delivery</dt>
+                <dt className="text-[#737373]">{t('announcements.create.summaryDelivery')}</dt>
                 <dd className="max-w-[180px] text-right font-medium text-[#171717]">{deliveryLabel}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[#737373]">Attachments</dt>
+                <dt className="text-[#737373]">{t('announcements.create.summaryAttachments')}</dt>
                 <dd className="font-medium text-[#171717]">{totalAttachments}</dd>
               </div>
               <div className="flex justify-between gap-3">
-                <dt className="text-[#737373]">Pinned</dt>
-                <dd className="font-medium text-[#171717]">{isPinned ? 'Yes' : 'No'}</dd>
+                <dt className="text-[#737373]">{t('announcements.create.summaryPinned')}</dt>
+                <dd className="font-medium text-[#171717]">{isPinned ? t('common.yes') : t('common.no')}</dd>
               </div>
             </dl>
           </section>
@@ -1482,10 +1535,10 @@ export function CreateAnnouncementModal({
                   </span>
                   <span className="min-w-0">
                     <span className="block text-sm font-semibold text-[#171717]">
-                      Notify audience
+                      {t('announcements.create.notifyAudience')}
                     </span>
                     <span className="mt-0.5 block text-xs leading-5 text-[#737373]">
-                      Send an email update to {recipientCount} recipient{recipientCount === 1 ? '' : 's'}.
+                      {tCount('announcements.create.notifyAudienceHint', recipientCount)}
                     </span>
                   </span>
                 </span>
@@ -1503,8 +1556,8 @@ export function CreateAnnouncementModal({
                   : 'bg-[#fafafa] text-[#737373] ring-1 ring-[#e5e5e5]'
               }`}>
                 {notifyAudience
-                  ? 'This edit will be emailed after you save.'
-                  : 'Quiet save is on. No email will be sent for this edit.'}
+                  ? t('announcements.create.notifyOn')
+                  : t('announcements.create.notifyOff')}
               </span>
             </button>
           )}
@@ -1515,20 +1568,14 @@ export function CreateAnnouncementModal({
               onClick={onClose}
               className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             <button
               type="submit"
               disabled={submitting || attaching}
               className="tbo-focus flex-1 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {submitting
-                ? 'Saving...'
-                : deliveryMode === 'draft'
-                  ? 'Save draft'
-                  : deliveryMode === 'schedule'
-                    ? isEditing ? 'Save schedule' : 'Schedule'
-                    : isEditing ? 'Save changes' : 'Post'}
+              {submitLabel}
             </button>
           </div>
         </aside>
@@ -1539,16 +1586,16 @@ export function CreateAnnouncementModal({
           <div className="max-h-[88vh] w-full max-w-3xl overflow-hidden rounded-t-2xl border border-[#e5e5e5] bg-white shadow-xl sm:rounded-2xl">
             <div className="flex items-start justify-between gap-4 border-b border-[#f5f5f5] px-5 py-4">
               <div>
-                <h3 className="text-base font-semibold text-[#171717]">Custom recipients</h3>
+                <h3 className="text-base font-semibold text-[#171717]">{t('announcements.create.customRecipientsTitle')}</h3>
                 <p className="mt-1 text-sm text-[#737373]">
-                  Select one or more people. Each person is counted once, even with multiple roles.
+                  {t('announcements.create.customRecipientsHint')}
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setCustomPickerOpen(false)}
                 className="tbo-focus rounded-lg p-1.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close custom recipients"
+                aria-label={t('announcements.create.closeCustomRecipients')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -1564,7 +1611,7 @@ export function CreateAnnouncementModal({
                     setCustomSearch(e.target.value);
                     setCustomPage(0);
                   }}
-                  placeholder="Search by name, email, or role"
+                  placeholder={t('announcements.create.searchPeople')}
                   className="tbo-focus w-full rounded-xl border border-[#d4d4d4] bg-white py-2 pl-9 pr-3 text-sm"
                 />
               </label>
@@ -1603,7 +1650,7 @@ export function CreateAnnouncementModal({
                       <span className="mt-2 flex flex-wrap gap-1">
                         {realRoles.length === 0 ? (
                           <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-medium text-[#737373]">
-                            No role
+                            {t('announcements.create.noRole')}
                           </span>
                         ) : (
                           realRoles.map(role => (
@@ -1623,7 +1670,7 @@ export function CreateAnnouncementModal({
 
               {filteredCustomUsers.length === 0 && (
                 <div className="rounded-xl border border-dashed border-[#d4d4d4] px-4 py-8 text-center text-sm text-[#737373]">
-                  No people match your search.
+                  {t('announcements.create.noPeopleMatch')}
                 </div>
               )}
             </div>
@@ -1632,7 +1679,7 @@ export function CreateAnnouncementModal({
               <div className="flex min-w-0 items-center gap-3 text-sm text-[#737373]">
                 <UserAvatarStack users={selectedCustomUsers} max={6} />
                 <span>
-                  <span className="font-semibold text-[#171717]">{customUserIds.length}</span> selected
+                  <span className="font-semibold text-[#171717]">{customUserIds.length}</span> {t('announcements.create.selectedLabel')}
                 </span>
               </div>
               <div className="flex items-center gap-2">
@@ -1642,10 +1689,10 @@ export function CreateAnnouncementModal({
                   disabled={customPage === 0}
                   className="tbo-focus rounded-lg border border-[#d4d4d4] bg-white px-3 py-1.5 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Previous
+                  {t('common.previous')}
                 </button>
                 <span className="text-xs font-medium text-[#737373]">
-                  Page {customPage + 1} of {customPageCount}
+                  {t('announcements.create.pageOf', { page: customPage + 1, total: customPageCount })}
                 </span>
                 <button
                   type="button"
@@ -1653,14 +1700,14 @@ export function CreateAnnouncementModal({
                   disabled={customPage >= customPageCount - 1}
                   className="tbo-focus rounded-lg border border-[#d4d4d4] bg-white px-3 py-1.5 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-40"
                 >
-                  Next
+                  {t('common.next')}
                 </button>
                 <button
                   type="button"
                   onClick={() => setCustomPickerOpen(false)}
                   className="tbo-focus rounded-lg bg-[#171717] px-4 py-1.5 text-sm font-medium text-white hover:bg-[#404040]"
                 >
-                  Done
+                  {t('common.done')}
                 </button>
               </div>
             </div>

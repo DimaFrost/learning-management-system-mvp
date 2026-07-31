@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { X } from 'lucide-react';
 import type { User, CourseStudent } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface MentorAssignModalProps {
   isOpen: boolean;
@@ -19,6 +20,7 @@ export function MentorAssignModal({
   onAssign,
   onClose,
 }: MentorAssignModalProps) {
+  const { t } = useLanguage();
   const [newMentorId, setNewMentorId] = useState<string>('');
 
   useEffect(() => {
@@ -48,7 +50,7 @@ export function MentorAssignModal({
       <div className="bg-white rounded-t-xl sm:rounded-lg p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-4">
           <h3 className="text-lg font-semibold">
-            {isAssignMode ? 'Assign Mentor' : 'Change Mentor'}
+            {isAssignMode ? t('mentor.assign.assignTitle') : t('mentor.assign.changeTitle')}
           </h3>
           <button
             onClick={handleClose}
@@ -60,7 +62,7 @@ export function MentorAssignModal({
 
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Student</label>
+            <label className="block text-sm font-medium text-gray-700 mb-2">{t('mentor.assign.student')}</label>
             <p className="text-sm text-gray-900">
               {student?.name}
             </p>
@@ -68,19 +70,19 @@ export function MentorAssignModal({
 
           {!hasEnrollment && (
             <div className="rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-900">
-              This student must be enrolled in a course before a mentor can be assigned.
+              {t('mentor.assign.enrollmentRequired')}
             </div>
           )}
 
           {hasEnrollment && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Select New Mentor</label>
+              <label className="block text-sm font-medium text-gray-700 mb-2">{t('mentor.assign.selectMentor')}</label>
               <select
                 value={newMentorId}
                 onChange={(e) => setNewMentorId(e.target.value)}
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
-                <option value="">Select a mentor</option>
+                <option value="">{t('mentor.assign.selectMentorPlaceholder')}</option>
                 {availableMentors.map(mentor => (
                   <option key={mentor.id} value={mentor.id}>{mentor.name}</option>
                 ))}
@@ -93,7 +95,7 @@ export function MentorAssignModal({
               onClick={handleClose}
               className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
             >
-              Cancel
+              {t('common.cancel')}
             </button>
             {hasEnrollment && (
               <button
@@ -105,7 +107,7 @@ export function MentorAssignModal({
                 disabled={!newMentorId}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:bg-gray-300"
               >
-                {isAssignMode ? 'Assign' : 'Change'} Mentor
+                {isAssignMode ? t('mentor.assign.assignButton') : t('mentor.assign.changeButton')}
               </button>
             )}
           </div>
