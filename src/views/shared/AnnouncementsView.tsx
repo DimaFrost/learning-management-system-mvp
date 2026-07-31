@@ -28,6 +28,7 @@ import { getCourseDisplayName } from '../../utils/courseUtils';
 import { CreateAnnouncementModal } from '../../components/modals/CreateAnnouncementModal';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
+import { translate, translateCount } from '../../i18n/translate';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { formatFileSize } from '../../utils/formatFileSize';
 import { canPreviewInApp, resolveAnnouncementPreview } from '../../utils/filePreview';
@@ -124,13 +125,11 @@ function formatRelativeTime(dateString: string): string {
   const minutes = Math.floor(diffMs / 60000);
   const hours = Math.floor(diffMs / 3600000);
   const days = Math.floor(diffMs / 86400000);
-  if (minutes < 1) return 'Now';
-  if (minutes === 1) return '1 minute ago';
-  if (minutes < 60) return `${minutes} minutes ago`;
-  if (hours === 1) return '1 hour ago';
-  if (hours < 24) return `${hours} hours ago`;
-  if (days === 1) return 'Yesterday';
-  if (days < 7) return `${days} days ago`;
+  if (minutes < 1) return translate('time.now');
+  if (minutes < 60) return translateCount('time.minutesAgo', minutes);
+  if (hours < 24) return translateCount('time.hoursAgo', hours);
+  if (days === 1) return translate('time.yesterday');
+  if (days < 7) return translateCount('time.daysAgo', days);
   return formatPlatformDate(dateString);
 }
 

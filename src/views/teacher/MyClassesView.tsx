@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import type { User, Class, Course, Subject } from '../../types/lms';
 import { getClassDisplayTitle } from '../../utils/courseUtils';
+import { formatDate } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { UserAvatar } from '../admin/users/usersShared';
 
@@ -33,7 +34,7 @@ interface MyClassesViewProps {
 function dayLabel(date: string) {
   const parsed = new Date(`${date}T00:00:00`);
   if (Number.isNaN(parsed.getTime())) return '';
-  return parsed.toLocaleDateString('en-GB', { weekday: 'short' });
+  return formatDate(parsed, { weekday: 'short' });
 }
 
 function relativeDate(date: string, today: string) {

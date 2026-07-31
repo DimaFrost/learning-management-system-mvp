@@ -29,6 +29,7 @@ import type {
   User,
 } from '../../types/lms';
 import { supabase } from '../../lib/supabase';
+import { formatCurrency, formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
@@ -133,11 +134,7 @@ function SourceButton({ children, onClick }: { children: React.ReactNode; onClic
 }
 
 function currency(amount: number, currencyCode = 'EUR') {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-    maximumFractionDigits: 0,
-  }).format(amount);
+  return formatCurrency(amount, currencyCode);
 }
 
 function parseLocalDate(dateString: string): Date {
@@ -189,7 +186,7 @@ function getSessionSlotTitle(hour: string): string {
 }
 
 function getDayLabel(dateString: string): string {
-  return parseLocalDate(dateString).toLocaleDateString('en-GB', { weekday: 'short' });
+  return formatDate(parseLocalDate(dateString), { weekday: 'short' });
 }
 
 function groupSessionsByDay(rows: SessionRow[]): SessionDayGroup[] {
@@ -601,7 +598,7 @@ export function AdminStudentDashboard({
                     <select value={attendanceMonthFilter} onChange={event => setAttendanceMonthFilter(event.target.value)} className="h-9 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]">
                       <option value="all">All months</option>
                       {attendanceMonths.map(month => (
-                        <option key={month} value={month}>{new Date(`${month}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' })}</option>
+                        <option key={month} value={month}>{formatDateCapitalized(`${month}-01T00:00:00`, { month: 'long', year: 'numeric' })}</option>
                       ))}
                     </select>
                   </div>

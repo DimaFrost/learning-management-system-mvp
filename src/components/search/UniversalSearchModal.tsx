@@ -8,17 +8,18 @@ import {
 } from 'lucide-react';
 import type { SearchResult, SearchResultType } from '../../hooks/useUniversalSearchIndex';
 import { searchResults } from '../../hooks/useUniversalSearchIndex';
+import { useLanguage, type TranslationKey } from '../../i18n/LanguageContext';
 
-const TYPE_LABELS: Record<SearchResultType, string> = {
-  people: 'People',
-  classroom: 'Classroom',
-  stream: 'Stream',
-  attendance: 'Attendance',
-  tuition: 'Tuition',
-  todos: 'To-dos',
-  messages: 'Messages',
-  books: 'Books & Reading',
-  navigation: 'Go to',
+const TYPE_LABEL_KEYS: Record<SearchResultType, TranslationKey> = {
+  people: 'search.type.people',
+  classroom: 'search.type.classroom',
+  stream: 'search.type.stream',
+  attendance: 'search.type.attendance',
+  tuition: 'search.type.tuition',
+  todos: 'search.type.todos',
+  messages: 'search.type.messages',
+  books: 'search.type.books',
+  navigation: 'search.type.navigation',
 };
 
 const TYPE_ORDER: SearchResultType[] = [
@@ -117,6 +118,7 @@ function ResultCard({
 }
 
 export function UniversalSearchModal({ open, index, recentKey, onClose }: UniversalSearchModalProps) {
+  const { t } = useLanguage();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [recentSearches, setRecentSearches] = useState<string[]>([]);
@@ -197,7 +199,7 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
                   openResult(visibleResults[selectedIndex]);
                 }
               }}
-              placeholder="Search people, classroom, stream, attendance, tuition..."
+              placeholder={t('search.placeholder')}
               className="h-9 min-w-0 flex-1 border-0 bg-transparent text-base font-medium text-[#171717] outline-none placeholder:text-[#a3a3a3]"
             />
             <span className="hidden items-center gap-1 rounded-lg bg-[#f5f5f5] px-2 py-1 text-[11px] font-semibold text-[#737373] sm:inline-flex">
@@ -207,7 +209,7 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
               type="button"
               onClick={onClose}
               className="tbo-focus grid h-9 w-9 place-items-center rounded-xl text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-              aria-label="Close search"
+              aria-label={t('search.close')}
             >
               <X className="h-4 w-4" />
             </button>
@@ -219,7 +221,7 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
             <div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]">
               <section>
                 <div className="mb-3 flex items-center justify-between gap-3">
-                  <h2 className="text-sm font-semibold text-[#171717]">Recent searches</h2>
+                  <h2 className="text-sm font-semibold text-[#171717]">{t('search.recent')}</h2>
                   {recentSearches.length > 0 ? (
                     <button
                       type="button"
@@ -229,14 +231,14 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
                       }}
                       className="tbo-focus rounded-full px-2 py-1 text-xs font-semibold text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                     >
-                      Clear
+                      {t('search.clear')}
                     </button>
                   ) : null}
                 </div>
                 <div className="space-y-2">
                   {recentSearches.length === 0 ? (
                     <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] p-4 text-sm text-[#737373]">
-                      Your recent searches will appear here.
+                      {t('search.recentEmpty')}
                     </div>
                   ) : (
                     recentSearches.map(item => (
@@ -255,7 +257,7 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
               </section>
 
               <section>
-                <h2 className="mb-3 text-sm font-semibold text-[#171717]">Jump to</h2>
+                <h2 className="mb-3 text-sm font-semibold text-[#171717]">{t('search.jumpTo')}</h2>
                 <div className="grid gap-2 sm:grid-cols-2">
                   {suggested.map(result => {
                     const Icon = result.icon;
@@ -279,15 +281,15 @@ export function UniversalSearchModal({ open, index, recentKey, onClose }: Univer
             </div>
           ) : groupedResults.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] p-8 text-center">
-              <p className="text-sm font-semibold text-[#171717]">No results found</p>
-              <p className="mt-1 text-sm text-[#737373]">Try a name, subject, assignment, date, or module name.</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('search.noResults')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('search.noResultsHint')}</p>
             </div>
           ) : (
             <div className="space-y-5">
               {groupedResults.map(group => (
                 <section key={group.type}>
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">{TYPE_LABELS[group.type]}</h2>
+                    <h2 className="text-xs font-semibold uppercase tracking-[0.14em] text-[#737373]">{t(TYPE_LABEL_KEYS[group.type])}</h2>
                     <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#737373]">{group.results.length}</span>
                   </div>
                   <div className="space-y-2">

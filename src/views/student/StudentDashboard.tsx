@@ -19,6 +19,7 @@ import type {
   Announcement,
   BookReadingAssignment,
   BookReadingSubmission,
+  BookReadingSubmissionStatus,
   ClassAttendanceRecord,
   Conversation,
   Course,
@@ -33,6 +34,9 @@ import type {
   WellScheduleEntry,
 } from '../../types/lms';
 import { PageHeader } from '../../components/ui/PageHeader';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
+import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { StaffAvatar } from '../../components/ui/StaffAvatar';
 import { StudentMonthCalendar } from '../../components/student/StudentMonthCalendar';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -44,6 +48,14 @@ import { buildStudentCalendarEvents } from '../../utils/studentCalendar';
 import { useStudentHomework } from '../../hooks/useStudentHomework';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
+
+const BOOK_STATUS_KEYS: Record<BookReadingSubmissionStatus, TranslationKey> = {
+  not_started: 'student.books.status.not_started',
+  reading: 'student.books.status.reading',
+  submitted: 'student.books.status.submitted',
+  returned: 'student.books.status.returned',
+  completed: 'student.books.status.completed',
+};
 
 const toneClasses = {
   blue: 'bg-[#dbeaff] text-[#2563eb]',
@@ -120,15 +132,15 @@ function clampPercent(value: number) {
 }
 
 function formatWeekday(dateKeyValue: string) {
-  return new Date(`${dateKeyValue}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long' });
+  return formatDateCapitalized(`${dateKeyValue}T00:00:00`, { weekday: 'long' });
 }
 
 function formatDateParts(dateKeyValue: string) {
   const date = new Date(`${dateKeyValue}T00:00:00`);
   return {
     day: String(date.getDate()),
-    month: date.toLocaleDateString('en-GB', { month: 'short' }),
-    weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
+    month: formatDate(date, { month: 'short' }),
+    weekday: formatDate(date, { weekday: 'short' }),
   };
 }
 
@@ -256,6 +268,7 @@ export function StudentDashboard({
   onOpenClass,
   onOpenHomeworkAssignment,
 }: StudentDashboardProps) {
+  const { t, tCount, language } = useLanguage();
   const [expandedTodoGroup, setExpandedTodoGroup] = useState<TodoItem[] | null>(null);
   const todayKey = getTodayDateString();
   const { activeHomework, loading: homeworkLoading } = useStudentHomework(
@@ -417,16 +430,24 @@ export function StudentDashboard({
     .sort((a, b) => b.date.localeCompare(a.date))[0];
   const primaryMentor = myCourses.find(entry => entry.mentor)?.mentor;
 
+  const quickLinks = useMemo(() => ([
+    { label: t('student.myCourse'), icon: GraduationCap, view: 'my-classwork', tone: 'blue' as const },
+    { label: t('student.books'), icon: BookOpen, view: 'my-books', tone: 'orange' as const, badge: incompleteBooks.length },
+    { label: t('sidebar.attendance'), icon: BarChart3, view: 'my-attendance-overview', tone: 'green' as const },
+    { label: t('student.messages'), icon: MessageSquare, view: 'messages', tone: 'violet' as const, badge: totalUnread },
+    { label: t('student.dashboard.announcements'), icon: Megaphone, view: 'announcements', tone: 'orange' as const, badge: pinnedAnnouncements.length },
+  ]), [incompleteBooks.length, language, pinnedAnnouncements.length, t, totalUnread]);
+
   const weekPulse = attentionCount === 0 ? 100 : clampPercent(Math.max(35, 100 - attentionCount * 18));
 
   return (
     <div className="space-y-5">
       <PageHeader
-        title="Dashboard"
+        title={t('student.dashboard.title')}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <GhostButton onClick={onOpenSearch}>Search</GhostButton>
-            <GhostButton onClick={() => onNavigate('announcements')}>Announcements</GhostButton>
+            <GhostButton onClick={onOpenSearch}>{t('student.dashboard.search')}</GhostButton>
+            <GhostButton onClick={() => onNavigate('announcements')}>{t('student.dashboard.announcements')}</GhostButton>
           </div>
         }
       />
@@ -436,24 +457,24 @@ export function StudentDashboard({
           <div className="flex items-start bg-white p-4">
             <div className="w-full">
               <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
-                Your week
+                {t('student.dashboard.yourWeek')}
               </p>
               <div className="mt-3 flex items-center justify-between gap-4">
                 <div className="min-w-0">
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-semibold leading-none text-[#171717]">{attentionCount}</span>
                     <span className="text-sm font-medium text-[#525252]">
-                      {attentionCount === 1 ? 'item needs attention' : 'items need attention'}
+                      {tCount('student.dashboard.attention', attentionCount)}
                     </span>
                   </div>
                   <p className="mt-1 text-xs text-[#737373]">
                     {attentionCount === 0
-                      ? 'You are on track for the week ahead'
-                      : 'Homework, to-dos, and scheduled responsibilities'}
+                      ? t('student.dashboard.onTrack')
+                      : t('student.dashboard.attentionDetail')}
                   </p>
                   {primaryMentor && (
                     <p className="mt-3 text-sm text-[#525252]">
-                      Mentor: <span className="font-semibold text-[#171717]">{primaryMentor.name}</span>
+                      {t('student.dashboard.mentor')} <span className="font-semibold text-[#171717]">{primaryMentor.name}</span>
                     </p>
                   )}
                 </div>
@@ -462,7 +483,7 @@ export function StudentDashboard({
                   style={{
                     background: `conic-gradient(${attentionCount > 0 ? '#ea580c' : '#16a34a'} ${weekPulse * 3.6}deg, #f5f5f5 0deg)`,
                   }}
-                  title={`Week readiness ${weekPulse}%`}
+                  title={t('student.dashboard.weekReadiness', { n: weekPulse })}
                 >
                   <div className="grid h-14 w-14 place-items-center rounded-full bg-white">
                     <span className="text-sm font-semibold text-[#171717]">{weekPulse}%</span>
@@ -475,7 +496,7 @@ export function StudentDashboard({
           <div className="flex items-start bg-white p-4">
             <div className="w-full">
               <div className="mb-1.5 flex items-center justify-between gap-2">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">To-dos</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('student.dashboard.todos')}</p>
                 <div className="flex items-center gap-2">
                   {effectiveCurrentDuties.length > 0 && (
                     <button
@@ -483,7 +504,7 @@ export function StudentDashboard({
                       onClick={() => onNavigate('on-duty')}
                       className="tbo-focus rounded-full border border-[#fed7aa] bg-[#fff7ed] px-2 py-1 text-[11px] font-medium text-[#c2410c] hover:bg-[#ffedd5]"
                     >
-                      On duty now
+                      {t('student.dashboard.onDutyNow')}
                     </button>
                   )}
                   <button
@@ -491,14 +512,14 @@ export function StudentDashboard({
                     onClick={() => onNavigate('todos')}
                     className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
                   >
-                    {dashboardOpenTodos.length} open
+                    {t('student.dashboard.openCount', { count: dashboardOpenTodos.length })}
                   </button>
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
                 {todosLoading ? (
                   <div className="col-span-full flex min-h-[3.5rem] items-center justify-center rounded-xl border border-[#e5e5e5] text-sm text-[#737373]">
-                    Loading to-dos...
+                    {t('student.dashboard.loadingTodos')}
                   </div>
                 ) : todoPreview.length === 0 ? (
                   <button
@@ -510,8 +531,8 @@ export function StudentDashboard({
                       <CheckCircle2 className="h-4 w-4" />
                     </span>
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-[#171717]">All caught up for today</p>
-                      <p className="text-[11px] text-[#15803d]">Open the board to plan ahead.</p>
+                      <p className="text-xs font-semibold text-[#171717]">{t('student.dashboard.caughtUpTitle')}</p>
+                      <p className="text-[11px] text-[#15803d]">{t('student.dashboard.caughtUpHint')}</p>
                     </div>
                   </button>
                 ) : (
@@ -568,7 +589,7 @@ export function StudentDashboard({
                             )}
                           </p>
                           <p className="truncate text-[11px] text-[#737373]">
-                            {overdue ? 'Overdue' : formatPlatformDate(todo.dueDate)}
+                            {overdue ? t('common.overdue') : formatPlatformDate(todo.dueDate)}
                           </p>
                         </div>
                       </button>
@@ -578,7 +599,10 @@ export function StudentDashboard({
               </div>
               {nextScheduledDuty && effectiveCurrentDuties.length === 0 && (
                 <p className="mt-3 text-xs text-[#737373]">
-                  Next duty week: {formatPlatformDate(nextScheduledDuty.weekStart)} – {formatPlatformDate(nextScheduledDuty.weekEnd)}
+                  {t('student.dashboard.nextDutyWeek', {
+                    start: formatPlatformDate(nextScheduledDuty.weekStart),
+                    end: formatPlatformDate(nextScheduledDuty.weekEnd),
+                  })}
                 </p>
               )}
             </div>
@@ -590,14 +614,14 @@ export function StudentDashboard({
           <div className="w-full max-w-md border border-[#d4d4d4] bg-white shadow-2xl">
             <div className="flex items-start justify-between gap-3 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">Scheduled dates</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('student.dashboard.scheduledDates')}</p>
                 <h3 className="mt-1 text-lg font-semibold text-[#171717]">{expandedTodoGroup[0]?.title}</h3>
               </div>
               <button
                 type="button"
                 onClick={() => setExpandedTodoGroup(null)}
                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] bg-white text-[#525252] hover:bg-[#f5f5f5]"
-                aria-label="Close dates"
+                aria-label={t('student.calendar.closeDates')}
               >
                 <X className="h-4 w-4" />
               </button>
@@ -624,36 +648,36 @@ export function StudentDashboard({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric
-          label="Attendance"
+          label={t('sidebar.attendance')}
           value={formatPercent(averageOverall)}
-          detail={mySummaries.every(summary => summary.meetsGraduationThreshold) ? 'On track for graduation' : 'Review your attendance scores'}
+          detail={mySummaries.every(summary => summary.meetsGraduationThreshold) ? t('attendance.onTrackGraduation') : t('attendance.reviewScores')}
           progress={readinessScore}
           icon={BarChart3}
           tone={readinessScore >= 80 ? 'green' : 'orange'}
           onClick={() => onNavigate('my-attendance-overview')}
         />
         <MiniMetric
-          label="Homework"
+          label={t('student.homework')}
           value={homeworkAttention.length}
-          detail={overdueHomework.length > 0 ? `${overdueHomework.length} overdue` : `${dueSoonHomework.length} due this week`}
+          detail={overdueHomework.length > 0 ? t('student.homework.overdueCount', { count: overdueHomework.length }) : t('student.homework.dueThisWeek', { count: dueSoonHomework.length })}
           progress={homeworkAttention.length === 0 ? 100 : clampPercent(Math.max(20, 100 - homeworkAttention.length * 15))}
           icon={BookOpen}
           tone={overdueHomework.length > 0 ? 'orange' : 'blue'}
           onClick={() => onNavigate('my-assignments')}
         />
         <MiniMetric
-          label="To-dos"
+          label={t('student.dashboard.todos')}
           value={dashboardOpenTodos.length}
-          detail={`${studentScheduleTodos.length} scheduled · ${todosToday.length} due today`}
+          detail={t('student.dashboard.todosDetail', { scheduled: studentScheduleTodos.length, today: todosToday.length })}
           progress={dashboardOpenTodos.length === 0 ? 100 : clampPercent(Math.max(25, 100 - dashboardOpenTodos.length * 12))}
           icon={ClipboardList}
           tone="violet"
           onClick={() => onNavigate('todos')}
         />
         <MiniMetric
-          label="Sessions"
+          label={t('student.sessions')}
           value={upcomingSessions.length}
-          detail="in the next 7 days"
+          detail={t('student.sessions.next7Days')}
           progress={upcomingSessions.length > 0 ? 100 : 40}
           icon={Calendar}
           tone="green"
@@ -663,16 +687,16 @@ export function StudentDashboard({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.2fr_0.8fr]">
         <SectionCard
-          title="Upcoming"
-          subtitle="Next 7 days"
-          action={<GhostButton onClick={() => onNavigate('my-classwork')}>My course</GhostButton>}
+          title={t('student.dashboard.upcoming')}
+          subtitle={t('student.dashboard.next7Days')}
+          action={<GhostButton onClick={() => onNavigate('my-classwork')}>{t('student.myCourse')}</GhostButton>}
           className="xl:min-h-[420px]"
           bodyClassName="min-h-0 flex-1"
         >
           <div className="tbo-scrollbar max-h-[360px] space-y-2 overflow-y-auto pr-1">
             {sessionsByDate.length === 0 ? (
               <div className="rounded-xl bg-[#f5f5f5] p-4 text-sm text-[#737373]">
-                No sessions scheduled in the next 7 days.
+                {t('student.dashboard.noSessions')}
               </div>
             ) : (
               sessionsByDate.map(group => {
@@ -712,7 +736,7 @@ export function StudentDashboard({
                             <StaffAvatar
                               name={session.teacher.name}
                               avatarUrl={session.teacher.avatarUrl}
-                              role="Teacher"
+                              role={t('common.role.teacher')}
                             />
                           ) : null}
                         </button>
@@ -726,9 +750,9 @@ export function StudentDashboard({
         </SectionCard>
 
         <SectionCard
-          title="Month Calendar"
-          subtitle="Tue · Thu · Well · Activation"
-          action={<GhostButton onClick={() => onNavigate('my-attendance-breakdown')}>Attendance</GhostButton>}
+          title={t('student.calendar.month')}
+          subtitle={t('student.calendar.legend')}
+          action={<GhostButton onClick={() => onNavigate('my-attendance-breakdown')}>{t('sidebar.attendance')}</GhostButton>}
           className="xl:min-h-[420px]"
         >
           <StudentMonthCalendar events={calendarEvents} onOpenClass={onOpenClass} />
@@ -737,16 +761,16 @@ export function StudentDashboard({
 
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <SectionCard
-          title="Homework"
-          subtitle="Needs your attention"
-          action={<GhostButton onClick={() => onNavigate('my-assignments')}>View all</GhostButton>}
+          title={t('student.homework')}
+          subtitle={t('student.homework.needsAttention')}
+          action={<GhostButton onClick={() => onNavigate('my-assignments')}>{t('common.viewAll')}</GhostButton>}
         >
             {homeworkLoading ? (
-              <p className="text-sm text-[#737373]">Loading homework...</p>
+              <p className="text-sm text-[#737373]">{t('student.homework.loading')}</p>
             ) : homeworkAttention.length === 0 ? (
               <div className="flex items-center gap-2 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-4 text-sm text-[#15803d]">
                 <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-                All homework is caught up.
+                {t('student.homework.caughtUp')}
               </div>
             ) : (
               <div className="space-y-2">
@@ -761,7 +785,7 @@ export function StudentDashboard({
                     <p className="truncate text-xs text-[#737373]">{item.subjectTitle} · {item.courseName}</p>
                     {item.dueDate && (
                       <p className={`mt-1 text-xs ${item.dueDate < todayKey ? 'text-[#c2410c]' : 'text-[#737373]'}`}>
-                        Due {formatPlatformDate(item.dueDate)}
+                        {t('common.dueDate', { date: formatPlatformDate(item.dueDate) })}
                       </p>
                     )}
                   </button>
@@ -770,15 +794,9 @@ export function StudentDashboard({
             )}
           </SectionCard>
 
-          <SectionCard title="Quick links" subtitle="Jump to your student tools">
+          <SectionCard title={t('student.dashboard.quickLinks')} subtitle={t('student.dashboard.quickLinksSubtitle')}>
             <div className="grid grid-cols-2 gap-2">
-              {([
-                { label: 'My course', icon: GraduationCap, view: 'my-classwork', tone: 'blue' as const },
-                { label: 'Books', icon: BookOpen, view: 'my-books', tone: 'orange' as const, badge: incompleteBooks.length },
-                { label: 'Attendance', icon: BarChart3, view: 'my-attendance-overview', tone: 'green' as const },
-                { label: 'Messages', icon: MessageSquare, view: 'messages', tone: 'violet' as const, badge: totalUnread },
-                { label: 'Announcements', icon: Megaphone, view: 'announcements', tone: 'orange' as const, badge: pinnedAnnouncements.length },
-              ]).map(link => {
+              {quickLinks.map(link => {
                 const Icon = link.icon;
                 return (
                   <button
@@ -802,23 +820,23 @@ export function StudentDashboard({
             </div>
             {latestMentorLog && (
               <p className="mt-3 text-xs text-[#737373]">
-                Last mentor check-in: {formatPlatformDate(latestMentorLog.date)}
+                {t('student.dashboard.lastCheckIn', { date: formatPlatformDate(latestMentorLog.date) })}
               </p>
             )}
           </SectionCard>
       </div>
 
       <SectionCard
-        title="Books"
-        subtitle="Reading assignments"
-        action={<GhostButton onClick={() => onNavigate('my-books')}>Open</GhostButton>}
+        title={t('student.books.title')}
+        subtitle={t('student.books.subtitle')}
+        action={<GhostButton onClick={() => onNavigate('my-books')}>{t('common.open')}</GhostButton>}
       >
         {booksLoading ? (
-          <p className="text-sm text-[#737373]">Loading books...</p>
+          <p className="text-sm text-[#737373]">{t('student.books.loading')}</p>
         ) : incompleteBooks.length === 0 ? (
           <div className="flex items-center gap-2 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-4 text-sm text-[#15803d]">
             <CheckCircle2 className="h-4 w-4 flex-shrink-0" />
-            No reading assignments need attention.
+            {t('student.books.caughtUp')}
           </div>
         ) : (
           <div className="grid gap-2 md:grid-cols-2">
@@ -842,8 +860,8 @@ export function StudentDashboard({
                     <p className="truncate text-sm font-semibold text-[#171717]">{assignment.book.title}</p>
                     <p className="truncate text-xs text-[#737373]">{assignment.title}</p>
                     <p className={`mt-1 text-xs ${assignment.dueDate && assignment.dueDate < todayKey ? 'text-[#c2410c]' : 'text-[#737373]'}`}>
-                      {assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date'}
-                      {submission?.status ? ` · ${submission.status.replace('_', ' ')}` : ''}
+                      {assignment.dueDate ? t('common.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate')}
+                      {submission?.status ? ` · ${t(BOOK_STATUS_KEYS[submission.status])}` : ''}
                     </p>
                   </div>
                 </button>
@@ -852,7 +870,7 @@ export function StudentDashboard({
           </div>
         )}
         {overdueBooks.length > 0 && (
-          <p className="mt-3 text-xs font-medium text-[#c2410c]">{overdueBooks.length} overdue reading assignment{overdueBooks.length === 1 ? '' : 's'}.</p>
+          <p className="mt-3 text-xs font-medium text-[#c2410c]">{tCount('student.books.overdueCount', overdueBooks.length)}</p>
         )}
       </SectionCard>
     </div>

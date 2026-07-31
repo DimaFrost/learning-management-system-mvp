@@ -1,3 +1,5 @@
+import { formatDate, formatTime } from '../../../i18n/formatters';
+import { translate } from '../../../i18n/translate';
 import type { Class, Course, CourseStudent, HomeworkSubmission, User } from '../../../types/lms';
 import { isCourseActive } from '../../../utils/courseUtils';
 import { formatPlatformDate } from '../../../utils/dateUtils';
@@ -78,16 +80,16 @@ export function getCompactDateParts(dateString: string | null) {
   const date = new Date(dateString);
   if (Number.isNaN(date.getTime())) return null;
   return {
-    day: date.toLocaleDateString(undefined, { day: '2-digit' }),
-    month: date.toLocaleDateString(undefined, { month: 'short' }),
+    day: formatDate(date, { day: '2-digit' }),
+    month: formatDate(date, { month: 'short' }),
   };
 }
 
 export function formatDueDateTime(dateString: string | null) {
-  if (!dateString) return 'No due date';
+  if (!dateString) return translate('common.noDueDate');
   const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return 'No due date';
-  return `${formatPlatformDate(dateString)}, ${date.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}`;
+  if (Number.isNaN(date.getTime())) return translate('common.noDueDate');
+  return `${formatPlatformDate(dateString)}, ${formatTime(date, { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 export function getDueCountdown(dateString: string | null) {

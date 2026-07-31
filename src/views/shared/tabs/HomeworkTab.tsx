@@ -22,6 +22,7 @@ import type {
 } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { formatDateTime } from '../../../i18n/formatters';
 import { formatDueDate, formatPlatformDate } from '../../../utils/dateUtils';
 import { GradeModal } from '../../../components/modals/GradeModal';
 import { SubmissionDetailModal } from '../../../components/modals/SubmissionDetailModal';
@@ -100,7 +101,7 @@ function getSubmissionUrl(submission: HomeworkSubmission): string | null {
 
 function formatGoogleDocTime(value: string | null) {
   if (!value) return 'Not available';
-  return new Date(value).toLocaleString(undefined, {
+  return formatDateTime(value, {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',

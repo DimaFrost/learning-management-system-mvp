@@ -14,6 +14,7 @@ import type {
   StudentAttendanceSummary,
   User,
 } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatPercent } from '../../utils/attendanceUtils';
 import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
 interface MyAttendanceViewProps {
@@ -28,12 +29,6 @@ const STATUS_CLASS = {
   passing: 'bg-[#dcfce7] text-[#166534]',
   at_risk: 'bg-[#fff7ed] text-[#c2410c]',
   failing: 'bg-[#fee2e2] text-[#b91c1c]',
-};
-
-const STATUS_LABEL = {
-  passing: 'Passing',
-  at_risk: 'At risk',
-  failing: 'Failing',
 };
 
 const GATE_ICONS = {
@@ -100,10 +95,13 @@ function ScoreBar({ score }: { score: number }) {
 function GateCard({
   gate,
   children,
+  statusLabel,
 }: {
   gate: AttendanceGateSummary;
   children?: React.ReactNode;
+  statusLabel: string;
 }) {
+  const { t } = useLanguage();
   const Icon = GATE_ICONS[gate.key];
   const tone = GATE_TONES[gate.key];
 
@@ -125,20 +123,20 @@ function GateCard({
           </div>
         </div>
         <span className={`inline-flex flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CLASS[gate.status]}`}>
-          {STATUS_LABEL[gate.status]}
+          {statusLabel}
         </span>
       </div>
 
       <div className="mt-4 grid gap-3 sm:grid-cols-2">
         <div className={`rounded-xl border px-3 py-2 ${tone.panel}`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Credits</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.credits')}</p>
           <p className="mt-1 text-lg font-semibold text-[#171717]">
             {gate.earnedCredits.toFixed(1)}
             <span className="text-sm font-medium text-[#737373]"> / {gate.requiredCredits.toFixed(1)}</span>
           </p>
         </div>
         <div className={`rounded-xl border px-3 py-2 ${tone.panel}`}>
-          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Score</p>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.score')}</p>
           <div className="mt-1">
             <ScoreBar score={gate.score} />
           </div>
@@ -187,11 +185,29 @@ export function MyAttendanceView({
   getCourseSummaries,
   loading,
 }: MyAttendanceViewProps) {
+  const { t, tCount, language } = useLanguage();
   const { myCourses, selectedCourse, setSelectedCourseId } = useStudentCourseSelection(
     currentUser.id,
     courses,
     courseStudents
   );
+
+  const statusLabels = useMemo(() => ({
+    passing: t('attendance.status.passing'),
+    at_risk: t('attendance.status.atRisk'),
+    failing: t('attendance.status.failing'),
+  }), [language, t]);
+
+  const statLabels = useMemo(() => ({
+    classes: t('attendance.gate.classes'),
+    the_well: t('attendance.gate.the_well'),
+    ministry: t('attendance.gate.ministry'),
+    activation: t('attendance.gate.activationShort'),
+    planned: t('attendance.planned'),
+    present: t('attendance.present'),
+    late: t('attendance.late'),
+    absent: t('attendance.absent'),
+  }), [language, t]);
 
   const summary = useMemo(() => {
     if (!selectedCourse) return null;
@@ -204,8 +220,8 @@ export function MyAttendanceView({
   if (myCourses.length === 0) {
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-6 py-16 text-center">
-        <p className="text-sm font-medium text-[#171717]">No active course enrollment found.</p>
-        <p className="mt-1 text-sm text-[#737373]">Attendance will appear here once you are enrolled.</p>
+        <p className="text-sm font-medium text-[#171717]">{t('student.enrollment.none')}</p>
+        <p className="mt-1 text-sm text-[#737373]">{t('attendance.empty.enrollHint')}</p>
       </div>
     );
   }
@@ -214,12 +230,12 @@ export function MyAttendanceView({
     return (
       <div className="space-y-5">
         <MyAttendancePageHeader
-          title="Attendance overall"
+          title={t('attendance.overall.title')}
           course={selectedCourse}
           courses={myCourses}
           onSelect={setSelectedCourseId}
         />
-        <SectionCard className="p-8 text-center text-sm text-[#737373]">Loading attendance…</SectionCard>
+        <SectionCard className="p-8 text-center text-sm text-[#737373]">{t('attendance.loading')}</SectionCard>
       </div>
     );
   }
@@ -228,13 +244,13 @@ export function MyAttendanceView({
     return (
       <div className="space-y-5">
         <MyAttendancePageHeader
-          title="Attendance overall"
+          title={t('attendance.overall.title')}
           course={selectedCourse}
           courses={myCourses}
           onSelect={setSelectedCourseId}
         />
         <SectionCard className="p-8 text-center text-sm text-[#737373]">
-          No attendance records yet for this course.
+          {t('attendance.empty.course')}
         </SectionCard>
       </div>
     );
@@ -248,7 +264,7 @@ export function MyAttendanceView({
   return (
     <div className="space-y-5">
       <MyAttendancePageHeader
-        title="Attendance overall"
+        title={t('attendance.overall.title')}
         course={selectedCourse}
         courses={myCourses}
         onSelect={setSelectedCourseId}
@@ -257,7 +273,7 @@ export function MyAttendanceView({
       <SectionCard className="overflow-hidden">
         <div className="grid gap-px bg-[#e5e5e5] lg:grid-cols-[1fr_auto]">
           <div className="bg-white p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Overall result</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.overall.result')}</p>
             <div className="mt-3 flex flex-wrap items-end gap-4">
               <p className="text-4xl font-semibold leading-none text-[#171717]">
                 {formatPercent(summary.overallScore)}
@@ -274,14 +290,14 @@ export function MyAttendanceView({
                 ) : (
                   <ClipboardList className="h-4 w-4" />
                 )}
-                {summary.meetsGraduationThreshold ? 'Meets all gates' : 'Needs review'}
+                {summary.meetsGraduationThreshold ? t('attendance.meetsAllGates') : t('attendance.needsReview')}
               </span>
             </div>
             <p className="mt-3 max-w-2xl text-sm text-[#525252]">
-              You must pass every gate to meet graduation attendance requirements.
+              {t('attendance.overall.requirementGraduation')}
               {passingGates < gateCount
-                ? ` ${gateCount - passingGates} gate${gateCount - passingGates === 1 ? '' : 's'} still need attention.`
-                : ' All tracked gates are currently passing.'}
+                ? ` ${tCount('attendance.gates.needAttention', gateCount - passingGates)}`
+                : ` ${t('attendance.gates.allPassing')}`}
             </p>
           </div>
           <div className="flex items-center justify-center bg-white p-5 lg:min-w-[220px]">
@@ -295,7 +311,7 @@ export function MyAttendanceView({
             >
               <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">
                 <span className="text-lg font-semibold text-[#171717]">{passingGates}/{gateCount}</span>
-                <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#737373]">gates</span>
+                <span className="text-[10px] font-medium uppercase tracking-[0.12em] text-[#737373]">{t('attendance.gates')}</span>
               </div>
             </div>
           </div>
@@ -304,30 +320,30 @@ export function MyAttendanceView({
 
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <StatPill
-          label="Classes"
+          label={statLabels.classes}
           value={formatPercent(summary.classAttendanceScore)}
-          detail={`${summary.classesPresent} present · ${summary.classesAbsent} absent`}
+          detail={t('attendance.presentAbsent', { present: summary.classesPresent, absent: summary.classesAbsent })}
           icon={Calendar}
           accent="bg-[#dbeaff] text-[#2563eb]"
         />
         <StatPill
-          label="The Well"
+          label={statLabels.the_well}
           value={formatPercent(summary.theWellScore)}
-          detail={`${summary.theWellMonthsTracked} month${summary.theWellMonthsTracked === 1 ? '' : 's'} tracked`}
+          detail={tCount('attendance.monthsTracked', summary.theWellMonthsTracked)}
           icon={Activity}
           accent="bg-[#dcfce7] text-[#16a34a]"
         />
         <StatPill
-          label="Ministry"
+          label={statLabels.ministry}
           value={formatPercent(summary.ministryScore)}
-          detail={ministryGate?.detail ?? 'Service credits'}
+          detail={ministryGate?.detail ?? t('attendance.ministry.serviceCredits')}
           icon={Users}
           accent="bg-[#f3e8ff] text-[#7c3aed]"
         />
         <StatPill
-          label="Activation"
+          label={statLabels.activation}
           value={formatPercent(summary.saturdayAttendanceScore)}
-          detail={`${summary.saturdaysPresent + summary.saturdaysLate + summary.saturdaysAbsent} sessions tracked`}
+          detail={tCount('attendance.sessionsTracked', summary.saturdaysPresent + summary.saturdaysLate + summary.saturdaysAbsent)}
           icon={ShieldCheck}
           accent="bg-[#fff7ed] text-[#ea580c]"
         />
@@ -335,15 +351,15 @@ export function MyAttendanceView({
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
         {classesGate && (
-          <GateCard gate={classesGate}>
+          <GateCard gate={classesGate} statusLabel={statusLabels[classesGate.status]}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
-                ['Planned', summary.totalClasses],
-                ['Present', summary.classesPresent],
-                ['Late', summary.classesLate],
-                ['Absent', summary.classesAbsent],
+                [statLabels.planned, summary.totalClasses],
+                [statLabels.present, summary.classesPresent],
+                [statLabels.late, summary.classesLate],
+                [statLabels.absent, summary.classesAbsent],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
+                <div key={String(label)} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
                   <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#737373]">{label}</p>
                   <p className="mt-1 text-lg font-semibold text-[#171717]">{value}</p>
                 </div>
@@ -353,32 +369,31 @@ export function MyAttendanceView({
         )}
 
         {wellGate && (
-          <GateCard gate={wellGate}>
+          <GateCard gate={wellGate} statusLabel={statusLabels[wellGate.status]}>
             <p className="text-sm text-[#525252]">
-              Monthly Well attendance is tracked across {summary.theWellMonthsTracked} month
-              {summary.theWellMonthsTracked === 1 ? '' : 's'} for this course.
+              {tCount('attendance.well.monthlyTracked', summary.theWellMonthsTracked)}
             </p>
           </GateCard>
         )}
 
         {ministryGate && (
-          <GateCard gate={ministryGate}>
+          <GateCard gate={ministryGate} statusLabel={statusLabels[ministryGate.status]}>
             <p className="text-sm text-[#525252]">
-              Ministry credit is based on your team rotation and marked service attendance.
+              {t('attendance.ministry.creditExplainMarked')}
             </p>
           </GateCard>
         )}
 
         {activationGate && (
-          <GateCard gate={activationGate}>
+          <GateCard gate={activationGate} statusLabel={statusLabels[activationGate.status]}>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
               {[
-                ['Planned', summary.totalSaturdays],
-                ['Present', summary.saturdaysPresent],
-                ['Late', summary.saturdaysLate],
-                ['Absent', summary.saturdaysAbsent],
+                [statLabels.planned, summary.totalSaturdays],
+                [statLabels.present, summary.saturdaysPresent],
+                [statLabels.late, summary.saturdaysLate],
+                [statLabels.absent, summary.saturdaysAbsent],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
+                <div key={String(label)} className="rounded-lg bg-[#fafafa] px-3 py-2 text-center">
                   <p className="text-[11px] font-medium uppercase tracking-[0.1em] text-[#737373]">{label}</p>
                   <p className="mt-1 text-lg font-semibold text-[#171717]">{value}</p>
                 </div>
@@ -392,10 +407,9 @@ export function MyAttendanceView({
         <SectionCard className="p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="text-sm font-semibold text-[#171717]">Sunday ministry attendance</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('attendance.sunday.title')}</p>
               <p className="mt-1 text-sm text-[#737373]">
-                Tracked separately across {summary.sundayMonthsTracked} month
-                {summary.sundayMonthsTracked === 1 ? '' : 's'}.
+                {tCount('attendance.sunday.tracked', summary.sundayMonthsTracked)}
               </p>
             </div>
             <ScoreBar score={summary.sundayScore} />

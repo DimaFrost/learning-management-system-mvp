@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Calendar, ChevronDown, ChevronRight, Plus, Edit3, Trash2, Eye } from 'lucide-react';
 import type { Course, CourseStudent, HomeworkSubmission, User, Class, Subject, CurriculumCapability } from '../../types/lms';
 import { isCourseActive, getClassDisplayTitle } from '../../utils/courseUtils';
+import { formatDateCapitalized } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { supabase } from '../../lib/supabase';
 import type { AssignmentComposerPayload } from '../../components/assignments/AssignmentComposer';
@@ -73,9 +74,8 @@ function mapHomeworkComment(row: HomeworkCommentRow) {
 }
 
 function formatDate(dateStr: string) {
-  const date = new Date(dateStr);
   return {
-    weekday: date.toLocaleDateString('en-US', { weekday: 'long' }),
+    weekday: formatDateCapitalized(dateStr, { weekday: 'long' }),
     fullDate: formatPlatformDate(dateStr),
   };
 }

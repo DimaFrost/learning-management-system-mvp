@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, StudentAttendanceSummary, User } from '../../types/lms';
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
+import { formatDate, formatTime } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
 import type { HomeworkDetailSelection, HomeworkRow, SubjectRun } from './classwork/types';
@@ -162,7 +163,7 @@ function gradeMeta(points: number | null, maxPoints: number | null | undefined, 
 }
 
 function monthLabel(month: string) {
-  return new Date(`${month}-01T00:00:00`).toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+  return formatDate(`${month}-01T00:00:00`, { month: 'short', year: 'numeric' });
 }
 
 function dueParts(date: string | null) {
@@ -172,7 +173,7 @@ function dueParts(date: string | null) {
   const day = String(value.getDate()).padStart(2, '0');
   const month = String(value.getMonth() + 1).padStart(2, '0');
   const time = date.includes('T')
-    ? value.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false })
+    ? formatTime(value, { hour: '2-digit', minute: '2-digit', hour12: false })
     : 'No time';
   return { date: `${day}/${month}`, time };
 }

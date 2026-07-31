@@ -21,6 +21,7 @@ import type {
   User,
 } from '../../types/lms';
 import type { TuitionSummary } from '../../hooks/useTuition';
+import { formatCurrency } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
@@ -61,7 +62,7 @@ type TuitionViewProps = {
 };
 
 function currency(amount: number, code = 'EUR') {
-  return new Intl.NumberFormat('en-GB', { style: 'currency', currency: code, maximumFractionDigits: 0 }).format(amount || 0);
+  return formatCurrency(amount, code);
 }
 
 function todayKey() {

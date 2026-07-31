@@ -35,6 +35,7 @@ import type {
   TodoItem,
   User,
 } from '../../types/lms';
+import { formatCurrency, formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
 import type { useAttendance } from '../../hooks/useAttendance';
@@ -236,11 +237,7 @@ function formatRelativeDueDate(dueDate: string, today: string) {
 }
 
 function formatTuitionAmount(amount: number, currencyCode = 'EUR') {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: currencyCode,
-    maximumFractionDigits: 0,
-  }).format(amount || 0);
+  return formatCurrency(amount, currencyCode);
 }
 
 function startOfMonth(date: Date) {
@@ -252,7 +249,7 @@ function addMonths(date: Date, amount: number) {
 }
 
 function formatMonthLabel(date: Date) {
-  return date.toLocaleDateString('en-GB', {
+  return formatDateCapitalized(date, {
     month: 'long',
     year: 'numeric',
   });
@@ -311,9 +308,9 @@ function formatDateParts(date: string) {
 
   const value = new Date(`${date}T00:00:00`);
   return {
-    day: value.toLocaleDateString('en-GB', { day: 'numeric' }),
-    month: value.toLocaleDateString('en-GB', { month: 'short' }),
-    weekday: value.toLocaleDateString('en-GB', { weekday: 'short' }),
+    day: formatDate(value, { day: 'numeric' }),
+    month: formatDate(value, { month: 'short' }),
+    weekday: formatDate(value, { weekday: 'short' }),
   };
 }
 

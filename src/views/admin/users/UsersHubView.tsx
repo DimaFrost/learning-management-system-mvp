@@ -20,6 +20,7 @@ import {
   Users,
 } from 'lucide-react';
 import type { Course, CourseStudent, MinistryRotation, MinistryTeam, User } from '../../../types/lms';
+import { formatDate } from '../../../i18n/formatters';
 import { isCourseActive } from '../../../utils/courseUtils';
 import {
   buildEnrollmentRows,
@@ -827,7 +828,7 @@ function EnrollmentsPanel({
                     </td>
                     <td className="px-4 py-3 text-[#737373]">
                       {row.enrollment.enrollmentDate
-                        ? new Date(row.enrollment.enrollmentDate).toLocaleDateString()
+                        ? formatDate(row.enrollment.enrollmentDate, { day: '2-digit', month: '2-digit', year: 'numeric' })
                         : '—'}
                     </td>
                     <td className="px-4 py-3 text-right">

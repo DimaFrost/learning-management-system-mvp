@@ -1,3 +1,4 @@
+import { formatDateCapitalized } from '../i18n/formatters';
 import type {
   AttendanceSettings,
   AttendanceStatus,
@@ -234,7 +235,7 @@ export function formatPercent(score: number): string {
 }
 
 export function formatMonthYear(year: number, month: number): string {
-  return new Date(year, month - 1, 1).toLocaleDateString('en-GB', {
+  return formatDateCapitalized(new Date(year, month - 1, 1), {
     month: 'long',
     year: 'numeric',
   });

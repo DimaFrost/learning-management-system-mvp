@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { Course, CourseStudent } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { getCourseSchoolYearLine, isCourseActive } from '../../utils/courseUtils';
 
 export function useStudentCourseSelection(
@@ -67,13 +68,15 @@ function CourseSchoolYearAction({
   courses: Course[];
   onSelect: (courseId: number) => void;
 }) {
+  const { t } = useLanguage();
+
   if (courses.length > 1) {
     return (
       <select
         value={course.id}
         onChange={event => onSelect(Number(event.target.value))}
         className="max-w-full rounded-lg border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-right text-sm font-medium text-[#525252] focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-        aria-label="Select course"
+        aria-label={t('student.selectCourse')}
       >
         {courses.map(item => (
           <option key={item.id} value={item.id}>

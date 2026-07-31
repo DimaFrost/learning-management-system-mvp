@@ -6,6 +6,7 @@ import type {
   BookReadingSubmissionStatus,
   Course,
 } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge } from '../admin/users/usersShared';
 
@@ -21,12 +22,12 @@ type MyBooksViewProps = {
   }) => Promise<void>;
 };
 
-const statusLabels: Record<BookReadingSubmissionStatus, string> = {
-  not_started: 'Not started',
-  reading: 'Reading',
-  submitted: 'Submitted',
-  returned: 'Returned',
-  completed: 'Completed',
+const STATUS_KEYS: Record<BookReadingSubmissionStatus, 'student.books.status.not_started' | 'student.books.status.reading' | 'student.books.status.submitted' | 'student.books.status.returned' | 'student.books.status.completed'> = {
+  not_started: 'student.books.status.not_started',
+  reading: 'student.books.status.reading',
+  submitted: 'student.books.status.submitted',
+  returned: 'student.books.status.returned',
+  completed: 'student.books.status.completed',
 };
 
 function getTone(status: BookReadingSubmissionStatus) {
@@ -37,6 +38,7 @@ function getTone(status: BookReadingSubmissionStatus) {
 }
 
 export function MyBooksView({ assignments, submissions, courses, loading, onSubmit }: MyBooksViewProps) {
+  const { t } = useLanguage();
   const [openAssignmentId, setOpenAssignmentId] = useState<number | null>(null);
   const [responseText, setResponseText] = useState('');
   const [responseUrl, setResponseUrl] = useState('');
@@ -69,17 +71,17 @@ export function MyBooksView({ assignments, submissions, courses, loading, onSubm
   return (
     <div className="space-y-5">
       <div>
-        <h2 className="tbo-display text-3xl text-[#171717]">My Books</h2>
-        <p className="text-sm text-[#737373]">Reading assignments for your year group.</p>
+        <h2 className="tbo-display text-3xl text-[#171717]">{t('student.books.title')}</h2>
+        <p className="text-sm text-[#737373]">{t('student.books.intro')}</p>
       </div>
 
       {loading ? (
-        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-[#737373]">Loading books...</div>
+        <div className="rounded-2xl border border-[#e5e5e5] bg-white p-8 text-center text-[#737373]">{t('student.books.loading')}</div>
       ) : dueAssignments.length === 0 ? (
         <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-5 text-[#15803d]">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-5 w-5" />
-            <p className="font-semibold">No active book assignments right now.</p>
+            <p className="font-semibold">{t('student.books.empty')}</p>
           </div>
         </div>
       ) : (
@@ -98,15 +100,15 @@ export function MyBooksView({ assignments, submissions, courses, loading, onSubm
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       {course && <ActiveYearGroupBadge course={course} />}
-                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getTone(status)}`}>{statusLabels[status]}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${getTone(status)}`}>{t(STATUS_KEYS[status])}</span>
                     </div>
                     <h3 className="mt-2 line-clamp-2 text-lg font-semibold text-[#171717]">{assignment.book.title}</h3>
-                    <p className="mt-1 truncate text-sm text-[#737373]">{assignment.book.authors.join(', ') || 'Unknown author'}</p>
+                    <p className="mt-1 truncate text-sm text-[#737373]">{assignment.book.authors.join(', ') || t('student.books.unknownAuthor')}</p>
                     <p className="mt-3 text-sm font-semibold text-[#171717]">{assignment.title}</p>
                     {assignment.instructions && <p className="mt-1 line-clamp-3 text-sm text-[#525252]">{assignment.instructions}</p>}
                     <div className="mt-3 flex items-center gap-2 text-xs text-[#737373]">
                       <Calendar className="h-3.5 w-3.5" />
-                      {assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date'}
+                      {assignment.dueDate ? t('common.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate')}
                     </div>
                   </div>
                 </div>
@@ -131,29 +133,29 @@ export function MyBooksView({ assignments, submissions, courses, loading, onSubm
                         <CheckCircle2 className="h-3.5 w-3.5" />
                       ) : null}
                       {savingId === assignment.id
-                        ? 'Saving...'
+                        ? t('common.saving')
                         : status === 'reading'
-                          ? 'Reading'
+                          ? t('student.books.reading')
                           : status === 'submitted' || status === 'completed'
-                            ? 'Started'
-                            : 'Mark reading'}
+                            ? t('student.books.started')
+                            : t('student.books.markReading')}
                     </button>
                     <button type="button" onClick={() => setOpenAssignmentId(expanded ? null : assignment.id)} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
-                      Submit work
+                      {t('student.books.submitWork')}
                     </button>
                     {submission?.responseUrl && (
                       <a href={submission.responseUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
-                        Open link <ExternalLink className="h-3 w-3" />
+                        {t('student.books.openLink')} <ExternalLink className="h-3 w-3" />
                       </a>
                     )}
                   </div>
 
                   {expanded && (
                     <div className="mt-3 space-y-2">
-                      <textarea value={responseText} onChange={event => setResponseText(event.target.value)} placeholder="Write your response, summary, or notes..." className="min-h-24 w-full rounded-lg border border-[#d4d4d4] bg-white p-3 text-sm" />
-                      <input value={responseUrl} onChange={event => setResponseUrl(event.target.value)} placeholder="Optional link" className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm" />
+                      <textarea value={responseText} onChange={event => setResponseText(event.target.value)} placeholder={t('student.books.responsePlaceholderLong')} className="min-h-24 w-full rounded-lg border border-[#d4d4d4] bg-white p-3 text-sm" />
+                      <input value={responseUrl} onChange={event => setResponseUrl(event.target.value)} placeholder={t('student.books.optionalLink')} className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm" />
                       <button disabled={savingId === assignment.id} type="button" onClick={() => save(assignment, 'submitted')} className="h-10 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
-                        {savingId === assignment.id ? 'Saving...' : 'Submit'}
+                        {savingId === assignment.id ? t('common.saving') : t('common.submit')}
                       </button>
                     </div>
                   )}

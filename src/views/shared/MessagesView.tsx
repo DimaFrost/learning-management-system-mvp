@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { Conversation, Course, CourseStudent, Message, User } from '../../types/lms';
 import { hasRole } from '../../utils/userUtils';
+import { formatTime } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 
 interface MessagesViewProps {
@@ -57,7 +58,7 @@ function formatListTimestamp(dateString: string): string {
 }
 
 function formatBubbleTime(dateString: string): string {
-  return new Date(dateString).toLocaleTimeString('en-GB', {
+  return formatTime(dateString, {
     hour: '2-digit',
     minute: '2-digit',
     hour12: false,

@@ -46,6 +46,7 @@ import {
   getCourseOptions,
   isCourseActive,
 } from '../../utils/courseUtils';
+import { formatDateCapitalized } from '../../i18n/formatters';
 import { formatPlatformDate, formatPlatformDateTime } from '../../utils/dateUtils';
 import {
   formatMonthYear,
@@ -188,7 +189,7 @@ function formatDate(date: string): string {
 }
 
 function formatWeekDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', {
+  return formatDateCapitalized(`${dateStr}T00:00:00`, {
     day: 'numeric',
     month: 'long',
     year: 'numeric',
@@ -196,7 +197,7 @@ function formatWeekDate(dateStr: string): string {
 }
 
 function formatCompactWeekDate(dateStr: string): string {
-  return new Date(`${dateStr}T00:00:00`).toLocaleDateString('en-GB', {
+  return formatDateCapitalized(`${dateStr}T00:00:00`, {
     day: 'numeric',
     month: 'short',
   });

@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate';
 import type {
   AttendanceStatus,
   ClassAttendanceRecord,
@@ -13,12 +14,19 @@ import { isActivationSaturdayClass } from './attendanceUtils';
 
 export type AttendanceGateKey = 'classes' | 'the_well' | 'activation' | 'ministry';
 
+/** Labels resolve through the active language at access time. */
 export const ATTENDANCE_GATE_LABELS: Record<AttendanceGateKey, string> = {
-  classes: 'Classes',
-  the_well: 'The Well',
-  activation: 'Activation Saturday',
-  ministry: 'Ministry',
+  get classes() { return translate('attendance.gate.classes'); },
+  get the_well() { return translate('attendance.gate.the_well'); },
+  get activation() { return translate('attendance.gate.activation'); },
+  get ministry() { return translate('attendance.gate.ministry'); },
 };
+
+function hourSubtitle(hour: string | null | undefined): string {
+  if (hour === 'first') return translate('attendance.hour.first');
+  if (hour === 'second') return translate('attendance.hour.second');
+  return translate('attendance.hour.joint');
+}
 
 export type StudentAttendanceBreakdownRecord = {
   id: string;
@@ -87,7 +95,7 @@ export function buildStudentAttendanceBreakdown({
             id: `activation-${cls.id}`,
             date: cls.date,
             gate: 'activation',
-            title: 'Activation Saturday',
+            title: translate('attendance.gate.activation'),
             subtitle: subject.title,
             status,
             courseId: course.id,
@@ -103,7 +111,7 @@ export function buildStudentAttendanceBreakdown({
           date: cls.date,
           gate: 'classes',
           title: subject.title,
-          subtitle: cls.hour === 'first' ? 'First hour' : cls.hour === 'second' ? 'Second hour' : 'Joint session',
+          subtitle: hourSubtitle(cls.hour),
           status,
           courseId: course.id,
           classId: cls.id,
@@ -116,8 +124,8 @@ export function buildStudentAttendanceBreakdown({
         id: `well-${course.id}-${entry.weekStart}`,
         date: entry.wellDate,
         gate: 'the_well',
-        title: 'The Well',
-        subtitle: 'Wednesday gathering',
+        title: translate('attendance.gate.the_well'),
+        subtitle: translate('attendance.well.wednesdayGathering'),
         status: theWellSessionAttendance.find(
           record => record.courseId === course.id
             && record.weekStart === entry.weekStart
@@ -143,7 +151,7 @@ export function buildStudentAttendanceBreakdown({
           id: `ministry-${session.id}`,
           date: session.serviceDate,
           gate: 'ministry',
-          title: team?.name ?? 'Ministry team',
+          title: team?.name ?? translate('attendance.ministry.teamFallback'),
           subtitle: session.title,
           status: ministryAttendance.find(
             record => record.sessionId === session.id && record.studentId === studentId

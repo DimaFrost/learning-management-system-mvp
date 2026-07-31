@@ -23,6 +23,7 @@ import type {
 import type { CourseType, User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { isDateInBreak } from '../../../utils/scheduling';
+import { formatDate } from '../../../i18n/formatters';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 
 type CourseSide = 'firstYear' | 'secondYear';
@@ -445,9 +446,9 @@ function DayCell({ row, rowSpan }: DayCellProps) {
             className={
               row.isValidScheduleDay ? 'text-gray-900' : 'text-red-600 font-medium'
             }
-            title={row.dayOfWeek}
+            title={formatDate(`${row.date}T00:00:00`, { weekday: 'long' })}
           >
-            {row.dayOfWeek.slice(0, 3)}
+            {formatDate(`${row.date}T00:00:00`, { weekday: 'short' })}
           </span>
           {row.date && !row.isValidScheduleDay && (
             <p className="text-[10px] text-red-600 mt-0.5 flex items-center gap-0.5 leading-tight">

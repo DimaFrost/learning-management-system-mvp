@@ -1,15 +1,20 @@
+import { translate } from '../i18n/translate';
 import type {
   AttendanceStatus,
-  Class,
   ClassAttendanceRecord,
   Course,
-  Subject,
   TheWellSessionRecord,
   WellScheduleEntry,
 } from '../types/lms';
 import { isActivationSaturdayClass } from './attendanceUtils';
 
 import type { AttendanceGateKey } from './studentAttendanceBreakdown';
+
+function hourSubtitle(hour: string | null | undefined): string {
+  if (hour === 'first') return translate('attendance.hour.first');
+  if (hour === 'second') return translate('attendance.hour.second');
+  return translate('attendance.hour.joint');
+}
 
 export type StudentCalendarEventType = 'class' | 'activation' | 'well' | 'ministry';
 
@@ -85,7 +90,7 @@ export function buildStudentCalendarEvents({
             id: `activation-${cls.id}`,
             date: cls.date,
             type: 'activation',
-            title: 'Activation Saturday',
+            title: translate('attendance.gate.activation'),
             subtitle: subject.title,
             status: getClassAttendanceStatus(classAttendance, cls.id, studentId),
             classId: cls.id,
@@ -102,7 +107,7 @@ export function buildStudentCalendarEvents({
           date: cls.date,
           type: 'class',
           title: subject.title,
-          subtitle: cls.hour === 'first' ? 'First hour' : cls.hour === 'second' ? 'Second hour' : 'Joint session',
+          subtitle: hourSubtitle(cls.hour),
           status: getClassAttendanceStatus(classAttendance, cls.id, studentId),
           classId: cls.id,
           subjectId: subject.id,
@@ -116,8 +121,8 @@ export function buildStudentCalendarEvents({
         id: `well-${course.id}-${entry.weekStart}`,
         date: entry.wellDate,
         type: 'well',
-        title: 'The Well',
-        subtitle: 'Wednesday gathering',
+        title: translate('attendance.gate.the_well'),
+        subtitle: translate('attendance.well.wednesdayGathering'),
         status: getWellAttendanceStatus(theWellSessionAttendance, course.id, entry.weekStart, studentId),
         courseId: course.id,
         weekStart: entry.weekStart,

@@ -1,6 +1,9 @@
 import { useMemo, useState } from 'react';
 import { Activity, AlertCircle, CalendarDays, CheckCircle2, Clock3, HeartHandshake, Info, Mail, Phone, TrendingUp, XCircle } from 'lucide-react';
 import type { AttendanceStatus, Course, CourseStudent, MinistryRotation, MinistryServiceAttendanceRecord, MinistryServiceSession, MinistryTeam, User } from '../../types/lms';
+import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
+import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge } from '../admin/users/usersShared';
 import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
@@ -138,67 +141,74 @@ function buildMinistryProgress({
   };
 }
 
-function getHealthSignal(monthProgress: ReturnType<typeof buildMinistryProgress>, rotationProgress: ReturnType<typeof buildMinistryProgress>) {
+function getHealthSignal(
+  monthProgress: ReturnType<typeof buildMinistryProgress>,
+  rotationProgress: ReturnType<typeof buildMinistryProgress>,
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string,
+) {
   const progress = monthProgress.isCurrent ? monthProgress : rotationProgress;
 
   if (progress.required <= 0) {
     return {
-      label: 'No requirement',
-      detail: 'This team has no ministry attendance target configured yet.',
+      label: t('attendance.ministry.health.noRequirement'),
+      detail: t('attendance.ministry.health.noTargetDetail'),
       className: 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]',
     };
   }
 
   if (progress.earned >= progress.required) {
     return {
-      label: 'Very good',
-      detail: progress.remaining > 0 ? `${progress.remaining} possible service day(s) still remain.` : 'The current requirement is already met.',
+      label: t('attendance.ministry.health.veryGood'),
+      detail: progress.remaining > 0
+        ? t('attendance.ministry.health.veryGoodDetailRemain', { count: progress.remaining })
+        : t('attendance.ministry.health.veryGoodDetailMet'),
       className: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
     };
   }
 
   if (progress.possible < progress.required) {
     return {
-      label: 'At risk',
-      detail: 'Even with every remaining service, this requirement may not be met.',
+      label: t('attendance.ministry.health.atRisk'),
+      detail: t('attendance.ministry.health.atRiskDetail'),
       className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
     };
   }
 
   if (Math.abs(progress.possible - progress.required) < 0.01) {
     return {
-      label: 'Slim chance',
-      detail: 'Every remaining service credit is needed to meet the requirement.',
+      label: t('attendance.ministry.health.slimChance'),
+      detail: t('attendance.ministry.health.slimChanceDetail'),
       className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]',
     };
   }
 
   return {
-    label: 'On track',
-    detail: `${progress.remaining} possible service day(s) remain, with room to meet the target.`,
+    label: t('attendance.ministry.health.onTrack'),
+    detail: t('attendance.ministry.health.onTrackDetail', { count: progress.remaining }),
     className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]',
   };
 }
 
 function AttendanceStatusPill({ status }: { status: AttendanceStatus | 'missing' }) {
+  const { t } = useLanguage();
   const meta = {
     present: {
-      label: 'Present',
+      label: t('attendance.present'),
       icon: CheckCircle2,
       className: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
     },
     late: {
-      label: 'Late',
+      label: t('attendance.late'),
       icon: Clock3,
       className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]',
     },
     absent: {
-      label: 'Absent',
+      label: t('attendance.absent'),
       icon: XCircle,
       className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
     },
     missing: {
-      label: 'Missing report',
+      label: t('attendance.ministry.missingReport'),
       icon: AlertCircle,
       className: 'border-[#d4d4d4] bg-[#fafafa] text-[#737373]',
     },
@@ -270,6 +280,7 @@ export function MyMinistryInfoView({
   ministryAttendance,
   loading,
 }: MyMinistryInfoViewProps) {
+  const { t, tCount, language } = useLanguage();
   const { myCourses, selectedCourse, setSelectedCourseId, enrolledCourseIds } = useStudentCourseSelection(
     currentUser.id,
     courses,
@@ -341,7 +352,7 @@ export function MyMinistryInfoView({
         requiredCredits: Math.ceil(monthSpan(primaryRotation.startDate, primaryRotation.endDate) / Math.max(1, primaryTeam.requirementPeriodMonths)) * primaryTeam.requiredCredits,
       })
     : null;
-  const healthSignal = monthProgress && rotationProgress ? getHealthSignal(monthProgress, rotationProgress) : null;
+  const healthSignal = monthProgress && rotationProgress ? getHealthSignal(monthProgress, rotationProgress, t) : null;
   const attendanceRows = useMemo(() => {
     if (!primaryTeam || !primaryRotation) return [];
 
@@ -389,10 +400,10 @@ export function MyMinistryInfoView({
         const date = new Date(`${value}-01T00:00:00`);
         return {
           value,
-          label: date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+          label: formatDateCapitalized(date, { month: 'long', year: 'numeric' }),
         };
       });
-  }, [attendanceRows]);
+  }, [attendanceRows, language]);
   const visibleAttendanceRows = useMemo(
     () => monthFilter === 'all' ? attendanceRows : attendanceRows.filter(row => row.date.startsWith(monthFilter)),
     [attendanceRows, monthFilter]
@@ -401,7 +412,7 @@ export function MyMinistryInfoView({
     return visibleAttendanceRows.reduce<Array<{ monthKey: string; label: string; rows: AttendanceTimelineRow[] }>>((groups, row) => {
       const date = new Date(`${row.date}T00:00:00`);
       const monthKey = row.date.slice(0, 7);
-      const label = date.toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+      const label = formatDateCapitalized(date, { month: 'long', year: 'numeric' });
       const existing = groups.find(group => group.monthKey === monthKey);
       if (existing) {
         existing.rows.push(row);
@@ -410,17 +421,20 @@ export function MyMinistryInfoView({
       }
       return groups;
     }, []);
-  }, [visibleAttendanceRows]);
-  const attentionMessage = healthSignal && (healthSignal.label === 'Slim chance' || healthSignal.label === 'At risk')
+  }, [language, visibleAttendanceRows]);
+  const attentionMessage = healthSignal && (healthSignal.label === t('attendance.ministry.health.slimChance') || healthSignal.label === t('attendance.ministry.health.atRisk'))
     ? monthProgress
-      ? `You need ${Math.max(0, monthProgress.required - monthProgress.earned).toFixed(1)} more credit(s). ${monthProgress.remaining} possible service day(s) remain in the current month.`
+      ? t('attendance.ministry.attentionTemplate', {
+          credits: Math.max(0, monthProgress.required - monthProgress.earned).toFixed(1),
+          days: monthProgress.remaining,
+        })
       : healthSignal.detail
     : null;
 
   if (myCourses.length === 0) {
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-6 py-16 text-center">
-        <p className="text-sm font-medium text-[#171717]">No active year group enrollment found.</p>
+        <p className="text-sm font-medium text-[#171717]">{t('student.enrollment.noneYearGroup')}</p>
       </div>
     );
   }
@@ -428,8 +442,8 @@ export function MyMinistryInfoView({
   if (loading) {
     return (
       <div className="space-y-5">
-        <MyAttendancePageHeader title="Ministry" course={selectedCourse} courses={myCourses} onSelect={setSelectedCourseId} />
-        <SectionCard className="p-8 text-center text-sm text-[#737373]">Loading ministry info...</SectionCard>
+        <MyAttendancePageHeader title={t('attendance.gate.ministry')} course={selectedCourse} courses={myCourses} onSelect={setSelectedCourseId} />
+        <SectionCard className="p-8 text-center text-sm text-[#737373]">{t('attendance.ministry.loading')}</SectionCard>
       </div>
     );
   }
@@ -437,7 +451,7 @@ export function MyMinistryInfoView({
   return (
     <div className="space-y-5">
       <MyAttendancePageHeader
-        title="Ministry"
+        title={t('attendance.gate.ministry')}
         course={selectedCourse}
         courses={myCourses}
         onSelect={setSelectedCourseId}
@@ -449,15 +463,15 @@ export function MyMinistryInfoView({
             <div className="flex flex-wrap items-center gap-2">
               <span className="inline-flex items-center gap-2 rounded-full border border-[#fed7aa] bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#c2410c]">
                 <HeartHandshake className="h-3.5 w-3.5" />
-                Service rotation
+                {t('attendance.ministry.serviceRotation')}
               </span>
               {selectedCourse ? <ActiveYearGroupBadge course={selectedCourse} /> : null}
             </div>
             <h3 className="mt-4 text-2xl font-semibold leading-tight text-[#171717]">
-              {primaryAssignment?.team?.name ?? 'Your ministry placement'}
+              {primaryAssignment?.team?.name ?? t('attendance.ministry.placement')}
             </h3>
             <p className="mt-2 line-clamp-2 max-w-xl text-sm leading-6 text-[#6b5d52]">
-              {primaryAssignment?.team?.info || 'Your assigned team, service dates, and ministry contacts will appear here once your rotation is active.'}
+              {primaryAssignment?.team?.info || t('attendance.ministry.placementHintActive')}
             </p>
           </div>
           <div className="border-t border-[#eadfd2] bg-white/75 p-4 xl:border-l xl:border-t-0">
@@ -465,41 +479,41 @@ export function MyMinistryInfoView({
               <div className="min-w-0 rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-3 text-[#15803d]">
                 <div className="flex items-center gap-2">
                   <CalendarDays className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">This month</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.ministry.thisMonth')}</p>
                 </div>
                 <p className="mt-2 text-2xl font-semibold leading-none">
                   {monthProgress ? `${monthProgress.earned.toFixed(1)} / ${monthProgress.required.toFixed(1)}` : '-'}
                 </p>
-                <p className="mt-1 text-xs font-medium opacity-80">{monthProgress ? `${monthProgress.remaining} possible left` : 'No rotation'}</p>
+                <p className="mt-1 text-xs font-medium opacity-80">{monthProgress ? t('attendance.ministry.possibleLeft', { count: monthProgress.remaining }) : t('attendance.ministry.noRotation')}</p>
               </div>
               <div className="min-w-0 rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-3 text-[#1d4ed8]">
                 <div className="flex items-center gap-2">
                   <TrendingUp className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Rotation</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.ministry.rotation')}</p>
                 </div>
                 <p className="mt-2 text-2xl font-semibold leading-none">
                   {rotationProgress ? `${rotationProgress.earned.toFixed(1)} / ${rotationProgress.required.toFixed(1)}` : '-'}
                 </p>
-                <p className="mt-1 text-xs font-medium opacity-80">{rotationProgress ? `${rotationProgress.remaining} possible left` : 'No rotation'}</p>
+                <p className="mt-1 text-xs font-medium opacity-80">{rotationProgress ? t('attendance.ministry.possibleLeft', { count: rotationProgress.remaining }) : t('attendance.ministry.noRotation')}</p>
               </div>
               <div className={`min-w-0 rounded-2xl border p-3 ${healthSignal?.className ?? 'border-[#d4d4d4] bg-[#fafafa] text-[#525252]'}`}>
                 <div className="flex items-center gap-2">
                   <Activity className="h-4 w-4" />
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Health</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.health')}</p>
                   <button
                     type="button"
                     onClick={() => setShowCalculation(open => !open)}
                     className="ml-auto grid h-6 w-6 place-items-center rounded-full bg-white/75 text-current ring-1 ring-current/15"
-                    aria-label="How ministry attendance is calculated"
+                    aria-label={t('attendance.ministry.calcAria')}
                   >
                     <Info className="h-3.5 w-3.5" />
                   </button>
                 </div>
-                <p className="mt-2 text-xl font-semibold leading-none">{healthSignal?.label ?? 'Waiting'}</p>
-                <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 opacity-80">{healthSignal?.detail ?? 'Attendance will appear when reports are submitted.'}</p>
+                <p className="mt-2 text-xl font-semibold leading-none">{healthSignal?.label ?? t('attendance.ministry.waiting')}</p>
+                <p className="mt-2 line-clamp-2 text-xs font-medium leading-5 opacity-80">{healthSignal?.detail ?? t('attendance.ministry.waitingDetail')}</p>
                 {showCalculation ? (
                   <div className="mt-3 rounded-xl bg-white/80 p-3 text-xs leading-5 text-[#525252] ring-1 ring-current/10">
-                    Present gives 1 credit, late gives 0.5, absent or missing report gives 0. Health compares earned credits with the requirement and the service days still possible.
+                    {t('attendance.ministry.calcExplainFull')}
                   </div>
                 ) : null}
               </div>
@@ -515,7 +529,7 @@ export function MyMinistryInfoView({
               <AlertCircle className="h-4 w-4" />
             </span>
             <div>
-              <p className="text-sm font-semibold">Needs attention</p>
+              <p className="text-sm font-semibold">{t('common.needsAttention')}</p>
               <p className="mt-1 text-sm leading-6">{attentionMessage}</p>
             </div>
           </div>
@@ -527,12 +541,12 @@ export function MyMinistryInfoView({
           <div className="mx-auto grid h-12 w-12 place-items-center rounded-2xl bg-[#fff7ed] text-[#c2410c]">
             <AlertCircle className="h-5 w-5" />
           </div>
-          <p className="mt-3 text-sm font-semibold text-[#171717]">No ministry assignment yet.</p>
+          <p className="mt-3 text-sm font-semibold text-[#171717]">{t('attendance.ministry.noAssignmentYet')}</p>
           {teamMembershipsWithoutRotations.length > 0 ? (
             <div className="mx-auto mt-4 max-w-xl rounded-xl border border-[#fed7aa] bg-[#fff7ed] p-4 text-left">
-              <p className="text-sm font-semibold text-[#c2410c]">You are listed on a team, but no student rotation is active yet.</p>
+              <p className="text-sm font-semibold text-[#c2410c]">{t('attendance.ministry.membershipNoRotation')}</p>
               <p className="mt-1 text-sm text-[#7c2d12]">
-                Team membership lets leaders submit or manage reports. A student ministry assignment needs a rotation with start and end dates so service credits can count.
+                {t('attendance.ministry.membershipExplain')}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 {teamMembershipsWithoutRotations.map(({ team, member }) => (
@@ -544,7 +558,7 @@ export function MyMinistryInfoView({
             </div>
           ) : (
             <p className="mt-1 text-sm text-[#737373]">
-              When you are placed on a ministry team rotation, your leaders and contact details will appear here.
+              {t('attendance.ministry.noAssignmentPlacement')}
             </p>
           )}
         </SectionCard>
@@ -555,24 +569,24 @@ export function MyMinistryInfoView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
                   <CalendarDays className="h-3.5 w-3.5" />
-                  Service attendance
+                  {t('attendance.ministry.serviceAttendance')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">Ministry records</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.ministry.records')}</h3>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={monthFilter}
                   onChange={event => setMonthFilter(event.target.value)}
                   className="h-9 rounded-lg border border-[#eadfd2] bg-white px-3 text-sm font-medium text-[#525252] focus:border-[#fed7aa] focus:outline-none focus:ring-2 focus:ring-[#fed7aa]/40"
-                  aria-label="Filter service attendance by month"
+                  aria-label={t('attendance.ministry.filterMonth')}
                 >
-                  <option value="all">All months</option>
+                  <option value="all">{t('attendance.allMonths')}</option>
                   {monthOptions.map(option => (
                     <option key={option.value} value={option.value}>{option.label}</option>
                   ))}
                 </select>
                 <p className="text-sm text-[#737373]">
-                  {visibleAttendanceRows.length} {visibleAttendanceRows.length === 1 ? 'service date' : 'service dates'}
+                  {tCount('attendance.ministry.serviceDateCount', visibleAttendanceRows.length)}
                 </p>
               </div>
             </div>
@@ -580,8 +594,8 @@ export function MyMinistryInfoView({
             <div className="p-4">
               {attendanceGroups.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#eadfd2] bg-[#fffdf8] px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-[#171717]">No service attendance yet.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Reports from your team leader will appear here by service date.</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('attendance.ministry.noRecords')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.ministry.noRecordsHintLeader')}</p>
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -601,19 +615,21 @@ export function MyMinistryInfoView({
                             <div>
                               <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(row.date)}</p>
                               <p className="text-[11px] font-medium text-[#a3a3a3]">
-                                {new Date(`${row.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                                {formatDate(`${row.date}T00:00:00`, { weekday: 'short' })}
                               </p>
                             </div>
                             <div className="min-w-0">
-                              <p className="truncate text-sm font-semibold text-[#171717]">{row.session?.title ?? primaryTeam?.name ?? 'Expected service'}</p>
+                              <p className="truncate text-sm font-semibold text-[#171717]">{row.session?.title ?? primaryTeam?.name ?? t('attendance.ministry.expectedService')}</p>
                               <p className="mt-0.5 text-xs text-[#737373]">
-                                {row.session ? (row.session.serviceType === 'sunday' ? 'Sunday service report' : 'Non-Sunday service report') : 'No submitted report for this expected service date'}
+                                {row.session
+                                  ? (row.session.serviceType === 'sunday' ? t('attendance.ministry.report.sunday') : t('attendance.ministry.report.nonSunday'))
+                                  : t('attendance.ministry.report.noSubmitted')}
                               </p>
                             </div>
                             <div className="flex items-center gap-2 sm:justify-end">
                               <AttendanceStatusPill status={row.status} />
                               <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                                {row.credit.toFixed(1)} credit
+                                {t('attendance.creditAmount', { count: row.credit.toFixed(1) })}
                               </span>
                             </div>
                           </button>
@@ -631,16 +647,16 @@ export function MyMinistryInfoView({
               <div className="border-b border-[#eadfd2] bg-[#fff7ed] px-4 py-3">
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
                   <HeartHandshake className="h-3.5 w-3.5" />
-                  Rotation details
+                  {t('attendance.ministry.details.rotation')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{primaryTeam?.name ?? 'Ministry team'}</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{primaryTeam?.name ?? t('attendance.ministry.details.team')}</h3>
               </div>
               <div className="space-y-4 p-4">
                 {primaryRotation ? (
                   <div className="rounded-2xl border border-[#fed7aa] bg-[#fffdf8] p-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">Period</p>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">{t('attendance.ministry.details.period')}</p>
                         <p className="mt-1 text-sm font-semibold text-[#171717]">
                           {formatPlatformDate(primaryRotation.startDate)} - {formatPlatformDate(primaryRotation.endDate)}
                         </p>
@@ -654,13 +670,13 @@ export function MyMinistryInfoView({
                 {primaryTeam?.info ? <p className="text-sm leading-6 text-[#525252]">{primaryTeam.info}</p> : null}
                 <div className="grid grid-cols-2 gap-2">
                   <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Required</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.ministry.details.required')}</p>
                     <p className="mt-1 text-sm font-semibold text-[#171717]">
                       {primaryTeam ? `${primaryTeam.requiredCredits} / ${primaryTeam.requirementPeriodMonths} mo.` : '-'}
                     </p>
                   </div>
                   <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Type</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.ministry.details.type')}</p>
                     <p className="mt-1 text-sm font-semibold capitalize text-[#171717]">
                       {primaryTeam?.serviceType.replace('_', '-') ?? '-'}
                     </p>
@@ -672,10 +688,10 @@ export function MyMinistryInfoView({
             <SectionCard className="border-[#eadfd2] p-4 shadow-[0_12px_36px_rgba(120,53,15,0.05)]">
               <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">
                 <Info className="h-3.5 w-3.5" />
-                Team contacts
+                {t('attendance.ministry.contacts')}
               </p>
               {primaryAssignment?.contacts.length === 0 ? (
-                <p className="mt-3 rounded-xl border border-dashed border-[#eadfd2] bg-[#fffdf8] px-3 py-3 text-sm text-[#737373]">No team leaders are listed for this ministry yet.</p>
+                <p className="mt-3 rounded-xl border border-dashed border-[#eadfd2] bg-[#fffdf8] px-3 py-3 text-sm text-[#737373]">{t('attendance.ministry.contactsEmptyMinistry')}</p>
               ) : (
                 <div className="mt-3 space-y-3">
                   {primaryAssignment?.contacts.map(contact => (
@@ -683,7 +699,7 @@ export function MyMinistryInfoView({
                       key={contact.id}
                       name={contact.userName}
                       avatarUrl={contact.userAvatarUrl}
-                      role={contact.role === 'leader' ? 'Team leader' : 'Assistant leader'}
+                      role={contact.role === 'leader' ? t('attendance.ministry.role.leader') : t('attendance.ministry.role.assistant')}
                       email={contact.userEmail}
                       phone={contact.userPhone}
                     />
@@ -697,15 +713,15 @@ export function MyMinistryInfoView({
 
       {selectedReport?.session ? (
         <div className="fixed inset-0 z-50 flex justify-end bg-[#171717]/35 backdrop-blur-sm">
-          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSelectedReport(null)} aria-label="Close report details" />
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setSelectedReport(null)} aria-label={t('attendance.ministry.report.closeDetails')} />
           <aside className="relative h-full w-full max-w-md overflow-y-auto border-l border-[#eadfd2] bg-white p-5 shadow-[0_24px_80px_rgba(23,23,23,0.18)]">
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">Service report</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">{t('attendance.ministry.report.title')}</p>
                 <h3 className="mt-1 text-xl font-semibold text-[#171717]">{selectedReport.session.title}</h3>
                 <p className="mt-1 text-sm text-[#737373]">{formatPlatformDate(selectedReport.session.serviceDate)}</p>
               </div>
-              <button type="button" onClick={() => setSelectedReport(null)} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label="Close">
+              <button type="button" onClick={() => setSelectedReport(null)} className="grid h-9 w-9 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#f5f5f5]" aria-label={t('common.close')}>
                 <XCircle className="h-4 w-4" />
               </button>
             </div>
@@ -714,14 +730,14 @@ export function MyMinistryInfoView({
             </div>
             <div className="mt-5 space-y-3">
               {[
-                ['General view', selectedReport.session.generalView],
-                ['Wins and testimonies', selectedReport.session.winsTestimonies],
-                ['Challenges', selectedReport.session.challenges],
-                ['Timely actions', selectedReport.session.timelyActions],
+                [t('attendance.ministry.report.generalView'), selectedReport.session.generalView],
+                [t('attendance.ministry.report.wins'), selectedReport.session.winsTestimonies],
+                [t('attendance.ministry.report.challenges'), selectedReport.session.challenges],
+                [t('attendance.ministry.report.timelyActions'), selectedReport.session.timelyActions],
               ].map(([label, value]) => (
-                <div key={label} className="rounded-2xl border border-[#eadfd2] bg-[#fffdf8] p-3">
+                <div key={String(label)} className="rounded-2xl border border-[#eadfd2] bg-[#fffdf8] p-3">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#a16207]">{label}</p>
-                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{value || 'No notes added.'}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">{value || t('attendance.ministry.report.noNotes')}</p>
                 </div>
               ))}
             </div>

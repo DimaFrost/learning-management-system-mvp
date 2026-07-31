@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import type { WorkspaceId } from '../../types/workspace';
-import { WORKSPACE_LABELS } from '../../types/workspace';
+import { WORKSPACE_LABEL_KEYS } from '../../types/workspace';
 import {
   ArrowLeft,
   Megaphone,
@@ -100,56 +100,56 @@ export function Sidebar({
   const attendanceItems: NavItem[] = [
     {
       id: 'attendance-overview',
-      label: 'Overview',
-      description: 'Graduation gates',
+      label: t('common.overview'),
+      description: t('nav.attendance.overview.desc'),
       icon: ClipboardList,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-classes',
-      label: 'Classes',
-      description: 'Weekly sessions',
+      label: t('nav.attendance.classes'),
+      description: t('nav.attendance.classes.desc'),
       icon: Calendar,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-well',
-      label: 'The Well',
-      description: 'Wednesday attendance',
+      label: t('nav.attendance.well'),
+      description: t('nav.attendance.well.desc'),
       icon: Activity,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-ministry',
-      label: 'Ministry',
-      description: 'Teams and service',
+      label: t('nav.attendance.ministry'),
+      description: t('nav.attendance.ministry.desc'),
       icon: UserCheck,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-activation',
-      label: 'Activation Saturday',
-      description: 'Monthly joint sessions',
+      label: t('nav.attendance.activation'),
+      description: t('nav.attendance.activation.desc'),
       icon: ShieldCheck,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-duty',
-      label: 'On Duty Schedule',
-      description: 'Attendance keepers',
+      label: t('nav.attendance.duty'),
+      description: t('nav.attendance.duty.desc'),
       icon: Users,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'attendance-prayer',
-      label: 'Prayer Schedule',
-      description: 'Tuesday & Thursday prayer',
+      label: t('nav.attendance.prayer'),
+      description: t('nav.attendance.prayer.desc'),
       icon: HeartHandshake,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -157,7 +157,7 @@ export function Sidebar({
     {
       id: 'attendance-settings',
       label: t('sidebar.settings'),
-      description: 'Rules and weights',
+      description: t('nav.attendance.settings.desc'),
       icon: Settings,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -167,8 +167,8 @@ export function Sidebar({
   const curriculumItems: NavItem[] = [
     {
       id: 'curriculum-overview',
-      label: 'Overview',
-      description: 'Year groups and subjects',
+      label: t('common.overview'),
+      description: t('nav.curriculum.overview.desc'),
       icon: BookOpen,
       roles: ['administrator', 'team_leader'],
       workspaces: ['administrator', 'team_leader'],
@@ -176,8 +176,8 @@ export function Sidebar({
     },
     {
       id: 'curriculum-date-view',
-      label: 'Date View',
-      description: 'Sessions by date',
+      label: t('nav.curriculum.dateView'),
+      description: t('nav.curriculum.dateView.desc'),
       icon: Calendar,
       roles: ['administrator', 'team_leader'],
       workspaces: ['administrator', 'team_leader'],
@@ -185,24 +185,24 @@ export function Sidebar({
     },
     {
       id: 'curriculum-planning',
-      label: 'Planning',
-      description: 'Classes and Activation',
+      label: t('nav.curriculum.planning'),
+      description: t('nav.curriculum.planning.desc'),
       icon: Calendar,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'curriculum-books',
-      label: 'Books',
-      description: 'Reading assignments',
+      label: t('nav.curriculum.books'),
+      description: t('nav.curriculum.books.desc'),
       icon: BookOpen,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'curriculum-archived',
-      label: 'Archived',
-      description: 'Inactive year groups',
+      label: t('nav.curriculum.archived'),
+      description: t('nav.curriculum.archived.desc'),
       icon: Clock3,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -213,24 +213,24 @@ export function Sidebar({
   const myAttendanceItems: NavItem[] = [
     {
       id: 'my-attendance-overview',
-      label: 'Attendance overall',
-      description: 'Graduation gates & scores',
+      label: t('nav.myAttendance.overall'),
+      description: t('nav.myAttendance.overall.desc'),
       icon: BarChart2,
       roles: ['student'],
       workspaces: ['student'],
     },
     {
       id: 'my-attendance-breakdown',
-      label: 'Session history',
-      description: 'Dates, status & views',
+      label: t('nav.myAttendance.history'),
+      description: t('nav.myAttendance.history.desc'),
       icon: Calendar,
       roles: ['student'],
       workspaces: ['student'],
     },
     {
       id: 'my-attendance-ministry',
-      label: 'Ministry',
-      description: 'Team leaders & contacts',
+      label: t('nav.attendance.ministry'),
+      description: t('nav.myAttendance.ministry.desc'),
       icon: HeartHandshake,
       roles: ['student'],
       workspaces: ['student'],
@@ -240,8 +240,8 @@ export function Sidebar({
   const usersItems: NavItem[] = [
     {
       id: 'users-directory',
-      label: 'Directory',
-      description: 'Search & manage people',
+      label: t('nav.users.directory'),
+      description: t('nav.users.directory.desc'),
       icon: Users,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -249,8 +249,8 @@ export function Sidebar({
     },
     {
       id: 'users-pending',
-      label: 'Pending access',
-      description: 'Awaiting role assignment',
+      label: t('nav.users.pending'),
+      description: t('nav.users.pending.desc'),
       icon: Clock3,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -259,16 +259,16 @@ export function Sidebar({
     },
     {
       id: 'users-enrollments',
-      label: 'Enrollments',
-      description: 'Student × course × mentor',
+      label: t('nav.users.enrollments'),
+      description: t('nav.users.enrollments.desc'),
       icon: GraduationCap,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'users-staff',
-      label: 'Staff roster',
-      description: 'Teachers, mentors & leaders',
+      label: t('nav.users.staff'),
+      description: t('nav.users.staff.desc'),
       icon: UserCheck,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -278,32 +278,32 @@ export function Sidebar({
   const mentorshipItems: NavItem[] = [
     {
       id: 'mentorship-overview',
-      label: 'Overview',
-      description: 'Health & coverage',
+      label: t('common.overview'),
+      description: t('nav.mentorship.overview.desc'),
       icon: Activity,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'mentorship-assignments',
-      label: 'Assignments',
-      description: 'Student-mentor pairs',
+      label: t('nav.mentorship.assignments'),
+      description: t('nav.mentorship.assignments.desc'),
       icon: UserCheck,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'mentorship-follow-up',
-      label: 'Follow-up',
-      description: 'Risk monitoring',
+      label: t('nav.mentorship.followUp'),
+      description: t('nav.mentorship.followUp.desc'),
       icon: TrendingUp,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'mentorship-check-in-rules',
-      label: 'Check-in rules',
-      description: 'In-person meeting expectations',
+      label: t('nav.mentorship.checkInRules'),
+      description: t('nav.mentorship.checkInRules.desc'),
       icon: Settings,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -313,48 +313,48 @@ export function Sidebar({
   const classworkItems: NavItem[] = [
     {
       id: 'my-classes',
-      label: 'My Sessions',
-      description: 'Teaching calendar',
+      label: t('sidebar.mySessions'),
+      description: t('nav.classwork.mySessions.desc'),
       icon: Calendar,
       roles: ['teacher'],
       workspaces: ['teacher'],
     },
     {
       id: activeWorkspace === 'student' ? 'my-classwork' : 'classwork',
-      label: 'Classwork',
-      description: 'Assignments and materials',
+      label: t('nav.classwork.classwork'),
+      description: t('nav.classwork.classwork.desc'),
       icon: BookOpen,
       roles: ['administrator', 'teacher', 'student'],
       workspaces: ['administrator', 'teacher', 'student'],
     },
     {
       id: 'submissions',
-      label: 'Submissions',
-      description: 'Review queue',
+      label: t('nav.classwork.submissions'),
+      description: t('nav.classwork.submissions.desc'),
       icon: ClipboardList,
       roles: ['administrator', 'teacher'],
       workspaces: ['administrator', 'teacher'],
     },
     {
       id: 'my-assignments',
-      label: 'Assignments',
-      description: 'Homework and reading',
+      label: t('nav.classwork.assignments'),
+      description: t('nav.classwork.assignments.desc'),
       icon: ClipboardList,
       roles: ['student'],
       workspaces: ['student'],
     },
     {
       id: 'absence-notices',
-      label: 'Absence notices',
-      description: activeWorkspace === 'student' ? 'Tell staff ahead' : 'Student absence plans',
+      label: t('nav.classwork.absenceNotices'),
+      description: activeWorkspace === 'student' ? t('nav.classwork.absenceNotices.descStudent') : t('nav.classwork.absenceNotices.descStaff'),
       icon: Calendar,
       roles: ['administrator', 'student'],
       workspaces: ['administrator', 'student'],
     },
     {
       id: activeWorkspace === 'student' ? 'my-grades' : 'grades',
-      label: 'Grades',
-      description: 'Academic record',
+      label: t('nav.classwork.grades'),
+      description: t('nav.classwork.grades.desc'),
       icon: BarChart2,
       roles: ['administrator', 'teacher', 'student'],
       workspaces: ['administrator', 'teacher', 'student'],
@@ -364,48 +364,48 @@ export function Sidebar({
   const tuitionItems: NavItem[] = [
     {
       id: 'tuition-overview',
-      label: 'Overview',
-      description: 'Collected and remaining',
+      label: t('common.overview'),
+      description: t('nav.tuition.overview.desc'),
       icon: LayoutDashboard,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'tuition-students',
-      label: 'Students',
-      description: 'Payment status',
+      label: t('common.students'),
+      description: t('nav.tuition.students.desc'),
       icon: Users,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'tuition-payments',
-      label: 'Payments',
-      description: 'Received payments',
+      label: t('nav.tuition.payments'),
+      description: t('nav.tuition.payments.desc'),
       icon: CreditCard,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'tuition-installments',
-      label: 'Installments',
-      description: 'Due dates and amounts',
+      label: t('nav.tuition.installments'),
+      description: t('nav.tuition.installments.desc'),
       icon: Calendar,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'tuition-reminders',
-      label: 'Reminders',
-      description: 'Payment follow-up',
+      label: t('nav.tuition.reminders'),
+      description: t('nav.tuition.reminders.desc'),
       icon: Bell,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
     {
       id: 'tuition-settings',
-      label: 'Settings',
-      description: 'Defaults and templates',
+      label: t('common.settings'),
+      description: t('nav.tuition.settings.desc'),
       icon: Settings,
       roles: ['administrator'],
       workspaces: ['administrator'],
@@ -456,8 +456,8 @@ export function Sidebar({
         },
         {
           id: 'classwork',
-          label: 'Classroom',
-          description: 'Assignments and materials',
+          label: t('sidebar.classroom'),
+          description: t('sidebar.classroom.desc'),
           icon: BookOpen,
           roles: ['administrator', 'teacher'],
           workspaces: ['administrator', 'teacher'],
@@ -503,24 +503,24 @@ export function Sidebar({
         },
         {
           id: 'tuition-overview',
-          label: 'Tuition',
-          description: 'Fees and reminders',
+          label: t('sidebar.tuition'),
+          description: t('sidebar.tuition.desc'),
           icon: Banknote,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'inbox',
-          label: 'Inbox',
-          description: 'Emails sent to you',
+          label: t('sidebar.inbox'),
+          description: t('sidebar.inbox.desc'),
           icon: Inbox,
           roles: ['administrator'],
           workspaces: ['administrator'],
         },
         {
           id: 'knowledge-base',
-          label: 'Knowledge Base',
-          description: 'Admin platform guide',
+          label: t('sidebar.knowledgeBase'),
+          description: t('sidebar.knowledgeBase.desc'),
           icon: BookOpen,
           roles: ['administrator'],
           workspaces: ['administrator'],
@@ -548,24 +548,24 @@ export function Sidebar({
         },
         {
           id: 'ministry-report',
-          label: 'Ministry Report',
-          description: 'Team attendance',
+          label: t('sidebar.ministryReport'),
+          description: t('sidebar.ministryReport.desc'),
           icon: ClipboardList,
           roles: ['team_leader'],
           workspaces: ['team_leader'],
         },
         {
           id: 'my-classwork',
-          label: 'Classroom',
-          description: 'Homework and materials',
+          label: t('sidebar.classroom'),
+          description: t('sidebar.studentClassroom.desc'),
           icon: GraduationCap,
           roles: ['student'],
           workspaces: ['student'],
         },
         {
           id: 'my-books',
-          label: 'My books',
-          description: 'Reading assignments',
+          label: t('sidebar.myBooks'),
+          description: t('sidebar.myBooks.desc'),
           icon: BookOpen,
           roles: ['student'],
           workspaces: ['student'],
@@ -650,11 +650,11 @@ export function Sidebar({
     activeView === 'tuition' ||
     activeView.startsWith('tuition-');
   const inSubmodule = inAttendanceModule || inClassworkModule || inCurriculumModule || inMentorshipModule || inMyAttendanceModule || inUsersModule || inTuitionModule;
-  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : t('sidebar.workspace');
+  const workspaceLabel = activeWorkspace ? t(WORKSPACE_LABEL_KEYS[activeWorkspace]) : t('sidebar.workspace');
   const submoduleLabel = inAttendanceModule
     ? t('sidebar.attendance')
     : inClassworkModule
-      ? 'Classroom'
+      ? t('sidebar.classroom')
       : inCurriculumModule
       ? t('sidebar.curriculum')
       : inMentorshipModule
@@ -664,12 +664,12 @@ export function Sidebar({
           : inUsersModule
           ? t('sidebar.users')
           : inTuitionModule
-            ? 'Tuition'
+            ? t('sidebar.tuition')
             : workspaceLabel;
   const submoduleDesc = inAttendanceModule
     ? t('sidebar.attendance.desc')
     : inClassworkModule
-      ? 'Assignments, materials, and grades'
+      ? t('sidebar.classroom.moduleDesc')
       : inCurriculumModule
       ? t('sidebar.curriculum.desc')
       : inMentorshipModule
@@ -679,15 +679,15 @@ export function Sidebar({
           : inUsersModule
             ? t('sidebar.users.desc')
             : inTuitionModule
-              ? 'Fees, payments, and reminders'
-            : 'Live school data';
+              ? t('sidebar.tuition.moduleDesc')
+            : t('sidebar.liveSchoolData');
 
   const handleNavigate = (viewId: string) => {
     onNavigate(viewId);
     onMobileClose?.();
   };
 
-  const toggleTitle = mode === 'locked' ? 'Collapse sidebar' : 'Expand sidebar';
+  const toggleTitle = mode === 'locked' ? t('sidebar.collapse') : t('sidebar.expand');
 
   const renderItem = (item: NavItem, forceExpanded: boolean) => {
     const expanded = forceExpanded || isExpanded;
@@ -770,53 +770,53 @@ export function Sidebar({
     const navSections = inAttendanceModule && visibleAttendanceItems.length > 0
       ? [
           {
-            label: 'Attendance Groups',
+            label: t('sidebar.section.attendanceGroups'),
             items: visibleAttendanceItems.filter(item => attendanceGroupIds.has(item.id)),
           },
           {
-            label: 'Operations',
+            label: t('sidebar.operations'),
             items: visibleAttendanceItems.filter(item => !attendanceGroupIds.has(item.id)),
           },
         ].filter(section => section.items.length > 0)
       : inClassworkModule && visibleClassworkItems.length > 0
         ? [
             {
-              label: 'Classroom',
+              label: t('sidebar.classroom'),
               items: visibleClassworkItems,
             },
           ]
       : inCurriculumModule && visibleCurriculumItems.length > 0
         ? [
             {
-              label: 'Curriculum',
+              label: t('sidebar.curriculum'),
               items: visibleCurriculumItems,
             },
           ]
       : inMentorshipModule && visibleMentorshipItems.length > 0
         ? [
             {
-              label: 'Mentorship',
+              label: t('sidebar.mentorship'),
               items: visibleMentorshipItems,
             },
           ]
         : inMyAttendanceModule && visibleMyAttendanceItems.length > 0
           ? [
               {
-                label: 'My Attendance',
+                label: t('sidebar.myAttendance'),
                 items: visibleMyAttendanceItems,
               },
             ]
           : inUsersModule && visibleUsersItems.length > 0
             ? [
                 {
-                  label: 'People',
+                  label: t('sidebar.users'),
                   items: visibleUsersItems,
                 },
               ]
             : inTuitionModule && visibleTuitionItems.length > 0
               ? [
                   {
-                    label: 'Tuition',
+                    label: t('sidebar.tuition'),
                     items: visibleTuitionItems,
                   },
                 ]
@@ -839,7 +839,7 @@ export function Sidebar({
                 type="button"
                 onClick={onMobileClose}
                 className="tbo-focus rounded-lg p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                aria-label="Close menu"
+                aria-label={t('sidebar.closeMenu')}
               >
                 <X className="w-5 h-5" />
               </button>
@@ -927,10 +927,10 @@ export function Sidebar({
                 </span>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-semibold text-[#171717]">
-                  {inSubmodule ? `${submoduleLabel} ${t('sidebar.module').toLowerCase()}` : `${workspaceLabel} view`}
+                  {inSubmodule ? `${submoduleLabel} ${t('sidebar.module').toLowerCase()}` : t('sidebar.workspaceView', { label: workspaceLabel })}
                   </p>
                   <p className="truncate text-[11px] text-[#737373]">
-                    {inSubmodule ? submoduleDesc : 'Live school data'}
+                    {inSubmodule ? submoduleDesc : t('sidebar.liveSchoolData')}
                   </p>
                 </div>
               </div>
@@ -959,7 +959,7 @@ export function Sidebar({
             type="button"
             className="absolute inset-0 bg-black/40"
             onClick={onMobileClose}
-            aria-label="Close menu"
+            aria-label={t('sidebar.closeMenu')}
           />
           <div className="absolute inset-y-0 left-0 z-50 flex w-80 max-w-[88vw] flex-col border-r border-[#e5e5e5] bg-white shadow-[rgba(0,0,0,0.1)_0px_0px_0px_4px]">
             {renderNavContent(true)}

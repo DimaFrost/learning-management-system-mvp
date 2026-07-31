@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import authArtifactImage from '../assets/tbo-auth-artifact.jpg';
 import tboLogo from '../assets/tbo-logo.svg';
+import { useLanguage } from '../i18n/LanguageContext';
 
 interface AuthScreenProps {
   onSignIn: () => void;
@@ -17,22 +18,28 @@ interface AuthScreenProps {
 }
 
 export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
+  const { t } = useLanguage();
   const reviewSteps = [
     {
       icon: FileText,
-      title: 'Application record matched',
-      description: 'Use the Google account connected to your application or school profile.',
+      title: t('auth.step.matchTitle'),
+      description: t('auth.step.matchDesc'),
     },
     {
       icon: UserCheck,
-      title: 'Status checked',
-      description: 'The school confirms admission status and active role access.',
+      title: t('auth.step.statusTitle'),
+      description: t('auth.step.statusDesc'),
     },
     {
       icon: CheckCircle,
-      title: 'Workspace opened',
-      description: 'Approved users continue straight into the Portal.',
+      title: t('auth.step.workspaceTitle'),
+      description: t('auth.step.workspaceDesc'),
     },
+  ];
+  const stats = [
+    { icon: BadgeCheck, label: t('auth.stat.knownApplicants'), value: t('auth.stat.reviewed') },
+    { icon: MailCheck, label: t('auth.stat.schoolAccess'), value: t('auth.stat.roleBased') },
+    { icon: ShieldCheck, label: t('auth.stat.session'), value: t('auth.stat.protected') },
   ];
 
   return (
@@ -48,13 +55,13 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
               <img src={tboLogo} alt="" className="h-8 w-8 object-contain" />
             </div>
             <div>
-              <p className="text-sm font-medium leading-none text-[#121212]">The Burning Ones</p>
-              <p className="mt-1 text-[11px] font-normal text-[#7b7974]">School access</p>
+              <p className="text-sm font-medium leading-none text-[#121212]">{t('app.brand')}</p>
+              <p className="mt-1 text-[11px] font-normal text-[#7b7974]">{t('auth.schoolAccess')}</p>
             </div>
           </div>
           <span className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#373734] sm:inline-flex">
             <span className="h-1.5 w-1.5 rounded-full bg-[#d97757]" />
-            Zoe Sofia
+            {t('auth.campus')}
           </span>
         </header>
 
@@ -65,10 +72,10 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                 <div className="flex items-center justify-between border-b border-[#e7e6e1] bg-white px-5 py-4">
                   <span className="inline-flex items-center gap-2 rounded-lg bg-[#efeeeb] px-3 py-1.5 text-[11px] font-medium text-[#373734]">
                     <ShieldCheck className="h-3.5 w-3.5 text-[#121212]" />
-                    Google account required
+                    {t('auth.googleRequired')}
                   </span>
                   <span className="hidden text-[11px] font-normal text-[#9c9a92] sm:inline">
-                    Portal access is role based
+                    {t('auth.roleBasedAccess')}
                   </span>
                 </div>
 
@@ -76,24 +83,24 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                   <div className="max-w-lg">
                     <div className="flex items-center gap-4">
                       <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#e7e6e1] bg-white p-3">
-                        <img src={tboLogo} alt="The Burning Ones" className="h-full w-full object-contain" />
+                        <img src={tboLogo} alt={t('app.brand')} className="h-full w-full object-contain" />
                       </div>
                       <div className="min-w-0">
                         <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#7b7974]">
-                          School Portal
+                          {t('auth.schoolPortal')}
                         </p>
                         <h1 className="mt-2 font-serif text-[30px] font-normal leading-[1.2] text-[#121212] sm:text-[40px]">
-                          The Burning Ones
+                          {t('app.brand')}
                         </h1>
                       </div>
                     </div>
 
                     <div className="mt-10 max-w-md">
                       <h2 className="font-serif text-[30px] font-normal leading-[1.2] text-[#121212]">
-                        Sign in to continue.
+                        {t('auth.signInTitle')}
                       </h2>
                       <p className="mt-3 text-[15px] font-normal leading-7 text-[#373734]">
-                        Access is based on the school record connected to your Google account.
+                        {t('auth.signInBody')}
                       </p>
                     </div>
 
@@ -110,23 +117,19 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                         className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#121212] px-5 py-3 text-[15px] font-medium text-[#f8f8f6] transition-colors hover:bg-[#373734]"
                       >
                         <LogIn className="h-4 w-4" />
-                        Sign in with Google
+                        {t('auth.signInWithGoogle')}
                         <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
 
                     <p className="mt-4 max-w-md rounded-2xl border border-[#e7e6e1] bg-white px-4 py-3 text-xs font-normal leading-5 text-[#7b7974]">
-                      Signing in does not confirm admission. Access opens only when the school record is approved.
+                      {t('auth.signInDisclaimer')}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid gap-px border-t border-[#e7e6e1] bg-[#e7e6e1] sm:grid-cols-3">
-                  {[
-                    { icon: BadgeCheck, label: 'Known applicants', value: 'Reviewed' },
-                    { icon: MailCheck, label: 'School access', value: 'Role based' },
-                    { icon: ShieldCheck, label: 'Session', value: 'Protected' },
-                  ].map(item => (
+                  {stats.map(item => (
                     <div key={item.label} className="flex items-center gap-3 bg-white px-4 py-3">
                       <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#efeeeb]">
                         <item.icon className="h-4 w-4 text-[#121212]" />
@@ -145,16 +148,16 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
               <div className="overflow-hidden rounded-[24px] border border-[#e7e6e1] bg-white shadow-[rgba(0,0,0,0.04)_0px_4px_20px_0px]">
                 <img
                   src={authArtifactImage}
-                  alt="The Burning Ones printed school material"
+                  alt={t('auth.artifactAlt')}
                   className="h-[324px] w-full object-cover"
                 />
               </div>
 
               <div className="rounded-2xl border border-[#e7e6e1] bg-white">
                 <div className="border-b border-[#e7e6e1] px-4 py-3">
-                  <h2 className="font-serif text-2xl font-normal leading-[1.33] text-[#121212]">After Google sign-in</h2>
+                  <h2 className="font-serif text-2xl font-normal leading-[1.33] text-[#121212]">{t('auth.afterSignInTitle')}</h2>
                   <p className="mt-1 text-sm leading-6 text-[#7b7974]">
-                  The app checks your school status before opening a workspace.
+                    {t('auth.afterSignInBody')}
                   </p>
                 </div>
 
@@ -182,7 +185,7 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
         </main>
 
         <footer className="py-4 text-center text-xs font-normal text-[#9c9a92] sm:text-left">
-          The Burning Ones Portal
+          {t('auth.portalFooter')}
         </footer>
       </div>
     </div>

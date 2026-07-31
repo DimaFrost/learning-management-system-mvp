@@ -1,0 +1,1720 @@
+#,Area,English,Bulgarian,Sources
+1,Layout (header / sidebar),Absence notices,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/shared/AbsenceNoticesView.tsx
+2,Layout (header / sidebar),Academic record,,src/components/layout/Sidebar.tsx; src/views/shared/GradesView.tsx
+3,Layout (header / sidebar),Admin platform guide,,src/components/layout/Sidebar.tsx
+4,Layout (header / sidebar),Archived,,src/components/layout/Sidebar.tsx
+5,Layout (header / sidebar),Assignments and materials,,src/components/layout/Sidebar.tsx
+6,Layout (header / sidebar),Attendance Groups,,src/components/layout/Sidebar.tsx
+7,Layout (header / sidebar),Attendance keepers,,src/components/layout/Sidebar.tsx
+8,Layout (header / sidebar),Attendance overall,,src/components/layout/Sidebar.tsx; src/views/student/MyAttendanceView.tsx
+9,Layout (header / sidebar),Awaiting role assignment,,src/components/layout/Sidebar.tsx
+10,Layout (header / sidebar),Check-in rules,,src/components/layout/Sidebar.tsx; src/views/admin/MentorshipHubView.tsx
+11,Layout (header / sidebar),Classes and Activation,,src/components/layout/Sidebar.tsx
+12,Layout (header / sidebar),Classroom,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx
+13,Layout (header / sidebar),Classwork,,src/components/layout/Sidebar.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/ClassDetailView.tsx
+14,Layout (header / sidebar),Close menu,,src/components/layout/Sidebar.tsx
+15,Layout (header / sidebar),Collected and remaining,,src/components/layout/Sidebar.tsx
+16,Layout (header / sidebar),Ctrl/Cmd K,,src/components/layout/Header.tsx
+17,Layout (header / sidebar),Date View,,src/components/layout/Sidebar.tsx
+18,Layout (header / sidebar),"Dates, status & views",,src/components/layout/Sidebar.tsx
+19,Layout (header / sidebar),Defaults and templates,,src/components/layout/Sidebar.tsx
+20,Layout (header / sidebar),Directory,,src/components/layout/Sidebar.tsx; src/views/admin/users/UsersHubView.tsx
+21,Layout (header / sidebar),Due dates and amounts,,src/components/layout/Sidebar.tsx
+22,Layout (header / sidebar),Emails sent to you,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/InboxView.tsx
+23,Layout (header / sidebar),Enrollments,,src/components/layout/Sidebar.tsx; src/views/admin/users/UsersHubView.tsx
+24,Layout (header / sidebar),Fees and reminders,,src/components/layout/Sidebar.tsx
+25,Layout (header / sidebar),Grades,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx
+26,Layout (header / sidebar),Graduation gates,,src/components/layout/Sidebar.tsx; src/views/admin/AdminStudentDashboard.tsx
+27,Layout (header / sidebar),Graduation gates & scores,,src/components/layout/Sidebar.tsx
+28,Layout (header / sidebar),Health & coverage,,src/components/layout/Sidebar.tsx
+29,Layout (header / sidebar),Homework and materials,,src/components/layout/Sidebar.tsx
+30,Layout (header / sidebar),Homework and reading,,src/components/layout/Sidebar.tsx
+31,Layout (header / sidebar),In-person meeting expectations,,src/components/layout/Sidebar.tsx
+32,Layout (header / sidebar),Inactive year groups,,src/components/layout/Sidebar.tsx
+33,Layout (header / sidebar),Knowledge Base,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx
+34,Layout (header / sidebar),Ministry Report,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx
+35,Layout (header / sidebar),Monthly joint sessions,,src/components/layout/Sidebar.tsx
+36,Layout (header / sidebar),My Attendance,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx
+37,Layout (header / sidebar),My books,,src/components/layout/Sidebar.tsx
+38,Layout (header / sidebar),My Sessions,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/teacher/MyClassesView.tsx
+39,Layout (header / sidebar),On Duty Schedule,,src/components/layout/Sidebar.tsx; src/views/admin/AttendanceView.tsx
+40,Layout (header / sidebar),Open menu,,src/components/layout/Header.tsx
+41,Layout (header / sidebar),Open search,,src/components/layout/Header.tsx
+42,Layout (header / sidebar),Operations,,src/components/layout/Sidebar.tsx
+43,Layout (header / sidebar),Payment follow-up,,src/components/layout/Sidebar.tsx
+44,Layout (header / sidebar),Payment status,,src/components/layout/Sidebar.tsx
+45,Layout (header / sidebar),Payments,,src/components/layout/Sidebar.tsx
+46,Layout (header / sidebar),Prayer Schedule,,src/components/layout/Sidebar.tsx; src/views/admin/AttendanceView.tsx
+47,Layout (header / sidebar),Reading assignments,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/GradesView.tsx; src/views/student/StudentDashboard.tsx
+48,Layout (header / sidebar),Received payments,,src/components/layout/Sidebar.tsx
+49,Layout (header / sidebar),Reminders,,src/components/layout/Sidebar.tsx; src/views/admin/TuitionView.tsx
+50,Layout (header / sidebar),Review queue,,src/components/layout/Sidebar.tsx; src/views/shared/SubmissionsView.tsx
+51,Layout (header / sidebar),Risk monitoring,,src/components/layout/Sidebar.tsx
+52,Layout (header / sidebar),Role Preview (Dev),,src/components/layout/Header.tsx
+53,Layout (header / sidebar),Rules and weights,,src/components/layout/Sidebar.tsx
+54,Layout (header / sidebar),Search - Ctrl/Cmd K,,src/components/layout/Header.tsx
+55,Layout (header / sidebar),Search & manage people,,src/components/layout/Sidebar.tsx
+56,Layout (header / sidebar),Search everything,,src/components/layout/Header.tsx
+57,Layout (header / sidebar),Session history,,src/components/layout/Sidebar.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+58,Layout (header / sidebar),Sessions by date,,src/components/layout/Sidebar.tsx
+59,Layout (header / sidebar),Staff roster,,src/components/layout/Sidebar.tsx; src/views/admin/users/UsersHubView.tsx
+60,Layout (header / sidebar),Student × course × mentor,,src/components/layout/Sidebar.tsx
+61,Layout (header / sidebar),Student-mentor pairs,,src/components/layout/Sidebar.tsx
+62,Layout (header / sidebar),Submissions,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/shared/SubmissionsView.tsx
+63,Layout (header / sidebar),TBO,,src/components/layout/Header.tsx
+64,Layout (header / sidebar),"Teachers, mentors & leaders",,src/components/layout/Sidebar.tsx
+65,Layout (header / sidebar),Teaching calendar,,src/components/layout/Sidebar.tsx
+66,Layout (header / sidebar),Team attendance,,src/components/layout/Sidebar.tsx
+67,Layout (header / sidebar),Team leaders & contacts,,src/components/layout/Sidebar.tsx
+68,Layout (header / sidebar),Teams and service,,src/components/layout/Sidebar.tsx
+69,Layout (header / sidebar),Tuesday & Thursday prayer,,src/components/layout/Sidebar.tsx
+70,Layout (header / sidebar),Wednesday attendance,,src/components/layout/Sidebar.tsx
+71,Layout (header / sidebar),Weekly sessions,,src/components/layout/Sidebar.tsx
+72,Layout (header / sidebar),Year groups and subjects,,src/components/layout/Sidebar.tsx
+73,Components,About The Burning Ones,,src/components/OnboardingScreen.tsx
+74,Components,Access is based on the school record connected to your Google account.,,src/components/AuthScreen.tsx
+75,Components,Add question,,src/components/assignments/AssignmentComposer.tsx
+76,Components,After Google sign-in,,src/components/AuthScreen.tsx
+77,Components,"After receiving your application and recommendation, our team will contact you to schedule an in-person interview at Zoe West, Tsaritsa Yoanna Blvd 160.",,src/components/OnboardingScreen.tsx
+78,Components,Application,,src/components/OnboardingScreen.tsx
+79,Components,Application record matched,,src/components/AuthScreen.tsx
+80,Components,Application review,,src/components/OnboardingScreen.tsx
+81,Components,Approved users continue straight into the Portal.,,src/components/AuthScreen.tsx
+82,Components,Assignment,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+83,Components,Auto / none,,src/components/assignments/AssignmentComposer.tsx
+84,Components,Basic requirements,,src/components/OnboardingScreen.tsx
+85,Components,Class,,src/components/student/StudentMonthCalendar.tsx
+86,Components,Clear,,src/components/search/UniversalSearchModal.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+87,Components,Close day details,,src/components/student/StudentMonthCalendar.tsx
+88,Components,Close search,,src/components/search/UniversalSearchModal.tsx
+89,Components,Curriculum plan,,src/components/subject/SubjectCurriculumPlan.tsx
+90,Components,Delete curriculum plan,,src/components/subject/SubjectCurriculumPlan.tsx
+91,Components,"End of day, 23:59",,src/components/assignments/AssignmentComposer.tsx
+92,Components,"Essay, reflection, reading response...",,src/components/assignments/AssignmentComposer.tsx
+93,Components,Expect to receive an email with feedback within two weeks of your interview.,,src/components/OnboardingScreen.tsx
+94,Components,Feedback,,src/components/OnboardingScreen.tsx; src/views/admin/BooksView.tsx
+95,Components,For,,src/components/assignments/AssignmentComposer.tsx
+96,Components,Google account required,,src/components/AuthScreen.tsx
+97,Components,Google Doc submission and grading.,,src/components/assignments/AssignmentComposer.tsx
+98,Components,Google sign-in complete,,src/components/OnboardingScreen.tsx
+99,Components,Grade category,,src/components/assignments/AssignmentComposer.tsx
+100,Components,Grading,,src/components/assignments/AssignmentComposer.tsx
+101,Components,Grading period,,src/components/assignments/AssignmentComposer.tsx
+102,Components,Interview,,src/components/OnboardingScreen.tsx
+103,Components,Jump to,,src/components/search/UniversalSearchModal.tsx
+104,Components,Known applicants,,src/components/AuthScreen.tsx
+105,Components,Loading curriculum plan...,,src/components/subject/SubjectCurriculumPlan.tsx
+106,Components,Mark by,,src/components/assignments/AssignmentComposer.tsx
+107,Components,Multiple choice,,src/components/assignments/AssignmentComposer.tsx
+108,Components,Next month,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AdminDashboard.tsx
+109,Components,No category,,src/components/assignments/AssignmentComposer.tsx
+110,Components,No curriculum plan yet.,,src/components/subject/SubjectCurriculumPlan.tsx
+111,Components,No results found,,src/components/search/UniversalSearchModal.tsx
+112,Components,No tracked sessions on this day.,,src/components/student/StudentMonthCalendar.tsx
+113,Components,Not marked yet,,src/components/student/StudentMonthCalendar.tsx
+114,Components,Option A\nOption B\nOption C,,src/components/assignments/AssignmentComposer.tsx
+115,Components,Portal access is role based,,src/components/AuthScreen.tsx
+116,Components,Previous month,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AdminDashboard.tsx
+117,Components,Question,,src/components/assignments/AssignmentComposer.tsx
+118,Components,Question type,,src/components/assignments/AssignmentComposer.tsx
+119,Components,Quick check,,src/components/assignments/AssignmentComposer.tsx
+120,Components,Recent searches,,src/components/search/UniversalSearchModal.tsx
+121,Components,Remove the curriculum plan?,,src/components/subject/SubjectCurriculumPlan.tsx
+122,Components,Replace,,src/components/subject/SubjectCurriculumPlan.tsx
+123,Components,Review required,,src/components/OnboardingScreen.tsx
+124,Components,School access,,src/components/AuthScreen.tsx
+125,Components,School Portal,,src/components/AuthScreen.tsx
+126,Components,"Search people, classroom, stream, attendance, tuition...",,src/components/search/UniversalSearchModal.tsx
+127,Components,Short answer,,src/components/assignments/AssignmentComposer.tsx
+128,Components,Short answer or multiple choice response.,,src/components/assignments/AssignmentComposer.tsx
+129,Components,Sign in to continue.,,src/components/AuthScreen.tsx
+130,Components,Sign in with Google,,src/components/AuthScreen.tsx
+131,Components,Sign out,,src/components/OnboardingScreen.tsx
+132,Components,Signing in does not confirm admission. Access opens only when the school record is approved.,,src/components/AuthScreen.tsx
+133,Components,Status checked,,src/components/AuthScreen.tsx
+134,Components,Student work,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/student/MyAssignmentsView.tsx
+135,Components,Submit your application form along with your pastor,,src/components/OnboardingScreen.tsx
+136,Components,Swipe horizontally to see more →,,src/components/ui/ResponsiveTable.tsx
+137,Components,The app checks your school status before opening a workspace.,,src/components/AuthScreen.tsx
+138,Components,The Burning Ones,,src/components/AuthScreen.tsx; src/components/OnboardingScreen.tsx
+139,Components,The Burning Ones Portal,,src/components/AuthScreen.tsx
+140,Components,The Burning Ones printed school material,,src/components/AuthScreen.tsx
+141,Components,The Burning Ones. Platform access depends on application review and role assignment.,,src/components/OnboardingScreen.tsx
+142,Components,The school confirms admission status and active role access.,,src/components/AuthScreen.tsx
+143,Components,"Try a name, subject, assignment, date, or module name.",,src/components/search/UniversalSearchModal.tsx
+144,Components,Try again,,src/components/ui/ErrorMessage.tsx
+145,Components,Ungraded,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/AdminDashboard.tsx
+146,Components,Upload,,src/components/subject/SubjectCurriculumPlan.tsx; src/views/shared/tabs/MaterialsTab.tsx
+147,Components,Use the Google account connected to your application or school profile.,,src/components/AuthScreen.tsx
+148,Components,Used for teacher grading to-dos after students submit.,,src/components/assignments/AssignmentComposer.tsx
+149,Components,View application info,,src/components/OnboardingScreen.tsx
+150,Components,Visit school site,,src/components/OnboardingScreen.tsx
+151,Components,Work type,,src/components/assignments/AssignmentComposer.tsx
+152,Components,Workspace opened,,src/components/AuthScreen.tsx
+153,Components,"Write the task clearly. Include expectations, length, format, and anything students should pay attention to.",,src/components/assignments/AssignmentComposer.tsx
+154,Components,Yes\nNo\nNot sure,,src/components/assignments/AssignmentComposer.tsx
+155,Components,Your recent searches will appear here.,,src/components/search/UniversalSearchModal.tsx
+156,Components,Zoe Sofia,,src/components/AuthScreen.tsx
+157,Modals,Active,,src/components/modals/EditModal/EditCourseForm.tsx; src/views/admin/users/usersShared.tsx
+158,Modals,Active first-year students,,src/components/modals/CreateAnnouncementModal.tsx
+159,Modals,Active second-year students,,src/components/modals/CreateAnnouncementModal.tsx
+160,Modals,Add a comment...,,src/components/modals/SubmissionDetailModal.tsx; src/views/shared/tabs/HomeworkTab.tsx
+161,Modals,Add file,,src/components/modals/CreateAnnouncementModal.tsx
+162,Modals,Add link,,src/components/modals/CreateAnnouncementModal.tsx
+163,Modals,Add phone number,,src/components/modals/EditModal/EditUserForm.tsx
+164,Modals,Adjust Photo,,src/components/modals/AvatarCropModal.tsx
+165,Modals,"Admins, mentors, teachers, team leaders",,src/components/modals/CreateAnnouncementModal.tsx
+166,Modals,All staff,,src/components/modals/CreateAnnouncementModal.tsx
+167,Modals,Assignment title,,src/components/modals/CreateAssignmentModal.tsx; src/views/admin/BooksView.tsx
+168,Modals,Attaching...,,src/components/modals/CreateAnnouncementModal.tsx
+169,Modals,Attachment title,,src/components/modals/CreateAnnouncementModal.tsx
+170,Modals,Attachments,,src/components/modals/CreateAnnouncementModal.tsx
+171,Modals,Audience,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/KnowledgeBaseView.tsx
+172,Modals,Body,,src/components/modals/CreateAnnouncementModal.tsx
+173,Modals,Both,,src/components/modals/EditModal/EditUserForm.tsx
+174,Modals,Both Hours,,src/components/modals/EditModal/EditClassForm.tsx
+175,Modals,Bulgarian,,src/components/modals/CreateAnnouncementModal.tsx
+176,Modals,Bulgarian body,,src/components/modals/CreateAnnouncementModal.tsx
+177,Modals,Bulgarian title,,src/components/modals/CreateAnnouncementModal.tsx
+178,Modals,Cancel,,src/components/modals/AvatarCropModal.tsx; src/components/modals/ConfirmationModal.tsx; src/components/modals/CreateAnnouncementModal.tsx; src/components/modals/CreateAssignmentModal.tsx; src/components/modals/EditModal/EditModal.tsx; src/components/modals/MentorAssignModal.tsx; src/components/subject/SubjectCurriculumPlan.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/TuitionView.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/admin/planning/SchoolYearSelector.tsx; src/views/shared/MessagesView.tsx; src/views/shared/TodosView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+179,Modals,Choose file,,src/components/modals/CreateAnnouncementModal.tsx
+180,Modals,Choose who should see this post.,,src/components/modals/CreateAnnouncementModal.tsx
+181,Modals,Close,,src/components/modals/ContactMentorModal.tsx; src/components/modals/CreateAssignmentModal.tsx; src/components/modals/EditModal/EditModal.tsx; src/components/modals/FilePreviewModal.tsx; src/components/modals/GradeModal.tsx; src/components/modals/SubmissionDetailModal.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/BooksView.tsx; src/views/admin/TuitionView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/admin/users/UsersHubView.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyMinistryInfoView.tsx
+182,Modals,Close custom recipients,,src/components/modals/CreateAnnouncementModal.tsx
+183,Modals,Close preview,,src/components/modals/FilePreviewModal.tsx
+184,Modals,Comments,,src/components/modals/SubmissionDetailModal.tsx; src/views/shared/tabs/HomeworkTab.tsx
+185,Modals,Content languages,,src/components/modals/CreateAnnouncementModal.tsx
+186,Modals,Crop preview,,src/components/modals/AvatarCropModal.tsx
+187,Modals,Custom,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/AttendanceView.tsx
+188,Modals,Custom recipients,,src/components/modals/CreateAnnouncementModal.tsx
+189,Modals,Default,,src/components/modals/CreateAnnouncementModal.tsx
+190,Modals,Delete comment,,src/components/modals/SubmissionDetailModal.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+191,Modals,Delivery,,src/components/modals/CreateAnnouncementModal.tsx
+192,Modals,Description,,src/components/modals/EditModal/EditSubjectForm.tsx
+193,Modals,Description / instructions,,src/components/modals/CreateAssignmentModal.tsx
+194,Modals,Doc,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/KnowledgeBaseView.tsx
+195,Modals,"Docs, Sheets, or Slides",,src/components/modals/CreateAnnouncementModal.tsx
+196,Modals,Done,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/TodosView.tsx
+197,Modals,Download,,src/components/modals/FilePreviewModal.tsx; src/components/subject/SubjectCurriculumPlan.tsx
+198,Modals,Draft,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/BooksView.tsx
+199,Modals,Drag to reposition · Use slider to zoom,,src/components/modals/AvatarCropModal.tsx
+200,Modals,Due Date,,src/components/modals/CreateAssignmentModal.tsx
+201,Modals,"e.g., 2025",,src/components/modals/EditModal/EditCourseForm.tsx
+202,Modals,"e.g., 5",,src/components/modals/EditModal/EditSubjectForm.tsx
+203,Modals,Edit recipients,,src/components/modals/CreateAnnouncementModal.tsx
+204,Modals,Email,,src/components/modals/ContactMentorModal.tsx; src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/SettingsView.tsx
+205,Modals,EN / BG,,src/components/modals/CreateAnnouncementModal.tsx
+206,Modals,End Date,,src/components/modals/EditModal/EditCourseForm.tsx
+207,Modals,English,,src/components/modals/CreateAnnouncementModal.tsx
+208,Modals,"English and Bulgarian are optional, but one complete language is required.",,src/components/modals/CreateAnnouncementModal.tsx
+209,Modals,Enter email address,,src/components/modals/EditModal/EditUserForm.tsx
+210,Modals,Enter full name,,src/components/modals/EditModal/EditUserForm.tsx
+211,Modals,Enter session title,,src/components/modals/EditModal/EditClassForm.tsx
+212,Modals,Enter subject description,,src/components/modals/EditModal/EditSubjectForm.tsx
+213,Modals,Enter subject title,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+214,Modals,"Estimated from current people, roles, and active year group enrollments.",,src/components/modals/CreateAnnouncementModal.tsx
+215,Modals,Everyone,,src/components/modals/CreateAnnouncementModal.tsx
+216,Modals,Failed to add session,,src/components/modals/EditModal/EditModal.tsx; src/hooks/useCourses.ts
+217,Modals,Failed to update session,,src/components/modals/EditModal/EditModal.tsx
+218,Modals,File:,,src/components/modals/SubmissionDetailModal.tsx
+219,Modals,First Hour,,src/components/modals/EditModal/EditClassForm.tsx
+220,Modals,First Year,,src/components/modals/CreateAnnouncementModal.tsx; src/components/modals/EditModal/EditCourseForm.tsx; src/components/modals/EditModal/EditSubjectForm.tsx; src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/TuitionView.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx; src/views/admin/planning/SubjectLibraryPanel.tsx
+221,Modals,Give every attachment a readable title.,,src/components/modals/CreateAnnouncementModal.tsx
+222,Modals,Google link,,src/components/modals/CreateAnnouncementModal.tsx
+223,Modals,Grade comment,,src/components/modals/GradeModal.tsx
+224,Modals,Hour,,src/components/modals/EditModal/EditClassForm.tsx; src/views/admin/CurriculumArchiveView.tsx
+225,Modals,I Year,,src/components/modals/EditModal/EditUserForm.tsx
+226,Modals,II Year,,src/components/modals/EditModal/EditUserForm.tsx
+227,Modals,Inactive,,src/components/modals/EditModal/EditCourseForm.tsx; src/views/admin/CurriculumArchiveView.tsx
+228,Modals,Instructions for students...,,src/components/modals/CreateAssignmentModal.tsx
+229,Modals,Loading preview…,,src/components/modals/FilePreviewModal.tsx
+230,Modals,Name,,src/components/modals/EditModal/EditUserForm.tsx
+231,Modals,Next,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/InboxView.tsx; src/views/shared/ClassworkView.tsx; src/views/student/MyAssignmentsView.tsx; src/views/teacher/MyClassesView.tsx
+232,Modals,No active ministry teams yet.,,src/components/modals/EditModal/EditUserForm.tsx
+233,Modals,No matching students.,,src/components/modals/EditModal/EditUserForm.tsx
+234,Modals,No mentees assigned.,,src/components/modals/EditModal/EditUserForm.tsx
+235,Modals,No people match your search.,,src/components/modals/CreateAnnouncementModal.tsx
+236,Modals,No role,,src/components/modals/CreateAnnouncementModal.tsx
+237,Modals,No teacher assigned (Vacant),,src/components/modals/EditModal/EditClassForm.tsx
+238,Modals,No teaching year group selected yet.,,src/components/modals/EditModal/EditUserForm.tsx
+239,Modals,No teams selected yet.,,src/components/modals/EditModal/EditUserForm.tsx
+240,Modals,No translator assigned (Vacant),,src/components/modals/EditModal/EditClassForm.tsx
+241,Modals,Notify audience,,src/components/modals/CreateAnnouncementModal.tsx
+242,Modals,Number of Sessions,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+243,Modals,Online student,,src/components/modals/EditModal/EditUserForm.tsx
+244,Modals,Open attachment in new tab,,src/components/modals/CreateAnnouncementModal.tsx
+245,Modals,Open in tab,,src/components/modals/FilePreviewModal.tsx
+246,Modals,Open submission,,src/components/modals/GradeModal.tsx; src/components/modals/SubmissionDetailModal.tsx
+247,Modals,Optional,,src/components/modals/CreateAnnouncementModal.tsx; src/utils/mentorshipUtils.ts; src/views/student/DutyMarkingView.tsx
+248,Modals,Optional feedback for the student...,,src/components/modals/GradeModal.tsx
+249,Modals,Paste Google link,,src/components/modals/CreateAnnouncementModal.tsx
+250,Modals,"PDF, image, doc, or handout",,src/components/modals/CreateAnnouncementModal.tsx
+251,Modals,Phone,,src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/users/UsersHubView.tsx
+252,Modals,Pin this post,,src/components/modals/CreateAnnouncementModal.tsx
+253,Modals,Pinned,,src/components/modals/CreateAnnouncementModal.tsx
+254,Modals,Pinned posts appear at the top of the stream.,,src/components/modals/CreateAnnouncementModal.tsx
+255,Modals,Points,,src/components/assignments/AssignmentComposer.tsx; src/components/modals/CreateAssignmentModal.tsx; src/components/modals/GradeModal.tsx; src/views/admin/BooksView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+256,Modals,Post title,,src/components/modals/CreateAnnouncementModal.tsx
+257,Modals,Post title in Bulgarian,,src/components/modals/CreateAnnouncementModal.tsx
+258,Modals,Preview attachment,,src/components/modals/CreateAnnouncementModal.tsx
+259,Modals,Previous,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/InboxView.tsx; src/views/shared/ClassworkView.tsx; src/views/student/MyAssignmentsView.tsx
+260,Modals,Primary Teacher,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+261,Modals,Publish and email at a future time.,,src/components/modals/CreateAnnouncementModal.tsx
+262,Modals,Recipients,,src/components/modals/CreateAnnouncementModal.tsx
+263,Modals,Remove attachment,,src/components/modals/CreateAnnouncementModal.tsx; src/views/shared/AnnouncementsView.tsx
+264,Modals,Remove pending attachment,,src/components/modals/CreateAnnouncementModal.tsx
+265,Modals,Return for Revision,,src/components/modals/GradeModal.tsx; src/components/modals/SubmissionDetailModal.tsx
+266,Modals,Roles,,src/components/modals/ContactMentorModal.tsx; src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/users/UsersHubView.tsx
+267,Modals,Save privately without sending notifications.,,src/components/modals/CreateAnnouncementModal.tsx
+268,Modals,Schedule,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/CurriculumDateView.tsx
+269,Modals,Scheduled date and time,,src/components/modals/CreateAnnouncementModal.tsx
+270,Modals,"Search by name, email, or role",,src/components/modals/CreateAnnouncementModal.tsx
+271,Modals,Second Hour,,src/components/modals/EditModal/EditClassForm.tsx
+272,Modals,Second Year,,src/components/modals/CreateAnnouncementModal.tsx; src/components/modals/EditModal/EditCourseForm.tsx; src/components/modals/EditModal/EditSubjectForm.tsx; src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/TuitionView.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx; src/views/admin/planning/SubjectLibraryPanel.tsx
+273,Modals,Select a mentor,,src/components/modals/MentorAssignModal.tsx
+274,Modals,Select a subject,,src/components/modals/EditModal/EditClassForm.tsx
+275,Modals,Select a teacher,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+276,Modals,Select a year group,,src/components/modals/EditModal/EditSubjectForm.tsx
+277,Modals,Select hour,,src/components/modals/EditModal/EditClassForm.tsx
+278,Modals,Select New Mentor,,src/components/modals/MentorAssignModal.tsx
+279,Modals,"Select one or more people. Each person is counted once, even with multiple roles.",,src/components/modals/CreateAnnouncementModal.tsx
+280,Modals,Select year group type,,src/components/modals/EditModal/EditCourseForm.tsx
+281,Modals,Send Email,,src/components/modals/ContactMentorModal.tsx
+282,Modals,Session Title,,src/components/modals/EditModal/EditClassForm.tsx
+283,Modals,Session:,,src/components/modals/EditModal/EditClassForm.tsx
+284,Modals,Sheet,,src/components/modals/CreateAnnouncementModal.tsx
+285,Modals,Slide,,src/components/modals/CreateAnnouncementModal.tsx
+286,Modals,Start Date,,src/components/modals/EditModal/EditCourseForm.tsx; src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+287,Modals,Stream,,src/components/modals/CreateAnnouncementModal.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx
+288,Modals,Student year group,,src/components/modals/EditModal/EditUserForm.tsx
+289,Modals,Subject Title,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+290,Modals,Submission Details,,src/components/modals/SubmissionDetailModal.tsx
+291,Modals,Summary,,src/components/modals/CreateAnnouncementModal.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+292,Modals,Teacher role only,,src/components/modals/CreateAnnouncementModal.tsx
+293,Modals,Teaching,,src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/users/UsersHubView.tsx
+294,Modals,Teaching year groups,,src/components/modals/EditModal/EditUserForm.tsx
+295,Modals,Team leadership,,src/components/modals/EditModal/EditUserForm.tsx
+296,Modals,Teams,,src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/AttendanceView.tsx
+297,Modals,This student must be enrolled in a course before a mentor can be assigned.,,src/components/modals/MentorAssignModal.tsx; src/views/admin/MentorshipAssignmentsPanel.tsx
+298,Modals,This will pre-create the specified number of sessions,,src/components/modals/EditModal/EditSubjectForm.tsx
+299,Modals,Title,,src/components/assignments/AssignmentComposer.tsx; src/components/modals/CreateAnnouncementModal.tsx; src/components/modals/CreateAssignmentModal.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+300,Modals,Translator role only,,src/components/modals/CreateAnnouncementModal.tsx
+301,Modals,Translators,,src/components/modals/CreateAnnouncementModal.tsx; src/hooks/useTodos.ts
+302,Modals,void | Promise,,src/components/modals/EditModal/EditModal.tsx; src/components/modals/MentorAssignModal.tsx
+303,Modals,Write your post in Bulgarian...,,src/components/modals/CreateAnnouncementModal.tsx
+304,Modals,Write your post...,,src/components/modals/CreateAnnouncementModal.tsx
+305,Modals,Year Group Type,,src/components/modals/EditModal/EditCourseForm.tsx
+306,Modals,Year of Graduation,,src/components/modals/EditModal/EditCourseForm.tsx
+307,Modals,You can still download it or open it in a new browser tab.,,src/components/modals/FilePreviewModal.tsx
+308,Shared views,A private thread will appear after the student starts or submits this reading.,,src/views/shared/ClassworkView.tsx
+309,Shared views,A thread between the student and staff.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+310,Shared views,Academic average,,src/views/shared/GradesView.tsx
+311,Shared views,Academic grades stay separate from graduation readiness.,,src/views/shared/GradesView.tsx
+312,Shared views,Academic work,,src/views/shared/GradesView.tsx
+313,Shared views,Action needed,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+314,Shared views,Add a comment,,src/views/shared/AnnouncementsView.tsx
+315,Shared views,Add category,,src/views/shared/GradesView.tsx
+316,Shared views,Add context if needed,,src/views/shared/TodosView.tsx
+317,Shared views,Add homework,,src/views/shared/classwork/SubjectDetailPage.tsx
+318,Shared views,Add Materials,,src/views/shared/classwork/SubjectDetailPage.tsx
+319,Shared views,Add Note,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+320,Shared views,Add period,,src/views/shared/GradesView.tsx
+321,Shared views,Add session,,src/views/shared/classwork/SubjectDetailPage.tsx
+322,Shared views,"Admins, teachers, mentors, translators, leaders",,src/views/shared/MessagesView.tsx
+323,Shared views,All,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/CurriculumDateView.tsx; src/views/admin/MentorshipFollowUpPanel.tsx; src/views/admin/users/UsersHubView.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx
+324,Shared views,All my sessions,,src/views/shared/StaffDashboard.tsx
+325,Shared views,All posts,,src/views/shared/AnnouncementsView.tsx
+326,Shared views,All school sessions · next 7 days,,src/views/shared/StaffDashboard.tsx
+327,Shared views,All students,,src/views/shared/MessagesView.tsx
+328,Shared views,All upcoming notices,,src/views/shared/AbsenceNoticesView.tsx
+329,Shared views,Allow files/links on student Stream posts.,,src/views/shared/AnnouncementsView.tsx
+330,Shared views,Alternative: clock for pending student work.,,src/views/shared/ClassworkView.tsx
+331,Shared views,Alternative: edit icon for pending student work.,,src/views/shared/ClassworkView.tsx
+332,Shared views,Alternative: ellipsis icon for pending student work.,,src/views/shared/ClassworkView.tsx
+333,Shared views,Alternative: message icon for pending student work.,,src/views/shared/ClassworkView.tsx
+334,Shared views,Alternative: soft dot for pending student work.,,src/views/shared/ClassworkView.tsx
+335,Shared views,Approve,,src/views/admin/AttendanceView.tsx; src/views/shared/AnnouncementsView.tsx
+336,Shared views,Approve post,,src/views/shared/AnnouncementsView.tsx
+337,Shared views,Approve student posts,,src/views/shared/AnnouncementsView.tsx
+338,Shared views,Ask a question or share something with your class...,,src/views/shared/AnnouncementsView.tsx
+339,Shared views,Assign,,src/views/admin/MentorshipHubView.tsx; src/views/shared/TodosView.tsx
+340,Shared views,Assigned homework,,src/views/shared/GradesView.tsx
+341,Shared views,Assignments appear under the subject. Pick a session only when the work clearly belongs to one class meeting.,,src/views/shared/classwork/SubjectDetailPage.tsx
+342,Shared views,"Assignments are attached, but this subject has not started yet.",,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+343,Shared views,Assignments are complete on the student and staff side.,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+344,Shared views,At least one assignment still needs your attention.,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+345,Shared views,Attendance communication,,src/views/shared/AbsenceNoticesView.tsx
+346,Shared views,Attendance credit,,src/views/shared/classwork/SubjectDetailPage.tsx
+347,Shared views,Audience messages are broadcast copies. Replies happen as direct conversations with the admin.,,src/views/shared/MessagesView.tsx
+348,Shared views,Back to conversations,,src/views/shared/MessagesView.tsx
+349,Shared views,Back to student work,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+350,Shared views,Category,,src/views/shared/GradesView.tsx
+351,Shared views,Category color,,src/views/shared/GradesView.tsx
+352,Shared views,Category name,,src/views/shared/GradesView.tsx
+353,Shared views,Choose an optional session context,,src/views/shared/classwork/SubjectDetailPage.tsx
+354,Shared views,Choose at least one session.,,src/views/shared/AbsenceNoticesView.tsx
+355,Shared views,Choose how the academic percentage is calculated.,,src/views/shared/GradesView.tsx
+356,Shared views,Choose session(s),,src/views/shared/AbsenceNoticesView.tsx
+357,Shared views,Choose which emails you want to receive.,,src/views/shared/SettingsView.tsx
+358,Shared views,Classwork content,,src/views/shared/ClassworkView.tsx
+359,Shared views,Classwork type,,src/views/shared/ClassworkView.tsx
+360,Shared views,Clear search,,src/views/shared/TodosView.tsx
+361,Shared views,Close create to-do,,src/views/shared/TodosView.tsx
+362,Shared views,Close grade detail,,src/views/shared/GradesView.tsx
+363,Shared views,Close reading detail,,src/views/shared/ClassworkView.tsx
+364,Shared views,Close stream settings,,src/views/shared/AnnouncementsView.tsx
+365,Shared views,Comment,,src/views/shared/GradesView.tsx
+366,Shared views,Comment only,,src/views/shared/AnnouncementsView.tsx
+367,Shared views,Comments are closed for this Stream item.,,src/views/shared/AnnouncementsView.tsx
+368,Shared views,Complete,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/classwork/helpers.ts; src/views/student/MyAttendanceBreakdownView.tsx
+369,Shared views,Completed,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/TodosView.tsx; src/views/student/MyAssignmentsView.tsx
+370,Shared views,Connect the school Google account used to create assignment documents in the Shared Drive.,,src/views/shared/SettingsView.tsx
+371,Shared views,Connected,,src/views/shared/SettingsView.tsx
+372,Shared views,Content,,src/views/shared/ClassworkView.tsx
+373,Shared views,Continue Working,,src/views/shared/tabs/HomeworkTab.tsx
+374,Shared views,Could not create the Google Doc.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+375,Shared views,Could not load Google Doc details.,,src/views/shared/tabs/HomeworkTab.tsx
+376,Shared views,Could not start Google Docs authorization.,,src/views/shared/SettingsView.tsx
+377,Shared views,Could not submit absence notice. Please try again.,,src/views/shared/AbsenceNoticesView.tsx
+378,Shared views,Could not submit the assignment.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+379,Shared views,Could not submit the quick check.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+380,Shared views,Could not test Google Docs setup.,,src/views/shared/SettingsView.tsx
+381,Shared views,Course Enrollment,,src/views/shared/SettingsView.tsx
+382,Shared views,Create,,src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/MaterialsTab.tsx
+383,Shared views,"Create a Google Doc in your own Google Drive, then paste the link here.",,src/views/shared/tabs/HomeworkTab.tsx
+384,Shared views,Create school Google Doc,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx
+385,Shared views,Create to-do,,src/views/shared/TodosView.tsx
+386,Shared views,Curriculum Plan,,src/views/shared/classwork/SubjectDetailPage.tsx
+387,Shared views,Date range,,src/views/shared/classwork/SubjectDetailPage.tsx
+388,Shared views,Decide what students can do in each active year group.,,src/views/shared/AnnouncementsView.tsx
+389,Shared views,Dedicated OAuth,,src/views/shared/SettingsView.tsx
+390,Shared views,Default is comment only until changed.,,src/views/shared/AnnouncementsView.tsx
+391,Shared views,Delete,,src/components/subject/SubjectCurriculumPlan.tsx; src/views/admin/BooksView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx
+392,Shared views,Delete assignment,,src/views/shared/tabs/HomeworkTab.tsx
+393,Shared views,Delete file,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+394,Shared views,Delete message,,src/views/shared/MessagesView.tsx
+395,Shared views,Delete note,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+396,Shared views,Delete post,,src/views/shared/AnnouncementsView.tsx
+397,Shared views,Delete to-do,,src/views/shared/TodosView.tsx
+398,Shared views,Details,,src/views/admin/AdminDashboard.tsx; src/views/shared/ClassworkView.tsx
+399,Shared views,Direct Messages,,src/views/shared/SettingsView.tsx
+400,Shared views,Document title,,src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/MaterialsTab.tsx
+401,Shared views,Drafts,,src/views/shared/AnnouncementsView.tsx
+402,Shared views,Drive Files,,src/views/shared/tabs/StaffNotesTab.tsx
+403,Shared views,Drive Materials,,src/views/shared/tabs/MaterialsTab.tsx
+404,Shared views,Due,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/TodosView.tsx
+405,Shared views,Edit assignment,,src/views/shared/tabs/HomeworkTab.tsx
+406,Shared views,Edit note,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+407,Shared views,Edit post,,src/views/shared/AnnouncementsView.tsx
+408,Shared views,Edit subject,,src/views/admin/CurriculumOverview.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+409,Shared views,Email is managed by Google and cannot be changed here.,,src/views/shared/SettingsView.tsx
+410,Shared views,Email notifications,,src/views/shared/AnnouncementsView.tsx
+411,Shared views,Email Notifications,,src/views/shared/SettingsView.tsx
+412,Shared views,Email returned,,src/views/shared/SubmissionsView.tsx
+413,Shared views,Email submitted,,src/views/shared/SubmissionsView.tsx
+414,Shared views,Everyone except you,,src/views/shared/MessagesView.tsx
+415,Shared views,Everything currently visible here looks settled.,,src/views/shared/classwork/SubjectDetailPage.tsx
+416,Shared views,Extras,,src/views/shared/GradesView.tsx
+417,Shared views,Failed to delete comment,,src/hooks/useAnnouncements.ts; src/hooks/useHomework.ts; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+418,Shared views,Failed to load absence notices.,,src/views/shared/AbsenceNoticesView.tsx
+419,Shared views,Failed to post comment,,src/hooks/useHomework.ts; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+420,Shared views,Failed to save grade,,src/hooks/useHomework.ts; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+421,Shared views,File,,src/views/shared/AnnouncementsView.tsx
+422,Shared views,Final feedback for this submission...,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+423,Shared views,First Name,,src/views/shared/SettingsView.tsx
+424,Shared views,First Year students,,src/views/shared/MessagesView.tsx
+425,Shared views,Go back,,src/views/shared/ClassDetailView.tsx
+426,Shared views,Google Docs,,src/views/shared/SettingsView.tsx
+427,Shared views,Google Drive folders are not set up for this session.,,src/views/shared/ClassDetailView.tsx
+428,Shared views,Grade,,src/components/modals/SubmissionDetailModal.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/BooksView.tsx; src/views/shared/GradesView.tsx; src/views/shared/tabs/HomeworkTab.tsx
+429,Shared views,Grade categories,,src/views/shared/GradesView.tsx
+430,Shared views,Grade detail,,src/views/shared/GradesView.tsx
+431,Shared views,Grade feedback,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+432,Shared views,Grade settings,,src/views/shared/GradesView.tsx
+433,Shared views,Grade setup,,src/views/shared/GradesView.tsx
+434,Shared views,Graded homework,,src/views/shared/GradesView.tsx
+435,Shared views,Graded points,,src/views/shared/GradesView.tsx
+436,Shared views,Grading periods,,src/views/shared/GradesView.tsx
+437,Shared views,"Group work by month, term, or school phase.",,src/views/shared/GradesView.tsx
+438,Shared views,Groups,,src/views/shared/MessagesView.tsx
+439,Shared views,Has any extras,,src/views/shared/ClassworkView.tsx
+440,Shared views,Has homework,,src/views/shared/ClassworkView.tsx
+441,Shared views,Has materials,,src/views/shared/ClassworkView.tsx
+442,Shared views,Homework,,src/views/admin/AdminStudentDashboard.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/ClassDetailView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/MyAssignmentsView.tsx; src/views/student/StudentDashboard.tsx
+443,Shared views,Homework status preview,,src/views/shared/ClassworkView.tsx
+444,Shared views,"Homework, reading, and materials will appear here when they match this view.",,src/views/shared/ClassworkView.tsx
+445,Shared views,In progress,,src/views/shared/GradesView.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/student/MyAssignmentsView.tsx; src/views/student/MyCourseView.tsx
+446,Shared views,Instructions,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/BooksView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx
+447,Shared views,"JPG, PNG or GIF · Max 2MB",,src/views/shared/SettingsView.tsx
+448,Shared views,Last edited,,src/views/shared/tabs/HomeworkTab.tsx
+449,Shared views,Last Name,,src/views/shared/SettingsView.tsx
+450,Shared views,Later,,src/views/shared/TodosView.tsx
+451,Shared views,Learning record,,src/views/shared/GradesView.tsx
+452,Shared views,Learning work,,src/views/shared/ClassworkView.tsx
+453,Shared views,"Leave empty to use the original file name. For multiple files, the file name is added after this title.",,src/views/shared/classwork/SubjectDetailPage.tsx
+454,Shared views,Link,,src/views/shared/AnnouncementsView.tsx
+455,Shared views,Link Document,,src/views/shared/tabs/HomeworkTab.tsx
+456,Shared views,Loading absence notices...,,src/views/shared/AbsenceNoticesView.tsx
+457,Shared views,Loading attendance...,,src/views/shared/classwork/SubjectDetailPage.tsx
+458,Shared views,Loading classwork...,,src/views/shared/ClassworkView.tsx
+459,Shared views,Loading grades...,,src/views/shared/GradesView.tsx
+460,Shared views,Loading materials...,,src/views/shared/classwork/SubjectDetailPage.tsx
+461,Shared views,Loading messages,,src/views/shared/MessagesView.tsx
+462,Shared views,Loading messages...,,src/views/shared/MessagesView.tsx
+463,Shared views,Loading preview...,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+464,Shared views,Loading stream,,src/views/shared/AnnouncementsView.tsx
+465,Shared views,Loading submissions...,,src/views/shared/SubmissionsView.tsx
+466,Shared views,Loading to-dos...,,src/views/admin/AdminDashboard.tsx; src/views/shared/TodosView.tsx; src/views/student/StudentDashboard.tsx
+467,Shared views,Manage your profile and notification preferences,,src/views/shared/SettingsView.tsx
+468,Shared views,Material,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/AnnouncementsView.tsx
+469,Shared views,Material document,,src/views/shared/tabs/MaterialsTab.tsx
+470,Shared views,Materials,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+471,Shared views,Materials & Notes,,src/views/shared/ClassDetailView.tsx
+472,Shared views,My Grades,,src/views/shared/GradesView.tsx
+473,Shared views,My subjects,,src/views/shared/ClassworkView.tsx
+474,Shared views,Name can only be changed by an administrator.,,src/hooks/useSettings.ts; src/views/shared/SettingsView.tsx
+475,Shared views,New Announcements,,src/views/shared/SettingsView.tsx
+476,Shared views,New Google Doc,,src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/MaterialsTab.tsx
+477,Shared views,New Message,,src/views/shared/MessagesView.tsx
+478,Shared views,New message,,src/views/shared/MessagesView.tsx
+479,Shared views,New to-do,,src/views/shared/TodosView.tsx
+480,Shared views,Next session weeks,,src/views/admin/AdminStudentDashboard.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+481,Shared views,No absence notices found.,,src/views/shared/AbsenceNoticesView.tsx
+482,Shared views,No academic work has been assigned yet.,,src/views/shared/GradesView.tsx
+483,Shared views,No assignments,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+484,Shared views,No assignments match these filters.,,src/views/shared/GradesView.tsx
+485,Shared views,No assignments posted yet.,,src/views/shared/tabs/HomeworkTab.tsx
+486,Shared views,No categories yet.,,src/views/shared/GradesView.tsx
+487,Shared views,No classwork found.,,src/views/shared/ClassworkView.tsx
+488,Shared views,No comments yet.,,src/components/modals/SubmissionDetailModal.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/tabs/HomeworkTab.tsx
+489,Shared views,No enrolled students.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx
+490,Shared views,No extras,,src/views/shared/ClassworkView.tsx
+491,Shared views,No extras attached,,src/views/shared/classwork/SubjectDetailPage.tsx
+492,Shared views,No file or link is attached.,,src/views/shared/GradesView.tsx
+493,Shared views,No grades are available yet.,,src/views/shared/GradesView.tsx
+494,Shared views,No grading periods yet.,,src/views/shared/GradesView.tsx
+495,Shared views,No homework assignments yet.,,src/views/shared/tabs/HomeworkTab.tsx
+496,Shared views,No homework is attached to this subject yet.,,src/views/shared/classwork/SubjectDetailPage.tsx
+497,Shared views,No materials uploaded yet.,,src/views/shared/tabs/MaterialsTab.tsx
+498,Shared views,No messages yet. Say hello!,,src/views/shared/MessagesView.tsx
+499,Shared views,No notes yet.,,src/views/shared/tabs/MaterialsTab.tsx
+500,Shared views,No overall grade,,src/views/shared/GradesView.tsx
+501,Shared views,No people found,,src/views/shared/TodosView.tsx
+502,Shared views,No private comments yet.,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+503,Shared views,No school sessions scheduled in the next 7 days.,,src/views/shared/StaffDashboard.tsx
+504,Shared views,No staff notes yet.,,src/views/shared/classwork/SubjectDetailPage.tsx
+505,Shared views,No student materials yet.,,src/views/shared/classwork/SubjectDetailPage.tsx
+506,Shared views,No submissions need review.,,src/views/shared/SubmissionsView.tsx
+507,Shared views,No teacher assigned yet.,,src/views/shared/classwork/SubjectDetailPage.tsx
+508,Shared views,No teacher comment yet.,,src/views/shared/GradesView.tsx
+509,Shared views,No to-dos here,,src/views/shared/TodosView.tsx
+510,Shared views,No upcoming sessions were found for your year group.,,src/views/shared/AbsenceNoticesView.tsx
+511,Shared views,No users found.,,src/views/shared/MessagesView.tsx
+512,Shared views,Not graded,,src/views/shared/GradesView.tsx
+513,Shared views,Not started,,src/views/shared/GradesView.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/student/MyAssignmentsView.tsx; src/views/student/MyCourseView.tsx
+514,Shared views,Note content...,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+515,Shared views,Only today and future sessions are available.,,src/views/shared/AbsenceNoticesView.tsx
+516,Shared views,Open,,src/views/shared/TodosView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx; src/views/student/StudentDashboard.tsx
+517,Shared views,Open assignment to review this work,,src/views/shared/SubmissionsView.tsx
+518,Shared views,Open grades,,src/views/shared/classwork/SubjectDetailPage.tsx
+519,Shared views,Open in new tab,,src/components/subject/SubjectCurriculumPlan.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+520,Shared views,Open materials,,src/views/shared/ClassworkView.tsx
+521,Shared views,Open planning,,src/views/admin/AdminStudentDashboard.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+522,Shared views,Open work,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+523,Shared views,Optional link title,,src/views/shared/AnnouncementsView.tsx
+524,Shared views,Optional. Keep it short if no detail is needed.,,src/views/shared/AbsenceNoticesView.tsx
+525,Shared views,Or search for one person...,,src/views/shared/MessagesView.tsx
+526,Shared views,Overall grade,,src/views/shared/GradesView.tsx
+527,Shared views,Owner,,src/views/shared/tabs/HomeworkTab.tsx
+528,Shared views,Past,,src/views/admin/CurriculumDateView.tsx; src/views/shared/ClassDetailView.tsx; src/views/teacher/MyClassesView.tsx
+529,Shared views,Past subjects are compact by default.,,src/views/shared/ClassworkView.tsx
+530,Shared views,Pending clock,,src/views/shared/ClassworkView.tsx
+531,Shared views,Pending dot,,src/views/shared/ClassworkView.tsx
+532,Shared views,Pending edit,,src/views/shared/ClassworkView.tsx
+533,Shared views,Pending ellipsis,,src/views/shared/ClassworkView.tsx
+534,Shared views,Pending message,,src/views/shared/ClassworkView.tsx
+535,Shared views,Pending review,,src/views/shared/AnnouncementsView.tsx
+536,Shared views,Period name,,src/views/shared/GradesView.tsx
+537,Shared views,Permanently delete post,,src/views/shared/AnnouncementsView.tsx
+538,Shared views,Pinned only,,src/views/shared/AnnouncementsView.tsx
+539,Shared views,Pinned post limit,,src/views/shared/AnnouncementsView.tsx
+540,Shared views,Post,,src/components/modals/SubmissionDetailModal.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/tabs/HomeworkTab.tsx
+541,Shared views,Post & comment,,src/views/shared/AnnouncementsView.tsx
+542,Shared views,Post Assignment,,src/views/shared/tabs/HomeworkTab.tsx
+543,Shared views,Posts,,src/views/shared/AnnouncementsView.tsx
+544,Shared views,Preview,,src/views/shared/tabs/MaterialsTab.tsx
+545,Shared views,Preview is not available.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+546,Shared views,Previous session weeks,,src/views/admin/AdminStudentDashboard.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+547,Shared views,Priority,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/TodosView.tsx
+548,Shared views,Private comments,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+549,Shared views,Private to staff working with this subject.,,src/views/shared/classwork/SubjectDetailPage.tsx
+550,Shared views,Profile,,src/views/shared/SettingsView.tsx
+551,Shared views,Profile photo,,src/views/shared/SettingsView.tsx
+552,Shared views,Promise,,src/AuthenticatedApp.tsx; src/components/assignments/AssignmentComposer.tsx; src/components/modals/CreateAnnouncementModal.tsx; src/components/modals/CreateAssignmentModal.tsx; src/components/modals/EditModal/EditModal.tsx; src/components/modals/GradeModal.tsx; src/components/modals/SubmissionDetailModal.tsx; src/views/AppRouter.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/BooksView.tsx; src/views/admin/CurriculumPlanningView.tsx; src/views/admin/CurriculumView.tsx; src/views/admin/MentorshipAssignmentsPanel.tsx; src/views/admin/MentorshipHubView.tsx; src/views/admin/TuitionView.tsx; src/views/admin/planning/SchoolYearSelector.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/ClassDetailView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/MessagesView.tsx; src/views/shared/TodosView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyBooksView.tsx; src/views/teamLeader/MinistryReportView.tsx
+553,Shared views,Quick check answer,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+554,Shared views,Quick check response,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+555,Shared views,Quick grade,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+556,Shared views,Quick links,,src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/StudentDashboard.tsx
+557,Shared views,Reading,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/student/MyAssignmentsView.tsx
+558,Shared views,Ready on graduation gates,,src/views/shared/GradesView.tsx
+559,Shared views,Reason for absence...,,src/views/shared/AbsenceNoticesView.tsx
+560,Shared views,Refresh,,src/views/admin/InboxView.tsx; src/views/shared/tabs/HomeworkTab.tsx
+561,Shared views,Related session (optional),,src/views/shared/classwork/SubjectDetailPage.tsx
+562,Shared views,Remind missing,,src/views/shared/SubmissionsView.tsx
+563,Shared views,Remove Photo,,src/views/shared/SettingsView.tsx
+564,Shared views,Remove your profile photo?,,src/views/shared/SettingsView.tsx
+565,Shared views,Resources,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+566,Shared views,Restore post,,src/views/shared/AnnouncementsView.tsx
+567,Shared views,Return for revision,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+568,Shared views,Returned,,src/views/admin/AdminDashboard.tsx; src/views/shared/GradesView.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/student/MyAssignmentsView.tsx
+569,Shared views,Review pending,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+570,Shared views,"Review upcoming sessions, reading, homework, and materials.",,src/views/shared/ClassworkView.tsx
+571,Shared views,Role Changes,,src/views/shared/SettingsView.tsx
+572,Shared views,Save,,src/components/subject/SubjectCurriculumPlan.tsx; src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+573,Shared views,Save method,,src/views/shared/GradesView.tsx
+574,Shared views,Scheduled,,src/views/admin/KnowledgeBaseView.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/TodosView.tsx
+575,Shared views,Scheduled assignment,,src/views/shared/TodosView.tsx
+576,Shared views,Search,,src/views/admin/AdminDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/StaffDashboard.tsx; src/views/shared/TodosView.tsx; src/views/student/StudentDashboard.tsx
+577,Shared views,Search assignments,,src/views/shared/GradesView.tsx; src/views/student/MyAssignmentsView.tsx
+578,Shared views,"Search by title, details, or assignee",,src/views/shared/TodosView.tsx
+579,Shared views,Search classwork,,src/views/shared/ClassworkView.tsx
+580,Shared views,Search conversations...,,src/views/shared/MessagesView.tsx
+581,Shared views,Search people,,src/views/shared/GradesView.tsx; src/views/shared/TodosView.tsx
+582,Shared views,Search student or assignment,,src/views/shared/SubmissionsView.tsx
+583,Shared views,"Search student, reason, or session",,src/views/shared/AbsenceNoticesView.tsx
+584,Shared views,Second Year students,,src/views/shared/MessagesView.tsx
+585,Shared views,Select Drive Files,,src/views/shared/tabs/MaterialsTab.tsx
+586,Shared views,Select files,,src/views/shared/classwork/SubjectDetailPage.tsx
+587,Shared views,Send,,src/views/admin/TuitionView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+588,Shared views,Send message,,src/views/shared/MessagesView.tsx
+589,Shared views,Session materials and staff notes are saved in Google Drive folders.,,src/views/shared/ClassDetailView.tsx
+590,Shared views,Session weeks,,src/views/shared/classwork/SubjectDetailPage.tsx
+591,Shared views,Share with your year group,,src/views/shared/AnnouncementsView.tsx
+592,Shared views,Shown with the returned grade.,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+593,Shared views,Staff and pinned,,src/views/shared/AnnouncementsView.tsx
+594,Shared views,Staff Notes,,src/views/shared/ClassDetailView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+595,Shared views,Staff only,,src/views/shared/AnnouncementsView.tsx
+596,Shared views,Status,,src/components/modals/EditModal/EditCourseForm.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/BooksView.tsx; src/views/admin/TuitionView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+597,Shared views,Stream settings,,src/views/shared/AnnouncementsView.tsx
+598,Shared views,Student access,,src/views/shared/AnnouncementsView.tsx
+599,Shared views,Student attachments,,src/views/shared/AnnouncementsView.tsx
+600,Shared views,Student Materials,,src/views/shared/classwork/SubjectDetailPage.tsx
+601,Shared views,"Student Materials are visible to students. Staff Notes stay private to teachers, admins, and translators.",,src/views/shared/classwork/SubjectDetailPage.tsx
+602,Shared views,Student permissions,,src/views/shared/AnnouncementsView.tsx
+603,Shared views,Student posts wait for review before appearing.,,src/views/shared/AnnouncementsView.tsx
+604,Shared views,Student Submissions,,src/views/shared/tabs/HomeworkTab.tsx
+605,Shared views,"Students have nothing more to do on some work, but staff review or final grading is not complete.",,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+606,Shared views,Subject level,,src/views/shared/classwork/SubjectDetailPage.tsx
+607,Shared views,Subject summary,,src/views/shared/classwork/SubjectDetailPage.tsx
+608,Shared views,SUBJECTS_PER_PAGE && (,,src/views/shared/ClassworkView.tsx
+609,Shared views,Submission preview,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+610,Shared views,Submit,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx; src/views/shared/tabs/HomeworkTab.tsx
+611,Shared views,Submit quick check,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+612,Shared views,Submitted,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/GradesView.tsx; src/views/shared/SubmissionsView.tsx; src/views/shared/tabs/HomeworkTab.tsx; src/views/student/MyAssignmentsView.tsx; src/views/student/MyCourseView.tsx
+613,Shared views,Submitted homework,,src/views/shared/GradesView.tsx
+614,Shared views,Submitted work waiting for staff review.,,src/views/shared/SubmissionsView.tsx
+615,Shared views,Switch tabs or create a new item.,,src/views/shared/TodosView.tsx
+616,Shared views,System,,src/views/shared/AnnouncementsView.tsx
+617,Shared views,Teacher Notes,,src/views/shared/tabs/StaffNotesTab.tsx
+618,Shared views,Teachers,,src/components/modals/CreateAnnouncementModal.tsx; src/hooks/useTodos.ts; src/views/admin/users/UsersHubView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/MessagesView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+619,Shared views,Text Notes,,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+620,Shared views,There are no assignments attached to this subject yet.,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+621,Shared views,Title (optional),,src/views/shared/tabs/MaterialsTab.tsx; src/views/shared/tabs/StaffNotesTab.tsx
+622,Shared views,Today,,src/views/shared/ClassDetailView.tsx; src/views/shared/TodosView.tsx
+623,Shared views,Tomorrow,,src/views/shared/TodosView.tsx
+624,Shared views,Total points,,src/views/shared/GradesView.tsx
+625,Shared views,"Track returned work, graded points, and graduation readiness separately.",,src/views/shared/GradesView.tsx
+626,Shared views,Translator Notes,,src/views/shared/tabs/StaffNotesTab.tsx
+627,Shared views,Trash,,src/views/shared/AnnouncementsView.tsx
+628,Shared views,Type,,src/views/admin/AttendanceView.tsx; src/views/shared/ClassworkView.tsx; src/views/shared/GradesView.tsx; src/views/shared/TodosView.tsx; src/views/student/MyMinistryInfoView.tsx
+629,Shared views,Upcoming,,src/views/admin/AdminDashboard.tsx; src/views/admin/CurriculumDateView.tsx; src/views/shared/ClassDetailView.tsx; src/views/shared/StaffDashboard.tsx; src/views/student/StudentDashboard.tsx; src/views/teacher/MyClassesView.tsx
+630,Shared views,Upcoming assignments,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/helpers.ts
+631,Shared views,Upload File,,src/views/shared/tabs/HomeworkTab.tsx
+632,Shared views,Upload subject materials,,src/views/shared/classwork/SubjectDetailPage.tsx
+633,Shared views,Upload to Drive,,src/views/shared/tabs/StaffNotesTab.tsx
+634,Shared views,upload-materials-title,,src/views/shared/classwork/SubjectDetailPage.tsx
+635,Shared views,Use weights when the method is weighted.,,src/views/shared/GradesView.tsx
+636,Shared views,View all,,src/views/shared/StaffDashboard.tsx; src/views/student/StudentDashboard.tsx
+637,Shared views,View attendance records,,src/views/shared/GradesView.tsx
+638,Shared views,View Submission,,src/views/shared/tabs/HomeworkTab.tsx
+639,Shared views,View submission,,src/views/shared/tabs/HomeworkTab.tsx
+640,Shared views,View your submission,,src/views/shared/tabs/HomeworkTab.tsx
+641,Shared views,Visible only to the student and assigned staff.,,src/views/shared/ClassworkView.tsx
+642,Shared views,Visible to students in this year group.,,src/views/shared/classwork/SubjectDetailPage.tsx
+643,Shared views,Weight %,,src/views/shared/GradesView.tsx
+644,Shared views,Weighted categories,,src/views/shared/GradesView.tsx
+645,Shared views,What needs to be done?,,src/views/shared/TodosView.tsx
+646,Shared views,Work,,src/views/shared/GradesView.tsx
+647,Shared views,Work list,,src/views/shared/GradesView.tsx
+648,Shared views,Work summary,,src/views/shared/GradesView.tsx
+649,Shared views,Write a message...,,src/views/shared/MessagesView.tsx
+650,Shared views,Write a private comment...,,src/views/shared/ClassworkView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+651,Shared views,Write your response...,,src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+652,Shared views,Year group,,src/views/admin/BooksView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/AnnouncementsView.tsx; src/views/shared/classwork/HomeworkAssignmentDetailPage.tsx
+653,Shared views,Your access,,src/views/shared/tabs/HomeworkTab.tsx
+654,Shared views,Your document has been linked. Click Submit when you are ready.,,src/views/shared/tabs/HomeworkTab.tsx
+655,Shared views,Your post will be sent to an administrator for review before it appears in Stream.,,src/views/shared/AnnouncementsView.tsx
+656,Shared views,Your sessions · next 7 days,,src/views/shared/StaffDashboard.tsx
+657,Admin views,"A compact history of homework status, grades, and submission dates.",,src/views/admin/AdminStudentDashboard.tsx
+658,Admin views,"A quick read on coverage, check-in rhythm, and who needs attention right now.",,src/views/admin/MentorshipHubView.tsx
+659,Admin views,Absence Notices,,src/views/admin/KnowledgeBaseView.tsx
+660,Admin views,Absent credit,,src/views/admin/AttendanceView.tsx
+661,Admin views,Academic,,src/views/admin/KnowledgeBaseView.tsx
+662,Admin views,Accepted by Brevo,,src/views/admin/KnowledgeBaseView.tsx
+663,Admin views,Access,,src/views/admin/users/UsersHubView.tsx
+664,Admin views,Access chips,,src/views/admin/KnowledgeBaseView.tsx
+665,Admin views,Access on platform,,src/views/admin/AdminStudentDashboard.tsx
+666,Admin views,Access review,,src/views/admin/AdminDashboard.tsx
+667,Admin views,Action,,src/views/admin/AttendanceView.tsx
+668,Admin views,Action queue,,src/views/admin/KnowledgeBaseView.tsx
+669,Admin views,Actions,,src/views/admin/CurriculumOverview.tsx; src/views/admin/users/UsersHubView.tsx
+670,Admin views,Actions:,,src/views/admin/AttendanceView.tsx
+671,Admin views,Activation,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/student/MyAttendanceView.tsx
+672,Admin views,Activation rule,,src/views/admin/AttendanceView.tsx
+673,Admin views,Activation Saturday,,src/components/layout/Sidebar.tsx; src/hooks/useAttendance.ts; src/utils/studentAttendanceBreakdown.ts; src/utils/studentCalendar.ts; src/views/admin/AttendanceView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/shared/AbsenceNoticesView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+674,Admin views,Activation Saturdays detected,,src/views/admin/AttendanceView.tsx
+675,Admin views,Active enrollment,,src/views/admin/AdminStudentDashboard.tsx
+676,Admin views,Active enrollments,,src/views/admin/users/UsersHubView.tsx
+677,Admin views,Active pairs,,src/views/admin/MentorshipAssignmentsPanel.tsx; src/views/admin/MentorshipHubView.tsx
+678,Admin views,Active student enrollments with mentor assignment per year group.,,src/views/admin/users/UsersHubView.tsx
+679,Admin views,Activity will appear here once mentors start logging.,,src/views/admin/MentorshipHubView.tsx
+680,Admin views,Add,,src/views/admin/TuitionView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+681,Admin views,Add a year group to start building the curriculum.,,src/views/admin/CurriculumOverview.tsx
+682,Admin views,Add Activation Saturday,,src/views/admin/planning/PlanningCalendarGrid.tsx
+683,Admin views,Add book,,src/views/admin/BooksView.tsx
+684,Admin views,Add Break,,src/views/admin/planning/PlanningCalendarGrid.tsx
+685,Admin views,Add installment,,src/views/admin/TuitionView.tsx
+686,Admin views,Add ministry team,,src/views/admin/AttendanceView.tsx
+687,Admin views,Add person,,src/views/admin/users/UsersHubView.tsx
+688,Admin views,Add reading assignment,,src/views/admin/BooksView.tsx
+689,Admin views,Add Session,,src/views/admin/CurriculumDateView.tsx; src/views/admin/CurriculumOverview.tsx
+690,Admin views,Add student,,src/views/admin/TuitionView.tsx
+691,Admin views,Add student to tuition,,src/views/admin/TuitionView.tsx
+692,Admin views,Add Subject,,src/views/admin/CurriculumOverview.tsx; src/views/admin/planning/AddPlanningSubjectModal.tsx
+693,Admin views,Add the shared Wednesday Well sessions for this school year. Remove a date when the school will not meet.,,src/views/admin/CurriculumPlanningView.tsx
+694,Admin views,Add to Plan,,src/views/admin/planning/AddPlanningSubjectModal.tsx
+695,Admin views,Add year group,,src/views/admin/CurriculumView.tsx
+696,Admin views,Admin,,src/views/admin/KnowledgeBaseView.tsx
+697,Admin views,Admin Dashboard,,src/views/admin/KnowledgeBaseView.tsx
+698,Admin views,Admin emails,,src/views/admin/InboxView.tsx
+699,Admin views,Admin override,,src/views/admin/AttendanceView.tsx
+700,Admin views,Admin-led communication,,src/views/admin/KnowledgeBaseView.tsx
+701,Admin views,Admin/student copy,,src/views/admin/KnowledgeBaseView.tsx
+702,Admin views,All active students,,src/views/admin/TuitionView.tsx
+703,Admin views,All assigned pairs are meeting in-person meeting expectations.,,src/views/admin/MentorshipFollowUpPanel.tsx
+704,Admin views,All categories,,src/views/admin/AdminStudentDashboard.tsx
+705,Admin views,All caught up for today,,src/views/admin/AdminDashboard.tsx; src/views/student/StudentDashboard.tsx
+706,Admin views,All emails,,src/views/admin/InboxView.tsx
+707,Admin views,All pairs,,src/views/admin/MentorshipFollowUpPanel.tsx
+708,Admin views,All statuses,,src/views/admin/AttendanceView.tsx; src/views/student/MyAssignmentsView.tsx
+709,Admin views,All teams,,src/views/admin/AttendanceView.tsx
+710,Admin views,All types,,src/views/admin/AttendanceView.tsx; src/views/student/MyAssignmentsView.tsx
+711,Admin views,All year groups,,src/views/admin/users/UsersHubView.tsx
+712,Admin views,All years,,src/views/admin/AttendanceView.tsx
+713,Admin views,Amount due,,src/views/admin/TuitionView.tsx
+714,Admin views,Amount received,,src/views/admin/TuitionView.tsx
+715,Admin views,Archive,,src/views/admin/KnowledgeBaseView.tsx
+716,Admin views,Assign mentor,,src/views/admin/MentorshipAssignmentsPanel.tsx
+717,Admin views,Assign students to lead prayer on Tuesday and Thursday. The two days can have different leaders.,,src/views/admin/AttendanceView.tsx
+718,Admin views,Assign students to ministry teams for a date range.,,src/views/admin/AttendanceView.tsx
+719,Admin views,Assigned,,src/views/admin/AttendanceView.tsx; src/views/admin/BooksView.tsx; src/views/admin/KnowledgeBaseView.tsx
+720,Admin views,assigned,,src/views/admin/BooksView.tsx
+721,Admin views,Assigned to multiple roles in this hour,,src/views/admin/planning/PlanningCalendarGrid.tsx
+722,Admin views,assignment.maxPoints) && (,,src/views/admin/BooksView.tsx
+723,Admin views,Assignments,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/MentorshipHubView.tsx; src/views/shared/ClassworkView.tsx; src/views/student/MyAssignmentsView.tsx
+724,Admin views,At risk,,src/views/admin/AttendanceView.tsx; src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipFollowUpPanel.tsx; src/views/admin/MentorshipHubView.tsx; src/views/student/MyMinistryInfoView.tsx
+725,Admin views,At-risk pairs and students without mentors.,,src/views/admin/MentorshipHubView.tsx
+726,Admin views,Attendance,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/StudentDashboard.tsx
+727,Admin views,Attendance duty,,src/views/admin/AdminStudentDashboard.tsx
+728,Admin views,Attendance gates,,src/views/admin/AdminStudentDashboard.tsx
+729,Admin views,Attendance history,,src/views/admin/AdminStudentDashboard.tsx
+730,Admin views,Attendance readiness,,src/views/admin/AdminStudentDashboard.tsx
+731,Admin views,Attendance Risk,,src/views/admin/AdminDashboard.tsx
+732,Admin views,Attendance risk,,src/views/admin/AdminDashboard.tsx
+733,Admin views,Attendance source,,src/views/admin/KnowledgeBaseView.tsx
+734,Admin views,Authors,,src/views/admin/BooksView.tsx
+735,Admin views,Average,,src/views/admin/AttendanceView.tsx
+736,Admin views,Average score,,src/views/admin/AttendanceView.tsx
+737,Admin views,Avg check-ins,,src/views/admin/MentorshipHubView.tsx
+738,Admin views,Avg health,,src/views/admin/AttendanceView.tsx
+739,Admin views,Avg score,,src/views/admin/AttendanceView.tsx
+740,Admin views,Back,,src/views/admin/AdminStudentDashboard.tsx
+741,Admin views,Back to people,,src/views/admin/AdminStudentDashboard.tsx
+742,Admin views,Bank transfer,,src/views/admin/TuitionView.tsx
+743,Admin views,Below req.,,src/views/admin/AttendanceView.tsx
+744,Admin views,Below rule,,src/views/admin/AttendanceView.tsx
+745,Admin views,Book,,src/views/admin/KnowledgeBaseView.tsx
+746,Admin views,Book title,,src/views/admin/BooksView.tsx
+747,Admin views,Books,,src/components/layout/Sidebar.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/BooksView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/student/StudentDashboard.tsx
+748,Admin views,Books & Reading,,src/views/admin/KnowledgeBaseView.tsx
+749,Admin views,Books and assignments,,src/views/admin/AdminStudentDashboard.tsx
+750,Admin views,Books and reading,,src/views/admin/AdminStudentDashboard.tsx
+751,Admin views,Books assigned to the student's active year group.,,src/views/admin/AdminStudentDashboard.tsx
+752,Admin views,Break,,src/views/admin/planning/PlanningCalendarGrid.tsx
+753,Admin views,Breaks,,src/views/admin/planning/PlanningCalendarGrid.tsx
+754,Admin views,Build the school-year prayer rotation from enrolled students in the selected year group types. Tuesday and Thursday use separate rotations.,,src/views/admin/AttendanceView.tsx
+755,Admin views,Bulgarian name,,src/views/admin/AttendanceView.tsx
+756,Admin views,Cadence,,src/views/admin/KnowledgeBaseView.tsx
+757,Admin views,Cadence and student care signals,,src/views/admin/AdminDashboard.tsx
+758,Admin views,Calendar,,src/views/admin/KnowledgeBaseView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+759,Admin views,Card,,src/views/admin/TuitionView.tsx
+760,Admin views,Careful with this,,src/views/admin/KnowledgeBaseView.tsx
+761,Admin views,Cash,,src/views/admin/TuitionView.tsx
+762,Admin views,Challenges:,,src/views/admin/AttendanceView.tsx
+763,Admin views,Change,,src/views/admin/MentorshipAssignmentsPanel.tsx
+764,Admin views,Check attendance,,src/views/admin/AdminDashboard.tsx
+765,Admin views,Check-in rules saved.,,src/views/admin/MentorshipCadencePanel.tsx
+766,Admin views,Choose an email,,src/views/admin/InboxView.tsx
+767,Admin views,Choose plan,,src/views/admin/TuitionView.tsx
+768,Admin views,Choose report date,,src/views/admin/AttendanceView.tsx
+769,Admin views,Choose student,,src/views/admin/AttendanceView.tsx
+770,Admin views,Choose student account,,src/views/admin/TuitionView.tsx
+771,Admin views,Class and The Well attendance keepers remain separate from ministry team leaders.,,src/views/admin/AttendanceView.tsx
+772,Admin views,Class and Well keeper assignments are managed from the on-duty schedule.,,src/views/admin/AdminStudentDashboard.tsx
+773,Admin views,Class and Well keeper assignments are managed separately.,,src/views/admin/AdminStudentDashboard.tsx
+774,Admin views,Class reminders,,src/views/admin/AttendanceView.tsx
+775,Admin views,Class resources,,src/views/admin/KnowledgeBaseView.tsx
+776,Admin views,Class rule,,src/views/admin/AttendanceView.tsx
+777,Admin views,Classes,,src/components/layout/Sidebar.tsx; src/hooks/useAttendance.ts; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/student/MyAttendanceView.tsx
+778,Admin views,Classes and sessions,,src/views/admin/AdminStudentDashboard.tsx
+779,Admin views,Close calendar details,,src/views/admin/AdminDashboard.tsx
+780,Admin views,Close metric explanation,,src/views/admin/AdminDashboard.tsx
+781,Admin views,Close open signals,,src/views/admin/AdminDashboard.tsx
+782,Admin views,Close results,,src/views/admin/BooksView.tsx
+783,Admin views,Close results and enter the book manually.,,src/views/admin/BooksView.tsx
+784,Admin views,Close review,,src/views/admin/BooksView.tsx
+785,Admin views,Close user details,,src/views/admin/users/UsersHubView.tsx
+786,Admin views,Collected,,src/views/admin/AdminDashboard.tsx; src/views/admin/TuitionView.tsx
+787,Admin views,Common admin tasks,,src/views/admin/KnowledgeBaseView.tsx
+788,Admin views,Common administrator moves,,src/views/admin/AdminDashboard.tsx
+789,Admin views,Communications Center,,src/views/admin/AdminDashboard.tsx
+790,Admin views,Completed reading,,src/views/admin/KnowledgeBaseView.tsx
+791,Admin views,Concern logs,,src/views/admin/AdminDashboard.tsx
+792,Admin views,Configurable setting,,src/views/admin/KnowledgeBaseView.tsx
+793,Admin views,Conflict,,src/views/admin/CurriculumDateView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+794,Admin views,Contact,,src/views/admin/MentorshipFollowUpPanel.tsx
+795,Admin views,"Copies of portal emails sent to your admin account, so important notices are still visible inside the platform.",,src/views/admin/InboxView.tsx
+796,Admin views,Could not load inbox.,,src/views/admin/InboxView.tsx
+797,Admin views,Could not save team. Please try again.,,src/views/admin/AttendanceView.tsx
+798,Admin views,"Counts active student enrollments across the school. The progress bar shows mentor coverage, so a lower bar means more students still need mentor assignment.",,src/views/admin/AdminDashboard.tsx
+799,Admin views,Counts weekly duty transfer requests still waiting for an administrator decision. The progress bar reuses attendance health as a nearby operational signal.,,src/views/admin/AdminDashboard.tsx
+800,Admin views,Course,,src/views/admin/planning/AddPlanningSubjectModal.tsx
+801,Admin views,Coverage,,src/views/admin/MentorshipHubView.tsx
+802,Admin views,Create plan,,src/views/admin/TuitionView.tsx
+803,Admin views,"Create plans to set currency, tuition amount, and installment dates. The active plan becomes the default for new student accounts.",,src/views/admin/TuitionView.tsx
+804,Admin views,Create session,,src/views/admin/AttendanceView.tsx
+805,Admin views,Creates weekly attendance keeper rows for the selected year group.,,src/views/admin/AttendanceView.tsx
+806,Admin views,credits per month,,src/views/admin/AttendanceView.tsx
+807,Admin views,Critical,,src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipHubView.tsx
+808,Admin views,Critical threshold,,src/views/admin/MentorshipCadencePanel.tsx
+809,Admin views,Curriculum,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/CurriculumView.tsx; src/views/admin/KnowledgeBaseView.tsx
+810,Admin views,Dashboard,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/student/StudentDashboard.tsx
+811,Admin views,Dashboard metric,,src/views/admin/AdminDashboard.tsx
+812,Admin views,Date,,src/components/modals/EditModal/EditClassForm.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+813,Admin views,Date filter,,src/views/admin/CurriculumDateView.tsx
+814,Admin views,"Dated class, Activation, and ministry records.",,src/views/admin/AdminStudentDashboard.tsx
+815,Admin views,Day,,src/views/admin/planning/PlanningCalendarGrid.tsx
+816,Admin views,Deadline,,src/views/admin/KnowledgeBaseView.tsx
+817,Admin views,Defaults,,src/views/admin/TuitionView.tsx
+818,Admin views,Delete person,,src/views/admin/users/UsersHubView.tsx
+819,Admin views,Delete session,,src/views/admin/CurriculumDateView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+820,Admin views,Delete subject,,src/views/admin/CurriculumOverview.tsx
+821,Admin views,Delete year group,,src/views/admin/CurriculumOverview.tsx
+822,Admin views,Delivered,,src/views/admin/InboxView.tsx; src/views/admin/KnowledgeBaseView.tsx
+823,Admin views,Delivery details,,src/views/admin/InboxView.tsx
+824,Admin views,Detection,,src/views/admin/AttendanceView.tsx
+825,Admin views,Discard,,src/views/admin/MentorshipCadencePanel.tsx
+826,Admin views,Discard Changes,,src/views/admin/CurriculumPlanningView.tsx
+827,Admin views,Display and reminders,,src/views/admin/AttendanceView.tsx
+828,Admin views,Done work,,src/views/admin/KnowledgeBaseView.tsx
+829,Admin views,Drag to move both sessions of this day,,src/views/admin/planning/PlanningCalendarGrid.tsx
+830,Admin views,Drag to reorder this session,,src/views/admin/planning/PlanningCalendarGrid.tsx
+831,Admin views,Drive,,src/views/admin/AdminDashboard.tsx
+832,Admin views,Drive resource,,src/views/admin/KnowledgeBaseView.tsx
+833,Admin views,Drop here,,src/views/admin/planning/PlanningCalendarGrid.tsx
+834,Admin views,Due date,,src/views/admin/TuitionView.tsx
+835,Admin views,Due soon,,src/views/admin/AdminDashboard.tsx
+836,Admin views,Duty & service,,src/views/admin/AdminStudentDashboard.tsx
+837,Admin views,Duty and service,,src/views/admin/AdminStudentDashboard.tsx
+838,Admin views,Duty Transfers,,src/views/admin/AdminDashboard.tsx
+839,Admin views,Duty transfers,,src/views/admin/AdminDashboard.tsx
+840,Admin views,e.g. Summer break,,src/views/admin/planning/PlanningCalendarGrid.tsx
+841,Admin views,"Each email will include the student name, remaining amount, and tuition reminder text. Students who are fully paid will not receive this reminder.",,src/views/admin/TuitionView.tsx
+842,Admin views,"Each gate is checked separately, so one weak area is easy to spot.",,src/views/admin/AdminStudentDashboard.tsx
+843,Admin views,Edit,,src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/admin/users/UsersHubView.tsx
+844,Admin views,Edit check-in rules,,src/views/admin/MentorshipHubView.tsx
+845,Admin views,Edit meeting expectations,,src/views/admin/MentorshipHubView.tsx
+846,Admin views,Edit prayer leaders,,src/views/admin/AttendanceView.tsx
+847,Admin views,"Edit profile, roles, year groups, mentorship, and responsibility assignments from the edit view.",,src/views/admin/users/UsersHubView.tsx
+848,Admin views,Edit student,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/users/UsersHubView.tsx
+849,Admin views,Edit team,,src/views/admin/AttendanceView.tsx
+850,Admin views,Edit Week Keepers,,src/views/admin/AttendanceView.tsx
+851,Admin views,Edit year group,,src/views/admin/CurriculumOverview.tsx
+852,Admin views,Email copy,,src/views/admin/KnowledgeBaseView.tsx
+853,Admin views,Enabled,,src/views/admin/AttendanceView.tsx
+854,Admin views,End date,,src/views/admin/AttendanceView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+855,Admin views,End month,,src/views/admin/AttendanceView.tsx
+856,Admin views,Enrolled,,src/views/admin/users/UsersHubView.tsx
+857,Admin views,Enrollment,,src/views/admin/AdminStudentDashboard.tsx
+858,Admin views,EUR,,src/views/admin/TuitionView.tsx
+859,Admin views,Everyone is assigned and no pairs are at risk.,,src/views/admin/MentorshipHubView.tsx
+860,Admin views,Expected,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/TuitionView.tsx
+861,Admin views,Expected every,,src/views/admin/MentorshipHubView.tsx
+862,Admin views,Expected gap,,src/views/admin/MentorshipHubView.tsx
+863,Admin views,Expected interval,,src/views/admin/MentorshipCadencePanel.tsx
+864,Admin views,Expired,,src/views/admin/CurriculumArchiveView.tsx
+865,Admin views,Failed,,src/views/admin/InboxView.tsx
+866,Admin views,Failing,,src/views/admin/AttendanceView.tsx
+867,Admin views,Fallback,,src/views/admin/AttendanceView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+868,Admin views,Fallback percent,,src/views/admin/AttendanceView.tsx
+869,Admin views,Fallback risk,,src/views/admin/AttendanceView.tsx
+870,Admin views,"Filter and sort students by team, monthly health, service type, and rotation.",,src/views/admin/AttendanceView.tsx
+871,Admin views,"Filter by status, spot overdue contact, and act on pairs that need support.",,src/views/admin/MentorshipHubView.tsx
+872,Admin views,First & Second Years,,src/views/admin/AdminDashboard.tsx
+873,Admin views,First installment,,src/hooks/useTuition.ts; src/views/admin/TuitionView.tsx
+874,Admin views,First year,,src/views/admin/AttendanceView.tsx
+875,Admin views,FIRST YEAR,,src/views/admin/planning/PlanningCalendarGrid.tsx
+876,Admin views,First Year Keeper,,src/views/admin/AttendanceView.tsx
+877,Admin views,First year rotation,,src/views/admin/AttendanceView.tsx
+878,Admin views,First Year x,,src/views/admin/TuitionView.tsx
+879,Admin views,Follow-up,,src/components/layout/Sidebar.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/MentorshipHubView.tsx
+880,Admin views,Follow-up health,,src/views/admin/MentorshipHubView.tsx
+881,Admin views,Follow-up status is based on,,src/views/admin/MentorshipCadencePanel.tsx
+882,Admin views,Follow-up status is based on face-to-face meetings. Digital check-ins are optional and not tracked here.,,src/views/admin/MentorshipHubView.tsx
+883,Admin views,"Four independent gates: Classes, The Well, Ministry, and Activation Saturday.",,src/views/admin/AttendanceView.tsx
+884,Admin views,Frequency,,src/views/admin/AttendanceView.tsx
+885,Admin views,Fri,,src/views/admin/AttendanceView.tsx
+886,Admin views,Full access,,src/views/admin/KnowledgeBaseView.tsx
+887,Admin views,Future absence,,src/views/admin/KnowledgeBaseView.tsx
+888,Admin views,Future publish,,src/views/admin/KnowledgeBaseView.tsx
+889,Admin views,Gate detail,,src/views/admin/AttendanceView.tsx
+890,Admin views,General:,,src/views/admin/AttendanceView.tsx
+891,Admin views,Generate,,src/views/admin/AttendanceView.tsx
+892,Admin views,Generate schedule,,src/views/admin/AttendanceView.tsx
+893,Admin views,Generate school year,,src/views/admin/AttendanceView.tsx
+894,Admin views,Generate this year group schedule to fill the slot.,,src/views/admin/AttendanceView.tsx
+895,Admin views,Global late rule,,src/views/admin/AttendanceView.tsx
+896,Admin views,Global scoring,,src/views/admin/AttendanceView.tsx
+897,Admin views,Google document,,src/views/admin/KnowledgeBaseView.tsx
+898,Admin views,Google Drive & Docs,,src/views/admin/KnowledgeBaseView.tsx
+899,Admin views,Google sign-ups that still need roles and year group assignment.,,src/views/admin/users/UsersHubView.tsx
+900,Admin views,Grade submitted work,,src/views/admin/AdminDashboard.tsx
+901,Admin views,Graduation health,,src/views/admin/KnowledgeBaseView.tsx
+902,Admin views,Health,,src/views/admin/AttendanceView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx
+903,Admin views,Homework grading,,src/views/admin/AdminDashboard.tsx
+904,Admin views,Homework Operations,,src/views/admin/AdminDashboard.tsx
+905,Admin views,Homework record,,src/views/admin/AdminStudentDashboard.tsx
+906,Admin views,Homework submitted,,src/views/admin/AdminStudentDashboard.tsx
+907,Admin views,How check-in rules work,,src/views/admin/MentorshipCadencePanel.tsx
+908,Admin views,I / II badges,,src/views/admin/KnowledgeBaseView.tsx
+909,Admin views,Ideal days between in-person meetings,,src/views/admin/MentorshipCadencePanel.tsx
+910,Admin views,In-person follow-up,,src/views/admin/KnowledgeBaseView.tsx
+911,Admin views,In-person meeting rules,,src/views/admin/MentorshipHubView.tsx
+912,Admin views,In-person meetings,,src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipHubView.tsx
+913,Admin views,in-person meetings,,src/views/admin/MentorshipFollowUpPanel.tsx
+914,Admin views,in-person meetings only,,src/views/admin/MentorshipCadencePanel.tsx
+915,Admin views,Inactive or expired year groups will appear here.,,src/views/admin/CurriculumArchiveView.tsx
+916,Admin views,Inactive years,,src/views/admin/KnowledgeBaseView.tsx
+917,Admin views,Inbox,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/InboxView.tsx; src/views/admin/KnowledgeBaseView.tsx
+918,Admin views,Inbox copy,,src/views/admin/KnowledgeBaseView.tsx
+919,Admin views,Included,,src/views/admin/AttendanceView.tsx
+920,Admin views,Incomplete,,src/views/admin/CurriculumDateView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+921,Admin views,Individual students are hidden because selected year groups already include them.,,src/views/admin/TuitionView.tsx
+922,Admin views,Installment amount,,src/views/admin/TuitionView.tsx
+923,Admin views,Installment title,,src/views/admin/TuitionView.tsx
+924,Admin views,Installments,,src/components/layout/Sidebar.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/TuitionView.tsx
+925,Admin views,Internal code,,src/views/admin/BooksView.tsx
+926,Admin views,ISBN 13,,src/views/admin/BooksView.tsx
+927,Admin views,Job status,,src/views/admin/InboxView.tsx
+928,Admin views,Joint,,src/views/admin/AdminDashboard.tsx
+929,Admin views,Joint counts once,,src/views/admin/AttendanceView.tsx
+930,Admin views,Knowledgebase,,src/views/admin/KnowledgeBaseView.tsx
+931,Admin views,Label (optional),,src/views/admin/planning/PlanningCalendarGrid.tsx
+932,Admin views,Lagging,,src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipFollowUpPanel.tsx; src/views/admin/MentorshipHubView.tsx
+933,Admin views,Language,,src/views/admin/users/UsersHubView.tsx
+934,Admin views,Late credit,,src/views/admin/AttendanceView.tsx
+935,Admin views,Latest mentor activity across all pairs.,,src/views/admin/MentorshipHubView.tsx
+936,Admin views,Leader,,src/views/admin/KnowledgeBaseView.tsx
+937,Admin views,Leaders mark,,src/views/admin/AttendanceView.tsx
+938,Admin views,Leading,,src/views/admin/users/UsersHubView.tsx
+939,Admin views,Leading ministries,,src/views/admin/users/UsersHubView.tsx
+940,Admin views,Link saved.,,src/views/admin/AttendanceView.tsx
+941,Admin views,Links & check-ins,,src/views/admin/KnowledgeBaseView.tsx
+942,Admin views,Live,,src/views/admin/AttendanceView.tsx
+943,Admin views,Live mentorship data,,src/views/admin/MentorshipHubView.tsx
+944,Admin views,Loading homework...,,src/views/admin/AdminStudentDashboard.tsx; src/views/student/StudentDashboard.tsx
+945,Admin views,Loading inbox...,,src/views/admin/InboxView.tsx
+946,Admin views,Loading tuition...,,src/views/admin/TuitionView.tsx
+947,Admin views,Loading upcoming items...,,src/views/admin/AdminDashboard.tsx
+948,Admin views,Log check-in,,src/views/admin/MentorshipAssignmentsPanel.tsx
+949,Admin views,Log meeting,,src/views/admin/MentorshipFollowUpPanel.tsx
+950,Admin views,Lookup a book or enter it manually.,,src/views/admin/BooksView.tsx
+951,Admin views,Manage Breaks,,src/views/admin/planning/PlanningCalendarGrid.tsx
+952,Admin views,"Manage ministry teams, rotations, sessions, and service attendance.",,src/views/admin/AttendanceView.tsx
+953,Admin views,Manage pairs & log check-ins,,src/views/admin/MentorshipHubView.tsx
+954,Admin views,Manage Rotations,,src/views/admin/AttendanceView.tsx
+955,Admin views,Manual,,src/views/admin/AttendanceView.tsx
+956,Admin views,"Match students with mentors, review history, and log check-ins in one place.",,src/views/admin/MentorshipHubView.tsx
+957,Admin views,Max lost credits,,src/views/admin/AttendanceView.tsx
+958,Admin views,maximum lost credits,,src/views/admin/AttendanceView.tsx
+959,Admin views,Meeting rule,,src/views/admin/AttendanceView.tsx
+960,Admin views,Meetings period,,src/views/admin/KnowledgeBaseView.tsx
+961,Admin views,Mentee,,src/views/admin/users/UsersHubView.tsx
+962,Admin views,Mentees,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/users/UsersHubView.tsx
+963,Admin views,Mentor,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/MentorshipAssignmentsPanel.tsx; src/views/admin/users/UsersHubView.tsx
+964,Admin views,"Mentor connection, mentees, and recent check-ins.",,src/views/admin/AdminStudentDashboard.tsx
+965,Admin views,Mentor coverage,,src/views/admin/MentorshipHubView.tsx
+966,Admin views,Mentoring,,src/views/admin/users/UsersHubView.tsx
+967,Admin views,Mentors,,src/hooks/useTodos.ts; src/views/admin/AdminDashboard.tsx; src/views/admin/users/UsersHubView.tsx
+968,Admin views,Mentorship,,src/components/layout/Sidebar.tsx; src/components/modals/EditModal/EditUserForm.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx
+969,Admin views,Mentorship Check-ins,,src/views/admin/KnowledgeBaseView.tsx
+970,Admin views,Mentorship Follow-Up,,src/views/admin/AdminDashboard.tsx
+971,Admin views,Message,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx
+972,Admin views,Messages,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/MessagesView.tsx; src/views/student/StudentDashboard.tsx
+973,Admin views,metric-insight-title,,src/views/admin/AdminDashboard.tsx
+974,Admin views,Ministry,,src/components/layout/Sidebar.tsx; src/components/student/StudentMonthCalendar.tsx; src/hooks/useAttendance.ts; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/student/MyAttendanceView.tsx; src/views/student/MyMinistryInfoView.tsx
+975,Admin views,Ministry reminders,,src/views/admin/AttendanceView.tsx
+976,Admin views,Ministry Reports,,src/views/admin/KnowledgeBaseView.tsx
+977,Admin views,Ministry rotation,,src/views/admin/AttendanceView.tsx
+978,Admin views,"Ministry rotation, attendance duty, and platform service roles.",,src/views/admin/AdminStudentDashboard.tsx
+979,Admin views,Ministry team,,src/views/admin/AdminStudentDashboard.tsx
+980,Admin views,Ministry teams,,src/views/admin/AttendanceView.tsx
+981,Admin views,Missing,,src/views/admin/AttendanceView.tsx
+982,Admin views,Missing records,,src/views/admin/AttendanceView.tsx
+983,Admin views,Mon,,src/views/admin/AttendanceView.tsx
+984,Admin views,Monitor at-risk students,,src/views/admin/MentorshipHubView.tsx
+985,Admin views,Month,,src/views/admin/AttendanceView.tsx; src/views/admin/KnowledgeBaseView.tsx
+986,Admin views,Month Calendar,,src/views/admin/AdminDashboard.tsx; src/views/student/StudentDashboard.tsx
+987,Admin views,Month mode uses the first and last day of the selected months.,,src/views/admin/AttendanceView.tsx
+988,Admin views,Month signals,,src/views/admin/KnowledgeBaseView.tsx
+989,Admin views,month(s) tracked,,src/views/admin/AttendanceView.tsx
+990,Admin views,Monthly,,src/views/admin/AttendanceView.tsx
+991,Admin views,Monthly credits,,src/views/admin/AttendanceView.tsx
+992,Admin views,"Monthly Well credits are official, with yearly fallback progress shown separately.",,src/views/admin/AttendanceView.tsx
+993,Admin views,Move both sessions,,src/views/admin/planning/PlanningCalendarGrid.tsx
+994,Admin views,Move this session,,src/views/admin/planning/PlanningCalendarGrid.tsx
+995,Admin views,Move tools,,src/views/admin/planning/PlanningCalendarGrid.tsx
+996,Admin views,Needs mentor,,src/views/admin/MentorshipAssignmentsPanel.tsx; src/views/admin/MentorshipHubView.tsx
+997,Admin views,Needs payment,,src/views/admin/KnowledgeBaseView.tsx
+998,Admin views,New,,src/views/admin/planning/SubjectLibraryPanel.tsx
+999,Admin views,New plan,,src/views/admin/TuitionView.tsx
+1000,Admin views,New post,,src/views/admin/AdminDashboard.tsx
+1001,Admin views,New School Year,,src/views/admin/planning/SchoolYearSelector.tsx
+1002,Admin views,New tuition plan,,src/views/admin/TuitionView.tsx
+1003,Admin views,Next 7 days preview,,src/views/admin/AdminDashboard.tsx
+1004,Admin views,Next installment,,src/views/admin/TuitionView.tsx
+1005,Admin views,Next signal,,src/views/admin/AdminDashboard.tsx
+1006,Admin views,Next weeks,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1007,Admin views,No active year group,,src/views/admin/AdminStudentDashboard.tsx; src/views/teamLeader/MinistryReportView.tsx
+1008,Admin views,No active year groups.,,src/views/admin/CurriculumOverview.tsx
+1009,Admin views,No administrators or team leaders are available.,,src/views/admin/AttendanceView.tsx
+1010,Admin views,No archived courses.,,src/views/admin/CurriculumArchiveView.tsx
+1011,Admin views,No attendance records match these filters.,,src/views/admin/AdminStudentDashboard.tsx
+1012,Admin views,No attendance summary is available for this student yet.,,src/views/admin/AdminStudentDashboard.tsx
+1013,Admin views,No books found.,,src/views/admin/BooksView.tsx
+1014,Admin views,No breaks defined yet.,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1015,Admin views,No check-ins recorded for this pair yet.,,src/views/admin/MentorshipAssignmentsPanel.tsx
+1016,Admin views,No check-ins yet,,src/views/admin/MentorshipHubView.tsx; src/views/mentor/MentorDashboard.tsx
+1017,Admin views,No classes or sessions found for this student yet.,,src/views/admin/AdminStudentDashboard.tsx
+1018,Admin views,No date,,src/views/admin/CurriculumOverview.tsx
+1019,Admin views,No dates yet. Add a date to start planning.,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1020,Admin views,No duty schedule yet.,,src/views/admin/AttendanceView.tsx
+1021,Admin views,No emails here,,src/views/admin/InboxView.tsx
+1022,Admin views,No enrollments found.,,src/views/admin/users/UsersHubView.tsx
+1023,Admin views,No first year duty slot exists for this week.,,src/views/admin/AttendanceView.tsx
+1024,Admin views,No homework submissions found yet.,,src/views/admin/AdminStudentDashboard.tsx
+1025,Admin views,No installments are set for this plan.,,src/views/admin/AdminStudentDashboard.tsx
+1026,Admin views,No installments configured yet.,,src/views/admin/TuitionView.tsx
+1027,Admin views,No mentor,,src/views/admin/users/UsersHubView.tsx
+1028,Admin views,No mentorship logs yet.,,src/views/admin/AdminStudentDashboard.tsx
+1029,Admin views,No message body was stored for this email.,,src/views/admin/InboxView.tsx
+1030,Admin views,No payments recorded yet.,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/TuitionView.tsx
+1031,Admin views,No pending people - everyone has been assigned roles.,,src/views/admin/users/UsersHubView.tsx
+1032,Admin views,No people match your filters.,,src/views/admin/users/UsersHubView.tsx
+1033,Admin views,No platform roles,,src/views/admin/AdminStudentDashboard.tsx
+1034,Admin views,No prayer schedule yet.,,src/views/admin/AttendanceView.tsx
+1035,Admin views,No reading assignments are attached to this student's active year group yet.,,src/views/admin/AdminStudentDashboard.tsx
+1036,Admin views,No reading assignments yet.,,src/views/admin/BooksView.tsx
+1037,Admin views,No recent check-in,,src/views/admin/AdminDashboard.tsx
+1038,Admin views,No reminders queued yet.,,src/views/admin/TuitionView.tsx
+1039,Admin views,No reminders recorded yet.,,src/views/admin/AdminStudentDashboard.tsx
+1040,Admin views,No responsibilities,,src/views/admin/users/UsersHubView.tsx
+1041,Admin views,No roles,,src/views/admin/users/usersShared.tsx
+1042,Admin views,No rotations match this session yet.,,src/views/admin/AttendanceView.tsx
+1043,Admin views,No school years yet,,src/views/admin/planning/SchoolYearSelector.tsx
+1044,Admin views,No second year duty slot exists for this week.,,src/views/admin/AttendanceView.tsx
+1045,Admin views,No sessions scheduled yet.,,src/views/admin/CurriculumDateView.tsx
+1046,Admin views,No sessions yet.,,src/views/admin/CurriculumOverview.tsx
+1047,Admin views,No sessions.,,src/views/admin/CurriculumArchiveView.tsx
+1048,Admin views,No setup blockers found.,,src/views/admin/AdminDashboard.tsx
+1049,Admin views,No staff found.,,src/views/admin/users/UsersHubView.tsx
+1050,Admin views,No student selected.,,src/views/admin/AdminStudentDashboard.tsx
+1051,Admin views,No students are currently below threshold.,,src/views/admin/AdminDashboard.tsx
+1052,Admin views,No students assigned for this team.,,src/views/admin/AttendanceView.tsx
+1053,Admin views,No students match the current ministry filters.,,src/views/admin/AttendanceView.tsx
+1054,Admin views,No students to show.,,src/views/admin/AttendanceView.tsx
+1055,Admin views,No subjects scheduled yet. Type a subject name in the grid to add one.,,src/views/admin/planning/SubjectLibraryPanel.tsx
+1056,Admin views,No subjects yet.,,src/views/admin/CurriculumOverview.tsx
+1057,Admin views,No subjects.,,src/views/admin/CurriculumArchiveView.tsx
+1058,Admin views,No submission,,src/views/admin/BooksView.tsx
+1059,Admin views,No topics match that search.,,src/views/admin/KnowledgeBaseView.tsx
+1060,Admin views,No tuition accounts yet.,,src/views/admin/TuitionView.tsx
+1061,Admin views,No Well sessions have been added for this school year yet.,,src/views/admin/CurriculumPlanningView.tsx
+1062,Admin views,Non-Sunday,,src/views/admin/AttendanceView.tsx
+1063,Admin views,None,,src/views/admin/AttendanceView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/shared/AnnouncementsView.tsx
+1064,Admin views,None yet,,src/views/admin/MentorshipAssignmentsPanel.tsx
+1065,Admin views,Not added,,src/views/admin/users/UsersHubView.tsx
+1066,Admin views,Not assigned,,src/views/admin/users/UsersHubView.tsx
+1067,Admin views,Not tracked,,src/views/admin/AttendanceView.tsx
+1068,Admin views,Nothing is scheduled in the next 7 days.,,src/views/admin/AdminDashboard.tsx
+1069,Admin views,Nothing scheduled.,,src/views/admin/AdminDashboard.tsx
+1070,Admin views,Notice,,src/views/admin/KnowledgeBaseView.tsx
+1071,Admin views,Now,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1072,Admin views,of yearly Well sessions,,src/views/admin/AttendanceView.tsx
+1073,Admin views,Official monthly rule,,src/views/admin/AttendanceView.tsx
+1074,Admin views,On Duty,,src/views/admin/AdminDashboard.tsx; src/views/student/DutyMarkingView.tsx
+1075,Admin views,On duty,,src/views/admin/AdminStudentDashboard.tsx
+1076,Admin views,On duty schedule,,src/views/admin/AttendanceView.tsx
+1077,Admin views,On track,,src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipFollowUpPanel.tsx; src/views/admin/MentorshipHubView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx
+1078,Admin views,On-duty schedule,,src/views/admin/AdminStudentDashboard.tsx
+1079,Admin views,Online,,src/views/admin/AttendanceView.tsx; src/views/admin/users/usersShared.tsx; src/views/student/DutyMarkingView.tsx
+1080,Admin views,Online session link,,src/views/admin/AttendanceView.tsx
+1081,Admin views,Online student — joins sessions remotely,,src/views/admin/AttendanceView.tsx; src/views/admin/users/usersShared.tsx; src/views/student/DutyMarkingView.tsx
+1082,Admin views,Online students,,src/views/admin/AttendanceView.tsx
+1083,Admin views,onlineStudentIds.has(studentId) ? (,,src/views/admin/AttendanceView.tsx
+1084,Admin views,Open attendance,,src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+1085,Admin views,Open books,,src/views/admin/AdminStudentDashboard.tsx
+1086,Admin views,Open curriculum,,src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx
+1087,Admin views,Open duty transfers,,src/views/admin/AdminDashboard.tsx
+1088,Admin views,"Open each account, assign roles, and enroll students in a year group before they can use the app.",,src/views/admin/users/UsersHubView.tsx
+1089,Admin views,Open link,,src/views/admin/BooksView.tsx; src/views/student/MyBooksView.tsx
+1090,Admin views,Open mentorship,,src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx
+1091,Admin views,Open next steps,,src/views/admin/AdminDashboard.tsx
+1092,Admin views,Open Signals,,src/views/admin/AdminDashboard.tsx
+1093,Admin views,Open slots,,src/views/admin/AttendanceView.tsx
+1094,Admin views,Open student dashboard,,src/views/admin/users/UsersHubView.tsx
+1095,Admin views,Open subject,,src/views/admin/CurriculumDateView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/shared/ClassworkView.tsx
+1096,Admin views,Open submissions,,src/views/admin/AdminStudentDashboard.tsx
+1097,Admin views,Open the board to plan ahead.,,src/views/admin/AdminDashboard.tsx; src/views/student/StudentDashboard.tsx
+1098,Admin views,Open this week,,src/views/admin/AttendanceView.tsx
+1099,Admin views,Open tuition,,src/views/admin/AdminStudentDashboard.tsx
+1100,Admin views,open-signals-title,,src/views/admin/AdminDashboard.tsx
+1101,Admin views,Optional feedback for the student,,src/views/admin/BooksView.tsx
+1102,Admin views,Optional points,,src/views/admin/BooksView.tsx
+1103,Admin views,Or paste cover image URL,,src/views/admin/BooksView.tsx
+1104,Admin views,Other,,src/views/admin/TuitionView.tsx
+1105,Admin views,Outstanding,,src/views/admin/KnowledgeBaseView.tsx
+1106,Admin views,Outstanding balances and payment progress.,,src/views/admin/TuitionView.tsx
+1107,Admin views,Over limit,,src/views/admin/AttendanceView.tsx
+1108,Admin views,Overall,,src/views/admin/AdminStudentDashboard.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+1109,Admin views,Overdue,,src/views/admin/AdminDashboard.tsx; src/views/admin/TuitionView.tsx; src/views/shared/TodosView.tsx
+1110,Admin views,Overview,,src/components/layout/Sidebar.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/MentorshipHubView.tsx
+1111,Admin views,Paid,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/TuitionView.tsx
+1112,Admin views,Pairs overdue on in-person meetings.,,src/views/admin/MentorshipFollowUpPanel.tsx
+1113,Admin views,Pass/fail gates,,src/views/admin/KnowledgeBaseView.tsx
+1114,Admin views,Passing,,src/views/admin/AttendanceView.tsx
+1115,Admin views,Passing gates,,src/views/admin/AttendanceView.tsx
+1116,Admin views,Payment,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx
+1117,Admin views,Payment amount,,src/views/admin/TuitionView.tsx
+1118,Admin views,Payment date,,src/views/admin/TuitionView.tsx
+1119,Admin views,Payment history,,src/views/admin/AdminStudentDashboard.tsx
+1120,Admin views,Payments received,,src/views/admin/TuitionView.tsx
+1121,Admin views,Pending,,src/views/admin/InboxView.tsx; src/views/admin/users/UsersHubView.tsx
+1122,Admin views,Pending access,,src/components/layout/Sidebar.tsx; src/views/admin/users/UsersHubView.tsx; src/views/admin/users/usersShared.tsx
+1123,Admin views,Pending attendance corrections,,src/views/admin/AttendanceView.tsx
+1124,Admin views,Pending transfers,,src/views/admin/AttendanceView.tsx
+1125,Admin views,People,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/users/UsersHubView.tsx
+1126,Admin views,People or groups,,src/views/admin/KnowledgeBaseView.tsx
+1127,Admin views,Period months,,src/views/admin/AttendanceView.tsx
+1128,Admin views,Person,,src/views/admin/BooksView.tsx
+1129,Admin views,Pinned posts,,src/views/admin/AdminDashboard.tsx
+1130,Admin views,Pinned school context and unread conversations,,src/views/admin/AdminDashboard.tsx
+1131,Admin views,Plan,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/TuitionView.tsx
+1132,Admin views,Plan curriculum,,src/views/admin/AdminDashboard.tsx
+1133,Admin views,Plan name,,src/views/admin/TuitionView.tsx
+1134,Admin views,Planned sessions,,src/views/admin/AttendanceView.tsx
+1135,Admin views,Planning,,src/components/layout/Sidebar.tsx; src/views/admin/CurriculumPlanningView.tsx; src/views/admin/KnowledgeBaseView.tsx
+1136,Admin views,Plans,,src/views/admin/TuitionView.tsx
+1137,Admin views,Platform roles,,src/views/admin/AdminStudentDashboard.tsx
+1138,Admin views,Points & feedback,,src/views/admin/KnowledgeBaseView.tsx
+1139,Admin views,Portal copy,,src/views/admin/KnowledgeBaseView.tsx
+1140,Admin views,Portal email copies sent to you will appear here.,,src/views/admin/InboxView.tsx
+1141,Admin views,Portal update,,src/views/admin/KnowledgeBaseView.tsx
+1142,Admin views,Post to Stream,,src/views/admin/AdminDashboard.tsx
+1143,Admin views,Prayer schedule,,src/views/admin/AttendanceView.tsx
+1144,Admin views,Present credit,,src/views/admin/AttendanceView.tsx
+1145,Admin views,Previous signal,,src/views/admin/AdminDashboard.tsx
+1146,Admin views,Previous weeks,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1147,Admin views,Primary grouping,,src/views/admin/KnowledgeBaseView.tsx
+1148,Admin views,Priority follow-up,,src/views/admin/MentorshipFollowUpPanel.tsx
+1149,Admin views,Private,,src/views/admin/KnowledgeBaseView.tsx
+1150,Admin views,Processed,,src/views/admin/InboxView.tsx
+1151,Admin views,Profiles that signed in but do not yet have an assigned school role.,,src/views/admin/AdminDashboard.tsx
+1152,Admin views,Provider,,src/views/admin/InboxView.tsx
+1153,Admin views,Provider ID,,src/views/admin/InboxView.tsx
+1154,Admin views,Q1–Q9 answers,,src/views/admin/KnowledgeBaseView.tsx
+1155,Admin views,Questionnaire,,src/views/admin/KnowledgeBaseView.tsx
+1156,Admin views,Queued email,,src/views/admin/KnowledgeBaseView.tsx
+1157,Admin views,Quick Actions,,src/views/admin/AdminDashboard.tsx
+1158,Admin views,Reactivate,,src/views/admin/CurriculumArchiveView.tsx
+1159,Admin views,Readiness,,src/views/admin/AdminDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/GradesView.tsx
+1160,Admin views,Reading assignments by year group.,,src/views/admin/BooksView.tsx
+1161,Admin views,Reading review,,src/views/admin/BooksView.tsx
+1162,Admin views,Reading work,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/ClassworkView.tsx
+1163,Admin views,Recent check-ins,,src/views/admin/MentorshipHubView.tsx
+1164,Admin views,Recent logs,,src/views/admin/AdminStudentDashboard.tsx
+1165,Admin views,Recipient scope,,src/views/admin/KnowledgeBaseView.tsx
+1166,Admin views,Record payment,,src/views/admin/TuitionView.tsx
+1167,Admin views,Recorded amount,,src/views/admin/KnowledgeBaseView.tsx
+1168,Admin views,Regular students,,src/views/admin/AttendanceView.tsx
+1169,Admin views,Reject,,src/views/admin/AttendanceView.tsx
+1170,Admin views,Remaining,,src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/TuitionView.tsx
+1171,Admin views,Remind outstanding,,src/views/admin/TuitionView.tsx
+1172,Admin views,Reminder,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/TuitionView.tsx
+1173,Admin views,Reminder email,,src/views/admin/KnowledgeBaseView.tsx
+1174,Admin views,Reminder history,,src/views/admin/AdminStudentDashboard.tsx
+1175,Admin views,Reminder template,,src/views/admin/TuitionView.tsx
+1176,Admin views,Remove,,src/components/assignments/AssignmentComposer.tsx; src/views/admin/BooksView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+1177,Admin views,Remove row,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1178,Admin views,Remove user,,src/views/admin/users/UsersHubView.tsx
+1179,Admin views,Report,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx
+1180,Admin views,Required,,src/views/admin/AttendanceView.tsx; src/views/student/MyMinistryInfoView.tsx; src/views/teamLeader/MinistryReportView.tsx
+1181,Admin views,Required attendance credit for weekly classes.,,src/views/admin/AttendanceView.tsx
+1182,Admin views,Required credits,,src/views/admin/AttendanceView.tsx
+1183,Admin views,Required percent,,src/views/admin/AttendanceView.tsx
+1184,Admin views,Requirement progress,,src/views/admin/KnowledgeBaseView.tsx
+1185,Admin views,Responsibilities,,src/views/admin/users/UsersHubView.tsx
+1186,Admin views,Return,,src/views/admin/BooksView.tsx
+1187,Admin views,Review,,src/views/admin/AdminDashboard.tsx; src/views/admin/BooksView.tsx; src/views/shared/ClassworkView.tsx
+1188,Admin views,Review attendance,,src/views/admin/AdminDashboard.tsx
+1189,Admin views,Review load,,src/views/admin/AdminDashboard.tsx
+1190,Admin views,Review people,,src/views/admin/AdminDashboard.tsx
+1191,Admin views,Review students,,src/views/admin/AdminDashboard.tsx
+1192,Admin views,Review submissions,,src/views/admin/BooksView.tsx
+1193,Admin views,Review team leader reports by the service date on the form.,,src/views/admin/AttendanceView.tsx
+1194,Admin views,Review transfers,,src/views/admin/AdminDashboard.tsx
+1195,Admin views,Role,,src/views/admin/KnowledgeBaseView.tsx
+1196,Admin views,Rotation,,src/views/admin/AttendanceView.tsx; src/views/student/MyMinistryInfoView.tsx
+1197,Admin views,Rotation Period,,src/views/admin/AttendanceView.tsx
+1198,Admin views,Rotations,,src/views/admin/AttendanceView.tsx
+1199,Admin views,Rule,,src/views/admin/KnowledgeBaseView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+1200,Admin views,Rules & gates,,src/views/admin/KnowledgeBaseView.tsx
+1201,Admin views,Sat,,src/views/admin/AttendanceView.tsx
+1202,Admin views,Saturday + both,,src/views/admin/AttendanceView.tsx
+1203,Admin views,Save attendance,,src/views/admin/AttendanceView.tsx
+1204,Admin views,Save installment,,src/views/admin/TuitionView.tsx
+1205,Admin views,Save link,,src/views/admin/AttendanceView.tsx
+1206,Admin views,Save payment,,src/views/admin/TuitionView.tsx
+1207,Admin views,Save rotation,,src/views/admin/AttendanceView.tsx
+1208,Admin views,Save team,,src/views/admin/AttendanceView.tsx
+1209,Admin views,Schedule by Date,,src/views/admin/CurriculumDateView.tsx
+1210,Admin views,Scheduled weeks,,src/views/admin/AttendanceView.tsx
+1211,Admin views,School pulse,,src/views/admin/AdminDashboard.tsx
+1212,Admin views,School Year,,src/views/admin/CurriculumPlanningView.tsx; src/views/admin/planning/SchoolYearSelector.tsx
+1213,Admin views,School year grid,,src/views/admin/KnowledgeBaseView.tsx
+1214,Admin views,"Search dashboard, attendance, stream, roles...",,src/views/admin/KnowledgeBaseView.tsx
+1215,Admin views,"Search name, email, phone, role, year group...",,src/views/admin/users/UsersHubView.tsx
+1216,Admin views,Search results,,src/views/admin/BooksView.tsx
+1217,Admin views,"Search staff by name, role, or team…",,src/views/admin/users/UsersHubView.tsx
+1218,Admin views,Search student or mentor…,,src/views/admin/MentorshipFollowUpPanel.tsx
+1219,Admin views,"Search student, mentor, or year group...",,src/views/admin/users/UsersHubView.tsx
+1220,Admin views,Search students,,src/components/modals/EditModal/EditUserForm.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/TuitionView.tsx
+1221,Admin views,Search subject or email,,src/views/admin/InboxView.tsx
+1222,Admin views,"Search title, author, or ISBN",,src/views/admin/BooksView.tsx
+1223,Admin views,Search words,,src/views/admin/KnowledgeBaseView.tsx
+1224,Admin views,"Search, filter, and manage every person in one place.",,src/views/admin/users/UsersHubView.tsx
+1225,Admin views,Searching...,,src/views/admin/BooksView.tsx
+1226,Admin views,Second installment,,src/hooks/useTuition.ts; src/views/admin/TuitionView.tsx
+1227,Admin views,Second year,,src/views/admin/AttendanceView.tsx
+1228,Admin views,SECOND YEAR,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1229,Admin views,Second Year Keeper,,src/views/admin/AttendanceView.tsx
+1230,Admin views,Second year rotation,,src/views/admin/AttendanceView.tsx
+1231,Admin views,Second Year x,,src/views/admin/TuitionView.tsx
+1232,Admin views,Select a portal email copy from the list to read its content and delivery details.,,src/views/admin/InboxView.tsx
+1233,Admin views,"Select a school year above to start planning, or create a new one.",,src/views/admin/CurriculumPlanningView.tsx
+1234,Admin views,Select a submission,,src/views/admin/BooksView.tsx
+1235,Admin views,Select at least one year group type.,,src/views/admin/AttendanceView.tsx
+1236,Admin views,Selected date,,src/views/admin/KnowledgeBaseView.tsx
+1237,Admin views,"selectedStudentIds.slice(0, 8).length + selectedGroups.length ?",,src/views/admin/TuitionView.tsx
+1238,Admin views,Send reminder,,src/views/admin/TuitionView.tsx
+1239,Admin views,Send reminders,,src/views/admin/TuitionView.tsx
+1240,Admin views,Send tuition reminder?,,src/views/admin/TuitionView.tsx
+1241,Admin views,Send tuition reminders?,,src/views/admin/TuitionView.tsx
+1242,Admin views,Service,,src/views/admin/AdminStudentDashboard.tsx
+1243,Admin views,Service reports,,src/views/admin/KnowledgeBaseView.tsx
+1244,Admin views,Service sessions,,src/views/admin/AttendanceView.tsx
+1245,Admin views,Serving,,src/views/admin/users/UsersHubView.tsx
+1246,Admin views,Session,,src/components/AuthScreen.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+1247,Admin views,Sessions,,src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyCourseView.tsx; src/views/student/StudentDashboard.tsx
+1248,Admin views,Sessions per day,,src/views/admin/AttendanceView.tsx
+1249,Admin views,Sessions will appear here by date once they are added.,,src/views/admin/CurriculumDateView.tsx
+1250,Admin views,Sessions will be added to the planning grid. Click Update to save to the database.,,src/views/admin/planning/AddPlanningSubjectModal.tsx
+1251,Admin views,"Set how often mentors should meet students face-to-face, and when follow-up flags at-risk.",,src/views/admin/MentorshipHubView.tsx
+1252,Admin views,Settings,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/SettingsView.tsx
+1253,Admin views,Settings & Permissions,,src/views/admin/KnowledgeBaseView.tsx
+1254,Admin views,Setup,,src/views/admin/AdminDashboard.tsx
+1255,Admin views,Shared Well session,,src/views/admin/CurriculumPlanningView.tsx
+1256,Admin views,Show Activation,,src/views/admin/AttendanceView.tsx
+1257,Admin views,Show classes,,src/views/admin/AttendanceView.tsx
+1258,Admin views,Show fallback,,src/views/admin/AttendanceView.tsx
+1259,Admin views,Show Ministry,,src/views/admin/AttendanceView.tsx
+1260,Admin views,Show move tools,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1261,Admin views,Show Well,,src/views/admin/AttendanceView.tsx
+1262,Admin views,Showing,,src/views/admin/users/UsersHubView.tsx
+1263,Admin views,Shows as at risk after this many days,,src/views/admin/MentorshipCadencePanel.tsx
+1264,Admin views,Shows as lagging after this many days,,src/views/admin/MentorshipCadencePanel.tsx
+1265,Admin views,"Shows how many active year groups are running and how complete their setup is. The progress bar combines year group, subject, class, staffing, and Drive folder readiness.",,src/views/admin/AdminDashboard.tsx
+1266,Admin views,Shows the number of users with the mentor role and recent mentorship activity. It helps you quickly see whether student support is being actively logged.,,src/views/admin/AdminDashboard.tsx
+1267,Admin views,Skipped,,src/views/admin/InboxView.tsx
+1268,Admin views,Staff,,src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/users/UsersHubView.tsx
+1269,Admin views,Staff + translators,,src/views/admin/KnowledgeBaseView.tsx
+1270,Admin views,Staff accounts,,src/views/admin/users/UsersHubView.tsx
+1271,Admin views,Staff load,,src/views/admin/users/UsersHubView.tsx
+1272,Admin views,Staff notices,,src/views/admin/AdminDashboard.tsx
+1273,Admin views,Start date,,src/views/admin/AttendanceView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+1274,Admin views,Start month,,src/views/admin/AttendanceView.tsx
+1275,Admin views,Starting year,,src/views/admin/planning/SchoolYearSelector.tsx
+1276,Admin views,Status is based on,,src/views/admin/MentorshipFollowUpPanel.tsx
+1277,Admin views,Student,,src/components/modals/EditModal/EditUserForm.tsx; src/components/modals/MentorAssignModal.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/MentorshipAssignmentsPanel.tsx; src/views/admin/TuitionView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/student/DutyMarkingView.tsx
+1278,Admin views,Student dashboard,,src/views/admin/AdminStudentDashboard.tsx
+1279,Admin views,Student ministry standing,,src/views/admin/AttendanceView.tsx
+1280,Admin views,Student name,,src/views/admin/AttendanceView.tsx
+1281,Admin views,Student tuition,,src/views/admin/TuitionView.tsx
+1282,Admin views,student-month records,,src/views/admin/AttendanceView.tsx
+1283,Admin views,Students,,src/components/layout/Sidebar.tsx; src/components/modals/CreateAnnouncementModal.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/TuitionView.tsx; src/views/admin/users/UsersHubView.tsx; src/views/student/DutyMarkingView.tsx
+1284,Admin views,Students currently below the configured graduation attendance threshold.,,src/views/admin/AdminDashboard.tsx
+1285,Admin views,Students may lose only the configured number of Activation Saturday credits.,,src/views/admin/AttendanceView.tsx
+1286,Admin views,Students used,,src/views/admin/AttendanceView.tsx
+1287,Admin views,Subject,,src/components/modals/EditModal/EditClassForm.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/shared/classwork/SubjectDetailPage.tsx
+1288,Admin views,Subject Library,,src/views/admin/planning/SubjectLibraryPanel.tsx
+1289,Admin views,Subjects,,src/views/admin/AdminDashboard.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/CurriculumOverview.tsx
+1290,Admin views,Submitted homework that has not been graded yet.,,src/views/admin/AdminDashboard.tsx
+1291,Admin views,Submitted reports,,src/views/admin/AttendanceView.tsx
+1292,Admin views,Submitted work,,src/views/admin/AdminStudentDashboard.tsx
+1293,Admin views,Sun,,src/views/admin/AttendanceView.tsx
+1294,Admin views,Sunday,,src/views/admin/AttendanceView.tsx
+1295,Admin views,Sunday and non-Sunday service requirements.,,src/views/admin/AttendanceView.tsx
+1296,Admin views,Sunday credits,,src/views/admin/AttendanceView.tsx
+1297,Admin views,Sunday period,,src/views/admin/AttendanceView.tsx
+1298,Admin views,Swipe horizontally to see the full calendar →,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1299,Admin views,Teacher,,src/components/modals/EditModal/EditClassForm.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx; src/views/shared/ClassDetailView.tsx
+1300,Admin views,Teaching slots,,src/views/admin/users/UsersHubView.tsx
+1301,Admin views,Team,,src/views/admin/AttendanceView.tsx; src/views/teamLeader/MinistryReportView.tsx
+1302,Admin views,Team contact,,src/views/admin/KnowledgeBaseView.tsx
+1303,Admin views,Team Health,,src/views/admin/AttendanceView.tsx
+1304,Admin views,Team health,,src/views/admin/AttendanceView.tsx
+1305,Admin views,Team name,,src/views/admin/AttendanceView.tsx
+1306,Admin views,Team users,,src/views/admin/AttendanceView.tsx
+1307,Admin views,The permanent Google Meet link online students use to join live sessions. Shown on their dashboard and attendance page.,,src/views/admin/AttendanceView.tsx
+1308,Admin views,The Well,,src/components/layout/Sidebar.tsx; src/components/student/StudentMonthCalendar.tsx; src/hooks/useAttendance.ts; src/hooks/useUniversalSearchIndex.tsx; src/utils/studentAttendanceBreakdown.ts; src/utils/studentCalendar.ts; src/views/admin/AttendanceView.tsx; src/views/admin/CurriculumPlanningView.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceView.tsx
+1309,Admin views,"These rules control when students appear as on track, lagging, or at risk on the Follow-up page.",,src/views/admin/MentorshipCadencePanel.tsx
+1310,Admin views,This page,,src/views/admin/InboxView.tsx
+1311,Admin views,This replaces the entire prayer schedule. Choose which active year groups to include before generating.,,src/views/admin/AttendanceView.tsx
+1312,Admin views,This row contains saved sessions. Remove anyway?,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1313,Admin views,This student is not attached to a tuition plan yet.,,src/views/admin/AdminStudentDashboard.tsx
+1314,Admin views,This week,,src/views/admin/AttendanceView.tsx; src/views/admin/MentorshipHubView.tsx
+1315,Admin views,Threshold,,src/views/admin/AdminDashboard.tsx
+1316,Admin views,Thu,,src/views/admin/AttendanceView.tsx
+1317,Admin views,Thursday prayer,,src/views/admin/AttendanceView.tsx
+1318,Admin views,To-dos,,src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/shared/TodosView.tsx; src/views/student/StudentDashboard.tsx
+1319,Admin views,Topics,,src/views/admin/KnowledgeBaseView.tsx
+1320,Admin views,Total for this plan,,src/views/admin/TuitionView.tsx
+1321,Admin views,Total people,,src/views/admin/users/UsersHubView.tsx
+1322,Admin views,Total tuition amount,,src/views/admin/TuitionView.tsx
+1323,Admin views,"Track student tuition, installments, payments received, and reminders from one admin workspace.",,src/views/admin/TuitionView.tsx
+1324,Admin views,Tracked,,src/views/admin/AdminStudentDashboard.tsx; src/views/admin/MentorshipHubView.tsx
+1325,Admin views,Tracked months,,src/views/admin/AttendanceView.tsx
+1326,Admin views,Tracked pairs,,src/views/admin/MentorshipHubView.tsx
+1327,Admin views,Tracked records,,src/views/admin/AttendanceView.tsx
+1328,Admin views,Transferred duty,,src/views/admin/AdminDashboard.tsx
+1329,Admin views,Transfers,,src/views/admin/AttendanceView.tsx
+1330,Admin views,Translating,,src/views/admin/users/UsersHubView.tsx
+1331,Admin views,Translator,,src/components/modals/EditModal/EditClassForm.tsx; src/views/admin/CurriculumArchiveView.tsx; src/views/admin/CurriculumOverview.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+1332,Admin views,Tue,,src/views/admin/AttendanceView.tsx
+1333,Admin views,Tue/Thu sessions,,src/views/admin/KnowledgeBaseView.tsx
+1334,Admin views,Tuesday and Thursday class sessions count toward the class attendance requirement.,,src/views/admin/AttendanceView.tsx
+1335,Admin views,Tuesday prayer,,src/views/admin/AttendanceView.tsx
+1336,Admin views,Tuition,,src/components/layout/Sidebar.tsx; src/hooks/useUniversalSearchIndex.tsx; src/views/admin/AdminDashboard.tsx; src/views/admin/AdminStudentDashboard.tsx; src/views/admin/KnowledgeBaseView.tsx; src/views/admin/TuitionView.tsx
+1337,Admin views,Tuition reminders use the platform email queue. The message includes the remaining amount and installment due date when one is selected.,,src/views/admin/TuitionView.tsx
+1338,Admin views,Tune every graduation gate without changing code.,,src/views/admin/AttendanceView.tsx
+1339,Admin views,Type or select subject...,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1340,Admin views,Typical workflow,,src/views/admin/KnowledgeBaseView.tsx
+1341,Admin views,Unassigned,,src/views/admin/AttendanceView.tsx; src/views/admin/users/UsersHubView.tsx
+1342,Admin views,Unread messages,,src/views/admin/AdminDashboard.tsx
+1343,Admin views,Unsaved changes,,src/views/admin/CurriculumPlanningView.tsx
+1344,Admin views,Unscheduled,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1345,Admin views,Unusual,,src/views/admin/planning/PlanningCalendarGrid.tsx
+1346,Admin views,Use Generate school year to create Tuesday and Thursday prayer slots.,,src/views/admin/AttendanceView.tsx
+1347,Admin views,Use Generate to create duty slots for an active year group.,,src/views/admin/AttendanceView.tsx
+1348,Admin views,Use upload when the lookup image or external URL is missing or unreliable.,,src/views/admin/BooksView.tsx
+1349,Admin views,User,,src/views/admin/users/UsersHubView.tsx
+1350,Admin views,user-detail-title,,src/views/admin/users/UsersHubView.tsx
+1351,Admin views,View unassigned students,,src/views/admin/MentorshipAssignmentsPanel.tsx
+1352,Admin views,Visual cues,,src/views/admin/KnowledgeBaseView.tsx
+1353,Admin views,Warning,,src/views/admin/MentorshipCadencePanel.tsx; src/views/admin/MentorshipHubView.tsx
+1354,Admin views,Warning threshold,,src/views/admin/MentorshipCadencePanel.tsx
+1355,Admin views,Wed,,src/views/admin/AttendanceView.tsx
+1356,Admin views,Week,,src/views/admin/AttendanceView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+1357,Admin views,Weekday,,src/views/admin/AttendanceView.tsx
+1358,Admin views,Weekdays,,src/views/admin/AttendanceView.tsx
+1359,Admin views,Weekly duty transfer requests waiting for an administrator decision.,,src/views/admin/AdminDashboard.tsx
+1360,Admin views,Weeks,,src/views/admin/AttendanceView.tsx; src/views/admin/planning/PlanningCalendarGrid.tsx
+1361,Admin views,Well reminders,,src/views/admin/AttendanceView.tsx
+1362,Admin views,What admins should know,,src/views/admin/KnowledgeBaseView.tsx
+1363,Admin views,What is holding this back,,src/views/admin/AdminDashboard.tsx
+1364,Admin views,What is missing,,src/views/admin/AdminDashboard.tsx
+1365,Admin views,"Where staff serve — classes, translation, mentorship, and ministry teams.",,src/views/admin/users/UsersHubView.tsx
+1366,Admin views,Where to find it,,src/views/admin/KnowledgeBaseView.tsx
+1367,Admin views,Wins:,,src/views/admin/AttendanceView.tsx
+1368,Admin views,Without mentor,,src/views/admin/users/UsersHubView.tsx
+1369,Admin views,Workflow email,,src/views/admin/KnowledgeBaseView.tsx
+1370,Admin views,Workspace access,,src/views/admin/KnowledgeBaseView.tsx
+1371,Admin views,Year Group,,src/components/modals/EditModal/EditSubjectForm.tsx; src/views/admin/AttendanceView.tsx; src/views/admin/users/UsersHubView.tsx
+1372,Admin views,Year Group Health,,src/views/admin/AdminDashboard.tsx
+1373,Admin views,Year groups,,src/views/admin/users/UsersHubView.tsx
+1374,Admin views,"Year, mentor, ministry",,src/views/admin/AdminStudentDashboard.tsx
+1375,Admin views,You have unsaved changes.,,src/views/admin/MentorshipCadencePanel.tsx
+1376,Student views,Absent,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx; src/views/teamLeader/MinistryReportView.tsx
+1377,Student views,Activation records,,src/views/student/MyAttendanceBreakdownView.tsx
+1378,Student views,"Activation Saturday allows at most 1 lost credit. Present gives 1, late gives 0.5, absent or unmarked gives 0.",,src/views/student/MyAttendanceBreakdownView.tsx
+1379,Student views,All caught up!,,src/views/student/MyCourseView.tsx
+1380,Student views,All gates,,src/views/student/MyAttendanceBreakdownView.tsx
+1381,Student views,All homework is caught up.,,src/views/student/StudentDashboard.tsx
+1382,Student views,All months,,src/views/admin/AdminStudentDashboard.tsx; src/views/shared/GradesView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx
+1383,Student views,All weeks,,src/views/student/MyAttendanceBreakdownView.tsx
+1384,Student views,Allowed,,src/views/student/MyAttendanceBreakdownView.tsx
+1385,Student views,An admin will review this transfer request.,,src/views/student/DutyMarkingView.tsx
+1386,Student views,Announcements,,src/views/student/StudentDashboard.tsx
+1387,Student views,assignment.dueDate && assignment.dueDate,,src/views/student/StudentDashboard.tsx
+1388,Student views,ASSIGNMENTS_PER_PAGE && (,,src/views/student/MyAssignmentsView.tsx
+1389,Student views,Attendance correction,,src/views/student/MyAttendanceBreakdownView.tsx
+1390,Student views,Attendance keeper,,src/views/student/DutyMarkingView.tsx
+1391,Student views,Attendance will appear here once you are enrolled.,,src/views/student/MyAttendanceView.tsx
+1392,Student views,Briefly explain what should be corrected.,,src/views/student/MyAttendanceBreakdownView.tsx
+1393,Student views,By gate,,src/views/student/MyAttendanceBreakdownView.tsx
+1394,Student views,Choose what you are marking.,,src/views/student/DutyMarkingView.tsx
+1395,Student views,Class attendance,,src/views/student/MyAttendanceBreakdownView.tsx
+1396,Student views,Close correction request,,src/views/student/MyAttendanceBreakdownView.tsx
+1397,Student views,Close dates,,src/views/student/StudentDashboard.tsx
+1398,Student views,Close report details,,src/views/student/MyMinistryInfoView.tsx
+1399,Student views,Close watch,,src/views/student/MyAttendanceBreakdownView.tsx
+1400,Student views,Correct status,,src/views/student/MyAttendanceBreakdownView.tsx
+1401,Student views,Course Curriculum,,src/views/student/MyCourseView.tsx
+1402,Student views,Course not found for this duty assignment.,,src/views/student/DutyMarkingView.tsx
+1403,Student views,Credits,,src/views/student/MyAttendanceView.tsx
+1404,Student views,Current,,src/views/student/DutyMarkingView.tsx
+1405,Student views,Duty assignment,,src/views/student/DutyMarkingView.tsx
+1406,Student views,Fallback ok,,src/views/student/MyAttendanceBreakdownView.tsx
+1407,Student views,Filter by attendance gate,,src/views/student/MyAttendanceBreakdownView.tsx
+1408,Student views,Filter service attendance by month,,src/views/student/MyMinistryInfoView.tsx
+1409,Student views,Focused attendance view,,src/views/student/MyAttendanceBreakdownView.tsx
+1410,Student views,Graded,,src/views/shared/GradesView.tsx; src/views/student/MyAssignmentsView.tsx; src/views/student/MyCourseView.tsx
+1411,Student views,Homework and reading tasks in one place.,,src/views/student/MyAssignmentsView.tsx
+1412,Student views,How ministry attendance is calculated,,src/views/student/MyMinistryInfoView.tsx
+1413,Student views,item.dueDate && item.dueDate,,src/views/student/StudentDashboard.tsx
+1414,Student views,Joint Saturday sessions will appear here.,,src/views/student/MyAttendanceBreakdownView.tsx
+1415,Student views,Jump to your student tools,,src/views/student/StudentDashboard.tsx
+1416,Student views,Late,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx; src/views/teamLeader/MinistryReportView.tsx
+1417,Student views,List,,src/views/student/MyAttendanceBreakdownView.tsx
+1418,Student views,Loading assignments...,,src/views/student/MyAssignmentsView.tsx
+1419,Student views,Loading attendance data…,,src/views/student/DutyMarkingView.tsx
+1420,Student views,Loading attendance history…,,src/views/student/MyAttendanceBreakdownView.tsx
+1421,Student views,Loading attendance…,,src/views/student/MyAttendanceView.tsx
+1422,Student views,Loading books...,,src/views/admin/BooksView.tsx; src/views/student/MyBooksView.tsx; src/views/student/StudentDashboard.tsx
+1423,Student views,Loading homework…,,src/views/student/MyCourseView.tsx
+1424,Student views,Loading ministry info...,,src/views/student/MyMinistryInfoView.tsx
+1425,Student views,Lost,,src/views/student/MyAttendanceBreakdownView.tsx
+1426,Student views,Marked attendance,,src/views/student/MyAttendanceBreakdownView.tsx
+1427,Student views,Mentor:,,src/views/student/StudentDashboard.tsx
+1428,Student views,Ministry attendance,,src/views/student/MyAttendanceBreakdownView.tsx
+1429,Student views,Ministry credit is based on your team rotation and marked service attendance.,,src/views/student/MyAttendanceView.tsx
+1430,Student views,Ministry records,,src/views/student/MyMinistryInfoView.tsx
+1431,Student views,"Ministry service uses team reports. Present gives 1 credit, late gives 0.5, absent or unmarked gives 0.",,src/views/student/MyAttendanceBreakdownView.tsx
+1432,Student views,Missing report,,src/views/student/MyMinistryInfoView.tsx
+1433,Student views,Monthly records,,src/views/student/MyAttendanceBreakdownView.tsx
+1434,Student views,My Books,,src/hooks/useUniversalSearchIndex.tsx; src/views/student/MyBooksView.tsx
+1435,Student views,My course,,src/views/student/StudentDashboard.tsx
+1436,Student views,Needs attention,,src/views/admin/MentorshipHubView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx
+1437,Student views,Needs records,,src/views/student/MyAttendanceBreakdownView.tsx
+1438,Student views,Needs your attention,,src/views/student/StudentDashboard.tsx
+1439,Student views,Next 7 days,,src/views/student/StudentDashboard.tsx
+1440,Student views,No Activation Saturday records in this period.,,src/views/student/MyAttendanceBreakdownView.tsx
+1441,Student views,No active book assignments right now.,,src/views/student/MyBooksView.tsx
+1442,Student views,No active course enrollment found.,,src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyAttendanceView.tsx
+1443,Student views,No active year group enrollment found.,,src/views/student/MyMinistryInfoView.tsx
+1444,Student views,No assignments match this view.,,src/views/student/MyAssignmentsView.tsx
+1445,Student views,No attendance records yet for this course.,,src/views/student/MyAttendanceView.tsx
+1446,Student views,No attendance sessions recorded yet.,,src/views/student/MyAttendanceBreakdownView.tsx
+1447,Student views,No class records in this period.,,src/views/student/MyAttendanceBreakdownView.tsx
+1448,Student views,No course enrollment found.,,src/views/student/MyCourseView.tsx
+1449,Student views,No ministry assignment yet.,,src/views/student/MyMinistryInfoView.tsx
+1450,Student views,No ministry records in this period.,,src/views/student/MyAttendanceBreakdownView.tsx
+1451,Student views,No reading assignments need attention.,,src/views/student/StudentDashboard.tsx
+1452,Student views,No requirement,,src/views/student/MyMinistryInfoView.tsx
+1453,Student views,No service attendance yet.,,src/views/student/MyMinistryInfoView.tsx
+1454,Student views,No sessions match the visible status filters.,,src/views/student/MyAttendanceBreakdownView.tsx
+1455,Student views,No sessions scheduled for today.,,src/views/student/DutyMarkingView.tsx
+1456,Student views,No sessions scheduled in the next 7 days.,,src/views/student/StudentDashboard.tsx
+1457,Student views,No students are enrolled in this course.,,src/views/student/DutyMarkingView.tsx
+1458,Student views,No team leaders are listed for this ministry yet.,,src/views/student/MyMinistryInfoView.tsx
+1459,Student views,No Well records in this period.,,src/views/student/MyAttendanceBreakdownView.tsx
+1460,Student views,Not marked,,src/views/student/MyAttendanceBreakdownView.tsx
+1461,Student views,"Officially, The Well needs 2 credits per month. Present gives 1, late gives 0.5, absent or unmarked gives 0. The fallback checks whether the full year is at least 50%.",,src/views/student/MyAttendanceBreakdownView.tsx
+1462,Student views,On duty now,,src/views/student/StudentDashboard.tsx
+1463,Student views,On Duty This Week 🎓,,src/views/student/DutyMarkingView.tsx
+1464,Student views,Open Session,,src/views/student/MyCourseView.tsx
+1465,Student views,Optional link,,src/views/student/MyBooksView.tsx
+1466,Student views,Overall result,,src/views/student/MyAttendanceView.tsx
+1467,Student views,Period,,src/views/student/MyMinistryInfoView.tsx
+1468,Student views,Present,,src/components/student/StudentMonthCalendar.tsx; src/views/admin/AttendanceView.tsx; src/views/shared/classwork/SubjectDetailPage.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx; src/views/student/MyMinistryInfoView.tsx; src/views/teamLeader/MinistryReportView.tsx
+1469,Student views,"Present gives 1 credit, late gives 0.5, absent or missing report gives 0. Health compares earned credits with the requirement and the service days still possible.",,src/views/student/MyMinistryInfoView.tsx
+1470,Student views,Reading assignments for your year group.,,src/views/student/MyBooksView.tsx
+1471,Student views,Reason,,src/views/shared/AbsenceNoticesView.tsx; src/views/student/DutyMarkingView.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+1472,Student views,Reason (optional),,src/views/student/DutyMarkingView.tsx
+1473,Student views,Reports from your team leader will appear here by service date.,,src/views/student/MyMinistryInfoView.tsx
+1474,Student views,Requirement,,src/views/student/MyAttendanceBreakdownView.tsx
+1475,Student views,Returned for revision,,src/views/student/MyCourseView.tsx
+1476,Student views,Rotation details,,src/views/student/MyMinistryInfoView.tsx
+1477,Student views,Saved,,src/views/student/DutyMarkingView.tsx
+1478,Student views,Saved ✓,,src/views/student/DutyMarkingView.tsx
+1479,Student views,Scheduled dates,,src/views/student/StudentDashboard.tsx
+1480,Student views,Scheduled Well sessions will appear here when they are available.,,src/views/student/MyAttendanceBreakdownView.tsx
+1481,Student views,Score,,src/views/student/MyAttendanceView.tsx
+1482,Student views,Select a student...,,src/views/student/DutyMarkingView.tsx
+1483,Student views,Select a student…,,src/views/student/DutyMarkingView.tsx
+1484,Student views,Select course,,src/views/student/myAttendanceShared.tsx
+1485,Student views,Selected,,src/views/student/MyAttendanceBreakdownView.tsx
+1486,Student views,Service attendance,,src/views/student/MyMinistryInfoView.tsx
+1487,Student views,Service records,,src/views/student/MyAttendanceBreakdownView.tsx
+1488,Student views,Service report,,src/views/student/MyMinistryInfoView.tsx
+1489,Student views,Service rotation,,src/views/student/MyMinistryInfoView.tsx
+1490,Student views,Slim chance,,src/views/student/MyMinistryInfoView.tsx
+1491,Student views,Submit work,,src/views/student/MyBooksView.tsx
+1492,Student views,Sunday ministry attendance,,src/views/student/MyAttendanceView.tsx
+1493,Student views,Team contacts,,src/views/student/MyMinistryInfoView.tsx
+1494,Student views,Team leader reports will appear here after they are submitted.,,src/views/student/MyAttendanceBreakdownView.tsx
+1495,Student views,Team membership lets leaders submit or manage reports. A student ministry assignment needs a rotation with start and end dates so service credits can count.,,src/views/student/MyMinistryInfoView.tsx
+1496,Student views,The Well attendance,,src/hooks/useUniversalSearchIndex.tsx; src/views/student/MyAttendanceBreakdownView.tsx
+1497,Student views,This month,,src/views/student/MyMinistryInfoView.tsx
+1498,Student views,tracked sessions,,src/views/student/MyAttendanceBreakdownView.tsx
+1499,Student views,Transfer,,src/views/student/DutyMarkingView.tsx
+1500,Student views,Transfer Duty,,src/views/student/DutyMarkingView.tsx
+1501,Student views,Transfer to,,src/views/student/DutyMarkingView.tsx
+1502,Student views,Tue · Thu · Well · Activation,,src/views/student/StudentDashboard.tsx
+1503,Student views,Tuesday and Thursday class attendance will appear here.,,src/views/student/MyAttendanceBreakdownView.tsx
+1504,Student views,Very good,,src/views/student/MyMinistryInfoView.tsx
+1505,Student views,View,,src/views/student/MyCourseView.tsx
+1506,Student views,Weekly class records,,src/views/student/MyAttendanceBreakdownView.tsx
+1507,Student views,"Weekly classes require 80% attendance credit. Present gives 1, late gives 0.5, absent or unmarked gives 0.",,src/views/student/MyAttendanceBreakdownView.tsx
+1508,Student views,"When you are placed on a ministry team rotation, your leaders and contact details will appear here.",,src/views/student/MyMinistryInfoView.tsx
+1509,Student views,Why do you need to transfer duty?,,src/views/student/DutyMarkingView.tsx
+1510,Student views,"Write your response, summary, or notes...",,src/views/student/MyBooksView.tsx
+1511,Student views,"You are listed on a team, but no student rotation is active yet.",,src/views/student/MyMinistryInfoView.tsx
+1512,Student views,Your Mentor,,src/views/student/MyCourseView.tsx
+1513,Student views,Your transfer request will be reviewed by an admin.,,src/views/student/DutyMarkingView.tsx
+1514,Student views,Your week,,src/views/student/StudentDashboard.tsx
+1515,Mentor views,Avg Engagement,,src/views/mentor/MentorDashboard.tsx
+1516,Mentor views,Edit check-in,,src/views/mentor/MentorDashboard.tsx
+1517,Mentor views,Follow-up status is based on face-to-face meetings. Digital check-ins are optional and do not affect at-risk flags.,,src/views/mentor/MentorDashboard.tsx
+1518,Mentor views,In-Person Meeting Expectations,,src/views/mentor/MentorDashboard.tsx
+1519,Mentor views,In-Person Meetings,,src/views/mentor/MentorDashboard.tsx
+1520,Mentor views,Log Check-in,,src/views/mentor/MentorDashboard.tsx
+1521,Mentor views,Mentor Dashboard,,src/views/mentor/MentorDashboard.tsx
+1522,Mentor views,My Students,,src/views/mentor/MentorDashboard.tsx
+1523,Mentor views,My Students - Detailed View,,src/views/mentor/MentorDashboard.tsx
+1524,Mentor views,No recent check-ins,,src/views/mentor/MentorDashboard.tsx
+1525,Mentor views,No students assigned yet.,,src/views/mentor/MentorDashboard.tsx
+1526,Mentor views,Recent Check-ins,,src/views/mentor/MentorDashboard.tsx
+1527,Mentor views,Student Engagement Overview,,src/views/mentor/MentorDashboard.tsx
+1528,Mentor views,This Month,,src/views/mentor/MentorDashboard.tsx
+1529,Mentor views,Total Check-ins,,src/views/mentor/MentorDashboard.tsx
+1530,Team leader views,A report already exists for this team and date. Submitting again may update the record depending on the current backend behavior.,,src/views/teamLeader/MinistryReportView.tsx
+1531,Team leader views,Affected students,,src/views/teamLeader/MinistryReportView.tsx
+1532,Team leader views,Challenges,,src/views/teamLeader/MinistryReportView.tsx
+1533,Team leader views,Clear to absent,,src/views/teamLeader/MinistryReportView.tsx
+1534,Team leader views,Could not submit the report. Please try again.,,src/views/teamLeader/MinistryReportView.tsx
+1535,Team leader views,General view,,src/views/teamLeader/MinistryReportView.tsx
+1536,Team leader views,General view and timely actions are required.,,src/views/teamLeader/MinistryReportView.tsx
+1537,Team leader views,Loading ministry report...,,src/views/teamLeader/MinistryReportView.tsx
+1538,Team leader views,Mark all present,,src/views/teamLeader/MinistryReportView.tsx
+1539,Team leader views,"Mark service attendance, summarize how the team served, and note what needs to happen before the next service.",,src/views/teamLeader/MinistryReportView.tsx
+1540,Team leader views,Ministry report,,src/views/teamLeader/MinistryReportView.tsx
+1541,Team leader views,No ministry team is assigned to this account yet.,,src/views/teamLeader/MinistryReportView.tsx
+1542,Team leader views,No reports submitted yet.,,src/views/teamLeader/MinistryReportView.tsx
+1543,Team leader views,No students are assigned to this team for the selected date.,,src/views/teamLeader/MinistryReportView.tsx
+1544,Team leader views,No students are assigned to this team on this date.,,src/views/teamLeader/MinistryReportView.tsx
+1545,Team leader views,Recent reports,,src/views/teamLeader/MinistryReportView.tsx
+1546,Team leader views,Report submitted.,,src/views/teamLeader/MinistryReportView.tsx
+1547,Team leader views,Service date,,src/views/teamLeader/MinistryReportView.tsx
+1548,Team leader views,Submit preview,,src/views/teamLeader/MinistryReportView.tsx
+1549,Team leader views,Team leader,,src/views/teamLeader/MinistryReportView.tsx
+1550,Team leader views,Timely actions,,src/views/teamLeader/MinistryReportView.tsx
+1551,Team leader views,Wins and testimonies,,src/views/teamLeader/MinistryReportView.tsx
+1552,Team leader views,You are not assigned to a ministry team yet.,,src/views/teamLeader/MinistryReportView.tsx
+1553,Teacher / translator views,All sessions,,src/views/teacher/MyClassesView.tsx
+1554,Teacher / translator views,No sessions found,,src/views/teacher/MyClassesView.tsx
+1555,Teacher / translator views,Recent past sessions,,src/views/teacher/MyClassesView.tsx
+1556,Teacher / translator views,Search my sessions,,src/views/teacher/MyClassesView.tsx
+1557,Teacher / translator views,"Sessions assigned to you, grouped by date so your next teaching moments are easy to find.",,src/views/teacher/MyClassesView.tsx
+1558,Teacher / translator views,Try another filter or search term.,,src/views/teacher/MyClassesView.tsx
+1559,Hooks (errors / search labels),A row already exists for this date.,,src/hooks/useSchoolYearPlanning.ts
+1560,Hooks (errors / search labels),Academic record and readiness,,src/hooks/useUniversalSearchIndex.tsx
+1561,Hooks (errors / search labels),Activation Saturdays must fall on a Saturday.,,src/hooks/useSchoolYearPlanning.ts
+1562,Hooks (errors / search labels),Active first year enrollments,,src/hooks/useTodos.ts
+1563,Hooks (errors / search labels),Active second year enrollments,,src/hooks/useTodos.ts
+1564,Hooks (errors / search labels),Admin manual and platform guide,,src/hooks/useUniversalSearchIndex.tsx
+1565,Hooks (errors / search labels),"Admins, teachers, translators, and mentors",,src/hooks/useTodos.ts
+1566,Hooks (errors / search labels),All Staff,,src/hooks/useTodos.ts
+1567,Hooks (errors / search labels),Book title is required,,src/hooks/useBooks.ts
+1568,Hooks (errors / search labels),Both First Year and Second Year courses must be selected.,,src/hooks/useSchoolYearPlanning.ts
+1569,Hooks (errors / search labels),Break not found.,,src/hooks/useSchoolYearPlanning.ts
+1570,Hooks (errors / search labels),"Classwork, materials, and subjects",,src/hooks/useUniversalSearchIndex.tsx
+1571,Hooks (errors / search labels),Conversations with admins and groups,,src/hooks/useUniversalSearchIndex.tsx
+1572,Hooks (errors / search labels),Could not schedule all sessions from the start date.,,src/hooks/useSchoolYearPlanning.ts
+1573,Hooks (errors / search labels),Curriculum Date View,,src/hooks/useUniversalSearchIndex.tsx
+1574,Hooks (errors / search labels),Curriculum Overview,,src/hooks/useUniversalSearchIndex.tsx
+1575,Hooks (errors / search labels),Delete failed,,src/hooks/useClassContent.ts; src/hooks/useSubjectMaterials.ts
+1576,Hooks (errors / search labels),Digital Check-ins,,src/data/seed.ts; src/hooks/useCadenceSettings.ts
+1577,Hooks (errors / search labels),"Directory, roles, and access",,src/hooks/useUniversalSearchIndex.tsx
+1578,Hooks (errors / search labels),Failed to add announcement,,src/hooks/useAnnouncements.ts
+1579,Hooks (errors / search labels),Failed to add attachment,,src/hooks/useAnnouncements.ts
+1580,Hooks (errors / search labels),Failed to add comment,,src/hooks/useAnnouncements.ts
+1581,Hooks (errors / search labels),Failed to add course,,src/hooks/useCourses.ts
+1582,Hooks (errors / search labels),Failed to add mentorship log,,src/hooks/useMentorshipLogs.ts
+1583,Hooks (errors / search labels),Failed to add subject,,src/hooks/useCourses.ts
+1584,Hooks (errors / search labels),Failed to create assignment,,src/hooks/useHomework.ts
+1585,Hooks (errors / search labels),Failed to create Google Doc. Please try again.,,src/hooks/useHomework.ts
+1586,Hooks (errors / search labels),Failed to delete,,src/hooks/useHomework.ts
+1587,Hooks (errors / search labels),Failed to delete attachment,,src/hooks/useAnnouncements.ts
+1588,Hooks (errors / search labels),Failed to delete course,,src/hooks/useCourses.ts
+1589,Hooks (errors / search labels),Failed to delete mentorship log,,src/hooks/useMentorshipLogs.ts
+1590,Hooks (errors / search labels),Failed to delete message,,src/hooks/useMessages.ts
+1591,Hooks (errors / search labels),Failed to delete note,,src/hooks/useClassContent.ts
+1592,Hooks (errors / search labels),Failed to delete session,,src/hooks/useCourses.ts
+1593,Hooks (errors / search labels),Failed to delete subject,,src/hooks/useCourses.ts
+1594,Hooks (errors / search labels),Failed to delete user,,src/hooks/useUsers.ts
+1595,Hooks (errors / search labels),Failed to link Google Doc. Please try again.,,src/hooks/useHomework.ts
+1596,Hooks (errors / search labels),Failed to load announcements,,src/hooks/useAnnouncements.ts
+1597,Hooks (errors / search labels),Failed to load attendance data,,src/hooks/useAttendance.ts
+1598,Hooks (errors / search labels),Failed to load books,,src/hooks/useBooks.ts
+1599,Hooks (errors / search labels),Failed to load cadence settings,,src/hooks/useCadenceSettings.ts
+1600,Hooks (errors / search labels),Failed to load courses,,src/hooks/useCourses.ts
+1601,Hooks (errors / search labels),Failed to load enrollments,,src/hooks/useEnrollments.ts
+1602,Hooks (errors / search labels),Failed to load gradebook settings,,src/hooks/useGradebookConfig.ts
+1603,Hooks (errors / search labels),Failed to load homework,,src/hooks/useHomework.ts
+1604,Hooks (errors / search labels),Failed to load mentorship logs,,src/hooks/useMentorshipLogs.ts
+1605,Hooks (errors / search labels),Failed to load messages,,src/hooks/useMessages.ts
+1606,Hooks (errors / search labels),Failed to load online session settings,,src/hooks/useOnlineSessionSettings.ts
+1607,Hooks (errors / search labels),Failed to load session content,,src/hooks/useClassContent.ts
+1608,Hooks (errors / search labels),Failed to load stream settings,,src/hooks/useStreamSettings.ts
+1609,Hooks (errors / search labels),Failed to load subject materials,,src/hooks/useSubjectMaterials.ts
+1610,Hooks (errors / search labels),Failed to load user profile,,src/hooks/useAuth.ts
+1611,Hooks (errors / search labels),Failed to load users,,src/hooks/useUsers.ts
+1612,Hooks (errors / search labels),Failed to move announcement to trash,,src/hooks/useAnnouncements.ts
+1613,Hooks (errors / search labels),Failed to permanently delete announcement,,src/hooks/useAnnouncements.ts
+1614,Hooks (errors / search labels),Failed to remove curriculum plan.,,src/hooks/useSubjectCurriculumPlan.ts
+1615,Hooks (errors / search labels),Failed to remove photo.,,src/hooks/useSettings.ts
+1616,Hooks (errors / search labels),Failed to restore announcement,,src/hooks/useAnnouncements.ts
+1617,Hooks (errors / search labels),Failed to save cadence settings,,src/hooks/useCadenceSettings.ts
+1618,Hooks (errors / search labels),Failed to save note,,src/hooks/useClassContent.ts
+1619,Hooks (errors / search labels),Failed to save notification preferences.,,src/hooks/useSettings.ts
+1620,Hooks (errors / search labels),Failed to save online session settings,,src/hooks/useOnlineSessionSettings.ts
+1621,Hooks (errors / search labels),Failed to save profile.,,src/hooks/useSettings.ts
+1622,Hooks (errors / search labels),Failed to send message,,src/hooks/useMessages.ts
+1623,Hooks (errors / search labels),Failed to submit,,src/hooks/useHomework.ts
+1624,Hooks (errors / search labels),Failed to submit quick check,,src/hooks/useHomework.ts
+1625,Hooks (errors / search labels),Failed to update announcement,,src/hooks/useAnnouncements.ts
+1626,Hooks (errors / search labels),Failed to update assignment,,src/hooks/useHomework.ts
+1627,Hooks (errors / search labels),Failed to update course,,src/hooks/useCourses.ts
+1628,Hooks (errors / search labels),Failed to update mentorship log,,src/hooks/useMentorshipLogs.ts
+1629,Hooks (errors / search labels),Failed to update note,,src/hooks/useClassContent.ts
+1630,Hooks (errors / search labels),Failed to update pin status,,src/hooks/useAnnouncements.ts
+1631,Hooks (errors / search labels),Failed to update reaction,,src/hooks/useAnnouncements.ts
+1632,Hooks (errors / search labels),Failed to update subject,,src/hooks/useCourses.ts
+1633,Hooks (errors / search labels),Failed to update user,,src/hooks/useUsers.ts
+1634,Hooks (errors / search labels),Failed to update user profile,,src/hooks/useUsers.ts
+1635,Hooks (errors / search labels),Failed to upload curriculum plan.,,src/hooks/useSubjectCurriculumPlan.ts
+1636,Hooks (errors / search labels),Failed to upload photo. Please try again.,,src/hooks/useSettings.ts
+1637,Hooks (errors / search labels),File is required for file attachments,,src/hooks/useAnnouncements.ts
+1638,Hooks (errors / search labels),First Year Students,,src/hooks/useTodos.ts
+1639,Hooks (errors / search labels),Go to,,src/hooks/useUniversalSearchIndex.tsx
+1640,Hooks (errors / search labels),Google Doc material could not be created,,src/hooks/useClassContent.ts; src/hooks/useSubjectMaterials.ts
+1641,Hooks (errors / search labels),Graduation gates and history,,src/hooks/useUniversalSearchIndex.tsx
+1642,Hooks (errors / search labels),Graduation gates and schedules,,src/hooks/useUniversalSearchIndex.tsx
+1643,Hooks (errors / search labels),Home overview,,src/hooks/useUniversalSearchIndex.tsx
+1644,Hooks (errors / search labels),Homework and reading work,,src/hooks/useUniversalSearchIndex.tsx
+1645,Hooks (errors / search labels),Image must be under 2MB.,,src/hooks/useSettings.ts
+1646,Hooks (errors / search labels),In-Person Check-ins,,src/data/seed.ts; src/hooks/useCadenceSettings.ts
+1647,Hooks (errors / search labels),Installment,,src/hooks/useUniversalSearchIndex.tsx
+1648,Hooks (errors / search labels),"Mentors, assignments, and follow-up",,src/hooks/useUniversalSearchIndex.tsx
+1649,Hooks (errors / search labels),No to-dos were created.,,src/hooks/useTodos.ts
+1650,Hooks (errors / search labels),Number of sessions must be at least 1.,,src/hooks/useSchoolYearPlanning.ts
+1651,Hooks (errors / search labels),Open work and reminders,,src/hooks/useUniversalSearchIndex.tsx
+1652,Hooks (errors / search labels),"Payments, installments, and reminders",,src/hooks/useUniversalSearchIndex.tsx
+1653,Hooks (errors / search labels),Personal teaching schedule,,src/hooks/useUniversalSearchIndex.tsx
+1654,Hooks (errors / search labels),Pinned posts are disabled for this year group,,src/hooks/useAnnouncements.ts
+1655,Hooks (errors / search labels),Planned missed sessions,,src/hooks/useUniversalSearchIndex.tsx
+1656,Hooks (errors / search labels),Please paste a valid Google Docs URL,,src/hooks/useHomework.ts
+1657,Hooks (errors / search labels),Please select a date.,,src/hooks/useSchoolYearPlanning.ts
+1658,Hooks (errors / search labels),Please select start and end dates.,,src/hooks/useSchoolYearPlanning.ts
+1659,Hooks (errors / search labels),"Posts, comments, and attachments",,src/hooks/useUniversalSearchIndex.tsx
+1660,Hooks (errors / search labels),Profile not found. The user must sign up via Google first.,,src/hooks/useUsers.ts
+1661,Hooks (errors / search labels),"Profile, language, and account settings",,src/hooks/useUniversalSearchIndex.tsx
+1662,Hooks (errors / search labels),Second Year Students,,src/hooks/useTodos.ts
+1663,Hooks (errors / search labels),Select at least one year group,,src/hooks/useBooks.ts
+1664,Hooks (errors / search labels),Session not found,,src/hooks/useCourses.ts
+1665,Hooks (errors / search labels),Sessions assigned to translate,,src/hooks/useUniversalSearchIndex.tsx
+1666,Hooks (errors / search labels),Some changes may not have been saved.,,src/hooks/useSchoolYearPlanning.ts
+1667,Hooks (errors / search labels),Start date is required.,,src/hooks/useSchoolYearPlanning.ts
+1668,Hooks (errors / search labels),Start date must be on or before end date.,,src/hooks/useSchoolYearPlanning.ts
+1669,Hooks (errors / search labels),Student is required for mentorship log,,src/hooks/useMentorshipLogs.ts
+1670,Hooks (errors / search labels),Submission,,src/hooks/useUniversalSearchIndex.tsx
+1671,Hooks (errors / search labels),Team attendance and service reports,,src/hooks/useUniversalSearchIndex.tsx
+1672,Hooks (errors / search labels),This break overlaps an existing break.,,src/hooks/useSchoolYearPlanning.ts
+1673,Hooks (errors / search labels),Title is required.,,src/hooks/useSchoolYearPlanning.ts
+1674,Hooks (errors / search labels),Translation Sessions,,src/hooks/useUniversalSearchIndex.tsx
+1675,Hooks (errors / search labels),Tuition account not found.,,src/hooks/useTuition.ts
+1676,Hooks (errors / search labels),Tuition reminder,,src/hooks/useTuition.ts
+1677,Hooks (errors / search labels),Upload failed,,src/hooks/useClassContent.ts; src/hooks/useSubjectMaterials.ts
+1678,Hooks (errors / search labels),Upload failed. Please try again.,,src/hooks/useHomework.ts
+1679,Hooks (errors / search labels),User must sign up via Google before roles can be assigned.,,src/hooks/useUsers.ts
+1680,Hooks (errors / search labels),Users with the mentor role,,src/hooks/useTodos.ts
+1681,Hooks (errors / search labels),Users with the teacher role,,src/hooks/useTodos.ts
+1682,Hooks (errors / search labels),Users with the translator role,,src/hooks/useTodos.ts
+1683,Hooks (errors / search labels),Work waiting for review,,src/hooks/useUniversalSearchIndex.tsx
+1684,Hooks (errors / search labels),"Year groups, subjects, and planning",,src/hooks/useUniversalSearchIndex.tsx
+1685,Hooks (errors / search labels),"Year groups, subjects, and sessions",,src/hooks/useUniversalSearchIndex.tsx
+1686,Dev tools,Apply,,src/components/dev/DevRolePanel.tsx
+1687,Dev tools,DEV,,src/components/dev/DevRolePanel.tsx
+1688,Dev tools,Dev Preview,,src/components/dev/DevRolePanel.tsx
+1689,Dev tools,Reset,,src/AuthenticatedApp.tsx; src/components/dev/DevRolePanel.tsx
+1690,Dev tools,Reset to real roles,,src/components/dev/DevRolePanel.tsx
+1691,Dev tools,Role preview,,src/components/dev/DevRolePanel.tsx
+1692,Dev tools,Search name or email,,src/components/dev/DevRolePanel.tsx
+1693,Dev tools,View as user,,src/components/dev/DevRolePanel.tsx
+1694,Other,Advanced CSS - Session 5,,src/data/seed.ts
+1695,Other,Advanced React - Session 1,,src/data/seed.ts
+1696,Other,Advanced topics in web development,,src/data/seed.ts
+1697,Other,Advanced Web Development,,src/data/seed.ts
+1698,Other,CSS Introduction - Session 2,,src/data/seed.ts
+1699,Other,Data Types - Session 2,,src/data/seed.ts
+1700,Other,Database Design - Session 7,,src/data/seed.ts
+1701,Other,Database Optimization - Session 3,,src/data/seed.ts
+1702,Other,Final Project - Session 8,,src/data/seed.ts
+1703,Other,Functions - Session 3,,src/data/seed.ts
+1704,Other,HTML & CSS Fundamentals,,src/data/seed.ts
+1705,Other,HTML Basics - Session 1,,src/data/seed.ts
+1706,Other,JavaScript Fundamentals - Session 3,,src/data/seed.ts
+1707,Other,Learn Python programming basics,,src/data/seed.ts
+1708,Other,Learn the basics of web markup and styling,,src/data/seed.ts
+1709,Other,Modules - Session 4,,src/data/seed.ts
+1710,Other,No content available,,src/views/AppRouter.tsx
+1711,Other,No meetings yet,,src/utils/mentorshipUtils.ts
+1712,Other,Node.js Advanced - Session 2,,src/data/seed.ts
+1713,Other,Node.js Backend - Session 6,,src/data/seed.ts
+1714,Other,Python Fundamentals,,src/data/seed.ts
+1715,Other,Python Introduction - Session 1,,src/data/seed.ts
+1716,Other,React Basics - Session 4,,src/data/seed.ts
+1717,Other,Viewing as,,src/AuthenticatedApp.tsx
+1718,Other,Wednesday gathering,,src/utils/studentAttendanceBreakdown.ts; src/utils/studentCalendar.ts
+1719,Other,You are not on duty this week.,,src/views/AppRouter.tsx

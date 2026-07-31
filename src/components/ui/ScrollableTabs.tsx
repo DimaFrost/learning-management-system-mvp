@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export interface ScrollableTab {
   id: string;
@@ -19,15 +20,18 @@ export function ScrollableTabs({
   tabs,
   activeTab,
   onTabChange,
-  ariaLabel = 'Tabs',
+  ariaLabel,
   activeClassName = 'border-blue-500 text-blue-600',
   inactiveClassName = 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300',
 }: ScrollableTabsProps) {
+  const { t } = useLanguage();
+  const resolvedAriaLabel = ariaLabel ?? t('common.tabs');
+
   return (
     <div className="border-b border-gray-200 -mx-4 px-4 sm:mx-0 sm:px-0">
       <nav
         className="-mb-px flex gap-4 sm:gap-6 overflow-x-auto scrollbar-hide"
-        aria-label={ariaLabel}
+        aria-label={resolvedAriaLabel}
       >
         {tabs.map(tab => (
           <button

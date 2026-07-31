@@ -15,6 +15,7 @@ export const WORKSPACE_ORDER: WorkspaceId[] = [
   'student',
 ];
 
+/** English fallback labels. Prefer `t(WORKSPACE_LABEL_KEYS[id])` in UI. */
 export const WORKSPACE_LABELS: Record<WorkspaceId, string> = {
   administrator: 'Administrator',
   mentor: 'Mentor',
@@ -22,6 +23,23 @@ export const WORKSPACE_LABELS: Record<WorkspaceId, string> = {
   teacher: 'Teacher',
   translator: 'Translator',
   student: 'Student',
+};
+
+export const WORKSPACE_LABEL_KEYS: Record<
+  WorkspaceId,
+  | 'workspace.administrator'
+  | 'workspace.mentor'
+  | 'workspace.teamLeader'
+  | 'workspace.teacher'
+  | 'workspace.translator'
+  | 'workspace.student'
+> = {
+  administrator: 'workspace.administrator',
+  mentor: 'workspace.mentor',
+  team_leader: 'workspace.teamLeader',
+  teacher: 'workspace.teacher',
+  translator: 'workspace.translator',
+  student: 'workspace.student',
 };
 
 export const WORKSPACE_DEFAULT_VIEW: Record<WorkspaceId, string> = {

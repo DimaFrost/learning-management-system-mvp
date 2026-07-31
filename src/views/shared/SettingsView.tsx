@@ -10,6 +10,7 @@ import {
   testGoogleDocsSetup,
 } from '../../utils/googleDocsV2';
 import { Save, Bell, User as UserIcon, Camera, FileText, RefreshCcw, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { formatDateTime } from '../../i18n/formatters';
 import type { WorkspaceId } from '../../types/workspace';
 
 interface SettingsViewProps {
@@ -390,7 +391,13 @@ export function SettingsView({ currentUser, activeWorkspace, onProfileUpdated }:
                   </p>
                   <p className="text-xs text-[#737373]">
                     {docsConnection
-                      ? `Last saved ${new Date(docsConnection.updated_at).toLocaleString()}`
+                      ? `Last saved ${formatDateTime(docsConnection.updated_at, {
+                          day: '2-digit',
+                          month: '2-digit',
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                        })}`
                       : 'Connect the school Google account to create student assignment documents.'}
                   </p>
                 </div>

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
-import { WORKSPACE_LABELS } from '../../types/workspace';
+import { WORKSPACE_LABEL_KEYS } from '../../types/workspace';
 import { LogOut, Code2, Menu, Check, ChevronsUpDown, ChevronDown, CornerDownLeft, Languages, Search, Users } from 'lucide-react';
 import tboLogo from '../../assets/tbo-logo.svg';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
@@ -58,9 +58,9 @@ export function Header({
   const mobileLanguageMenuRef = useRef<HTMLDivElement | null>(null);
   const desktopLanguageMenuRef = useRef<HTMLDivElement | null>(null);
   const { language, t } = useLanguage();
-  const workspaceLabel = activeWorkspace ? WORKSPACE_LABELS[activeWorkspace] : 'Workspace';
+  const workspaceLabel = activeWorkspace ? t(WORKSPACE_LABEL_KEYS[activeWorkspace]) : t('sidebar.workspace');
   const canSwitchWorkspace = !!activeWorkspace && availableWorkspaces.length > 1;
-  const roleButtonLabel = activeWorkspace ? workspaceLabel : 'No role';
+  const roleButtonLabel = activeWorkspace ? workspaceLabel : t('header.noRole');
   const activeRoleMeta = activeWorkspace
     ? ROLE_META[activeWorkspace] ?? { icon: Users, className: 'border-[#d4d4d4] bg-white text-[#525252]' }
     : { icon: Users, className: 'border-[#d4d4d4] bg-[#fafafa] text-[#a3a3a3]' };
@@ -117,12 +117,12 @@ export function Header({
             type="button"
             onClick={onOpenMobileMenu}
             className="tbo-focus -ml-2 rounded-lg p-2.5 text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            aria-label="Open menu"
+            aria-label={t('header.openMenu')}
           >
             <Menu className="w-5 h-5" />
           </button>
           <img src={tboLogo} alt="" className="h-7 w-7 flex-shrink-0 rounded-full" />
-          <h1 className="truncate text-sm font-semibold text-[#171717]">TBO</h1>
+          <h1 className="truncate text-sm font-semibold text-[#171717]">{t('header.brandShort')}</h1>
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isDev && (
@@ -130,7 +130,7 @@ export function Header({
               type="button"
               onClick={onOpenDevPanel}
               className="tbo-focus relative rounded-lg p-2.5 text-[#ea580c] hover:bg-[#fff7ed]"
-              title="Role Preview (Dev)"
+              title={t('header.rolePreviewDev')}
             >
               <Code2 className="w-4 h-4" />
               {(previewRoles !== null || isViewingAsUser) && (
@@ -142,8 +142,8 @@ export function Header({
             type="button"
             onClick={onOpenSearch}
             className="tbo-focus rounded-lg p-2.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            aria-label="Open search"
-            title="Search - Ctrl/Cmd K"
+            aria-label={t('header.openSearch')}
+            title={t('header.searchShortcutTitle')}
           >
             <Search className="h-4 w-4" />
           </button>
@@ -209,9 +209,9 @@ export function Header({
             className="tbo-focus hidden min-w-[16.5rem] items-center gap-2 rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-left text-sm text-[#737373] hover:border-[#d4d4d4] hover:bg-white xl:flex"
           >
             <Search className="h-4 w-4" />
-            <span className="min-w-0 flex-1">Search everything</span>
+            <span className="min-w-0 flex-1">{t('header.searchEverything')}</span>
             <span className="inline-flex items-center gap-1 rounded-lg bg-white px-1.5 py-1 text-[10px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">
-              <span>Ctrl/Cmd K</span>
+              <span>{t('header.searchShortcut')}</span>
               <CornerDownLeft className="h-3 w-3 text-[#a3a3a3]" />
             </span>
           </button>
@@ -275,7 +275,7 @@ export function Header({
                         })()}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-medium">
-                        {WORKSPACE_LABELS[workspace] ?? formatRoleLabel(workspace)}
+                        {t(WORKSPACE_LABEL_KEYS[workspace]) || formatRoleLabel(workspace)}
                       </span>
                     </button>
                   );
@@ -323,7 +323,7 @@ export function Header({
               type="button"
               onClick={onOpenDevPanel}
               className="tbo-focus relative flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-2.5 py-2 text-[#ea580c] hover:bg-[#fff7ed]"
-              title="Role Preview (Dev)"
+              title={t('header.rolePreviewDev')}
             >
               <Code2 className="w-4 h-4" />
               {(previewRoles !== null || isViewingAsUser) && (

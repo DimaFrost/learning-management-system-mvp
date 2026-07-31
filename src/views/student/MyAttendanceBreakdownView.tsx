@@ -15,18 +15,29 @@ import type {
   AttendanceStatus,
 } from '../../types/lms';
 import { StudentMonthCalendar } from '../../components/student/StudentMonthCalendar';
+import { useLanguage } from '../../i18n/LanguageContext';
+import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import {
-  ATTENDANCE_GATE_LABELS,
-  type AttendanceGateKey,
   breakdownToCalendarEvents,
   buildStudentAttendanceBreakdown,
   summarizeBreakdownByGate,
+  type AttendanceGateKey,
   type StudentAttendanceBreakdownRecord,
 } from '../../utils/studentAttendanceBreakdown';
 import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
+import type { TranslationKey } from '../../i18n/translations';
 
 type ViewMode = 'calendar' | 'list' | 'gates' | 'summary';
+
+const GATE_KEYS: AttendanceGateKey[] = ['classes', 'the_well', 'activation', 'ministry'];
+
+const GATE_LABEL_KEYS: Record<AttendanceGateKey, TranslationKey> = {
+  classes: 'attendance.gate.classes',
+  the_well: 'attendance.gate.the_well',
+  activation: 'attendance.gate.activation',
+  ministry: 'attendance.gate.ministry',
+};
 
 const GATE_LIST_ICONS = {
   classes: CalendarDays,
@@ -42,33 +53,38 @@ const GATE_LIST_TONES = {
   ministry: 'bg-[#faf5ff] text-[#7c3aed] ring-[#e9d5ff]',
 } as const;
 
-const STATUS_META: Record<AttendanceStatus, { label: string; className: string }> = {
-  present: { label: 'Present', className: 'bg-[#dcfce7] text-[#166534]' },
-  late: { label: 'Late', className: 'bg-[#fff7ed] text-[#c2410c]' },
-  absent: { label: 'Absent', className: 'bg-[#fee2e2] text-[#b91c1c]' },
-};
-
-const STATUS_FILTER_ICONS: Record<AttendanceStatus, typeof Check> = {
-  present: Check,
-  late: Clock3,
-  absent: X,
-};
+function useStatusMeta() {
+  const { t, language } = useLanguage();
+  return useMemo(() => ({
+    present: { label: t('attendance.present'), className: 'bg-[#dcfce7] text-[#166534]' },
+    late: { label: t('attendance.late'), className: 'bg-[#fff7ed] text-[#c2410c]' },
+    absent: { label: t('attendance.absent'), className: 'bg-[#fee2e2] text-[#b91c1c]' },
+  }), [language, t]);
+}
 
 function StatusBadge({ status }: { status: AttendanceStatus | null }) {
+  const { t } = useLanguage();
+  const statusMeta = useStatusMeta();
   if (!status) {
     return (
       <span className="inline-flex rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#737373]">
-        Not marked
+        {t('attendance.notMarked')}
       </span>
     );
   }
-  const meta = STATUS_META[status];
+  const meta = statusMeta[status];
   return (
     <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}>
       {meta.label}
     </span>
   );
 }
+
+const STATUS_FILTER_ICONS: Record<AttendanceStatus, typeof Check> = {
+  present: Check,
+  late: Clock3,
+  absent: X,
+};
 
 function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {
   return (
@@ -92,7 +108,7 @@ function addDays(dateString: string, amount: number) {
 }
 
 function formatMonthName(monthKey: string) {
-  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+  return formatDateCapitalized(`${monthKey}-01T00:00:00`, { month: 'long', year: 'numeric' });
 }
 
 interface MyAttendanceBreakdownViewProps {
@@ -137,6 +153,8 @@ export function MyAttendanceBreakdownView({
   onRequestCorrection,
   loading,
 }: MyAttendanceBreakdownViewProps) {
+  const { t, tCount, language } = useLanguage();
+  const statusMeta = useStatusMeta();
   const { myCourses, selectedCourse, setSelectedCourseId, enrolledCourseIds } = useStudentCourseSelection(
     currentUser.id,
     courses,
@@ -221,7 +239,7 @@ export function MyAttendanceBreakdownView({
   }, [statusFilteredBreakdown]);
 
   const calendarEvents = useMemo(() => breakdownToCalendarEvents(statusFilteredBreakdown), [statusFilteredBreakdown]);
-  const gateSummaries = useMemo(() => summarizeBreakdownByGate(breakdown), [breakdown]);
+  const gateSummaries = useMemo(() => summarizeBreakdownByGate(breakdown), [breakdown, language]);
   const attendanceCredit = (status: AttendanceStatus | null) => status === 'present' ? 1 : status === 'late' ? 0.5 : 0;
   const classRecords = useMemo(() => breakdown.filter(record => record.gate === 'classes'), [breakdown]);
   const classWeekOptions = useMemo(() => {
@@ -231,7 +249,7 @@ export function MyAttendanceBreakdownView({
         value,
         label: `${formatPlatformDate(value)} - ${formatPlatformDate(addDays(value, 6))}`,
       }));
-  }, [classRecords]);
+  }, [classRecords, language]);
   const visibleClassRecords = useMemo(
     () => classWeekFilter === 'all' ? classRecords : classRecords.filter(record => getWeekStart(record.date) === classWeekFilter),
     [classRecords, classWeekFilter]
@@ -254,20 +272,21 @@ export function MyAttendanceBreakdownView({
   const totalClassRequired = classRecords.length * 0.8;
   const visibleClassPercent = visibleClassRecords.length === 0 ? 0 : Math.round((visibleClassCredits / visibleClassRecords.length) * 100);
   const totalClassPercent = classRecords.length === 0 ? 0 : Math.round((totalClassCredits / classRecords.length) * 100);
-  const classHealth = totalClassPercent >= 80
-    ? { label: 'On track', className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]', detail: 'Class attendance is meeting the 80% graduation requirement.' }
+  const classHealth = useMemo(() => totalClassPercent >= 80
+    ? { label: t('attendance.health.onTrack'), className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]', detail: t('attendance.classes.healthDetail.onTrack') }
     : totalClassPercent >= 70
-      ? { label: 'Close watch', className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: 'Attendance is close to the requirement. Late or missed classes matter now.' }
-      : { label: 'Needs attention', className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]', detail: 'Class attendance is below the 80% graduation requirement.' };
+      ? { label: t('attendance.health.closeWatch'), className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: t('attendance.classes.healthDetail.closeWatch') }
+      : { label: t('attendance.health.needsAttention'), className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]', detail: t('attendance.classes.healthDetail.needsAttention') },
+  [language, t, totalClassPercent]);
   const wellRecords = useMemo(() => breakdown.filter(record => record.gate === 'the_well'), [breakdown]);
   const wellMonthOptions = useMemo(() => {
     return Array.from(new Set(wellRecords.map(record => record.date.slice(0, 7))))
       .sort((a, b) => b.localeCompare(a))
       .map(value => ({
         value,
-        label: new Date(`${value}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+        label: formatDateCapitalized(`${value}-01T00:00:00`, { month: 'long', year: 'numeric' }),
       }));
-  }, [wellRecords]);
+  }, [language, wellRecords]);
   const visibleWellRecords = useMemo(
     () => wellMonthFilter === 'all' ? wellRecords : wellRecords.filter(record => record.date.startsWith(wellMonthFilter)),
     [wellMonthFilter, wellRecords]
@@ -289,25 +308,26 @@ export function MyAttendanceBreakdownView({
           records: records.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title)),
         };
       });
-  }, [visibleWellRecords]);
+  }, [language, visibleWellRecords]);
   const visibleWellCredits = visibleWellRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const totalWellCredits = wellRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const wellMonthlyRequired = wellMonthFilter === 'all' ? wellMonthOptions.length * 2 : 2;
   const wellFallbackRequired = wellRecords.length * 0.5;
-  const wellHealth = visibleWellCredits >= wellMonthlyRequired
-    ? { label: 'Complete', className: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]', detail: 'The selected period is meeting the official Well requirement.' }
+  const wellHealth = useMemo(() => visibleWellCredits >= wellMonthlyRequired
+    ? { label: t('attendance.health.complete'), className: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]', detail: t('attendance.well.healthDetail.complete') }
     : totalWellCredits >= wellFallbackRequired && wellRecords.length > 0
-      ? { label: 'Fallback ok', className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]', detail: 'The yearly fallback is currently healthy, even if a month needs attention.' }
-      : { label: 'Needs attention', className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: 'More Well attendance credits are needed for this period.' };
+      ? { label: t('attendance.health.fallbackOk'), className: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]', detail: t('attendance.well.healthDetail.fallbackOk') }
+      : { label: t('attendance.health.needsAttention'), className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: t('attendance.well.healthDetail.needsAttention') },
+  [language, t, totalWellCredits, visibleWellCredits, wellFallbackRequired, wellMonthlyRequired, wellRecords.length]);
   const ministryRecords = useMemo(() => breakdown.filter(record => record.gate === 'ministry'), [breakdown]);
   const ministryMonthOptions = useMemo(() => {
     return Array.from(new Set(ministryRecords.map(record => record.date.slice(0, 7))))
       .sort((a, b) => b.localeCompare(a))
       .map(value => ({
         value,
-        label: new Date(`${value}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+        label: formatDateCapitalized(`${value}-01T00:00:00`, { month: 'long', year: 'numeric' }),
       }));
-  }, [ministryRecords]);
+  }, [language, ministryRecords]);
   const visibleMinistryRecords = useMemo(
     () => ministryMonthFilter === 'all' ? ministryRecords : ministryRecords.filter(record => record.date.startsWith(ministryMonthFilter)),
     [ministryMonthFilter, ministryRecords]
@@ -315,18 +335,19 @@ export function MyAttendanceBreakdownView({
   const visibleMinistryCredits = visibleMinistryRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const totalMinistryCredits = ministryRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const ministryMonthlyRequired = ministryMonthFilter === 'all' ? ministryMonthOptions.length * 2 : 2;
-  const ministryHealth = totalMinistryCredits >= ministryMonthlyRequired
-    ? { label: 'On track', className: 'border-[#e9d5ff] bg-[#faf5ff] text-[#7c3aed]', detail: 'Submitted ministry records are meeting the selected requirement.' }
-    : { label: 'Needs records', className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: 'More ministry service credits or submitted reports are needed.' };
+  const ministryHealth = useMemo(() => totalMinistryCredits >= ministryMonthlyRequired
+    ? { label: t('attendance.health.onTrack'), className: 'border-[#e9d5ff] bg-[#faf5ff] text-[#7c3aed]', detail: t('attendance.ministry.healthDetail.onTrack') }
+    : { label: t('attendance.health.needsRecords'), className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: t('attendance.ministry.healthDetail.needsRecords') },
+  [language, ministryMonthlyRequired, t, totalMinistryCredits]);
   const activationRecords = useMemo(() => breakdown.filter(record => record.gate === 'activation'), [breakdown]);
   const activationMonthOptions = useMemo(() => {
     return Array.from(new Set(activationRecords.map(record => record.date.slice(0, 7))))
       .sort((a, b) => b.localeCompare(a))
       .map(value => ({
         value,
-        label: new Date(`${value}-01T00:00:00`).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' }),
+        label: formatDateCapitalized(`${value}-01T00:00:00`, { month: 'long', year: 'numeric' }),
       }));
-  }, [activationRecords]);
+  }, [activationRecords, language]);
   const visibleActivationRecords = useMemo(
     () => activationMonthFilter === 'all' ? activationRecords : activationRecords.filter(record => record.date.startsWith(activationMonthFilter)),
     [activationMonthFilter, activationRecords]
@@ -334,14 +355,24 @@ export function MyAttendanceBreakdownView({
   const totalActivationCredits = activationRecords.reduce((total, record) => total + attendanceCredit(record.status), 0);
   const activationLostCredits = Math.max(0, activationRecords.length - totalActivationCredits);
   const activationAllowedLost = 1;
-  const activationHealth = activationLostCredits <= activationAllowedLost
-    ? { label: 'On track', className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: 'Activation Saturday allows up to 1 lost credit across the school year.' }
-    : { label: 'Needs attention', className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]', detail: 'Activation Saturday lost credits are above the allowed limit.' };
+  const activationHealth = useMemo(() => activationLostCredits <= activationAllowedLost
+    ? { label: t('attendance.health.onTrack'), className: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]', detail: t('attendance.activation.healthDetail.onTrack') }
+    : { label: t('attendance.health.needsAttention'), className: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]', detail: t('attendance.activation.healthDetail.needsAttention') },
+  [activationAllowedLost, activationLostCredits, language, t]);
+
+  const viewModes = useMemo(() => ([
+    { id: 'calendar' as const, label: t('attendance.view.calendar'), icon: LayoutGrid },
+    { id: 'list' as const, label: t('attendance.view.list'), icon: List },
+    { id: 'gates' as const, label: t('attendance.view.byGate'), icon: Rows },
+    { id: 'summary' as const, label: t('attendance.view.summary'), icon: Check },
+  ]), [language, t]);
+
+  const gateLabel = (gate: AttendanceGateKey) => t(GATE_LABEL_KEYS[gate]);
 
   if (myCourses.length === 0) {
     return (
       <div className="grid place-items-center rounded-2xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-6 py-16 text-center">
-        <p className="text-sm font-medium text-[#171717]">No active course enrollment found.</p>
+        <p className="text-sm font-medium text-[#171717]">{t('student.enrollment.none')}</p>
       </div>
     );
   }
@@ -349,18 +380,12 @@ export function MyAttendanceBreakdownView({
   if (loading) {
     return (
       <div className="space-y-5">
-        <MyAttendancePageHeader title="Session history" course={selectedCourse} courses={myCourses} onSelect={setSelectedCourseId} />
-        <SectionCard className="p-8 text-center text-sm text-[#737373]">Loading attendance history…</SectionCard>
+        <MyAttendancePageHeader title={t('attendance.history.title')} course={selectedCourse} courses={myCourses} onSelect={setSelectedCourseId} />
+        <SectionCard className="p-8 text-center text-sm text-[#737373]">{t('attendance.history.loading')}</SectionCard>
       </div>
     );
   }
 
-  const viewModes: { id: ViewMode; label: string; icon: typeof LayoutGrid }[] = [
-    { id: 'calendar', label: 'Calendar', icon: LayoutGrid },
-    { id: 'list', label: 'List', icon: List },
-    { id: 'gates', label: 'By gate', icon: Rows },
-    { id: 'summary', label: 'Summary', icon: Check },
-  ];
   const hasFocusedGateView = gateFilter !== 'all';
   const toggleHiddenStatus = (status: AttendanceStatus) => {
     setHiddenStatuses(current => current.includes(status)
@@ -371,7 +396,7 @@ export function MyAttendanceBreakdownView({
   const StatusFilterButtons = () => (
     <div className="flex flex-wrap items-center gap-1.5">
       {(['present', 'late', 'absent'] as AttendanceStatus[]).map(status => {
-        const meta = STATUS_META[status];
+        const meta = statusMeta[status];
         const Icon = STATUS_FILTER_ICONS[status];
         const hidden = hiddenStatuses.includes(status);
         return (
@@ -383,7 +408,9 @@ export function MyAttendanceBreakdownView({
               hidden ? 'opacity-45 line-through decoration-2' : 'shadow-[0_1px_0_rgba(0,0,0,0.03)]'
             }`}
             aria-pressed={!hidden}
-            title={hidden ? `Show ${meta.label.toLowerCase()} records` : `Hide ${meta.label.toLowerCase()} records`}
+            title={hidden
+              ? t('attendance.filter.show', { status: meta.label.toLowerCase() })
+              : t('attendance.filter.hide', { status: meta.label.toLowerCase() })}
           >
             <Icon className="h-3.5 w-3.5" />
             {meta.label}
@@ -401,7 +428,7 @@ export function MyAttendanceBreakdownView({
   const submitCorrectionRequest = async () => {
     if (!correctionRecord || !onRequestCorrection) return;
     if (!correctionReason.trim()) {
-      setCorrectionError('Please add a short reason.');
+      setCorrectionError(t('attendance.correction.reasonRequired'));
       return;
     }
     setCorrectionSubmitting(true);
@@ -424,7 +451,7 @@ export function MyAttendanceBreakdownView({
       setCorrectionStatus('present');
     } catch (requestError) {
       console.error(requestError);
-      setCorrectionError('Could not submit correction request.');
+      setCorrectionError(t('attendance.correction.submitError'));
     } finally {
       setCorrectionSubmitting(false);
     }
@@ -444,7 +471,7 @@ export function MyAttendanceBreakdownView({
         disabled={hasPending}
         className="rounded-full border border-[#e5e5e5] bg-white px-2.5 py-1 text-[11px] font-semibold text-[#525252] hover:bg-[#fafafa] disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {hasPending ? 'Correction pending' : 'Request correction'}
+        {hasPending ? t('attendance.correction.pending') : t('attendance.correction.request')}
       </button>
     );
   };
@@ -452,7 +479,7 @@ export function MyAttendanceBreakdownView({
   return (
     <div className="space-y-5">
       <MyAttendancePageHeader
-        title="Session history"
+        title={t('attendance.history.title')}
         course={selectedCourse}
         courses={myCourses}
         onSelect={setSelectedCourseId}
@@ -461,7 +488,7 @@ export function MyAttendanceBreakdownView({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         {hasFocusedGateView ? (
           <div className="inline-flex items-center rounded-full border border-[#e5e5e5] bg-[#fafafa] px-3 py-1.5 text-xs font-semibold text-[#737373]">
-            Focused attendance view
+            {t('attendance.focusedView')}
           </div>
         ) : (
           <div className="flex flex-wrap gap-1.5">
@@ -490,11 +517,11 @@ export function MyAttendanceBreakdownView({
           value={gateFilter}
           onChange={event => setGateFilter(event.target.value as AttendanceGateKey | 'all')}
           className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm text-[#171717] focus:border-[#2563eb] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-          aria-label="Filter by attendance gate"
+          aria-label={t('attendance.filterByGate')}
         >
-          <option value="all">All gates</option>
-          {(Object.keys(ATTENDANCE_GATE_LABELS) as AttendanceGateKey[]).map(gate => (
-            <option key={gate} value={gate}>{ATTENDANCE_GATE_LABELS[gate]}</option>
+          <option value="all">{t('attendance.allGates')}</option>
+          {GATE_KEYS.map(gate => (
+            <option key={gate} value={gate}>{gateLabel(gate)}</option>
           ))}
         </select>
       </div>
@@ -506,16 +533,16 @@ export function MyAttendanceBreakdownView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">
                   <CalendarDays className="h-3.5 w-3.5" />
-                  Class attendance
+                  {t('attendance.classes.heading')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">Weekly class records</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.classes.weekly')}</h3>
               </div>
               <select
                 value={classWeekFilter}
                 onChange={event => setClassWeekFilter(event.target.value)}
                 className="h-9 rounded-lg border border-[#bfdbfe] bg-white px-3 text-sm font-medium text-[#1d4ed8] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
               >
-                <option value="all">All weeks</option>
+                <option value="all">{t('attendance.allWeeks')}</option>
                 {classWeekOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -524,8 +551,8 @@ export function MyAttendanceBreakdownView({
             <div className="p-4">
               {groupedClassWeeks.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#bfdbfe] bg-[#eff6ff] px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-[#171717]">No class records in this period.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Tuesday and Thursday class attendance will appear here.</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('attendance.classes.empty')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.classes.emptyHint')}</p>
                 </div>
               ) : (
                 <div className="space-y-5">
@@ -540,17 +567,17 @@ export function MyAttendanceBreakdownView({
                             <div>
                               <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
                               <p className="text-[11px] font-medium text-[#a3a3a3]">
-                                {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                                {formatDate(`${record.date}T00:00:00`, { weekday: 'short' })}
                               </p>
                             </div>
                             <div className="min-w-0">
                               <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                              <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Class session'}</p>
+                              <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? t('attendance.subtitle.classSession')}</p>
                             </div>
                             <div className="flex items-center gap-2 sm:justify-end">
                               <StatusBadge status={record.status} />
                               <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                                {attendanceCredit(record.status).toFixed(1)} credit
+                                {t('attendance.creditAmount', { count: attendanceCredit(record.status).toFixed(1) })}
                               </span>
                               <CorrectionAction record={record} />
                             </div>
@@ -568,27 +595,27 @@ export function MyAttendanceBreakdownView({
             <SectionCard className={`border p-4 ${classHealth.className}`}>
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Health</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.health')}</p>
               </div>
               <p className="mt-2 text-xl font-semibold leading-none">{classHealth.label}</p>
               <p className="mt-2 text-xs font-medium leading-5 opacity-80">{classHealth.detail}</p>
             </SectionCard>
             <SectionCard className="border-[#bfdbfe] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">Requirement</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">{t('attendance.requirement')}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-[#eff6ff] p-3 text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Selected</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.selected')}</p>
                   <p className="mt-1 text-lg font-semibold">{visibleClassCredits.toFixed(1)} / {visibleClassRequired.toFixed(1)}</p>
                   <p className="mt-1 text-xs font-medium">{visibleClassPercent}%</p>
                 </div>
                 <div className="rounded-xl bg-[#f0fdf4] p-3 text-[#15803d] ring-1 ring-[#bbf7d0]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Overall</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.overall')}</p>
                   <p className="mt-1 text-lg font-semibold">{totalClassCredits.toFixed(1)} / {totalClassRequired.toFixed(1)}</p>
                   <p className="mt-1 text-xs font-medium">{totalClassPercent}%</p>
                 </div>
               </div>
               <div className="mt-3 rounded-xl bg-[#fafafa] p-3 text-xs leading-5 text-[#525252] ring-1 ring-[#e5e5e5]">
-                Weekly classes require 80% attendance credit. Present gives 1, late gives 0.5, absent or unmarked gives 0.
+                {t('attendance.classes.ruleExplainWeekly')}
               </div>
             </SectionCard>
           </aside>
@@ -602,16 +629,16 @@ export function MyAttendanceBreakdownView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">
                   <Activity className="h-3.5 w-3.5" />
-                  The Well attendance
+                  {t('attendance.well.heading')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">Monthly records</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.well.monthly')}</h3>
               </div>
               <select
                 value={wellMonthFilter}
                 onChange={event => setWellMonthFilter(event.target.value)}
                 className="h-9 rounded-lg border border-[#bbf7d0] bg-white px-3 text-sm font-medium text-[#166534] focus:outline-none focus:ring-2 focus:ring-[#bbf7d0]"
               >
-                <option value="all">All months</option>
+                <option value="all">{t('attendance.allMonths')}</option>
                 {wellMonthOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -620,8 +647,8 @@ export function MyAttendanceBreakdownView({
             <div className="p-4">
               {visibleWellRecords.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#bbf7d0] bg-[#f0fdf4] px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-[#171717]">No Well records in this period.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Scheduled Well sessions will appear here when they are available.</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('attendance.well.empty')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.well.emptyHintScheduled')}</p>
                 </div>
               ) : (
                 <div className="space-y-4">
@@ -634,11 +661,11 @@ export function MyAttendanceBreakdownView({
                           </span>
                           <div>
                             <p className="text-sm font-semibold text-[#171717]">{month.label}</p>
-                            <p className="text-[11px] font-medium text-[#737373]">{month.records.length} session{month.records.length === 1 ? '' : 's'}</p>
+                            <p className="text-[11px] font-medium text-[#737373]">{tCount('attendance.sessionCount', month.records.length)}</p>
                           </div>
                         </div>
                         <span className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-[#15803d] ring-1 ring-[#bbf7d0]">
-                          {month.credits.toFixed(1)} / 2.0 credits
+                          {t('attendance.well.monthCredits', { credits: month.credits.toFixed(1) })}
                         </span>
                       </div>
                       {month.records.map(record => (
@@ -646,17 +673,17 @@ export function MyAttendanceBreakdownView({
                           <div>
                             <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
                             <p className="text-[11px] font-medium text-[#a3a3a3]">
-                              {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                              {formatDate(`${record.date}T00:00:00`, { weekday: 'short' })}
                             </p>
                           </div>
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                            <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Wednesday gathering'}</p>
+                            <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? t('attendance.well.wednesdayGathering')}</p>
                           </div>
                           <div className="flex items-center gap-2 sm:justify-end">
                             <StatusBadge status={record.status} />
                             <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                              {attendanceCredit(record.status).toFixed(1)} credit
+                              {t('attendance.creditAmount', { count: attendanceCredit(record.status).toFixed(1) })}
                             </span>
                             <CorrectionAction record={record} />
                           </div>
@@ -673,25 +700,25 @@ export function MyAttendanceBreakdownView({
             <SectionCard className={`border p-4 ${wellHealth.className}`}>
               <div className="flex items-center gap-2">
                 <Activity className="h-4 w-4" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Health</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.health')}</p>
               </div>
               <p className="mt-2 text-xl font-semibold leading-none">{wellHealth.label}</p>
               <p className="mt-2 text-xs font-medium leading-5 opacity-80">{wellHealth.detail}</p>
             </SectionCard>
             <SectionCard className="border-[#bbf7d0] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">Requirement</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#15803d]">{t('attendance.requirement')}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-[#f0fdf4] p-3 text-[#15803d] ring-1 ring-[#bbf7d0]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Selected</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.selected')}</p>
                   <p className="mt-1 text-lg font-semibold">{visibleWellCredits.toFixed(1)} / {wellMonthlyRequired.toFixed(1)}</p>
                 </div>
                 <div className="rounded-xl bg-[#eff6ff] p-3 text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Fallback</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.fallback')}</p>
                   <p className="mt-1 text-lg font-semibold">{totalWellCredits.toFixed(1)} / {wellFallbackRequired.toFixed(1)}</p>
                 </div>
               </div>
               <div className="mt-3 rounded-xl bg-[#fafafa] p-3 text-xs leading-5 text-[#525252] ring-1 ring-[#e5e5e5]">
-                Officially, The Well needs 2 credits per month. Present gives 1, late gives 0.5, absent or unmarked gives 0. The fallback checks whether the full year is at least 50%.
+                {t('attendance.well.ruleExplain')}
               </div>
             </SectionCard>
           </aside>
@@ -705,16 +732,16 @@ export function MyAttendanceBreakdownView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7c3aed]">
                   <HeartHandshake className="h-3.5 w-3.5" />
-                  Ministry attendance
+                  {t('attendance.ministry.heading')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">Service records</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.ministry.records')}</h3>
               </div>
               <select
                 value={ministryMonthFilter}
                 onChange={event => setMinistryMonthFilter(event.target.value)}
                 className="h-9 rounded-lg border border-[#e9d5ff] bg-white px-3 text-sm font-medium text-[#7c3aed] focus:outline-none focus:ring-2 focus:ring-[#e9d5ff]"
               >
-                <option value="all">All months</option>
+                <option value="all">{t('attendance.allMonths')}</option>
                 {ministryMonthOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -723,8 +750,8 @@ export function MyAttendanceBreakdownView({
             <div className="p-4">
               {visibleMinistryRecords.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#e9d5ff] bg-[#faf5ff] px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-[#171717]">No ministry records in this period.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Team leader reports will appear here after they are submitted.</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('attendance.ministry.empty')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.ministry.emptyHintReports')}</p>
                 </div>
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#e9d5ff]">
@@ -733,17 +760,17 @@ export function MyAttendanceBreakdownView({
                       <div>
                         <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
                         <p className="text-[11px] font-medium text-[#a3a3a3]">
-                          {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                          {formatDate(`${record.date}T00:00:00`, { weekday: 'short' })}
                         </p>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                        <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Service report'}</p>
+                        <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? t('attendance.subtitle.serviceReport')}</p>
                       </div>
                       <div className="flex items-center gap-2 sm:justify-end">
                         <StatusBadge status={record.status} />
                         <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                          {attendanceCredit(record.status).toFixed(1)} credit
+                          {t('attendance.creditAmount', { count: attendanceCredit(record.status).toFixed(1) })}
                         </span>
                         <CorrectionAction record={record} />
                       </div>
@@ -758,25 +785,25 @@ export function MyAttendanceBreakdownView({
             <SectionCard className={`border p-4 ${ministryHealth.className}`}>
               <div className="flex items-center gap-2">
                 <HeartHandshake className="h-4 w-4" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Health</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.health')}</p>
               </div>
               <p className="mt-2 text-xl font-semibold leading-none">{ministryHealth.label}</p>
               <p className="mt-2 text-xs font-medium leading-5 opacity-80">{ministryHealth.detail}</p>
             </SectionCard>
             <SectionCard className="border-[#e9d5ff] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7c3aed]">Requirement</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7c3aed]">{t('attendance.requirement')}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-[#faf5ff] p-3 text-[#7c3aed] ring-1 ring-[#e9d5ff]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Selected</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.selected')}</p>
                   <p className="mt-1 text-lg font-semibold">{visibleMinistryCredits.toFixed(1)} / {ministryMonthlyRequired.toFixed(1)}</p>
                 </div>
                 <div className="rounded-xl bg-[#f0fdf4] p-3 text-[#15803d] ring-1 ring-[#bbf7d0]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Overall</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.overall')}</p>
                   <p className="mt-1 text-lg font-semibold">{totalMinistryCredits.toFixed(1)}</p>
                 </div>
               </div>
               <div className="mt-3 rounded-xl bg-[#fafafa] p-3 text-xs leading-5 text-[#525252] ring-1 ring-[#e5e5e5]">
-                Ministry service uses team reports. Present gives 1 credit, late gives 0.5, absent or unmarked gives 0.
+                {t('attendance.ministry.ruleExplainReports')}
               </div>
             </SectionCard>
           </aside>
@@ -790,16 +817,16 @@ export function MyAttendanceBreakdownView({
               <div>
                 <p className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#ea580c]">
                   <ShieldCheck className="h-3.5 w-3.5" />
-                  Activation Saturday
+                  {t('attendance.activation.heading')}
                 </p>
-                <h3 className="mt-1 text-lg font-semibold text-[#171717]">Activation records</h3>
+                <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('attendance.activation.records')}</h3>
               </div>
               <select
                 value={activationMonthFilter}
                 onChange={event => setActivationMonthFilter(event.target.value)}
                 className="h-9 rounded-lg border border-[#fed7aa] bg-white px-3 text-sm font-medium text-[#c2410c] focus:outline-none focus:ring-2 focus:ring-[#fed7aa]"
               >
-                <option value="all">All months</option>
+                <option value="all">{t('attendance.allMonths')}</option>
                 {activationMonthOptions.map(option => (
                   <option key={option.value} value={option.value}>{option.label}</option>
                 ))}
@@ -808,8 +835,8 @@ export function MyAttendanceBreakdownView({
             <div className="p-4">
               {visibleActivationRecords.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-[#fed7aa] bg-[#fff7ed] px-4 py-8 text-center">
-                  <p className="text-sm font-semibold text-[#171717]">No Activation Saturday records in this period.</p>
-                  <p className="mt-1 text-sm text-[#737373]">Joint Saturday sessions will appear here.</p>
+                  <p className="text-sm font-semibold text-[#171717]">{t('attendance.activation.empty')}</p>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.activation.emptyHint')}</p>
                 </div>
               ) : (
                 <div className="overflow-hidden rounded-2xl border border-[#fed7aa]">
@@ -818,17 +845,17 @@ export function MyAttendanceBreakdownView({
                       <div>
                         <p className="text-sm font-semibold text-[#171717]">{formatPlatformDate(record.date)}</p>
                         <p className="text-[11px] font-medium text-[#a3a3a3]">
-                          {new Date(`${record.date}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'short' })}
+                          {formatDate(`${record.date}T00:00:00`, { weekday: 'short' })}
                         </p>
                       </div>
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                        <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? 'Joint Saturday session'}</p>
+                        <p className="mt-0.5 text-xs text-[#737373]">{record.subtitle ?? t('attendance.subtitle.jointSaturday')}</p>
                       </div>
                       <div className="flex items-center gap-2 sm:justify-end">
                         <StatusBadge status={record.status} />
                         <span className="rounded-full bg-[#fafafa] px-2 py-1 text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
-                          {attendanceCredit(record.status).toFixed(1)} credit
+                          {t('attendance.creditAmount', { count: attendanceCredit(record.status).toFixed(1) })}
                         </span>
                         <CorrectionAction record={record} />
                       </div>
@@ -843,25 +870,25 @@ export function MyAttendanceBreakdownView({
             <SectionCard className={`border p-4 ${activationHealth.className}`}>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4" />
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">Health</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em]">{t('attendance.health')}</p>
               </div>
               <p className="mt-2 text-xl font-semibold leading-none">{activationHealth.label}</p>
               <p className="mt-2 text-xs font-medium leading-5 opacity-80">{activationHealth.detail}</p>
             </SectionCard>
             <SectionCard className="border-[#fed7aa] p-4">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#ea580c]">Rule</p>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#ea580c]">{t('attendance.rule')}</p>
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <div className="rounded-xl bg-[#fff7ed] p-3 text-[#c2410c] ring-1 ring-[#fed7aa]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Lost</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.lost')}</p>
                   <p className="mt-1 text-lg font-semibold">{activationLostCredits.toFixed(1)}</p>
                 </div>
                 <div className="rounded-xl bg-[#f0fdf4] p-3 text-[#15803d] ring-1 ring-[#bbf7d0]">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">Allowed</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em]">{t('attendance.allowed')}</p>
                   <p className="mt-1 text-lg font-semibold">{activationAllowedLost.toFixed(1)}</p>
                 </div>
               </div>
               <div className="mt-3 rounded-xl bg-[#fafafa] p-3 text-xs leading-5 text-[#525252] ring-1 ring-[#e5e5e5]">
-                Activation Saturday allows at most 1 lost credit. Present gives 1, late gives 0.5, absent or unmarked gives 0.
+                {t('attendance.activation.ruleExplain')}
               </div>
             </SectionCard>
           </aside>
@@ -887,12 +914,12 @@ export function MyAttendanceBreakdownView({
           </div>
           {statusFilteredBreakdown.length === 0 ? (
             <SectionCard className="p-8 text-center text-sm text-[#737373]">
-              No sessions match the visible status filters.
+              {t('attendance.list.noMatch')}
             </SectionCard>
           ) : groupedListBreakdown.map(week => (
             <SectionCard key={week.weekStart} className="overflow-hidden">
               <div className="border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Week</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.week')}</p>
                 <p className="mt-1 text-sm font-semibold text-[#171717]">
                   {formatPlatformDate(week.weekStart)} - {formatPlatformDate(week.weekEnd)}
                 </p>
@@ -915,7 +942,7 @@ export function MyAttendanceBreakdownView({
                               <div className="min-w-0">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="truncate text-sm font-semibold text-[#171717]">{record.title}</p>
-                                  <span className="text-xs font-semibold text-[#737373]">{ATTENDANCE_GATE_LABELS[record.gate]}</span>
+                                  <span className="text-xs font-semibold text-[#737373]">{gateLabel(record.gate)}</span>
                                 </div>
                                 {record.subtitle ? <p className="truncate text-xs text-[#737373]">{record.subtitle}</p> : null}
                               </div>
@@ -937,7 +964,7 @@ export function MyAttendanceBreakdownView({
         <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
           {gateSummaries.length === 0 ? (
             <SectionCard className="col-span-full p-8 text-center text-sm text-[#737373]">
-              No attendance sessions recorded yet.
+              {t('attendance.noneRecorded')}
             </SectionCard>
           ) : (
             gateSummaries
@@ -947,15 +974,15 @@ export function MyAttendanceBreakdownView({
               return (
                 <SectionCard key={summary.gate} className="p-4">
                   <div className="flex items-center justify-between gap-3">
-                    <h3 className="text-sm font-semibold text-[#171717]">{summary.label}</h3>
-                    <span className="text-xs text-[#737373]">{summary.total} sessions</span>
+                    <h3 className="text-sm font-semibold text-[#171717]">{gateLabel(summary.gate)}</h3>
+                    <span className="text-xs text-[#737373]">{tCount('attendance.sessionCount', summary.total)}</span>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2 text-xs font-semibold">
-                    <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534]">{summary.present} present</span>
-                    <span className="rounded-full bg-[#fff7ed] px-2 py-1 text-[#c2410c]">{summary.late} late</span>
-                    <span className="rounded-full bg-[#fee2e2] px-2 py-1 text-[#b91c1c]">{summary.absent} absent</span>
+                    <span className="rounded-full bg-[#dcfce7] px-2 py-1 text-[#166534]">{t('attendance.summary.present', { count: summary.present })}</span>
+                    <span className="rounded-full bg-[#fff7ed] px-2 py-1 text-[#c2410c]">{t('attendance.summary.late', { count: summary.late })}</span>
+                    <span className="rounded-full bg-[#fee2e2] px-2 py-1 text-[#b91c1c]">{t('attendance.summary.absent', { count: summary.absent })}</span>
                     {summary.unmarked > 0 ? (
-                      <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#737373]">{summary.unmarked} not marked</span>
+                      <span className="rounded-full bg-[#f5f5f5] px-2 py-1 text-[#737373]">{t('attendance.summary.unmarked', { count: summary.unmarked })}</span>
                     ) : null}
                   </div>
                   <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
@@ -980,7 +1007,7 @@ export function MyAttendanceBreakdownView({
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
           {gateSummaries.length === 0 ? (
             <SectionCard className="col-span-full p-8 text-center text-sm text-[#737373]">
-              No attendance sessions recorded yet.
+              {t('attendance.noneRecorded')}
             </SectionCard>
           ) : (
             gateSummaries.map(summary => {
@@ -988,9 +1015,9 @@ export function MyAttendanceBreakdownView({
               const attendanceRate = marked === 0 ? 0 : Math.round(((summary.present + summary.late * 0.5) / marked) * 100);
               return (
                 <SectionCard key={summary.gate} className="p-4">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{summary.label}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{gateLabel(summary.gate)}</p>
                   <p className="mt-2 text-3xl font-semibold text-[#171717]">{summary.total}</p>
-                  <p className="text-xs text-[#737373]">tracked sessions</p>
+                  <p className="text-xs text-[#737373]">{t('attendance.trackedSessions')}</p>
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center text-xs">
                     <div className="rounded-lg bg-[#dcfce7] px-2 py-2 text-[#166534]">
                       <Check className="mx-auto h-3.5 w-3.5" />
@@ -1007,7 +1034,7 @@ export function MyAttendanceBreakdownView({
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs text-[#737373]">
-                      <span>Marked attendance</span>
+                      <span>{t('attendance.markedAttendance')}</span>
                       <span>{attendanceRate}%</span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#f5f5f5]">
@@ -1023,45 +1050,45 @@ export function MyAttendanceBreakdownView({
 
       {correctionRecord && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-[#171717]/35 p-0 backdrop-blur-sm sm:items-center sm:p-4">
-          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setCorrectionRecord(null)} aria-label="Close correction request" />
+          <button type="button" className="absolute inset-0 cursor-default" onClick={() => setCorrectionRecord(null)} aria-label={t('attendance.correction.close')} />
           <section className="relative w-full max-w-lg rounded-t-2xl border border-[#e5e5e5] bg-white p-5 shadow-[0_24px_80px_rgba(23,23,23,0.18)] sm:rounded-2xl">
             <div className="flex items-start gap-3">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#eff6ff] text-[#2563eb] ring-1 ring-[#bfdbfe]">
                 <AlertCircle className="h-5 w-5" />
               </span>
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Attendance correction</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.correction.eyebrow')}</p>
                 <h3 className="mt-1 text-lg font-semibold text-[#171717]">{correctionRecord.title}</h3>
-                <p className="mt-1 text-sm text-[#737373]">{formatPlatformDate(correctionRecord.date)} · {ATTENDANCE_GATE_LABELS[correctionRecord.gate]}</p>
+                <p className="mt-1 text-sm text-[#737373]">{formatPlatformDate(correctionRecord.date)} · {gateLabel(correctionRecord.gate)}</p>
               </div>
             </div>
             <div className="mt-5 grid gap-3">
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Correct status</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.correction.correctStatus')}</span>
                 <select
                   value={correctionStatus}
                   onChange={event => setCorrectionStatus(event.target.value as AttendanceStatus)}
                   className="h-10 w-full rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
                 >
-                  <option value="present">Present</option>
-                  <option value="late">Late</option>
-                  <option value="absent">Absent</option>
+                  <option value="present">{t('attendance.present')}</option>
+                  <option value="late">{t('attendance.late')}</option>
+                  <option value="absent">{t('attendance.absent')}</option>
                 </select>
               </label>
               <label className="block">
-                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Reason</span>
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.correction.reasonLabel')}</span>
                 <textarea
                   value={correctionReason}
                   onChange={event => setCorrectionReason(event.target.value)}
                   rows={4}
                   className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm text-[#171717] focus:outline-none focus:ring-2 focus:ring-[#bfdbfe]"
-                  placeholder="Briefly explain what should be corrected."
+                  placeholder={t('attendance.correction.reasonPlaceholderBrief')}
                 />
               </label>
               {correctionError ? <p className="rounded-xl bg-[#fef2f2] px-3 py-2 text-sm font-medium text-[#b91c1c]">{correctionError}</p> : null}
             </div>
             <div className="mt-5 flex justify-end gap-2">
-              <button type="button" onClick={() => setCorrectionRecord(null)} className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]">Cancel</button>
+              <button type="button" onClick={() => setCorrectionRecord(null)} className="rounded-xl border border-[#e5e5e5] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]">{t('common.cancel')}</button>
               <button
                 type="button"
                 onClick={submitCorrectionRequest}
@@ -1069,7 +1096,7 @@ export function MyAttendanceBreakdownView({
                 className="inline-flex items-center gap-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <Send className="h-4 w-4" />
-                {correctionSubmitting ? 'Sending...' : 'Send request'}
+                {correctionSubmitting ? t('attendance.correction.sendingDots') : t('attendance.correction.send')}
               </button>
             </div>
           </section>

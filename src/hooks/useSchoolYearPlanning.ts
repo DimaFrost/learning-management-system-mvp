@@ -53,6 +53,7 @@ export interface PlanningBreak {
 
 type BreakResult = { ok: true } | { ok: false; error: string };
 
+/** English weekday names are intentional logic keys (compared to 'Saturday', etc.). Display uses localized formatters. */
 function dayNameFromDate(dateStr: string): string {
   if (!dateStr) return '';
   const d = new Date(dateStr + 'T00:00:00');

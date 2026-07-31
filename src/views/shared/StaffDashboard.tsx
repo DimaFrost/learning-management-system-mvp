@@ -4,6 +4,7 @@ import type { Class, Course, User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { PageHeader } from '../../components/ui/PageHeader';
 import { StaffAvatar } from '../../components/ui/StaffAvatar';
+import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
 import { isCourseActive } from '../../utils/courseUtils';
 import { isActivationSaturdayClass } from '../../utils/attendanceUtils';
 
@@ -35,15 +36,15 @@ function startOfToday() {
 }
 
 function formatWeekday(dateKeyValue: string) {
-  return new Date(`${dateKeyValue}T00:00:00`).toLocaleDateString('en-GB', { weekday: 'long' });
+  return formatDateCapitalized(`${dateKeyValue}T00:00:00`, { weekday: 'long' });
 }
 
 function formatDateParts(dateKeyValue: string) {
   const date = new Date(`${dateKeyValue}T00:00:00`);
   return {
     day: String(date.getDate()),
-    month: date.toLocaleDateString('en-GB', { month: 'short' }),
-    weekday: date.toLocaleDateString('en-GB', { weekday: 'short' }),
+    month: formatDate(date, { month: 'short' }),
+    weekday: formatDate(date, { weekday: 'short' }),
   };
 }
 
