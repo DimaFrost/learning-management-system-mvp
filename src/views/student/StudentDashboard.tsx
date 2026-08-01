@@ -292,7 +292,7 @@ export function StudentDashboard({
       theWellSessionAttendance,
       wellSchedule,
     }),
-    [classAttendance, courses, currentUser.id, enrolledCourseIds, theWellSessionAttendance, wellSchedule]
+    [classAttendance, courses, currentUser.id, enrolledCourseIds, language, theWellSessionAttendance, wellSchedule]
   );
 
   const mySummaries = useMemo(

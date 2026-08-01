@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
 import { hasRole } from '../utils/userUtils';
@@ -25,7 +26,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
     setError(null);
     if (!hasRole(currentUser, 'administrator')) {
       setSaving(false);
-      setError('Name can only be changed by an administrator.');
+      setError(translate('settings.profile.nameAdminOnly'));
       return;
     }
     const fullName = `${data.firstName} ${data.lastName}`.trim();
@@ -40,7 +41,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
 
     setSaving(false);
     if (error) {
-      setError('Failed to save profile.');
+      setError(translate('errors.settings.saveProfileFailed'));
       console.error(error);
     } else {
       setSuccessMessage('Profile updated.');
@@ -61,7 +62,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
 
     setSaving(false);
     if (error) {
-      setError('Failed to save notification preferences.');
+      setError(translate('errors.settings.saveNotificationsFailed'));
       console.error(error);
     } else {
       setSuccessMessage('Preferences saved.');
@@ -75,7 +76,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
     setError(null);
     try {
       if (croppedBlob.size > 2 * 1024 * 1024) {
-        setError('Image must be under 2MB.');
+        setError(translate('errors.settings.imageSize'));
         setSaving(false);
         return;
       }
@@ -107,7 +108,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
       setTimeout(() => setSuccessMessage(null), 3000);
       onProfileUpdated();
     } catch (err) {
-      setError('Failed to upload photo. Please try again.');
+      setError(translate('errors.settings.uploadPhotoFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -134,7 +135,7 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
       setTimeout(() => setSuccessMessage(null), 3000);
       onProfileUpdated();
     } catch (err) {
-      setError('Failed to remove photo.');
+      setError(translate('errors.settings.removePhotoFailed'));
       console.error(err);
     } finally {
       setSaving(false);

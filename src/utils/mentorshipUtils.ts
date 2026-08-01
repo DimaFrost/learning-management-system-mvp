@@ -1,3 +1,4 @@
+import { translate } from '../i18n/translate';
 import type { MentorshipLog } from '../types/lms';
 
 type CadenceSettings = {
@@ -53,10 +54,14 @@ export const getCheckInStatus = (
       .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
     const lastCheckIn = checkIns[0];
     if (!lastCheckIn) {
-      return { status: 'on_track', daysSince: null, message: 'Optional' };
+      return { status: 'on_track', daysSince: null, message: translate('mentorship.checkIn.optional') };
     }
     const days = daysSince(lastCheckIn.date);
-    return { status: 'on_track', daysSince: days, message: `${days}d ago (optional)` };
+    return {
+      status: 'on_track',
+      daysSince: days,
+      message: translate('mentorship.checkIn.daysAgoOptional', { days }),
+    };
   }
 
   const checkIns = mentorshipLogs
@@ -64,12 +69,18 @@ export const getCheckInStatus = (
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   const lastCheckIn = checkIns[0];
 
-  if (!lastCheckIn) return { status: 'at_risk', daysSince: null, message: 'No meetings yet' };
+  if (!lastCheckIn) {
+    return { status: 'at_risk', daysSince: null, message: translate('mentorship.checkIn.noMeetingsYet') };
+  }
 
   const days = daysSince(lastCheckIn.date);
   const settings = cadenceSettings.inPerson;
 
-  if (days >= settings.criticalDays) return { status: 'at_risk', daysSince: days, message: `${days}d overdue` };
-  if (days >= settings.warningDays) return { status: 'lagging', daysSince: days, message: `${days}d ago` };
-  return { status: 'on_track', daysSince: days, message: `${days}d ago` };
+  if (days >= settings.criticalDays) {
+    return { status: 'at_risk', daysSince: days, message: translate('mentorship.checkIn.daysOverdue', { days }) };
+  }
+  if (days >= settings.warningDays) {
+    return { status: 'lagging', daysSince: days, message: translate('mentorship.checkIn.daysAgo', { days }) };
+  }
+  return { status: 'on_track', daysSince: days, message: translate('mentorship.checkIn.daysAgo', { days }) };
 };

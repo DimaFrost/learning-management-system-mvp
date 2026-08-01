@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { queueWorkflowEmail } from '../utils/notificationJobs';
 import type {
@@ -339,7 +340,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
 
   const recordPayment = useCallback(async (input: { accountId: number; amount: number; paymentDate: string; method: string; reference?: string; note?: string }) => {
     const account = accounts.find(item => item.id === input.accountId);
-    if (!account) throw new Error('Tuition account not found.');
+    if (!account) throw new Error(translate('errors.tuition.accountNotFound'));
     const { error: insertError } = await supabase.from('student_tuition_payments').insert({
       account_id: input.accountId,
       student_id: account.studentId,

@@ -48,7 +48,7 @@ export function MentorshipFollowUpPanel({
   getUserById,
   onOpenCheckin,
 }: MentorshipFollowUpPanelProps) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [contactMentor, setContactMentor] = useState<User | null>(null);
@@ -87,7 +87,7 @@ export function MentorshipFollowUpPanel({
       onTrackPairs: allStudents.filter(pair => pair.overallStatus === 'on_track').length,
       allStudents,
     };
-  }, [cadenceSettings, courseStudents, getUserById, mentorshipLogs, t]);
+  }, [cadenceSettings, courseStudents, getUserById, language, mentorshipLogs, t]);
 
   const query = search.trim().toLowerCase();
 

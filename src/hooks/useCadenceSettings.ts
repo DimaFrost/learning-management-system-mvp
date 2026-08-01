@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 
 export type CadenceSettings = {
@@ -52,7 +53,7 @@ export function useCadenceSettings() {
         setCadenceSettingsState(data.value as CadenceSettings);
       } catch (err) {
         console.error('fetchCadenceSettings error:', err);
-        setError('Failed to load cadence settings');
+        setError(translate('errors.cadence.loadFailed'));
       } finally {
         setLoading(false);
       }
@@ -71,7 +72,7 @@ export function useCadenceSettings() {
       .then(({ error: updateError }) => {
         if (updateError) {
           console.error('setCadenceSettings error:', updateError);
-          setError('Failed to save cadence settings');
+          setError(translate('errors.cadence.saveFailed'));
         }
       });
   }, []);

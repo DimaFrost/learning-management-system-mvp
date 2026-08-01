@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { Course, Subject, Class } from '../types/lms';
 import { getNextClassDate } from '../utils/scheduling';
@@ -153,7 +154,7 @@ function toClassRow(data: Partial<Class>, subjectId?: number, forInsert = false)
 
 function driveErrorMessage(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err);
-  return `Google Drive folder setup failed: ${msg}`;
+  return translate('errors.courses.driveFolderSetupFailed', { message: msg });
 }
 
 async function ensureCourseDriveFolder(course: Course): Promise<string> {
@@ -265,7 +266,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       return mapped;
     } catch (err) {
       console.error('refetchCourses error:', err);
-      setError('Failed to load courses');
+      setError(translate('errors.courses.loadFailed'));
       return [];
     } finally {
       setLoading(false);
@@ -305,7 +306,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       return true;
     } catch (err) {
       console.error('addCourse error:', err);
-      setError('Failed to add course');
+      setError(translate('errors.courses.addFailed'));
       return false;
     }
   }, [refetchCourses]);
@@ -322,7 +323,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('updateCourse error:', err);
-      setError('Failed to update course');
+      setError(translate('errors.courses.updateFailed'));
     }
   }, [refetchCourses]);
 
@@ -346,7 +347,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           await refetchCourses();
         } catch (err) {
           console.error('deleteCourse error:', err);
-          setError('Failed to delete course');
+          setError(translate('errors.courses.deleteFailed'));
         }
       }
     );
@@ -410,7 +411,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('addSubject error:', err);
-      setError('Failed to add subject');
+      setError(translate('errors.courses.addSubjectFailed'));
     }
   }, [courses, refetchCourses]);
 
@@ -426,7 +427,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('updateSubject error:', err);
-      setError('Failed to update subject');
+      setError(translate('errors.courses.updateSubjectFailed'));
     }
   }, [refetchCourses]);
 
@@ -451,7 +452,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           await refetchCourses();
         } catch (err) {
           console.error('deleteSubject error:', err);
-          setError('Failed to delete subject');
+          setError(translate('errors.courses.deleteSubjectFailed'));
         }
       }
     );
@@ -487,7 +488,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
       await refetchCourses();
     } catch (err) {
       console.error('addClass error:', err);
-      setError('Failed to add session');
+      setError(translate('errors.courses.addSessionFailed'));
     }
   }, [courses, refetchCourses]);
 
@@ -502,11 +503,10 @@ export function useCourses(showConfirmation: ShowConfirmation) {
 
     if (updateError) {
       console.error('updateClass error:', updateError);
-      throw new Error(updateError.message || 'Failed to update session');
+      throw new Error(updateError.message || translate('errors.courses.updateSessionFailed'));
     }
     if (!data) {
-      const message =
-        'Could not update session. You may not have permission to assign translators.';
+      const message = translate('errors.courses.updateSessionTranslatorPermission');
       console.error('updateClass error:', message);
       throw new Error(message);
     }
@@ -536,7 +536,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
           await refetchCourses();
         } catch (err) {
           console.error('deleteClass error:', err);
-          setError('Failed to delete session');
+          setError(translate('errors.courses.deleteSessionFailed'));
         }
       }
     );
@@ -551,7 +551,7 @@ export function useCourses(showConfirmation: ShowConfirmation) {
     const subject = course?.subjects.find(s => s.id === subjectId);
     const cls = subject?.classes.find(c => c.id === classId);
     if (!course || !subject || !cls) {
-      return { ok: false, error: 'Session not found' };
+      return { ok: false, error: translate('errors.courses.sessionNotFound') };
     }
 
     setError(null);

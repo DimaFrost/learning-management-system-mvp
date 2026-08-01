@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { Announcement, AnnouncementComment, AnnouncementAttachment, AnnouncementReaction, User, CourseStudent, Course } from '../types/lms';
 import { uploadStreamGoogleDriveAttachment } from '../utils/googleDocsV2';
@@ -447,7 +448,7 @@ export function useAnnouncements(
 
       setAllAnnouncements(mapped);
     } catch (err) {
-      setError('Failed to load announcements');
+      setError(translate('errors.announcements.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -518,7 +519,7 @@ export function useAnnouncements(
 
         return inserted.id;
       } catch (err) {
-        setError('Failed to add announcement');
+        setError(translate('errors.announcements.addFailed'));
         console.error(err);
         throw err;
       }
@@ -579,7 +580,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to update announcement');
+        setError(translate('errors.announcements.updateFailed'));
         console.error(err);
       }
     },
@@ -620,7 +621,7 @@ export function useAnnouncements(
 
             await refetchAnnouncements();
           } catch (err) {
-            setError('Failed to move announcement to trash');
+            setError(translate('errors.announcements.trashFailed'));
             console.error(err);
           }
         }
@@ -645,7 +646,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to restore announcement');
+        setError(translate('errors.announcements.restoreFailed'));
         console.error(err);
       }
     },
@@ -674,7 +675,7 @@ export function useAnnouncements(
 
             await refetchAnnouncements();
           } catch (err) {
-            setError('Failed to permanently delete announcement');
+            setError(translate('errors.announcements.deleteFailed'));
             console.error(err);
           }
         }
@@ -699,7 +700,7 @@ export function useAnnouncements(
             .maybeSingle();
           const pinnedLimit = Math.max(Number(setting?.pinned_post_limit ?? 3), 0);
           if (pinnedLimit <= 0) {
-            setError('Pinned posts are disabled for this year group');
+            setError(translate('errors.announcements.pinnedDisabled'));
             return;
           }
 
@@ -741,7 +742,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to update pin status');
+        setError(translate('errors.announcements.pinFailed'));
         console.error(err);
       }
     },
@@ -762,7 +763,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to add comment');
+        setError(translate('errors.announcements.commentAddFailed'));
         console.error(err);
       }
     },
@@ -782,7 +783,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to delete comment');
+        setError(translate('errors.announcements.commentDeleteFailed'));
         console.error(err);
       }
     },
@@ -803,7 +804,7 @@ export function useAnnouncements(
       try {
         if (attachment.attachmentType === 'file') {
           if (!attachment.file) {
-            throw new Error('File is required for file attachments');
+            throw new Error(translate('errors.announcements.fileRequired'));
           }
 
           await uploadStreamGoogleDriveAttachment({
@@ -827,7 +828,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to add attachment');
+        setError(translate('errors.announcements.attachmentAddFailed'));
         console.error(err);
       }
     },
@@ -854,7 +855,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to delete attachment');
+        setError(translate('errors.announcements.attachmentDeleteFailed'));
         console.error(err);
       }
     },
@@ -891,7 +892,7 @@ export function useAnnouncements(
 
         await refetchAnnouncements();
       } catch (err) {
-        setError('Failed to update reaction');
+        setError(translate('errors.announcements.reactionFailed'));
         console.error(err);
       }
     },

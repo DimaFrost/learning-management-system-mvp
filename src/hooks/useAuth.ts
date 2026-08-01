@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
 
@@ -53,7 +54,7 @@ export function useAuth() {
           hasLoadedUser = true;
         } catch (err) {
           if (cancelled) return;
-          setError('Failed to load user profile');
+          setError(translate('errors.auth.loadProfileFailed'));
           console.error(err);
         } finally {
           if (!cancelled) setLoading(false);
@@ -131,7 +132,7 @@ export function useAuth() {
       setCurrentUser(profile);
       setError(null);
     } catch (err) {
-      setError('Failed to load user profile');
+      setError(translate('errors.auth.loadProfileFailed'));
       console.error(err);
     }
   }, [currentUser]);

@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { MentorshipLog } from '../types/lms';
 
@@ -92,7 +93,7 @@ export function useMentorshipLogs() {
 
       setMentorshipLogs((data ?? []).map(row => mapRowToMentorshipLog(row as MentorshipLogRow)));
     } catch (err) {
-      setError('Failed to load mentorship logs');
+      setError(translate('errors.mentorship.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -105,7 +106,7 @@ export function useMentorshipLogs() {
 
   const addMentorshipLog = useCallback(async (log: Partial<MentorshipLog>, defaultMentorId: string) => {
     if (!log.studentId) {
-      setError('Student is required for mentorship log');
+      setError(translate('errors.mentorship.studentRequired'));
       return;
     }
 
@@ -137,7 +138,7 @@ export function useMentorshipLogs() {
 
       await refetchMentorshipLogs();
     } catch (err) {
-      setError('Failed to add mentorship log');
+      setError(translate('errors.mentorship.addFailed'));
       console.error(err);
     }
   }, [refetchMentorshipLogs]);
@@ -154,7 +155,7 @@ export function useMentorshipLogs() {
 
       await refetchMentorshipLogs();
     } catch (err) {
-      setError('Failed to update mentorship log');
+      setError(translate('errors.mentorship.updateFailed'));
       console.error(err);
     }
   }, [refetchMentorshipLogs]);
@@ -171,7 +172,7 @@ export function useMentorshipLogs() {
 
       await refetchMentorshipLogs();
     } catch (err) {
-      setError('Failed to delete mentorship log');
+      setError(translate('errors.mentorship.deleteFailed'));
       console.error(err);
     }
   }, [refetchMentorshipLogs]);

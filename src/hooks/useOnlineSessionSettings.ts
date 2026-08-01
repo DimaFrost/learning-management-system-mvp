@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 
 export type OnlineSessionSettings = {
@@ -34,7 +35,7 @@ export function useOnlineSessionSettings() {
         });
       } catch (err) {
         console.error('fetchOnlineSessionSettings error:', err);
-        setError('Failed to load online session settings');
+        setError(translate('errors.onlineSessions.loadFailed'));
       } finally {
         setLoading(false);
       }
@@ -53,7 +54,7 @@ export function useOnlineSessionSettings() {
       .then(({ error: updateError }) => {
         if (updateError) {
           console.error('setOnlineSessionSettings error:', updateError);
-          setError('Failed to save online session settings');
+          setError(translate('errors.onlineSessions.saveFailed'));
         }
       });
   }, []);

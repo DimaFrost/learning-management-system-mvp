@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { getAdminIds, queueWorkflowEmail } from '../utils/notificationJobs';
 import type {
@@ -527,7 +528,7 @@ export function useAttendance(
         })));
       }
     } catch (err) {
-      setError('Failed to load attendance data');
+      setError(translate('errors.attendance.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);

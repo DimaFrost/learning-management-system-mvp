@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type {
   HomeworkAssignment,
@@ -129,7 +130,7 @@ export function useHomework(
         setSubmissions([]);
       }
     } catch (err) {
-      setError('Failed to load homework');
+      setError(translate('errors.homework.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -231,7 +232,7 @@ export function useHomework(
 
       await fetchHomework();
     } catch (err) {
-      setError('Failed to create assignment');
+      setError(translate('errors.homework.createFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -261,7 +262,7 @@ export function useHomework(
       .from('homework_assignments')
       .update(updatePayload)
       .eq('id', id);
-    if (error) { setError('Failed to update assignment'); return; }
+    if (error) { setError(translate('errors.homework.updateFailed')); return; }
     await fetchHomework();
   };
 
@@ -273,7 +274,7 @@ export function useHomework(
       async () => {
         const { error } = await supabase
           .from('homework_assignments').delete().eq('id', id);
-        if (error) { setError('Failed to delete'); return; }
+        if (error) { setError(translate('errors.homework.deleteFailed')); return; }
         await fetchHomework();
       }
     );
@@ -295,7 +296,7 @@ export function useHomework(
       });
       await fetchHomework();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed. Please try again.');
+      setError(err instanceof Error ? err.message : translate('errors.homework.uploadFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -307,7 +308,7 @@ export function useHomework(
     googleDocUrl: string;
   }) => {
     if (!params.googleDocUrl.includes('docs.google.com')) {
-      setError('Please paste a valid Google Docs URL');
+      setError(translate('errors.homework.invalidGoogleDocsUrl'));
       return;
     }
     setSaving(true);
@@ -324,7 +325,7 @@ export function useHomework(
       }, { onConflict: 'assignment_id,student_id' });
       await fetchHomework();
     } catch (err) {
-      setError('Failed to link Google Doc. Please try again.');
+      setError(translate('errors.homework.linkGoogleDocFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -338,7 +339,7 @@ export function useHomework(
       await createHomeworkGoogleDoc(assignmentId);
       await fetchHomework();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to create Google Doc. Please try again.');
+      setError(err instanceof Error ? err.message : translate('errors.homework.createGoogleDocFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -354,7 +355,7 @@ export function useHomework(
         updated_at: new Date().toISOString(),
       })
       .eq('id', submissionId);
-    if (error) { setError('Failed to submit'); return; }
+    if (error) { setError(translate('errors.homework.submitFailed')); return; }
     await fetchHomework();
   };
 
@@ -376,7 +377,7 @@ export function useHomework(
       })
       .eq('id', params.submissionId);
     setSaving(false);
-    if (error) { setError('Failed to save grade'); return; }
+    if (error) { setError(translate('errors.homework.saveGradeFailed')); return; }
     await fetchHomework();
   };
 
@@ -400,7 +401,7 @@ export function useHomework(
       }, { onConflict: 'assignment_id,student_id' });
       await fetchHomework();
     } catch (err) {
-      setError('Failed to submit quick check');
+      setError(translate('errors.homework.submitQuickCheckFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -412,7 +413,7 @@ export function useHomework(
       .from('homework_submissions')
       .update({ status: 'returned', updated_at: new Date().toISOString() })
       .eq('id', submissionId);
-    if (error) { setError('Failed to return submission'); return; }
+    if (error) { setError(translate('errors.homework.returnFailed')); return; }
     await fetchHomework();
   };
 
@@ -422,14 +423,14 @@ export function useHomework(
       author_id: currentUser.id,
       content,
     });
-    if (error) { setError('Failed to post comment'); return; }
+    if (error) { setError(translate('errors.homework.postCommentFailed')); return; }
     await fetchHomework();
   };
 
   const deleteComment = async (commentId: number) => {
     const { error } = await supabase
       .from('homework_comments').delete().eq('id', commentId);
-    if (error) { setError('Failed to delete comment'); return; }
+    if (error) { setError(translate('errors.homework.deleteCommentFailed')); return; }
     await fetchHomework();
   };
 

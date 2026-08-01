@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { Course } from '../types/lms';
 import { createSubjectDriveFolder, createClassDriveFolders } from '../utils/driveOperations';
@@ -133,16 +134,16 @@ function validateBreakRange(
   excludeBreakId?: string
 ): BreakResult {
   if (!startDate || !endDate) {
-    return { ok: false, error: 'Please select start and end dates.' };
+    return { ok: false, error: translate('errors.planning.selectStartEndDates') };
   }
   if (startDate > endDate) {
-    return { ok: false, error: 'Start date must be on or before end date.' };
+    return { ok: false, error: translate('errors.planning.startBeforeEnd') };
   }
   const candidate = { startDate, endDate };
   for (const b of existing) {
     if (excludeBreakId && b.breakId === excludeBreakId) continue;
     if (breaksOverlap(candidate, b)) {
-      return { ok: false, error: 'This break overlaps an existing break.' };
+      return { ok: false, error: translate('errors.planning.breakOverlap') };
     }
   }
   return { ok: true };
@@ -572,10 +573,10 @@ export function useSchoolYearPlanning(courses: Course[]) {
   const addActivationSaturday = useCallback((
     date: string
   ): { ok: true } | { ok: false; error: string } => {
-    if (!date) return { ok: false, error: 'Please select a date.' };
+    if (!date) return { ok: false, error: translate('errors.planning.selectDate') };
     const dayOfWeek = dayNameFromDate(date);
     if (dayOfWeek !== 'Saturday') {
-      return { ok: false, error: 'Activation Saturdays must fall on a Saturday.' };
+      return { ok: false, error: translate('errors.planning.activationSaturday') };
     }
     let added = false;
     setRows(prev => {
@@ -586,7 +587,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
       return [...prev, makeRow(date)];
     });
     if (!added) {
-      return { ok: false, error: 'A row already exists for this date.' };
+      return { ok: false, error: translate('errors.planning.rowExists') };
     }
     setIsDirty(true);
     return { ok: true };
@@ -610,10 +611,10 @@ export function useSchoolYearPlanning(courses: Course[]) {
     }
   ): { ok: true } | { ok: false; error: string } => {
     const title = params.title.trim();
-    if (!title) return { ok: false, error: 'Title is required.' };
-    if (!params.startDate) return { ok: false, error: 'Start date is required.' };
+    if (!title) return { ok: false, error: translate('errors.planning.titleRequired') };
+    if (!params.startDate) return { ok: false, error: translate('errors.planning.startDateRequired') };
     if (!params.duration || params.duration < 1) {
-      return { ok: false, error: 'Number of sessions must be at least 1.' };
+      return { ok: false, error: translate('errors.planning.sessionCountMin') };
     }
 
     const firstKey: PlanningSlotKey =
@@ -625,7 +626,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     for (let i = 0; i < params.duration; i++) {
       const date = getNextClassDate(params.startDate, i, breaks);
       if (!date) {
-        return { ok: false, error: 'Could not schedule all sessions from the start date.' };
+        return { ok: false, error: translate('errors.planning.scheduleSessions') };
       }
       placements.push({
         date,
@@ -665,7 +666,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
           ) {
             result = {
               ok: false,
-              error: `The slot on ${date} is already occupied by "${existingTitle}".`,
+              error: translate('errors.planning.slotOccupied', { date, title: existingTitle }),
             };
             return prev;
           }
@@ -714,7 +715,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     updates: { startDate?: string; endDate?: string; label?: string }
   ): BreakResult => {
     const existing = breaks.find(b => b.breakId === breakId);
-    if (!existing) return { ok: false, error: 'Break not found.' };
+    if (!existing) return { ok: false, error: translate('errors.planning.breakNotFound') };
 
     const startDate = updates.startDate ?? existing.startDate;
     const endDate = updates.endDate ?? existing.endDate;
@@ -924,7 +925,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
     success: boolean; createdCount: number; updatedCount: number;
   }> => {
     if (!firstYearCourseId || !secondYearCourseId) {
-      setError('Both First Year and Second Year courses must be selected.');
+      setError(translate('errors.planning.bothCoursesRequired'));
       return { success: false, createdCount: 0, updatedCount: 0 };
     }
 
@@ -1013,7 +1014,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
             .select('id');
           if (error) throw error;
           if (!data || data.length === 0) {
-            throw new Error(`Could not update class ${params.classId}. Your session may not have permission to edit this session.`);
+            throw new Error(translate('errors.planning.updateClassPermission', { classId: params.classId }));
           }
           updatedCount++;
         } else {
@@ -1063,7 +1064,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
           .select('id');
         if (error) throw error;
         if (!data || data.length === 0) {
-          throw new Error(`Could not remove class ${classId}. Your session may not have permission to edit this session.`);
+          throw new Error(translate('errors.planning.removeClassPermission', { classId }));
         }
         updatedCount++;
       }
@@ -1150,8 +1151,8 @@ export function useSchoolYearPlanning(courses: Course[]) {
       return { success: true, createdCount, updatedCount };
     } catch (err) {
       console.error('Commit plan failed:', err);
-      const message = err instanceof Error ? err.message : 'Some changes may not have been saved.';
-      setError(`Failed to save the plan. ${message}`);
+      const message = err instanceof Error ? err.message : translate('errors.planning.savePartial');
+      setError(translate('errors.planning.saveFailed', { message }));
       return { success: false, createdCount, updatedCount };
     } finally {
       setCommitting(false);

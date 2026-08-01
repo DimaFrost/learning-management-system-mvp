@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { X, ZoomIn } from 'lucide-react';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 interface AvatarCropModalProps {
   file: File;
@@ -14,6 +15,7 @@ export function AvatarCropModal({
   onCropComplete,
   saving,
 }: AvatarCropModalProps) {
+  const { t } = useLanguage();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
@@ -133,7 +135,7 @@ export function AvatarCropModal({
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-2xl max-w-sm w-full p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Adjust Photo</h2>
+          <h2 className="text-lg font-semibold text-gray-900">{t('settings.profile.crop.title')}</h2>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
             <X className="w-5 h-5" />
           </button>
@@ -155,7 +157,7 @@ export function AvatarCropModal({
               src={imageUrl}
               onLoad={handleImageLoad}
               draggable={false}
-              alt="Crop preview"
+              alt={t('settings.profile.crop.previewAlt')}
               style={{
                 position: 'absolute',
                 left: '50%',
@@ -194,7 +196,7 @@ export function AvatarCropModal({
         </div>
 
         <p className="text-xs text-gray-500 text-center mt-2">
-          Drag to reposition · Use slider to zoom
+          {t('settings.profile.crop.hint')}
         </p>
 
         <div className="flex gap-3 mt-6">
@@ -203,14 +205,14 @@ export function AvatarCropModal({
             disabled={saving}
             className="flex-1 px-4 py-2 rounded-lg border border-gray-300 text-gray-700 font-medium hover:bg-gray-50 disabled:opacity-50"
           >
-            Cancel
+            {t('common.cancel')}
           </button>
           <button
             onClick={handleSave}
             disabled={saving || naturalSize.width === 0}
             className="flex-1 px-4 py-2 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-50"
           >
-            {saving ? 'Saving...' : 'Save Photo'}
+            {saving ? t('common.saving') : t('settings.profile.crop.save')}
           </button>
         </div>
       </div>

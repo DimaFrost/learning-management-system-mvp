@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseType, User, UserRole } from '../types/lms';
 import { sendNotification } from '../utils/notifications';
@@ -67,7 +68,7 @@ export function useUsers() {
 
       setUsers((data ?? []).map(mapProfileToUser));
     } catch (err) {
-      setError('Failed to load users');
+      setError(translate('errors.users.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -85,14 +86,14 @@ export function useUsers() {
 
   const addUser = useCallback(async (user: Partial<User>) => {
     if (!user.id) {
-      setError('User must sign up via Google before roles can be assigned.');
+      setError(translate('errors.users.googleSignupRequired'));
       console.warn('addUser: no profile id — user must sign up via Google auth first.');
       return;
     }
 
     const existing = users.find(u => u.id === user.id);
     if (!existing) {
-      setError('Profile not found. The user must sign up via Google first.');
+      setError(translate('errors.users.profileNotFound'));
       console.warn(`addUser: no profile found for id ${user.id}`);
       return;
     }
@@ -116,7 +117,7 @@ export function useUsers() {
 
       await refetchUsers();
     } catch (err) {
-      setError('Failed to update user profile');
+      setError(translate('errors.users.updateProfileFailed'));
       console.error(err);
     }
   }, [users, refetchUsers]);
@@ -152,7 +153,7 @@ export function useUsers() {
         }).catch(console.error);
       }
     } catch (err) {
-      setError('Failed to update user');
+      setError(translate('errors.users.updateFailed'));
       console.error(err);
     }
   }, [users, refetchUsers]);
@@ -182,7 +183,7 @@ export function useUsers() {
           await refetchUsers();
           onUserDeleted(id);
         } catch (err) {
-          setError('Failed to delete user');
+          setError(translate('errors.users.deleteFailed'));
           console.error(err);
         }
       }

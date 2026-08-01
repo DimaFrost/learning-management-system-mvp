@@ -1,5 +1,17 @@
+import { translate } from '../i18n/translate';
+import type { TranslationKey } from '../i18n/translations';
 import type { Course, CourseStudent, MinistryRotation, MinistryTeam, User, UserRole } from '../types/lms';
 import { isCourseActive } from './courseUtils';
+
+const ROLE_LABEL_KEYS: Partial<Record<UserRole, TranslationKey>> = {
+  administrator: 'users.role.administrator',
+  teacher: 'common.role.teacher',
+  translator: 'common.role.translator',
+  mentor: 'users.role.mentor',
+  team_leader: 'users.role.teamLeader',
+  student: 'users.role.student',
+  dev: 'announcements.create.role.dev',
+};
 
 export type UserAccessStatus = 'pending' | 'active';
 
@@ -298,5 +310,7 @@ export function buildStaffRosterRows({
 }
 
 export function formatRoleLabel(role: UserRole): string {
+  const key = ROLE_LABEL_KEYS[role];
+  if (key) return translate(key);
   return role.replace(/_/g, ' ');
 }

@@ -11,6 +11,7 @@ import type { Class, Course, HomeworkAssignment, Subject } from '../../types/lms
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { getCourseDisplayName } from '../../utils/courseUtils';
 import { parseHomeworkInstructions } from '../../utils/homeworkInstructions';
+import { useLanguage } from '../../i18n/LanguageContext';
 
 export type AssignmentComposerPayload = {
   title: string;
@@ -52,15 +53,21 @@ type QuickCheckQuestionDraft = {
   optionsText: string;
 };
 
-function createQuestionDraft(index: number): QuickCheckQuestionDraft {
+function createQuestionDraft(
+  index: number,
+  translate: ReturnType<typeof useLanguage>['t'],
+): QuickCheckQuestionDraft {
   return {
     id: `${Date.now()}-${index}`,
-    prompt: index === 0 ? 'Question 1' : `Question ${index + 1}`,
-    optionsText: 'Yes\nNo\nNot sure',
+    prompt: translate('classwork.composer.questionNumber', { n: index + 1 }),
+    optionsText: translate('classwork.composer.defaultOptions'),
   };
 }
 
-function toQuestionDrafts(options: HomeworkAssignment['questionOptions'] | undefined): QuickCheckQuestionDraft[] {
+function toQuestionDrafts(
+  options: HomeworkAssignment['questionOptions'] | undefined,
+  translate: ReturnType<typeof useLanguage>['t'],
+): QuickCheckQuestionDraft[] {
   const structured = (options ?? []).filter((item): item is { prompt: string; options: string[] } =>
     typeof item === 'object' && item != null && 'prompt' in item && Array.isArray(item.options)
   );
@@ -71,7 +78,7 @@ function toQuestionDrafts(options: HomeworkAssignment['questionOptions'] | undef
       optionsText: item.options.join('\n'),
     }));
   }
-  return [createQuestionDraft(0)];
+  return [createQuestionDraft(0, translate)];
 }
 
 interface AssignmentComposerProps {
@@ -95,10 +102,12 @@ export function AssignmentComposer({
   studentCount,
   saving,
   gradebookConfig,
-  backLabel = 'Homework',
+  backLabel,
   onCancel,
   onSubmit,
 }: AssignmentComposerProps) {
+  const { t, tCount } = useLanguage();
+  const resolvedBackLabel = backLabel ?? t('classwork.subject.tab.homework');
   const existingInstructions = parseHomeworkInstructions(editingAssignment?.description);
   const [title, setTitle] = useState(editingAssignment?.title ?? '');
   const [instructions, setInstructions] = useState(existingInstructions.instructions ?? '');
@@ -115,7 +124,9 @@ export function AssignmentComposer({
   const [multiQuestionMode, setMultiQuestionMode] = useState(
     (editingAssignment?.questionOptions ?? []).some(item => typeof item === 'object')
   );
-  const [quickQuestions, setQuickQuestions] = useState<QuickCheckQuestionDraft[]>(toQuestionDrafts(editingAssignment?.questionOptions));
+  const [quickQuestions, setQuickQuestions] = useState<QuickCheckQuestionDraft[]>(() =>
+    toQuestionDrafts(editingAssignment?.questionOptions, t)
+  );
   const [gradeCategoryId, setGradeCategoryId] = useState(editingAssignment?.gradeCategoryId?.toString() ?? '');
   const [gradingPeriodId, setGradingPeriodId] = useState(editingAssignment?.gradingPeriodId?.toString() ?? '');
   const [errors, setErrors] = useState<{ title?: string; maxPoints?: string }>({});
@@ -125,12 +136,17 @@ export function AssignmentComposer({
   const dueDateOnly = dueDate ? dateOnlyFromDatetimeLocal(dueDate) : '';
   const gradeCategories = gradebookConfig?.categories ?? [];
   const gradingPeriods = gradebookConfig?.periods ?? [];
+  const submitLabel = submitting
+    ? t('common.saving')
+    : isEditing
+      ? t('announcements.create.saveChanges')
+      : t('classwork.composer.postAssignment');
 
   const handleSubmit = async () => {
     const nextErrors: { title?: string; maxPoints?: string } = {};
-    if (!title.trim()) nextErrors.title = 'Title is required.';
+    if (!title.trim()) nextErrors.title = t('errors.planning.titleRequired');
     if (pointsMode === 'points' && (maxPoints < 1 || maxPoints > 1000)) {
-      nextErrors.maxPoints = 'Points must be between 1 and 1000.';
+      nextErrors.maxPoints = t('classwork.composer.error.pointsRange');
     }
     setErrors(nextErrors);
     if (Object.keys(nextErrors).length > 0) return;
@@ -173,7 +189,7 @@ export function AssignmentComposer({
           className="inline-flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
         >
           <ChevronLeft className="h-4 w-4" />
-          {backLabel}
+          {resolvedBackLabel}
         </button>
         <button
           type="button"
@@ -182,7 +198,7 @@ export function AssignmentComposer({
           className="inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
         >
           <Send className="h-4 w-4" />
-          {submitting ? 'Saving...' : isEditing ? 'Save changes' : 'Post assignment'}
+          {submitLabel}
         </button>
       </div>
 
@@ -194,55 +210,55 @@ export function AssignmentComposer({
             <span>{selectedSubject.title}</span>
           </div>
           <h2 className="mt-2 text-2xl font-semibold text-[#171717]">
-            {isEditing ? 'Edit assignment' : 'Create assignment'}
+            {isEditing ? t('classwork.tabs.homework.editAssignment') : t('classwork.composer.createTitle')}
           </h2>
         </div>
 
         <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_340px]">
           <div className="space-y-5 p-5">
             <div>
-              <label htmlFor="assignment-page-title" className="text-sm font-semibold text-[#171717]">Title</label>
+              <label htmlFor="assignment-page-title" className="text-sm font-semibold text-[#171717]">{t('common.title')}</label>
               <input
                 id="assignment-page-title"
                 value={title}
                 onChange={event => setTitle(event.target.value)}
-                placeholder="Essay, reflection, reading response..."
+                placeholder={t('classwork.composer.titlePlaceholder')}
                 className="mt-2 h-12 w-full rounded-xl border border-[#d4d4d4] bg-white px-4 text-base font-semibold text-[#171717] outline-none focus:border-[#2563eb] focus:ring-4 focus:ring-[#dbeafe]"
               />
               {errors.title && <p className="mt-1 text-sm font-medium text-[#b91c1c]">{errors.title}</p>}
             </div>
 
             <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
-              <p className="text-sm font-semibold text-[#171717]">Work type</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('classwork.composer.workType')}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
                 <button type="button" onClick={() => setWorkType('assignment')} className={`rounded-xl border px-3 py-3 text-left text-sm font-semibold ${workType === 'assignment' ? 'border-[#bfdbfe] bg-white text-[#1d4ed8]' : 'border-transparent bg-[#dbeafe] text-[#1e40af]'}`}>
-                  Assignment
-                  <span className="mt-1 block text-xs font-medium text-[#64748b]">Google Doc submission and grading.</span>
+                  {t('classwork.assignment.eyebrow')}
+                  <span className="mt-1 block text-xs font-medium text-[#64748b]">{t('classwork.composer.assignmentDesc')}</span>
                 </button>
                 <button type="button" onClick={() => setWorkType('quick_check')} className={`rounded-xl border px-3 py-3 text-left text-sm font-semibold ${workType === 'quick_check' ? 'border-[#bbf7d0] bg-white text-[#047857]' : 'border-transparent bg-[#d1fae5] text-[#065f46]'}`}>
-                  Quick check
-                  <span className="mt-1 block text-xs font-medium text-[#64748b]">Short answer or multiple choice response.</span>
+                  {t('search.index.badge.quickCheck')}
+                  <span className="mt-1 block text-xs font-medium text-[#64748b]">{t('classwork.composer.quickCheckDesc')}</span>
                 </button>
               </div>
               {workType === 'quick_check' && (
                 <div className="mt-4 rounded-xl border border-[#bbf7d0] bg-white p-3">
-                  <label htmlFor="quick-check-type" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#047857]">Question type</label>
+                  <label htmlFor="quick-check-type" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#047857]">{t('classwork.composer.questionType')}</label>
                   <select id="quick-check-type" value={questionType} onChange={event => setQuestionType(event.target.value as 'short_answer' | 'multiple_choice')} className="mt-2 h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm">
-                    <option value="short_answer">Short answer</option>
-                    <option value="multiple_choice">Multiple choice</option>
+                    <option value="short_answer">{t('classwork.composer.shortAnswer')}</option>
+                    <option value="multiple_choice">{t('classwork.composer.multipleChoice')}</option>
                   </select>
                   {questionType === 'multiple_choice' && (
                     <div className="mt-3">
                       <div className="flex flex-wrap items-center justify-between gap-2">
                         <label htmlFor="quick-check-options" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#047857]">
-                          {multiQuestionMode ? 'Questions' : 'Options, one per line'}
+                          {multiQuestionMode ? t('classwork.composer.questions') : t('classwork.composer.optionsOnePerLine')}
                         </label>
                         <button
                           type="button"
                           onClick={() => setMultiQuestionMode(prev => !prev)}
                           className="tbo-focus rounded-full border border-[#bbf7d0] bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#047857] hover:bg-[#dcfce7]"
                         >
-                          {multiQuestionMode ? 'Single question' : 'Multiple questions'}
+                          {multiQuestionMode ? t('classwork.composer.singleQuestion') : t('classwork.composer.multipleQuestions')}
                         </button>
                       </div>
                       {multiQuestionMode ? (
@@ -250,14 +266,14 @@ export function AssignmentComposer({
                           {quickQuestions.map((question, index) => (
                             <div key={question.id} className="rounded-xl border border-[#dcfce7] bg-[#f8fff9] p-3">
                               <div className="flex items-center justify-between gap-2">
-                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#047857]">Question {index + 1}</p>
+                                <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#047857]">{t('classwork.composer.questionNumber', { n: index + 1 })}</p>
                                 {quickQuestions.length > 1 && (
                                   <button
                                     type="button"
                                     onClick={() => setQuickQuestions(prev => prev.filter(item => item.id !== question.id))}
                                     className="text-xs font-semibold text-[#b91c1c] hover:text-[#7f1d1d]"
                                   >
-                                    Remove
+                                    {t('common.remove')}
                                   </button>
                                 )}
                               </div>
@@ -265,27 +281,27 @@ export function AssignmentComposer({
                                 value={question.prompt}
                                 onChange={event => setQuickQuestions(prev => prev.map(item => item.id === question.id ? { ...item, prompt: event.target.value } : item))}
                                 className="mt-2 h-9 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm"
-                                placeholder="Question"
+                                placeholder={t('classwork.composer.questionPlaceholder')}
                               />
                               <textarea
                                 value={question.optionsText}
                                 onChange={event => setQuickQuestions(prev => prev.map(item => item.id === question.id ? { ...item, optionsText: event.target.value } : item))}
                                 rows={3}
                                 className="mt-2 w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                                placeholder={'Option A\nOption B\nOption C'}
+                                placeholder={t('classwork.composer.optionsPlaceholder')}
                               />
                             </div>
                           ))}
                           <button
                             type="button"
-                            onClick={() => setQuickQuestions(prev => [...prev, createQuestionDraft(prev.length)])}
+                            onClick={() => setQuickQuestions(prev => [...prev, createQuestionDraft(prev.length, t)])}
                             className="tbo-focus inline-flex h-9 items-center rounded-lg border border-[#bbf7d0] bg-white px-3 text-sm font-semibold text-[#047857] hover:bg-[#f0fdf4]"
                           >
-                            Add question
+                            {t('classwork.composer.addQuestion')}
                           </button>
                         </div>
                       ) : (
-                        <textarea id="quick-check-options" value={questionOptionsText} onChange={event => setQuestionOptionsText(event.target.value)} rows={4} className="mt-2 w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm" placeholder={'Yes\nNo\nNot sure'} />
+                        <textarea id="quick-check-options" value={questionOptionsText} onChange={event => setQuestionOptionsText(event.target.value)} rows={4} className="mt-2 w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm" placeholder={t('classwork.composer.defaultOptions')} />
                       )}
                     </div>
                   )}
@@ -294,13 +310,13 @@ export function AssignmentComposer({
             </div>
 
             <div>
-              <label htmlFor="assignment-page-instructions" className="text-sm font-semibold text-[#171717]">Instructions</label>
+              <label htmlFor="assignment-page-instructions" className="text-sm font-semibold text-[#171717]">{t('classwork.assignment.instructions')}</label>
               <textarea
                 id="assignment-page-instructions"
                 value={instructions}
                 onChange={event => setInstructions(event.target.value)}
                 rows={12}
-                placeholder="Write the task clearly. Include expectations, length, format, and anything students should pay attention to."
+                placeholder={t('classwork.composer.instructionsPlaceholder')}
                 className="mt-2 w-full rounded-xl border border-[#d4d4d4] bg-white px-4 py-3 text-sm leading-6 text-[#262626] outline-none focus:border-[#2563eb] focus:ring-4 focus:ring-[#dbeafe]"
               />
             </div>
@@ -308,14 +324,14 @@ export function AssignmentComposer({
             <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
                   <ClipboardList className="h-4 w-4 text-[#16a34a]" />
-                  Student work
+                  {t('classwork.assignment.studentWork')}
                 </div>
                 <div className="mt-3 rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-2 text-sm font-semibold text-[#14532d]">
-                  {workType === 'quick_check' ? 'Portal quick response' : 'School Google Doc'}
+                  {workType === 'quick_check' ? t('classwork.composer.portalQuickResponse') : t('classwork.tabs.homework.googleDoc.school')}
                   <p className="mt-1 text-xs font-medium text-[#15803d]">
                     {workType === 'quick_check'
-                      ? 'Students answer directly on the assignment page.'
-                      : 'Students create their work from the assignment page.'}
+                      ? t('classwork.composer.quickCheckStudentHint')
+                      : t('classwork.composer.assignmentStudentHint')}
                   </p>
                 </div>
             </div>
@@ -326,16 +342,16 @@ export function AssignmentComposer({
               <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
                   <Users className="h-4 w-4 text-[#7c3aed]" />
-                  For
+                  {t('classwork.composer.forLabel')}
                 </div>
                 <p className="mt-2 text-sm font-semibold text-[#171717]">{courseName}</p>
-                <p className="text-xs text-[#737373]">{studentCount} active students</p>
+                <p className="text-xs text-[#737373]">{tCount('classwork.composer.activeStudents', studentCount)}</p>
               </div>
 
               <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
                   <CalendarDays className="h-4 w-4 text-[#ea580c]" />
-                  Due
+                  {t('classwork.reading.due')}
                 </div>
                 <div className="mt-3 grid grid-cols-[minmax(0,1fr)_92px] gap-2">
                   <input
@@ -358,21 +374,21 @@ export function AssignmentComposer({
                   disabled={!dueDateOnly}
                   className="mt-2 inline-flex h-8 items-center rounded-lg border border-[#fed7aa] bg-[#fff7ed] px-2.5 text-xs font-semibold text-[#c2410c] hover:bg-[#ffedd5] disabled:opacity-40"
                 >
-                  End of day, 23:59
+                  {t('classwork.composer.endOfDay')}
                 </button>
               </div>
 
               <div className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
                 <div className="flex items-center gap-2 text-sm font-semibold text-[#171717]">
                   <Settings2 className="h-4 w-4 text-[#2563eb]" />
-                  Grading
+                  {t('classwork.composer.grading')}
                 </div>
                 <div className="mt-3 grid grid-cols-2 gap-2">
                   <button type="button" onClick={() => setPointsMode('points')} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${pointsMode === 'points' ? 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]' : 'border-[#e5e5e5] text-[#525252]'}`}>
-                    Points
+                    {t('classwork.assignment.points')}
                   </button>
                   <button type="button" onClick={() => setPointsMode('ungraded')} className={`rounded-lg border px-3 py-2 text-sm font-semibold ${pointsMode === 'ungraded' ? 'border-[#e5e5e5] bg-[#171717] text-white' : 'border-[#e5e5e5] text-[#525252]'}`}>
-                    Ungraded
+                    {t('admin.dashboard.ungraded')}
                   </button>
                 </div>
                 {pointsMode === 'points' && (
@@ -390,14 +406,14 @@ export function AssignmentComposer({
                 )}
                 <div className="mt-4 grid gap-3 border-t border-[#e5e5e5] pt-4">
                   <div>
-                    <label htmlFor="assignment-grade-category" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Grade category</label>
+                    <label htmlFor="assignment-grade-category" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('classwork.composer.gradeCategory')}</label>
                     <select
                       id="assignment-grade-category"
                       value={gradeCategoryId}
                       onChange={event => setGradeCategoryId(event.target.value)}
                       className="mt-2 h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm outline-none focus:border-[#2563eb]"
                     >
-                      <option value="">No category</option>
+                      <option value="">{t('classwork.composer.noCategory')}</option>
                       {gradeCategories
                         .filter(category => category.active && (category.courseId == null || category.courseId === selectedCourse.id))
                         .map(category => (
@@ -406,14 +422,14 @@ export function AssignmentComposer({
                     </select>
                   </div>
                   <div>
-                    <label htmlFor="assignment-grading-period" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Grading period</label>
+                    <label htmlFor="assignment-grading-period" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('classwork.composer.gradingPeriod')}</label>
                     <select
                       id="assignment-grading-period"
                       value={gradingPeriodId}
                       onChange={event => setGradingPeriodId(event.target.value)}
                       className="mt-2 h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm outline-none focus:border-[#2563eb]"
                     >
-                      <option value="">Auto / none</option>
+                      <option value="">{t('classwork.composer.autoNone')}</option>
                       {gradingPeriods
                         .filter(period => period.active && (period.courseId == null || period.courseId === selectedCourse.id))
                         .map(period => (
@@ -423,7 +439,7 @@ export function AssignmentComposer({
                   </div>
                 </div>
                 <div className="mt-4 border-t border-[#e5e5e5] pt-4">
-                  <label htmlFor="assignment-page-grading-due" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">Mark by</label>
+                  <label htmlFor="assignment-page-grading-due" className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('classwork.composer.markBy')}</label>
                   <input
                     id="assignment-page-grading-due"
                     type="date"
@@ -431,7 +447,7 @@ export function AssignmentComposer({
                     onChange={event => setGradingDueDate(event.target.value)}
                     className="mt-2 h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm outline-none focus:border-[#2563eb]"
                   />
-                  <p className="mt-1 text-xs text-[#737373]">Used for teacher grading to-dos after students submit.</p>
+                  <p className="mt-1 text-xs text-[#737373]">{t('classwork.composer.markByHint')}</p>
                 </div>
               </div>
 
@@ -442,7 +458,7 @@ export function AssignmentComposer({
                 className="flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
               >
                 <Send className="h-4 w-4" />
-                {submitting ? 'Saving...' : isEditing ? 'Save changes' : 'Post assignment'}
+                {submitLabel}
               </button>
             </div>
           </aside>

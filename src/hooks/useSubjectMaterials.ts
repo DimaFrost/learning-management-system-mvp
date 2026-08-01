@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { ClassFile, Course, User } from '../types/lms';
 import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
@@ -70,7 +71,7 @@ export function useSubjectMaterials(
       setFiles((data ?? []).map(mapClassFile));
     } catch (err) {
       console.error(err);
-      setError('Failed to load subject materials');
+      setError(translate('errors.subjectMaterials.loadFailed'));
       setFiles([]);
     } finally {
       setLoading(false);
@@ -104,7 +105,7 @@ export function useSubjectMaterials(
       await fetchFiles();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : translate('errors.materials.uploadFailed'));
       console.error(err);
       return false;
     } finally {
@@ -136,7 +137,7 @@ export function useSubjectMaterials(
       await fetchFiles();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : translate('errors.materials.uploadFailed'));
       console.error(err);
       return false;
     } finally {
@@ -163,7 +164,7 @@ export function useSubjectMaterials(
       await fetchFiles();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google Doc material could not be created');
+      setError(err instanceof Error ? err.message : translate('errors.materials.googleDocFailed'));
       console.error(err);
       return false;
     } finally {
@@ -177,7 +178,7 @@ export function useSubjectMaterials(
       if (deleteError) throw deleteError;
       await fetchFiles();
     } catch (err) {
-      setError('Delete failed');
+      setError(translate('errors.materials.deleteFailed'));
       console.error(err);
     }
   };

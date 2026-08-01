@@ -199,6 +199,7 @@ export function MyAttendanceBreakdownView({
       selectedCourse?.id,
       theWellSessionAttendance,
       wellSchedule,
+      language,
     ]
   );
 

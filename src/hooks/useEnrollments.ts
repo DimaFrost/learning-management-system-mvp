@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseStudent, User, Course } from '../types/lms';
 import { getCourseDisplayName, isCourseActive } from '../utils/courseUtils';
@@ -34,7 +35,7 @@ export function useEnrollments(
       })));
     } catch (err) {
       console.error('refetchEnrollments error:', err);
-      setError('Failed to load enrollments');
+      setError(translate('errors.enrollments.loadFailed'));
     } finally {
       setLoading(false);
     }

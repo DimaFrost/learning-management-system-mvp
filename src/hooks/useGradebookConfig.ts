@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { GradeCategory, GradeSetting, GradingPeriod } from '../types/lms';
 
@@ -66,7 +67,7 @@ export function useGradebookConfig() {
       setPeriods((periodResult.data ?? []).map(mapPeriod));
       setSettings((settingResult.data ?? []).map(mapSetting));
     } catch (err) {
-      setError('Failed to load gradebook settings');
+      setError(translate('errors.gradebook.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);

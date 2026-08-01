@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { Course, CourseStudent, StreamCourseSetting, StreamEmailNotificationMode, StreamPermission, User } from '../types/lms';
 
@@ -58,7 +59,7 @@ export function useStreamSettings(currentUser: User, courses: Course[], courseSt
       setSettings((data ?? []).map(row => mapRow(row as StreamSettingRow)));
     } catch (err) {
       console.error('Failed to load stream settings', err);
-      setError('Failed to load stream settings');
+      setError(translate('errors.stream.loadFailed'));
       setSettings([]);
     } finally {
       setLoading(false);

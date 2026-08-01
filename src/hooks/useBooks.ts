@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { uploadFileToStorage } from '../utils/storageOperations';
 import type {
@@ -356,7 +357,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
       setSubmissions((submissionRows ?? []).map(row => mapSubmission(row as SubmissionRow)));
     } catch (err) {
       console.error('Failed to load books', err);
-      setError('Failed to load books');
+      setError(translate('errors.books.loadFailed'));
       setAssignments([]);
       setSubmissions([]);
     } finally {
@@ -399,7 +400,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
   }, []);
 
   const createReadingAssignment = useCallback(async (draft: ReadingAssignmentDraft) => {
-    if (!draft.book.title.trim()) throw new Error('Book title is required');
+    if (!draft.book.title.trim()) throw new Error(translate('errors.books.titleRequired'));
 
     const { data: bookRow, error: bookError } = await supabase
       .from('books')
@@ -442,8 +443,8 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
   const createReadingAssignments = useCallback(async (
     draft: Omit<ReadingAssignmentDraft, 'courseId'> & { courseIds: number[] }
   ) => {
-    if (!draft.book.title.trim()) throw new Error('Book title is required');
-    if (draft.courseIds.length === 0) throw new Error('Select at least one year group');
+    if (!draft.book.title.trim()) throw new Error(translate('errors.books.titleRequired'));
+    if (draft.courseIds.length === 0) throw new Error(translate('errors.books.selectYearGroup'));
 
     const { data: bookRow, error: bookError } = await supabase
       .from('books')

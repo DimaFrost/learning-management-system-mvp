@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { sendNotification } from '../utils/notifications';
 import type { Message, Conversation, User } from '../types/lms';
@@ -53,7 +54,7 @@ export function useMessages(currentUser: User, users: User[]) {
         audienceLabel: row.audience_label,
       })));
     } catch (err) {
-      setError('Failed to load messages');
+      setError(translate('errors.messages.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -174,7 +175,7 @@ export function useMessages(currentUser: User, users: User[]) {
 
       await fetchMessages();
     } catch (err) {
-      setError('Failed to send message');
+      setError(translate('errors.messages.sendFailed'));
       console.error(err);
     } finally {
       setSending(false);
@@ -203,7 +204,7 @@ export function useMessages(currentUser: User, users: User[]) {
       .from('messages')
       .delete()
       .eq('id', messageId);
-    if (error) { setError('Failed to delete message'); return; }
+    if (error) { setError(translate('errors.messages.deleteFailed')); return; }
     await fetchMessages();
   };
 

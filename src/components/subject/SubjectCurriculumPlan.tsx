@@ -1,6 +1,7 @@
 import { useState, useRef, type ChangeEvent } from 'react';
 import { Download, ExternalLink, FileText, Trash2, Upload } from 'lucide-react';
 import type { User } from '../../types/lms';
+import { useLanguage } from '../../i18n/LanguageContext';
 import { hasRole } from '../../utils/userUtils';
 import { formatFileSize } from '../../utils/formatFileSize';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -78,6 +79,7 @@ export function SubjectCurriculumPlan({
   currentUser,
   layout = 'default',
 }: SubjectCurriculumPlanProps) {
+  const { t } = useLanguage();
   const isAdminOrTeacher =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
 
@@ -115,7 +117,7 @@ export function SubjectCurriculumPlan({
 
   const handleDeleteCurriculumPlan = async () => {
     if (!plan) return;
-    if (!window.confirm('Remove the curriculum plan?')) return;
+    if (!window.confirm(t('classwork.subject.curriculumPlan.removeConfirm'))) return;
     setPendingFile(null);
     await deleteCurriculumPlan();
   };
@@ -146,7 +148,7 @@ export function SubjectCurriculumPlan({
 
   if (layout === 'materials') {
     if (loading) {
-      return <div className="py-6 text-sm text-[#737373]">Loading curriculum plan...</div>;
+      return <div className="py-6 text-sm text-[#737373]">{t('classwork.subject.curriculumPlan.loading')}</div>;
     }
 
     return (
@@ -162,7 +164,7 @@ export function SubjectCurriculumPlan({
           <div className="py-6 text-sm text-[#737373]">
             {isAdminOrTeacher ? (
               <div className="flex flex-wrap items-center gap-2">
-                <span>No curriculum plan yet.</span>
+                <span>{t('classwork.subject.curriculumPlan.empty')}</span>
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
@@ -170,11 +172,11 @@ export function SubjectCurriculumPlan({
                   className="tbo-focus inline-flex h-8 items-center gap-1.5 rounded-lg border border-[#d4d4d4] bg-white px-2.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5] disabled:opacity-50"
                 >
                   <Upload className="h-3.5 w-3.5" />
-                  Upload
+                  {t('classwork.subject.curriculumPlan.upload')}
                 </button>
               </div>
             ) : (
-              'No curriculum plan yet.'
+              t('classwork.subject.curriculumPlan.empty')
             )}
           </div>
         ) : null}
@@ -201,7 +203,7 @@ export function SubjectCurriculumPlan({
                 target="_blank"
                 rel="noreferrer"
                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                title="Open in new tab"
+                title={t('common.openInNewTab')}
               >
                 <ExternalLink className="h-3.5 w-3.5" />
               </a>
@@ -209,7 +211,7 @@ export function SubjectCurriculumPlan({
                 href={plan!.publicUrl!}
                 download={plan!.fileName ?? undefined}
                 className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-                title="Download"
+                title={t('common.download')}
               >
                 <Download className="h-3.5 w-3.5" />
               </a>
@@ -220,7 +222,7 @@ export function SubjectCurriculumPlan({
                     onClick={() => fileInputRef.current?.click()}
                     disabled={saving}
                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717] disabled:opacity-50"
-                    title="Replace"
+                    title={t('common.replace')}
                   >
                     <Upload className="h-3.5 w-3.5" />
                   </button>
@@ -229,7 +231,7 @@ export function SubjectCurriculumPlan({
                     onClick={() => void handleDeleteCurriculumPlan()}
                     disabled={saving}
                     className="tbo-focus grid h-8 w-8 place-items-center rounded-lg text-[#737373] hover:bg-[#fef2f2] hover:text-[#dc2626] disabled:opacity-50"
-                    title="Delete"
+                    title={t('common.delete')}
                   >
                     <Trash2 className="h-3.5 w-3.5" />
                   </button>
@@ -242,7 +244,7 @@ export function SubjectCurriculumPlan({
         {pendingFile && (
           <div className="space-y-2 border-t border-[#e5e5e5] px-4 py-3">
             <p className="text-sm font-semibold text-[#171717]">
-              {hasFile ? 'Replace with' : 'Ready to upload'}: {pendingFile.name}
+              {hasFile ? t('classwork.subject.curriculumPlan.replaceWith') : t('classwork.subject.curriculumPlan.readyToUpload')}: {pendingFile.name}
               {' · '}
               {formatFileSize(pendingFile.size)}
             </p>
@@ -253,7 +255,7 @@ export function SubjectCurriculumPlan({
                 disabled={saving}
                 className="tbo-focus inline-flex h-8 items-center rounded-lg bg-[#171717] px-3 text-xs font-semibold text-white hover:bg-[#262626] disabled:opacity-50"
               >
-                {saving ? 'Saving…' : 'Save'}
+                {saving ? t('common.savingEllipsis') : t('common.save')}
               </button>
               <button
                 type="button"
@@ -261,7 +263,7 @@ export function SubjectCurriculumPlan({
                 disabled={saving}
                 className="tbo-focus inline-flex h-8 items-center rounded-lg border border-[#d4d4d4] bg-white px-3 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-50"
               >
-                Cancel
+                {t('common.cancel')}
               </button>
             </div>
           </div>
@@ -273,7 +275,7 @@ export function SubjectCurriculumPlan({
   }
 
   if (loading) {
-    return <p className="text-xs text-gray-500 mt-1">Loading curriculum plan...</p>;
+    return <p className="text-xs text-gray-500 mt-1">{t('classwork.subject.curriculumPlan.loading')}</p>;
   }
 
   if (!hasFile && !hasLegacyText && !isAdminOrTeacher) {
@@ -284,7 +286,7 @@ export function SubjectCurriculumPlan({
     <div className="flex flex-wrap items-center gap-1.5 mt-1">
       <FileText className="w-3 h-3 text-amber-500 flex-shrink-0" />
       <span className="text-xs text-gray-700 truncate min-w-0">
-        {hasFile ? 'New: ' : ''}
+        {hasFile ? `${t('classwork.subject.curriculumPlan.newPrefix')} ` : ''}
         {pendingFile.name} · {formatFileSize(pendingFile.size)}
       </span>
       <button
@@ -293,7 +295,7 @@ export function SubjectCurriculumPlan({
         disabled={saving}
         className="px-2 py-1 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
       >
-        Save
+        {saving ? t('common.savingEllipsis') : t('common.save')}
       </button>
       <button
         type="button"
@@ -301,7 +303,7 @@ export function SubjectCurriculumPlan({
         disabled={saving}
         className="px-2 py-1 border border-gray-300 text-gray-600 rounded-md text-xs hover:bg-gray-50 disabled:opacity-50"
       >
-        Cancel
+        {t('common.cancel')}
       </button>
     </div>
   );
@@ -320,7 +322,7 @@ export function SubjectCurriculumPlan({
         className="flex items-center gap-0.5 px-2 py-1 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 flex-shrink-0"
       >
         <Download className="w-3 h-3" />
-        Download
+        {t('common.download')}
       </a>
       {isAdminOrTeacher && !pendingFile && (
         <>
@@ -331,14 +333,14 @@ export function SubjectCurriculumPlan({
             className="flex items-center gap-0.5 px-2 py-1 border border-gray-300 text-gray-600 rounded-md text-xs hover:bg-gray-50 disabled:opacity-50"
           >
             <Upload className="w-3 h-3" />
-            Replace
+            {t('common.replace')}
           </button>
           <button
             type="button"
             onClick={handleDeleteCurriculumPlan}
             disabled={saving}
             className="p-1 text-gray-400 hover:text-red-500 flex-shrink-0 disabled:opacity-50"
-            aria-label="Delete curriculum plan"
+            aria-label={t('classwork.subject.curriculumPlan.deleteAria')}
           >
             <Trash2 className="w-3 h-3" />
           </button>
@@ -354,7 +356,7 @@ export function SubjectCurriculumPlan({
       disabled={saving}
       className="mt-1 px-2 py-1 bg-amber-500 text-white rounded-md text-xs font-medium hover:bg-amber-600 disabled:opacity-50"
     >
-      Curriculum plan
+      {t('classwork.subject.curriculumPlan.uploadButton')}
     </button>
   );
 

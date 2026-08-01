@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { SubjectNote, User } from '../types/lms';
 import { uploadCurriculumPlanGoogleDriveFile } from '../utils/googleDocsV2';
@@ -69,7 +70,7 @@ export function useSubjectCurriculumPlan(subjectId: number, currentUser: User) {
       await uploadCurriculumPlanGoogleDriveFile({ subjectId, file });
       await fetchPlan();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to upload curriculum plan.');
+      setError(err instanceof Error ? err.message : translate('errors.curriculumPlan.uploadFailed'));
       console.error(err);
     } finally {
       setSaving(false);
@@ -88,7 +89,7 @@ export function useSubjectCurriculumPlan(subjectId: number, currentUser: User) {
       if (deleteError) throw deleteError;
       await fetchPlan();
     } catch (err) {
-      setError('Failed to remove curriculum plan.');
+      setError(translate('errors.curriculumPlan.removeFailed'));
       console.error(err);
     } finally {
       setSaving(false);

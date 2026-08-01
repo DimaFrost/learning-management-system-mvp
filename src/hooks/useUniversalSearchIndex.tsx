@@ -1,4 +1,7 @@
 import { useMemo } from 'react';
+import { useLanguage, type TranslationKey } from '../i18n/LanguageContext';
+import type { PluralKey } from '../i18n/translations';
+import { translate } from '../i18n/translate';
 import {
   Banknote,
   BarChart2,
@@ -171,6 +174,18 @@ function courseMatchesScope(courseId: number | null | undefined, visibleCourseId
   return courseId != null && visibleCourseIds.has(courseId);
 }
 
+type SearchTranslate = {
+  t: (key: TranslationKey, params?: Record<string, string | number>) => string;
+  tCount: (key: PluralKey, count: number, params?: Record<string, string | number>) => string;
+};
+
+type NavEntry = {
+  view: string;
+  titleKey: TranslationKey;
+  subtitleKey: TranslationKey;
+  icon: LucideIcon;
+};
+
 function announcementVisible(announcement: Announcement, currentUser: User, workspace: WorkspaceId | null, visibleCourseIds: Set<number> | null) {
   if (workspace === 'administrator') return true;
   if (announcement.status !== 'published') return false;
@@ -187,7 +202,8 @@ function navigationResults({
   activeWorkspace,
   ministryTeams,
   onNavigate,
-}: Pick<SearchIndexInput, 'currentUser' | 'activeWorkspace' | 'ministryTeams' | 'onNavigate'>): SearchResult[] {
+  t,
+}: Pick<SearchIndexInput, 'currentUser' | 'activeWorkspace' | 'ministryTeams' | 'onNavigate'> & SearchTranslate): SearchResult[] {
   const isAdmin = activeWorkspace === 'administrator' && includesAnyRole(currentUser, ['administrator']);
   const isTeacher = activeWorkspace === 'teacher' && includesAnyRole(currentUser, ['teacher']);
   const isStudent = activeWorkspace === 'student' && includesAnyRole(currentUser, ['student']);
@@ -195,43 +211,43 @@ function navigationResults({
   const isTeamLeader = activeWorkspace === 'team_leader' && includesAnyRole(currentUser, ['team_leader']);
   const canAssignSessionTranslators =
     isTeamLeader && isTranslationMinistryTeamLeader(currentUser, ministryTeams);
-  const shared = [
-    { view: 'dashboard', title: 'Dashboard', subtitle: 'Home overview', icon: LayoutDashboard },
-    { view: 'announcements', title: 'Stream', subtitle: 'Posts, comments, and attachments', icon: Megaphone },
-    { view: 'messages', title: 'Messages', subtitle: 'Conversations with admins and groups', icon: MessageSquare },
-    { view: 'todos', title: 'To-dos', subtitle: 'Open work and reminders', icon: ListTodo },
-    { view: 'settings', title: 'Settings', subtitle: 'Profile, language, and account settings', icon: Settings },
+  const shared: NavEntry[] = [
+    { view: 'dashboard', titleKey: 'sidebar.dashboard', subtitleKey: 'search.index.nav.dashboard.desc', icon: LayoutDashboard },
+    { view: 'announcements', titleKey: 'sidebar.announcements', subtitleKey: 'search.index.nav.stream.desc', icon: Megaphone },
+    { view: 'messages', titleKey: 'sidebar.messages', subtitleKey: 'search.index.nav.messages.desc', icon: MessageSquare },
+    { view: 'todos', titleKey: 'sidebar.todos', subtitleKey: 'search.index.nav.todos.desc', icon: ListTodo },
+    { view: 'settings', titleKey: 'sidebar.settings', subtitleKey: 'search.index.nav.settings.desc', icon: Settings },
   ];
-  const admin = [
-    { view: 'users-directory', title: 'People', subtitle: 'Directory, roles, and access', icon: Users },
-    { view: 'curriculum-overview', title: 'Curriculum', subtitle: 'Year groups, subjects, and planning', icon: BookOpen },
-    { view: 'attendance-overview', title: 'Attendance', subtitle: 'Graduation gates and schedules', icon: ClipboardList },
-    { view: 'mentorship-overview', title: 'Mentorship', subtitle: 'Mentors, assignments, and follow-up', icon: UserCheck },
-    { view: 'tuition-overview', title: 'Tuition', subtitle: 'Payments, installments, and reminders', icon: Banknote },
-    { view: 'inbox', title: 'Inbox', subtitle: 'Emails sent to you', icon: Inbox },
-    { view: 'knowledge-base', title: 'Knowledge Base', subtitle: 'Admin manual and platform guide', icon: BookOpen },
+  const admin: NavEntry[] = [
+    { view: 'users-directory', titleKey: 'sidebar.users', subtitleKey: 'search.index.nav.people.desc', icon: Users },
+    { view: 'curriculum-overview', titleKey: 'sidebar.curriculum', subtitleKey: 'search.index.nav.curriculum.desc', icon: BookOpen },
+    { view: 'attendance-overview', titleKey: 'sidebar.attendance', subtitleKey: 'search.index.nav.attendance.desc', icon: ClipboardList },
+    { view: 'mentorship-overview', titleKey: 'sidebar.mentorship', subtitleKey: 'search.index.nav.mentorship.desc', icon: UserCheck },
+    { view: 'tuition-overview', titleKey: 'sidebar.tuition', subtitleKey: 'search.index.nav.tuition.desc', icon: Banknote },
+    { view: 'inbox', titleKey: 'sidebar.inbox', subtitleKey: 'sidebar.inbox.desc', icon: Inbox },
+    { view: 'knowledge-base', titleKey: 'sidebar.knowledgeBase', subtitleKey: 'search.index.nav.knowledgeBase.desc', icon: BookOpen },
   ];
-  const classroom = [
-    ...(isTeacher ? [{ view: 'my-classes', title: 'My Sessions', subtitle: 'Personal teaching schedule', icon: Calendar }] : []),
-    ...(isStudent ? [{ view: 'my-assignments', title: 'Assignments', subtitle: 'Homework and reading work', icon: ClipboardList }] : []),
-    { view: isStudent ? 'my-classwork' : 'classwork', title: 'Classroom', subtitle: 'Classwork, materials, and subjects', icon: GraduationCap },
-    { view: isStudent ? 'my-grades' : 'grades', title: 'Grades', subtitle: 'Academic record and readiness', icon: BarChart2 },
-    ...(isAdmin || isTeacher ? [{ view: 'submissions', title: 'Submissions', subtitle: 'Work waiting for review', icon: ClipboardList }] : []),
-    ...(isAdmin || isStudent ? [{ view: 'absence-notices', title: 'Absence notices', subtitle: 'Planned missed sessions', icon: Calendar }] : []),
+  const classroom: NavEntry[] = [
+    ...(isTeacher ? [{ view: 'my-classes', titleKey: 'sidebar.mySessions' as TranslationKey, subtitleKey: 'search.index.nav.mySessions.desc' as TranslationKey, icon: Calendar }] : []),
+    ...(isStudent ? [{ view: 'my-assignments', titleKey: 'nav.classwork.assignments' as TranslationKey, subtitleKey: 'search.index.nav.assignments.desc' as TranslationKey, icon: ClipboardList }] : []),
+    { view: isStudent ? 'my-classwork' : 'classwork', titleKey: 'sidebar.classroom', subtitleKey: 'search.index.nav.classroom.desc', icon: GraduationCap },
+    { view: isStudent ? 'my-grades' : 'grades', titleKey: 'nav.classwork.grades', subtitleKey: 'search.index.nav.grades.desc', icon: BarChart2 },
+    ...(isAdmin || isTeacher ? [{ view: 'submissions', titleKey: 'nav.classwork.submissions' as TranslationKey, subtitleKey: 'search.index.nav.submissions.desc' as TranslationKey, icon: ClipboardList }] : []),
+    ...(isAdmin || isStudent ? [{ view: 'absence-notices', titleKey: 'nav.classwork.absenceNotices' as TranslationKey, subtitleKey: 'search.index.nav.absenceNotices.desc' as TranslationKey, icon: Calendar }] : []),
   ];
-  const student = [
-    { view: 'my-attendance-overview', title: 'My Attendance', subtitle: 'Graduation gates and history', icon: BarChart2 },
-    { view: 'my-books', title: 'My Books', subtitle: 'Reading assignments', icon: BookOpen },
+  const student: NavEntry[] = [
+    { view: 'my-attendance-overview', titleKey: 'sidebar.myAttendance', subtitleKey: 'search.index.nav.myAttendance.desc', icon: BarChart2 },
+    { view: 'my-books', titleKey: 'search.index.nav.myBooks', subtitleKey: 'sidebar.myBooks.desc', icon: BookOpen },
   ];
-  const translator = [
-    { view: 'my-classes', title: 'Translation Sessions', subtitle: 'Sessions assigned to translate', icon: Calendar },
+  const translator: NavEntry[] = [
+    { view: 'my-classes', titleKey: 'search.index.nav.translationSessions', subtitleKey: 'search.index.nav.translationSessions.desc', icon: Calendar },
   ];
-  const teamLeader = [
-    { view: 'ministry-report', title: 'Ministry Report', subtitle: 'Team attendance and service reports', icon: ClipboardList },
+  const teamLeader: NavEntry[] = [
+    { view: 'ministry-report', titleKey: 'sidebar.ministryReport', subtitleKey: 'search.index.nav.ministryReport.desc', icon: ClipboardList },
     ...(canAssignSessionTranslators
       ? [
-          { view: 'curriculum-overview', title: 'Curriculum Overview', subtitle: 'Year groups, subjects, and sessions', icon: BookOpen },
-          { view: 'curriculum-date-view', title: 'Curriculum Date View', subtitle: 'Sessions by date; assign translators', icon: Calendar },
+          { view: 'curriculum-overview', titleKey: 'search.index.nav.curriculumOverview' as TranslationKey, subtitleKey: 'search.index.nav.curriculumOverview.desc' as TranslationKey, icon: BookOpen },
+          { view: 'curriculum-date-view', titleKey: 'search.index.nav.curriculumDateView' as TranslationKey, subtitleKey: 'search.index.nav.curriculumDateView.desc' as TranslationKey, icon: Calendar },
         ]
       : []),
   ];
@@ -244,20 +260,25 @@ function navigationResults({
     ...(isTeamLeader ? teamLeader : []),
   ];
 
-  return entries.map(entry => ({
-    id: `nav-${entry.view}`,
-    type: 'navigation',
-    title: entry.title,
-    subtitle: entry.subtitle,
-    keywords: compact([entry.title, entry.subtitle, entry.view]),
-    icon: entry.icon,
-    tone: 'gray',
-    badge: 'Go to',
-    open: () => onNavigate(entry.view),
-  }));
+  return entries.map(entry => {
+    const title = t(entry.titleKey);
+    const subtitle = t(entry.subtitleKey);
+    return {
+      id: `nav-${entry.view}`,
+      type: 'navigation',
+      title,
+      subtitle,
+      keywords: compact([title, subtitle, entry.view]),
+      icon: entry.icon,
+      tone: 'gray',
+      badge: t('search.type.navigation'),
+      open: () => onNavigate(entry.view),
+    };
+  });
 }
 
 export function useUniversalSearchIndex(input: SearchIndexInput) {
+  const { t, tCount, language } = useLanguage();
   return useMemo<SearchResult[]>(() => {
     const {
       currentUser,
@@ -300,7 +321,7 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
       : isTeacher || isTranslator ? staffClassIds : null;
     const userById = new Map(users.map(user => [user.id, user]));
 
-    results.push(...navigationResults({ currentUser, activeWorkspace, ministryTeams, onNavigate }));
+    results.push(...navigationResults({ currentUser, activeWorkspace, ministryTeams, onNavigate, t }));
 
     users.forEach(user => {
       const sameUser = user.id === currentUser.id;
@@ -322,14 +343,14 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `person-${user.id}`,
         type: 'people',
         title: user.name,
-        subtitle: roles || 'Person',
+        subtitle: roles || t('books.admin.review.person'),
         meta: compact([user.email, yearGroups.map(getCourseDisplayName).join(', ')]).join(' · '),
         keywords: compact([user.name, user.email, user.phone, roles, yearGroups.map(getCourseDisplayName).join(' ')]),
         icon: Users,
         tone: user.roles.includes('student') ? 'blue' : 'violet',
         avatarUrl: user.avatarUrl,
         initials: initials(user.name),
-        badge: getUserAccessStatus(user) === 'pending' ? 'Pending' : undefined,
+        badge: getUserAccessStatus(user) === 'pending' ? t('users.directory.pending') : undefined,
         open: () => {
           if (isAdmin && user.roles.includes('student')) onOpenAdminStudentDashboard(user.id);
           else if (isAdmin) onOpenPerson(user.id);
@@ -346,11 +367,14 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
           type: 'classroom',
           title: subject.title,
           subtitle: courseName,
-          meta: compact([subject.classes.length ? `${subject.classes.length} sessions` : null, subject.description]).join(' · '),
+          meta: compact([
+            subject.classes.length ? tCount('curriculum.sessionCount', subject.classes.length) : null,
+            subject.description,
+          ]).join(' · '),
           keywords: compact([subject.title, subject.description, courseName]),
           icon: BookOpen,
           tone: 'blue',
-          badge: 'Subject',
+          badge: t('absence.subjectFallback'),
           open: () => onOpenSubject(course.id, subject.id),
         });
         subject.classes.forEach(cls => {
@@ -364,7 +388,7 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
             keywords: compact([cls.title, subject.title, courseName, cls.date, cls.hour]),
             icon: Calendar,
             tone: cls.hour === 'both' ? 'orange' : 'blue',
-            badge: cls.hour === 'both' ? 'Joint session' : 'Session',
+            badge: cls.hour === 'both' ? t('attendance.hour.joint') : t('absence.sessionFallback'),
             open: () => onOpenSubject(course.id, subject.id, cls.id),
           });
         });
@@ -381,12 +405,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `homework-${assignment.id}`,
         type: 'classroom',
         title: assignment.title,
-        subtitle: compact([ctx?.subject.title, ctx?.course ? getCourseDisplayName(ctx.course) : null]).join(' · ') || 'Assignment',
-        meta: assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : 'No due date',
+        subtitle: compact([ctx?.subject.title, ctx?.course ? getCourseDisplayName(ctx.course) : null]).join(' · ') || t('submissions.assignmentFallback'),
+        meta: assignment.dueDate ? t('common.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate'),
         keywords: compact([assignment.title, assignment.description, ctx?.subject.title, ctx?.course ? getCourseDisplayName(ctx.course) : null, assignment.workType]),
         icon: ClipboardList,
         tone: assignment.workType === 'quick_check' ? 'violet' : 'orange',
-        badge: assignment.workType === 'quick_check' ? 'Quick check' : 'Homework',
+        badge: assignment.workType === 'quick_check' ? t('search.index.badge.quickCheck') : t('student.homework'),
         open: () => onOpenHomeworkAssignment(assignment.id),
       });
     });
@@ -402,12 +426,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `submission-${submission.id}`,
         type: 'classroom',
         title: `${submission.studentName} · ${assignment.title}`,
-        subtitle: ctx ? `${ctx.subject.title} · ${getCourseDisplayName(ctx.course)}` : 'Submission',
+        subtitle: ctx ? `${ctx.subject.title} · ${getCourseDisplayName(ctx.course)}` : t('search.index.fallback.submission'),
         meta: compact([submission.status.replace('_', ' '), submission.submittedAt ? formatPlatformDate(submission.submittedAt.slice(0, 10)) : null]).join(' · '),
         keywords: compact([submission.studentName, assignment.title, submission.status, ctx?.subject.title]),
         icon: ClipboardList,
         tone: submission.status === 'submitted' ? 'green' : 'gray',
-        badge: 'Submission',
+        badge: t('search.index.badge.submission'),
         open: () => onNavigate('submissions'),
       });
     });
@@ -421,11 +445,14 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         type: 'books',
         title: assignment.book.title,
         subtitle: assignment.title,
-        meta: compact([courses.find(course => course.id === assignment.courseId) ? getCourseDisplayName(courses.find(course => course.id === assignment.courseId)!) : null, assignment.dueDate ? `Due ${formatPlatformDate(assignment.dueDate)}` : null]).join(' · '),
+        meta: compact([
+          courses.find(course => course.id === assignment.courseId) ? getCourseDisplayName(courses.find(course => course.id === assignment.courseId)!) : null,
+          assignment.dueDate ? t('common.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : null,
+        ]).join(' · '),
         keywords: compact([assignment.book.title, assignment.book.subtitle, assignment.book.authors.join(' '), assignment.title, assignment.instructions]),
         icon: BookOpen,
         tone: 'green',
-        badge: 'Reading',
+        badge: t('student.books.reading'),
         open: () => onNavigate(isStudent ? 'my-books' : 'curriculum-books'),
       });
     });
@@ -435,12 +462,21 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `stream-${announcement.id}`,
         type: 'stream',
         title: announcement.title,
-        subtitle: compact([announcement.authorName, announcement.status, announcement.courseId ? courses.find(course => course.id === announcement.courseId)?.courseType.replace('_', ' ') : 'School-wide']).join(' · '),
-        meta: compact([announcement.attachments?.length ? `${announcement.attachments.length} attachments` : null, announcement.reactions?.length ? `${announcement.reactions.length} reactions` : null]).join(' · '),
+        subtitle: compact([
+          announcement.authorName,
+          announcement.status,
+          announcement.courseId
+            ? courses.find(course => course.id === announcement.courseId)?.courseType.replace('_', ' ')
+            : t('search.index.fallback.schoolWide'),
+        ]).join(' · '),
+        meta: compact([
+          announcement.attachments?.length ? tCount('announcements.create.attachmentCount', announcement.attachments.length) : null,
+          announcement.reactions?.length ? tCount('search.index.meta.reactions', announcement.reactions.length) : null,
+        ]).join(' · '),
         keywords: compact([announcement.title, announcement.content, announcement.authorName, announcement.status, announcement.type]),
         icon: Megaphone,
         tone: announcement.isPinned ? 'orange' : 'blue',
-        badge: announcement.isPinned ? 'Pinned' : 'Stream',
+        badge: announcement.isPinned ? t('announcements.pinned') : t('sidebar.announcements'),
         open: () => onNavigate('announcements'),
       });
     });
@@ -451,11 +487,11 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         type: 'todos',
         title: todo.title,
         subtitle: compact([todo.assignedToName, todo.targetLabel, todo.status]).join(' · '),
-        meta: `Due ${formatPlatformDate(todo.dueDate)}`,
+        meta: t('common.dueDate', { date: formatPlatformDate(todo.dueDate) }),
         keywords: compact([todo.title, todo.description, todo.assignedToName, todo.targetLabel, todo.priority, todo.status]),
         icon: ListTodo,
         tone: todo.priority === 'priority' ? 'orange' : 'violet',
-        badge: todo.priority === 'priority' ? 'Priority' : 'To-do',
+        badge: todo.priority === 'priority' ? t('todos.stats.priority') : t('inbox.type.todo'),
         open: () => onNavigate('todos'),
       });
     });
@@ -466,11 +502,11 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         type: 'messages',
         title: conversation.audienceLabel ?? conversation.otherUserName,
         subtitle: conversation.lastMessage,
-        meta: conversation.unreadCount > 0 ? `${conversation.unreadCount} unread` : 'Conversation',
+        meta: conversation.unreadCount > 0 ? t('search.index.meta.unread', { count: conversation.unreadCount }) : t('search.index.badge.conversation'),
         keywords: compact([conversation.otherUserName, conversation.audienceLabel, conversation.lastMessage, conversation.otherUserRoles.join(' ')]),
         icon: MessageSquare,
         tone: conversation.unreadCount > 0 ? 'blue' : 'gray',
-        badge: 'Message',
+        badge: t('search.index.badge.message'),
         open: () => onNavigate('messages'),
       });
     });
@@ -482,15 +518,15 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         results.push({
           id: `tuition-account-${account.id}`,
           type: 'tuition',
-          title: student?.name ?? 'Unknown student',
-          subtitle: plan?.name ?? 'Tuition account',
+          title: student?.name ?? t('tuition.unknownStudent'),
+          subtitle: plan?.name ?? t('search.index.fallback.tuitionAccount'),
           meta: `${account.status.replace('_', ' ')} · ${plan?.currency ?? 'EUR'} ${account.expectedAmount}`,
           keywords: compact([student?.name, student?.email, plan?.name, account.status, account.notes]),
           icon: Banknote,
           tone: account.status === 'paid' ? 'green' : account.status === 'overdue' ? 'rose' : 'orange',
           avatarUrl: student?.avatarUrl,
           initials: student ? initials(student.name) : undefined,
-          badge: 'Tuition',
+          badge: t('sidebar.tuition'),
           open: () => onOpenAdminStudentDashboard(account.studentId),
         });
       });
@@ -500,12 +536,16 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
           id: `tuition-installment-${installment.id}`,
           type: 'tuition',
           title: installment.title,
-          subtitle: plan?.name ?? 'Installment',
-          meta: `${plan?.currency ?? 'EUR'} ${installment.amount} · due ${formatPlatformDate(installment.dueDate)}`,
+          subtitle: plan?.name ?? t('search.index.fallback.installment'),
+          meta: t('search.index.meta.installmentDue', {
+            currency: plan?.currency ?? 'EUR',
+            amount: installment.amount,
+            date: formatPlatformDate(installment.dueDate),
+          }),
           keywords: compact([installment.title, plan?.name, installment.dueDate]),
           icon: Calendar,
           tone: 'orange',
-          badge: 'Installment',
+          badge: t('search.index.badge.installment'),
           open: () => onNavigate('tuition-installments'),
         });
       });
@@ -514,13 +554,13 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         results.push({
           id: `tuition-payment-${payment.id}`,
           type: 'tuition',
-          title: student?.name ?? 'Payment',
-          subtitle: `Payment · ${payment.method}`,
+          title: student?.name ?? t('search.index.fallback.paymentTitle'),
+          subtitle: t('search.index.fallback.paymentSubtitle', { method: payment.method }),
           meta: `${payment.amount} · ${formatPlatformDate(payment.paymentDate)}`,
           keywords: compact([student?.name, student?.email, payment.method, payment.reference, payment.note]),
           icon: Banknote,
           tone: 'green',
-          badge: 'Payment',
+          badge: t('search.index.badge.payment'),
           open: () => onNavigate('tuition-payments'),
         });
       });
@@ -530,12 +570,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
           id: `tuition-reminder-${reminder.id}`,
           type: 'tuition',
           title: reminder.subject,
-          subtitle: student?.name ?? 'Tuition reminder',
+          subtitle: student?.name ?? t('search.index.fallback.tuitionReminder'),
           meta: `${reminder.status} · ${formatPlatformDate(reminder.createdAt.slice(0, 10))}`,
           keywords: compact([reminder.subject, reminder.body, reminder.status, student?.name]),
           icon: Banknote,
           tone: reminder.status === 'failed' ? 'rose' : 'orange',
-          badge: 'Reminder',
+          badge: t('tuition.table.reminder'),
           open: () => onNavigate('tuition-reminders'),
         });
       });
@@ -547,12 +587,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
           id: `well-attendance-${record.id}`,
           type: 'attendance',
           title: record.studentName,
-          subtitle: 'The Well attendance',
-          meta: `${record.status} · week of ${formatPlatformDate(record.weekStart)}`,
+          subtitle: t('attendance.well.heading'),
+          meta: t('search.index.meta.weekOf', { status: record.status, date: formatPlatformDate(record.weekStart) }),
           keywords: compact([record.studentName, record.status, record.weekStart, 'well attendance']),
           icon: HeartHandshake,
           tone: record.status === 'present' ? 'green' : record.status === 'late' ? 'orange' : 'rose',
-          badge: 'The Well',
+          badge: t('nav.attendance.well'),
           open: () => onNavigate(isStudent ? 'my-attendance-breakdown' : 'attendance-well'),
         });
       });
@@ -563,12 +603,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `ministry-team-${team.id}`,
         type: 'attendance',
         title: team.name,
-        subtitle: team.serviceType === 'sunday' ? 'Sunday ministry team' : 'Ministry team',
-        meta: compact([team.callTime, `${team.requiredCredits} required credits`]).join(' · '),
+        subtitle: team.serviceType === 'sunday' ? t('search.index.fallback.sundayMinistryTeam') : t('attendance.ministry.teamFallback'),
+        meta: compact([team.callTime, t('search.index.meta.requiredCredits', { count: team.requiredCredits })]).join(' · '),
         keywords: compact([team.name, team.nameBg, team.info, team.serviceType, team.callTime]),
         icon: HeartHandshake,
         tone: 'green',
-        badge: 'Ministry',
+        badge: t('nav.attendance.ministry'),
         open: () => onNavigate(isStudent ? 'my-attendance-ministry' : 'attendance-ministry'),
       });
     });
@@ -578,12 +618,12 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         id: `ministry-session-${session.id}`,
         type: 'attendance',
         title: session.title,
-        subtitle: team?.name ?? 'Ministry report',
+        subtitle: team?.name ?? t('ministry.report.title'),
         meta: formatPlatformDate(session.serviceDate),
         keywords: compact([session.title, team?.name, session.generalView, session.winsTestimonies, session.challenges, session.timelyActions]),
         icon: HeartHandshake,
         tone: 'green',
-        badge: 'Report',
+        badge: t('search.index.badge.report'),
         open: () => onNavigate(isStudent ? 'my-attendance-ministry' : 'attendance-ministry'),
       });
     });
@@ -594,19 +634,19 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
       results.push({
         id: `mentor-log-${log.id}`,
         type: 'attendance',
-        title: student?.name ?? 'Mentorship check-in',
+        title: student?.name ?? t('search.index.fallback.mentorshipCheckin'),
         subtitle: compact([mentor?.name, log.type.replace('_', ' ')]).join(' · '),
         meta: formatPlatformDate(log.date),
         keywords: compact([student?.name, mentor?.name, log.notes, log.nextSteps, log.type]),
         icon: UserCheck,
         tone: 'violet',
-        badge: 'Mentorship',
+        badge: t('sidebar.mentorship'),
         open: () => onNavigate(isAdmin ? 'mentorship-follow-up' : 'mentor-dashboard'),
       });
     });
 
     return results;
-  }, [input]);
+  }, [input, language, t, tCount]);
 }
 
 export function searchResults(index: SearchResult[], query: string) {
@@ -628,7 +668,7 @@ export function searchResults(index: SearchResult[], query: string) {
       return {
         result: {
           ...result,
-          title: title || 'Untitled',
+          title: title || translate('search.index.fallback.untitled'),
           subtitle,
           keywords: Array.isArray(result.keywords) ? result.keywords.map(toSearchText).filter(Boolean) : [],
         },

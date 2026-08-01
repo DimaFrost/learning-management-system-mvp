@@ -35,6 +35,7 @@ import { tuitionTranslations } from './tuition';
 import { usersTranslations } from './users';
 import { workspaceTranslations } from './workspace';
 import { knowledgeBaseTranslations } from './knowledgeBase';
+import { errorsTranslations } from './errors';
 
 export const en = {
   ...commonTranslations.en,
@@ -74,6 +75,7 @@ export const en = {
   ...usersTranslations.en,
   ...booksTranslations.en,
   ...knowledgeBaseTranslations.en,
+  ...errorsTranslations.en,
 };
 
 export type TranslationKey = keyof typeof en;
@@ -116,6 +118,7 @@ export const bg: Record<TranslationKey, string> = {
   ...usersTranslations.bg,
   ...booksTranslations.bg,
   ...knowledgeBaseTranslations.bg,
+  ...errorsTranslations.bg,
 };
 
 /**

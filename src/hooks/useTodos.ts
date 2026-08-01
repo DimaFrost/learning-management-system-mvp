@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { queueWorkflowEmail } from '../utils/notificationJobs';
 import type {
@@ -324,7 +325,7 @@ export function useTodos(
 
     const createdTodos = ((data ?? []) as TodoRow[]).map(mapTodoRow);
     if (createdTodos.length === 0) {
-      throw new Error('No to-dos were created.');
+      throw new Error(translate('errors.todos.noneCreated'));
     }
     await Promise.all(createdTodos.map(syncTodoReminderJobs));
     void queueWorkflowEmail({

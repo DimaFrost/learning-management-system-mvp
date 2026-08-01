@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { ClassNote, ClassFile, User, Course } from '../types/lms';
 import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
@@ -62,7 +63,7 @@ export function useClassContent(
         createdAt: row.created_at,
       })));
     } catch (err) {
-      setError('Failed to load session content');
+      setError(translate('errors.classContent.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
@@ -86,7 +87,7 @@ export function useClassContent(
       content: data.content,
     });
     setSaving(false);
-    if (error) { setError('Failed to save note'); return; }
+    if (error) { setError(translate('errors.classContent.saveNoteFailed')); return; }
     await fetchContent();
   };
 
@@ -100,14 +101,14 @@ export function useClassContent(
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id);
     setSaving(false);
-    if (error) { setError('Failed to update note'); return; }
+    if (error) { setError(translate('errors.classContent.updateNoteFailed')); return; }
     await fetchContent();
   };
 
   const deleteNote = async (id: number) => {
     const { error } = await supabase
       .from('class_notes').delete().eq('id', id);
-    if (error) { setError('Failed to delete note'); return; }
+    if (error) { setError(translate('errors.classContent.deleteNoteFailed')); return; }
     await fetchContent();
   };
 
@@ -130,7 +131,7 @@ export function useClassContent(
       await fetchContent();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Upload failed');
+      setError(err instanceof Error ? err.message : translate('errors.materials.uploadFailed'));
       console.error(err);
       return false;
     } finally {
@@ -152,7 +153,7 @@ export function useClassContent(
       await fetchContent();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Google Doc material could not be created');
+      setError(err instanceof Error ? err.message : translate('errors.materials.googleDocFailed'));
       console.error(err);
       return false;
     } finally {
@@ -165,7 +166,7 @@ export function useClassContent(
       await supabase.from('class_files').delete().eq('id', file.id);
       await fetchContent();
     } catch (err) {
-      setError('Delete failed');
+      setError(translate('errors.materials.deleteFailed'));
       console.error(err);
     }
   };
