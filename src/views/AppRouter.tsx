@@ -688,7 +688,7 @@ export function AppRouter({
     );
   }
 
-  if (hasRole('administrator') && activeWorkspace !== 'student') {
+  if (hasRole('administrator') && activeWorkspace === 'administrator') {
     switch (activeView) {
       case 'curriculum':
       case 'curriculum-overview':
@@ -1243,7 +1243,7 @@ export function AppRouter({
     }
   }
 
-  if (hasRole('administrator') && activeWorkspace !== 'student') {
+  if (hasRole('administrator') && activeWorkspace === 'administrator') {
     return (
       <AdminDashboard
         courses={courses}
@@ -1295,4 +1295,3 @@ export function AppRouter({
 
   return <div>No content available</div>;
 }
-

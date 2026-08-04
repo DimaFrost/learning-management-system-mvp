@@ -45,6 +45,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | notification_deliveries | id |
 | notification_jobs | id |
 | prayer_schedule | id |
+| profile_private_data | profile_id |
 | profiles | id |
 | settings | key |
 | stream_course_settings | course_id |
@@ -148,6 +149,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | notification_jobs.created_by | profiles.id |
 | prayer_schedule.thursday_student_id | profiles.id |
 | prayer_schedule.tuesday_student_id | profiles.id |
+| profile_private_data.profile_id | profiles.id |
 | stream_course_settings.course_id | courses.id |
 | stream_course_settings.updated_by | profiles.id |
 | student_tuition_accounts.plan_id | tuition_plans.id |

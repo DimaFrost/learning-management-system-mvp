@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseType, User, UserRole } from '../types/lms';
-import { sendNotification } from '../utils/notifications';
+import { queueRoleChangeEmail } from '../utils/notificationJobs';
 
 type ShowConfirmation = (
   title: string,
@@ -11,10 +11,10 @@ type ShowConfirmation = (
   onConfirm: () => void
 ) => void;
 
-function mapProfileToUser(row: {
+type ProfileUserRow = {
   id: string;
   name: string;
-  email: string;
+  email?: string | null;
   phone?: string | null;
   roles: string[];
   first_name?: string | null;
@@ -24,14 +24,16 @@ function mapProfileToUser(row: {
   teaching_course_types?: string[] | null;
   is_online_student?: boolean | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
-}): User {
+};
+
+function mapProfileToUser(row: ProfileUserRow): User {
   const teachingCourseTypes = (row.teaching_course_types ?? [])
     .filter((value): value is CourseType => value === 'first_year' || value === 'second_year');
 
   return {
     id: row.id,
     name: row.name,
-    email: row.email,
+    email: row.email ?? '',
     phone: row.phone ?? null,
     roles: row.roles as UserRole[],
     firstName: row.first_name ?? '',
@@ -50,7 +52,23 @@ function mapProfileToUser(row: {
   };
 }
 
-export function useUsers() {
+const SAFE_PROFILE_COLUMNS = [
+  'id',
+  'name',
+  'roles',
+  'first_name',
+  'last_name',
+  'avatar_url',
+  'preferred_language',
+  'teaching_course_types',
+  'is_online_student',
+].join(', ');
+
+function canLoadContactDirectory(currentUser: User) {
+  return currentUser.roles.includes('administrator');
+}
+
+export function useUsers(currentUser: User) {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -59,21 +77,43 @@ export function useUsers() {
     setLoading(true);
     setError(null);
     try {
-      const { data, error: fetchError } = await supabase
+      const { data: profileRows, error: fetchError } = await supabase
         .from('profiles')
-        .select('*')
+        .select(SAFE_PROFILE_COLUMNS)
         .order('name');
 
       if (fetchError) throw fetchError;
 
-      setUsers((data ?? []).map(mapProfileToUser));
+      let rows = (profileRows ?? []) as ProfileUserRow[];
+
+      if (canLoadContactDirectory(currentUser)) {
+        const { data: privateRows, error: privateError } = await supabase
+          .from('profile_private_data')
+          .select('profile_id, email, phone, notification_preferences');
+        if (privateError) {
+          console.error('Failed to load private profile directory fields', privateError);
+        } else {
+          const privateByProfileId = new Map(
+            (privateRows ?? []).map(row => [row.profile_id, row])
+          );
+
+          rows = rows.map(row => ({
+            ...row,
+            email: privateByProfileId.get(row.id)?.email ?? null,
+            phone: privateByProfileId.get(row.id)?.phone ?? null,
+            notification_preferences: privateByProfileId.get(row.id)?.notification_preferences ?? null,
+          }));
+        }
+      }
+
+      setUsers(rows.map(mapProfileToUser));
     } catch (err) {
       setError(translate('errors.users.loadFailed'));
       console.error(err);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
     refetchUsers();
@@ -120,7 +160,7 @@ export function useUsers() {
       setError(translate('errors.users.updateProfileFailed'));
       console.error(err);
     }
-  }, [users, refetchUsers]);
+  }, [currentUser.id, users, refetchUsers]);
 
   const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
     setError(null);
@@ -142,13 +182,24 @@ export function useUsers() {
         .eq('id', id);
 
       if (updateError) throw updateError;
+
+      if (updates.email !== undefined || updates.phone !== undefined) {
+        const { error: privateError } = await supabase
+          .from('profile_private_data')
+          .upsert({
+            profile_id: id,
+            email: updates.email ?? affected?.email ?? '',
+            phone: updates.phone ?? affected?.phone ?? null,
+          }, { onConflict: 'profile_id' });
+        if (privateError) throw privateError;
+      }
+
       await refetchUsers();
 
       if (updates.roles && affected) {
-        sendNotification('role_change', {
+        queueRoleChangeEmail({
+          createdBy: currentUser.id,
           userId: affected.id,
-          email: affected.email,
-          name: affected.name,
           newRoles: updates.roles,
         }).catch(console.error);
       }

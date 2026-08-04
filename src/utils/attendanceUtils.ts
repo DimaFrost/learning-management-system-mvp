@@ -1,4 +1,5 @@
 import { formatDateCapitalized } from '../i18n/formatters';
+import { parseLocalDateKey, toLocalDateKey } from './dateUtils';
 import type {
   AttendanceSettings,
   AttendanceStatus,
@@ -52,7 +53,7 @@ export function getWeekEnd(weekStart: Date): Date {
 }
 
 export function dateToString(date: Date): string {
-  return date.toISOString().split('T')[0];
+  return toLocalDateKey(date);
 }
 
 export function getCurrentWeekStart(): string {
@@ -82,13 +83,13 @@ export function generateDutyRotation(
 }
 
 export function getTuesdayDateForWeek(weekStart: string): string {
-  const d = new Date(`${weekStart}T00:00:00`);
+  const d = parseLocalDateKey(weekStart);
   d.setDate(d.getDate() + 1);
   return dateToString(d);
 }
 
 export function getThursdayDateForWeek(weekStart: string): string {
-  const d = new Date(`${weekStart}T00:00:00`);
+  const d = parseLocalDateKey(weekStart);
   d.setDate(d.getDate() + 3);
   return dateToString(d);
 }
@@ -123,8 +124,8 @@ export function getSchoolYearWeeks(courses: Array<{ status: string; startDate: s
 // Get all week start dates (Mondays) between two dates
 export function getWeeksBetween(startDate: string, endDate: string): string[] {
   const weeks: string[] = [];
-  const start = getWeekStart(new Date(startDate));
-  const end = new Date(endDate);
+  const start = getWeekStart(parseLocalDateKey(startDate));
+  const end = parseLocalDateKey(endDate);
   const current = new Date(start);
   while (current <= end) {
     weeks.push(dateToString(current));

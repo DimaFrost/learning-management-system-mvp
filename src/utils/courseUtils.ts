@@ -1,7 +1,8 @@
 import type { Class, Course, Subject } from '../types/lms';
+import { toLocalDateKey } from './dateUtils';
 
 export function getTodayDateString(): string {
-  return new Date().toISOString().split('T')[0];
+  return toLocalDateKey();
 }
 
 export function isCourseArchived(course: Course): boolean {

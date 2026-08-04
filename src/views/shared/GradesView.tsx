@@ -476,7 +476,7 @@ export function GradesView({
   }, { earned: 0, possible: 0, ready: 0 });
   const studentRow = scope === 'student' ? rows[0] : null;
   const studentReadiness = studentRow?.attendance?.overallScore != null ? Math.round(studentRow.attendance.overallScore * 100) : 0;
-  const readyGateCount = studentRow?.attendance?.gates.filter(gate => gate.status === 'pass').length ?? 0;
+  const readyGateCount = studentRow?.attendance?.gates.filter(gate => gate.status === 'passing').length ?? 0;
   const gateCount = studentRow?.attendance?.gates.length ?? 0;
   const studentWorkItems = studentRow
     ? [
@@ -861,11 +861,11 @@ export function GradesView({
                   </div>
                   <div className="mt-3 space-y-2">
                     {(studentRow.attendance?.gates ?? []).map(gate => (
-                      <div key={gate.id ?? gate.label} className="flex items-center justify-between gap-2 text-sm">
+                      <div key={gate.label} className="flex items-center justify-between gap-2 text-sm">
                         <span className="flex min-w-0 items-center gap-1.5">
                           <span className="truncate text-[#525252]">{gate.label}</span>
                         </span>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${gate.status === 'pass' ? 'bg-[#ecfdf5] text-[#047857]' : gate.status === 'risk' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
+                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${gate.status === 'passing' ? 'bg-[#ecfdf5] text-[#047857]' : gate.status === 'at_risk' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
                           {getGateStatusLabel(gate.status, t)}
                         </span>
                       </div>
@@ -985,19 +985,17 @@ export function GradesView({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
             <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('grades.eyebrow.staff')}</p>
-            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{scope === 'student' ? t('grades.titleMy') : t('grades.title')}</h1>
+            <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('grades.title')}</h1>
             <p className="mt-1 text-sm text-[#737373]">{t('grades.subtitle.staff')}</p>
           </div>
-          {scope !== 'student' ? (
-            <button
-              type="button"
-              onClick={() => setGradeSettingsOpen(prev => !prev)}
-              className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717] hover:bg-white"
-            >
-              <SlidersHorizontal className="h-4 w-4 text-[#2563eb]" />
-              {t('grades.settings')}
-            </button>
-          ) : null}
+          <button
+            type="button"
+            onClick={() => setGradeSettingsOpen(prev => !prev)}
+            className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717] hover:bg-white"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-[#2563eb]" />
+            {t('grades.settings')}
+          </button>
         </div>
       </div>
 
@@ -1019,8 +1017,7 @@ export function GradesView({
         </div>
       </div>
 
-      {scope !== 'student' ? (
-        <>
+      <>
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
             <input
@@ -1135,8 +1132,7 @@ export function GradesView({
               </div>
             </section>
           ) : null}
-        </>
-      ) : null}
+      </>
 
       <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-sm">
         {loading ? (

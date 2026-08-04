@@ -1,10 +1,73 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+type Profile = {
+  id: string;
+  roles: string[];
+};
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers':
     'authorization, x-client-info, apikey, content-type',
 };
+
+const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+const supabaseServiceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+  auth: { autoRefreshToken: false, persistSession: false },
+});
+
+class HttpError extends Error {
+  status: number;
+
+  constructor(message: string, status = 500) {
+    super(message);
+    this.status = status;
+  }
+}
+
+async function getCurrentProfile(authHeader: string): Promise<Profile> {
+  if (!authHeader.toLowerCase().startsWith('bearer ')) {
+    throw new HttpError('Missing authorization header', 401);
+  }
+
+  const token = authHeader.replace(/^bearer\s+/i, '');
+  const userClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
+    global: { headers: { Authorization: authHeader } },
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+
+  const { data: authData, error: authError } = await userClient.auth.getUser(token);
+  if (authError || !authData.user) {
+    throw new HttpError('Invalid session', 401);
+  }
+
+  const { data, error } = await adminClient
+    .from('profiles')
+    .select('id, roles')
+    .eq('id', authData.user.id)
+    .single();
+
+  if (error || !data) {
+    throw new HttpError('Profile not found', 404);
+  }
+
+  return {
+    id: data.id,
+    roles: Array.isArray(data.roles) ? data.roles : [],
+  };
+}
+
+function hasAnyRole(profile: Profile, roles: string[]) {
+  return profile.roles.some(role => roles.includes(role));
+}
+
+function requireAnyRole(profile: Profile, roles: string[], message: string) {
+  if (!hasAnyRole(profile, roles)) {
+    throw new HttpError(message, 403);
+  }
+}
 
 // ============================================
 // Google Auth — Service Account JWT
@@ -102,8 +165,10 @@ async function findFolder(
   parentId: string,
   token: string
 ): Promise<string | null> {
+  const escapedName = escapeDriveQueryValue(name);
+  const escapedParentId = escapeDriveQueryValue(parentId);
   const query = encodeURIComponent(
-    `name = '${name}' and '${parentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
+    `name = '${escapedName}' and '${escapedParentId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`
   );
   const res = await fetch(
     `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`,
@@ -111,6 +176,10 @@ async function findFolder(
   );
   const data = await res.json();
   return data.files?.[0]?.id ?? null;
+}
+
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
 async function findOrCreateFolder(
@@ -133,7 +202,7 @@ serve(async (req) => {
 
   try {
     const { action, data } = await req.json();
-    console.log('Drive operation:', action);
+    const profile = await getCurrentProfile(req.headers.get('Authorization') ?? '');
 
     const token = await getAccessToken();
     const rootFolderId = Deno.env.get('DRIVE_ROOT_FOLDER_ID')!;
@@ -142,6 +211,7 @@ serve(async (req) => {
     // data: { startDate, endDate, courseType }
     // returns: { folderId }
     if (action === 'create-course-folder') {
+      requireAnyRole(profile, ['administrator'], 'Only administrators can create year group Drive folders');
       const startYear = new Date(data.startDate).getFullYear();
       const endYear = new Date(data.endDate).getFullYear();
       if (!Number.isFinite(startYear) || !Number.isFinite(endYear)) {
@@ -169,6 +239,7 @@ serve(async (req) => {
     // data: { subjectName, courseFolderId }
     // returns: { folderId }
     if (action === 'create-subject-folder') {
+      requireAnyRole(profile, ['administrator', 'teacher'], 'Only administrators and teachers can create subject Drive folders');
       const folderId = await createFolder(
         data.subjectName, data.courseFolderId, token
       );
@@ -180,6 +251,7 @@ serve(async (req) => {
     // returns: { folderId, materialsFolderId, homeworkFolderId, 
     //            teacherNotesFolderId, translatorNotesFolderId }
     if (action === 'create-class-folders') {
+      requireAnyRole(profile, ['administrator', 'teacher'], 'Only administrators and teachers can create session Drive folders');
       const folderId = await createFolder(
         data.className, data.subjectFolderId, token
       );
@@ -201,6 +273,7 @@ serve(async (req) => {
     // data: { assignmentTitle, classHomeworkFolderId }
     // returns: { folderId }
     if (action === 'create-assignment-folder') {
+      requireAnyRole(profile, ['administrator', 'teacher'], 'Only administrators and teachers can create assignment Drive folders');
       const folderId = await createFolder(
         data.assignmentTitle,
         data.classHomeworkFolderId,
@@ -215,7 +288,7 @@ serve(async (req) => {
     console.error('Drive operation error:', err);
     return respond({
       error: err instanceof Error ? err.message : String(err),
-    }, 500);
+    }, err instanceof HttpError ? err.status : 500);
   }
 });
 

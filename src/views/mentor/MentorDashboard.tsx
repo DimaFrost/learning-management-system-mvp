@@ -1,15 +1,24 @@
+import { useMemo, useState } from 'react';
 import {
-  UserCheck,
-  MessageSquare,
-  Clock,
-  GraduationCap,
-  Users,
+  AlertTriangle,
+  CalendarClock,
+  CheckCircle2,
+  Clock3,
   Edit3,
+  HeartHandshake,
+  MessageCircle,
+  Search,
+  Sparkles,
+  UserCheck,
+  Users,
 } from 'lucide-react';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
+import { formatPlatformDate } from '../../utils/dateUtils';
+import { calculateOverallStatus, getCheckInStatus } from '../../utils/mentorshipUtils';
+import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { getEngagementLabel } from '../admin/mentorshipShared';
 
 interface MentorDashboardProps {
@@ -23,6 +32,123 @@ interface MentorDashboardProps {
   onOpenCheckin: (studentId: string, existingLog?: MentorshipLog) => void;
 }
 
+type MenteeStatus = 'at_risk' | 'lagging' | 'on_track';
+type FilterKey = 'all' | MenteeStatus;
+
+type MenteeSummary = {
+  studentId: string;
+  student: User | undefined;
+  courses: Course[];
+  enrollments: CourseStudent[];
+  logs: MentorshipLog[];
+  recentLogs: MentorshipLog[];
+  latestLog?: MentorshipLog;
+  lastInPerson?: MentorshipLog;
+  status: MenteeStatus;
+  inPersonMessage: string;
+  inPersonDays: number | null;
+  engagement?: string;
+};
+
+const STATUS_META: Record<MenteeStatus, {
+  label: string;
+  card: string;
+  pill: string;
+  icon: typeof CheckCircle2;
+  progress: string;
+}> = {
+  at_risk: {
+    label: 'Needs attention',
+    card: 'border-[#fecaca] bg-[#fffafa]',
+    pill: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
+    icon: AlertTriangle,
+    progress: 'bg-[#dc2626]',
+  },
+  lagging: {
+    label: 'Follow up soon',
+    card: 'border-[#fde68a] bg-[#fffdf4]',
+    pill: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]',
+    icon: Clock3,
+    progress: 'bg-[#f59e0b]',
+  },
+  on_track: {
+    label: 'On track',
+    card: 'border-[#bbf7d0] bg-[#fbfffc]',
+    pill: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
+    icon: CheckCircle2,
+    progress: 'bg-[#16a34a]',
+  },
+};
+
+function getDaysSince(date: string | undefined) {
+  if (!date) return null;
+  const start = new Date(`${date}T00:00:00`).getTime();
+  if (Number.isNaN(start)) return null;
+  return Math.max(0, Math.floor((Date.now() - start) / 86_400_000));
+}
+
+function getThisMonthKey() {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+}
+
+function getEngagementTone(engagement: string | undefined) {
+  if (engagement === 'very_high' || engagement === 'excellent') return 'text-[#15803d] bg-[#f0fdf4] border-[#bbf7d0]';
+  if (engagement === 'good') return 'text-[#1d4ed8] bg-[#eff6ff] border-[#bfdbfe]';
+  if (engagement === 'moderate' || engagement === 'needs_improvement') return 'text-[#b45309] bg-[#fffbeb] border-[#fde68a]';
+  if (engagement === 'low' || engagement === 'concern') return 'text-[#b91c1c] bg-[#fef2f2] border-[#fecaca]';
+  return 'text-[#737373] bg-[#fafafa] border-[#e5e5e5]';
+}
+
+function getProgressFromStatus(status: MenteeStatus) {
+  if (status === 'on_track') return 100;
+  if (status === 'lagging') return 58;
+  return 24;
+}
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  detail,
+  tone,
+}: {
+  icon: typeof UserCheck;
+  label: string;
+  value: string | number;
+  detail: string;
+  tone: string;
+}) {
+  return (
+    <div className="border border-[#e5e5e5] bg-white px-4 py-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{label}</p>
+          <p className="mt-2 text-2xl font-semibold leading-none text-[#171717]">{value}</p>
+        </div>
+        <span className={`grid h-9 w-9 place-items-center rounded-full ${tone}`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </div>
+      <p className="mt-2 text-xs leading-5 text-[#737373]">{detail}</p>
+    </div>
+  );
+}
+
+function EmptyMentorState() {
+  return (
+    <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white px-6 py-14 text-center">
+      <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
+        <HeartHandshake className="h-5 w-5" />
+      </span>
+      <p className="mt-4 text-base font-semibold text-[#171717]">No mentees assigned yet</p>
+      <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[#737373]">
+        Once students are assigned to you, this dashboard will show their check-in rhythm, current needs, and recent mentorship notes.
+      </p>
+    </div>
+  );
+}
+
 export function MentorDashboard({
   currentUser,
   courseStudents,
@@ -34,302 +160,398 @@ export function MentorDashboard({
   onOpenCheckin,
 }: MentorDashboardProps) {
   const { t, tCount } = useLanguage();
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<FilterKey>('all');
 
-  const getMyStudents = () => {
-    const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
-    const mentorEnrollments = courseStudents.filter(cs =>
-      cs.mentorId === currentUser.id &&
-      cs.status === 'active' &&
-      activeCourseIds.has(cs.courseId)
+  const activeCourseIds = useMemo(
+    () => new Set(courses.filter(isCourseActive).map(course => course.id)),
+    [courses]
+  );
+
+  const myLogs = useMemo(
+    () => mentorshipLogs.filter(log => log.mentorId === currentUser.id),
+    [currentUser.id, mentorshipLogs]
+  );
+
+  const mentees = useMemo<MenteeSummary[]>(() => {
+    const mentorEnrollments = courseStudents.filter(enrollment =>
+      enrollment.mentorId === currentUser.id &&
+      enrollment.status === 'active' &&
+      activeCourseIds.has(enrollment.courseId)
     );
 
-    const studentMap = new Map<string, {
-      studentId: string;
-      student: User | undefined;
-      courses: Course[];
-      enrollments: CourseStudent[];
-    }>();
+    const byStudent = new Map<string, Omit<MenteeSummary, 'logs' | 'recentLogs' | 'status' | 'inPersonMessage' | 'inPersonDays'>>();
 
     mentorEnrollments.forEach(enrollment => {
-      const studentId = enrollment.studentId;
-      const student = getUserById(studentId);
-      const course = courses.find(c => c.id === enrollment.courseId);
-
-      if (studentMap.has(studentId)) {
-        const existing = studentMap.get(studentId)!;
-        if (course) {
-          existing.courses.push(course);
-        }
+      const course = courses.find(item => item.id === enrollment.courseId);
+      const existing = byStudent.get(enrollment.studentId);
+      if (existing) {
+        if (course) existing.courses.push(course);
         existing.enrollments.push(enrollment);
-      } else {
-        studentMap.set(studentId, {
-          studentId,
-          student,
-          courses: course ? [course] : [],
-          enrollments: [enrollment],
-        });
+        return;
       }
+      byStudent.set(enrollment.studentId, {
+        studentId: enrollment.studentId,
+        student: getUserById(enrollment.studentId),
+        courses: course ? [course] : [],
+        enrollments: [enrollment],
+        latestLog: undefined,
+        lastInPerson: undefined,
+        engagement: undefined,
+      });
     });
 
-    return Array.from(studentMap.values());
+    return Array.from(byStudent.values()).map(item => {
+      const logs = myLogs
+        .filter(log => log.studentId === item.studentId)
+        .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      const latestLog = logs[0];
+      const lastInPerson = logs.find(log => log.type === 'in_person');
+      const inPersonStatus = getCheckInStatus(item.studentId, 'in_person', myLogs, cadenceSettings);
+      const status = calculateOverallStatus(item.studentId, myLogs, cadenceSettings);
+      const engagement = latestLog?.engagement ?? latestLog?.studentProgress;
+
+      return {
+        ...item,
+        logs,
+        recentLogs: logs.slice(0, 3),
+        latestLog,
+        lastInPerson,
+        status,
+        inPersonMessage: inPersonStatus.message,
+        inPersonDays: inPersonStatus.daysSince,
+        engagement,
+      };
+    }).sort((a, b) => {
+      const priority = { at_risk: 0, lagging: 1, on_track: 2 };
+      const byPriority = priority[a.status] - priority[b.status];
+      if (byPriority !== 0) return byPriority;
+      return (b.inPersonDays ?? -1) - (a.inPersonDays ?? -1);
+    });
+  }, [activeCourseIds, cadenceSettings, courseStudents, courses, currentUser.id, getUserById, myLogs]);
+
+  const filteredMentees = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return mentees
+      .filter(mentee => filter === 'all' || mentee.status === filter)
+      .filter(mentee => {
+        if (!normalized) return true;
+        const courseText = mentee.courses.map(getCourseDisplayName).join(' ');
+        return `${mentee.student?.name ?? ''} ${courseText} ${mentee.engagement ?? ''}`.toLowerCase().includes(normalized);
+      });
+  }, [filter, getCourseDisplayName, mentees, query]);
+
+  const thisMonth = getThisMonthKey();
+  const thisMonthLogs = myLogs.filter(log => log.meetingMonth === thisMonth || log.date.startsWith(thisMonth));
+  const atRiskCount = mentees.filter(mentee => mentee.status === 'at_risk').length;
+  const laggingCount = mentees.filter(mentee => mentee.status === 'lagging').length;
+  const onTrackCount = mentees.filter(mentee => mentee.status === 'on_track').length;
+  const attentionQueue = mentees.filter(mentee => mentee.status !== 'on_track').slice(0, 4);
+  const recentLogs = myLogs
+    .slice()
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, 6);
+  const healthPercent = mentees.length === 0 ? 100 : Math.round((onTrackCount / mentees.length) * 100);
+
+  const filterCounts: Record<FilterKey, number> = {
+    all: mentees.length,
+    at_risk: atRiskCount,
+    lagging: laggingCount,
+    on_track: onTrackCount,
   };
-
-  const myStudents = getMyStudents();
-  const myLogs = mentorshipLogs.filter(log => log.mentorId === currentUser.id);
-  const recentLogs = myLogs.slice(-5).reverse();
-
-  const getEngagementStats = () => {
-    const engagementCounts = myLogs.reduce((acc, log) => {
-      const level = log.engagement ?? log.studentProgress;
-      if (level) {
-        acc[level] = (acc[level] || 0) + 1;
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    return engagementCounts;
-  };
-
-  const engagementStats = getEngagementStats();
-  const avgEngagementLabel = engagementStats.very_high || engagementStats.excellent
-    ? t('mentor.dashboard.engagementSummary.veryHigh')
-    : engagementStats.good
-      ? t('mentor.dashboard.engagementSummary.good')
-      : t('mentor.dashboard.engagementSummary.needsFocus');
 
   return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-900">{t('mentor.dashboard.title')}</h2>
+    <div className="space-y-5">
+      <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
+        <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
+          <div className="border-b border-[#eeeeee] px-5 py-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#15803d]">Mentor workspace</p>
+                <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('mentor.dashboard.title')}</h1>
+                <p className="mt-1 max-w-2xl text-sm leading-6 text-[#737373]">
+                  Keep each mentee visible, know who needs a meeting, and record follow-up without digging through the admin mentorship hub.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => filteredMentees[0] && onOpenCheckin(filteredMentees[0].studentId)}
+                disabled={filteredMentees.length === 0}
+                className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Edit3 className="h-4 w-4" />
+                {t('mentor.dashboard.logCheckin')}
+              </button>
+            </div>
+          </div>
 
-      {/* Overview Statistics */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-blue-100 rounded-lg">
-              <UserCheck className="w-6 h-6 text-blue-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.myStudents')}</p>
-              <p className="text-2xl font-bold text-gray-900">{myStudents.length}</p>
-            </div>
+          <div className="grid gap-px bg-[#e5e5e5] sm:grid-cols-2 xl:grid-cols-4">
+            <StatCard
+              icon={Users}
+              label={t('mentor.dashboard.myStudents')}
+              value={mentees.length}
+              detail={tCount('mentor.dashboard.checkinsCount', myLogs.length)}
+              tone="bg-[#f0fdf4] text-[#15803d]"
+            />
+            <StatCard
+              icon={AlertTriangle}
+              label="Needs attention"
+              value={atRiskCount + laggingCount}
+              detail={`${atRiskCount} urgent, ${laggingCount} approaching`}
+              tone="bg-[#fff7ed] text-[#c2410c]"
+            />
+            <StatCard
+              icon={MessageCircle}
+              label={t('mentor.dashboard.thisMonth')}
+              value={thisMonthLogs.length}
+              detail="Check-ins recorded this month"
+              tone="bg-[#eff6ff] text-[#2563eb]"
+            />
+            <StatCard
+              icon={Sparkles}
+              label="Follow-up health"
+              value={`${healthPercent}%`}
+              detail={`${onTrackCount} of ${mentees.length || 0} currently on track`}
+              tone="bg-[#fafafa] text-[#525252]"
+            />
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-green-100 rounded-lg">
-              <MessageSquare className="w-6 h-6 text-green-600" />
+        <aside className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-[#171717]">In-person rhythm</p>
+              <p className="mt-1 text-xs leading-5 text-[#737373]">{t('mentor.dashboard.inPersonExpectations.desc')}</p>
             </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.totalCheckins')}</p>
-              <p className="text-2xl font-bold text-gray-900">{myLogs.length}</p>
-            </div>
+            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
+              <CalendarClock className="h-4 w-4" />
+            </span>
           </div>
-        </div>
 
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-purple-100 rounded-lg">
-              <Clock className="w-6 h-6 text-purple-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.thisMonth')}</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {myLogs.filter(log => {
-                  const logDate = new Date(log.date);
-                  const now = new Date();
-                  return logDate.getMonth() === now.getMonth() && logDate.getFullYear() === now.getFullYear();
-                }).length}
-              </p>
-            </div>
+          <div className="mt-4 space-y-3">
+            {[
+              { label: 'Expected', value: cadenceSettings.inPerson.expectedDays, tone: 'bg-[#dcfce7] text-[#166534]' },
+              { label: 'Lagging', value: cadenceSettings.inPerson.warningDays, tone: 'bg-[#fef3c7] text-[#92400e]' },
+              { label: 'At risk', value: cadenceSettings.inPerson.criticalDays, tone: 'bg-[#fee2e2] text-[#991b1b]' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center justify-between rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{item.label}</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.value} days</span>
+              </div>
+            ))}
           </div>
-        </div>
+        </aside>
+      </section>
 
-        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
-          <div className="flex items-center">
-            <div className="p-2 bg-yellow-100 rounded-lg">
-              <GraduationCap className="w-6 h-6 text-yellow-600" />
-            </div>
-            <div className="ml-4">
-              <p className="text-sm font-medium text-gray-600">{t('mentor.dashboard.avgEngagement')}</p>
-              <p className="text-2xl font-bold text-gray-900">
-                {avgEngagementLabel}
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* In-person meeting expectations */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.inPersonExpectations.title')}</h3>
-        <p className="text-sm text-gray-600 mb-4">
-          {t('mentor.dashboard.inPersonExpectations.desc')}
-        </p>
-        <div className="flex items-center gap-4 p-4 bg-green-50 border border-green-200 rounded-lg max-w-xl">
-          <div className="w-12 h-12 bg-green-500 rounded-lg flex items-center justify-center">
-            <Users className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h4 className="font-medium text-green-900">{t('mentor.dashboard.inPersonMeetings.title')}</h4>
-            <p className="text-sm text-green-700">
-              {t('mentor.dashboard.inPersonMeetings.cadence', {
-                expectedDays: cadenceSettings.inPerson.expectedDays,
-                warningDays: cadenceSettings.inPerson.warningDays,
-                criticalDays: cadenceSettings.inPerson.criticalDays,
-              })}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Recent Activity and Student Overview */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.recentCheckins')}</h3>
-          <div className="space-y-3">
-            {recentLogs.map(log => {
-              const student = getUserById(log.studentId);
-              return (
-                <div key={log.id} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                  <div className="flex-shrink-0">
-                    {log.type === 'digital' ? '💻' : '🤝'}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-gray-900">{student?.name}</p>
-                    <p className="text-sm text-gray-500 truncate">{log.mainTopic || log.notes}</p>
-                  </div>
-                  <div className="flex-shrink-0 text-xs text-gray-400">
-                    {log.date}
-                  </div>
-                </div>
-              );
-            })}
-            {recentLogs.length === 0 && (
-              <p className="text-gray-500 text-center py-4">{t('mentor.dashboard.noRecentCheckins')}</p>
-            )}
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.studentEngagementOverview')}</h3>
-          <div className="space-y-3">
-            {myStudents.map(enrollment => {
-              const studentLogs = myLogs.filter(log => log.studentId === enrollment.studentId);
-              const latestLog = studentLogs[studentLogs.length - 1];
-              const engagement = latestLog?.engagement ?? latestLog?.studentProgress;
-              const progressColor = engagement === 'very_high' || engagement === 'excellent' ? 'text-green-600' :
-                                 engagement === 'good' ? 'text-blue-600' :
-                                 engagement === 'moderate' || engagement === 'needs_improvement' ? 'text-yellow-600' :
-                                 engagement === 'low' || engagement === 'concern' ? 'text-red-600' : 'text-gray-600';
-
-              return (
-                <div key={enrollment.studentId} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">{enrollment.student?.name}</p>
-                    <p className="text-xs text-gray-500">{tCount('mentor.dashboard.checkinsCount', studentLogs.length)}</p>
-                  </div>
-                  <div className={`text-sm font-medium ${progressColor}`}>
-                    {engagement ? getEngagementLabel(engagement) : t('mentor.dashboard.noData')}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Detailed Student Management */}
-      <div className="bg-white rounded-lg shadow border border-gray-200 p-6">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">{t('mentor.dashboard.detailedView')}</h3>
-
-        <div className="space-y-4">
-          {myStudents.map(studentData => (
-            <div key={studentData.studentId} className="bg-gray-50 rounded-lg p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="text-lg font-semibold text-gray-900">{studentData.student?.name}</h4>
-                  <p className="text-sm text-gray-600">{studentData.student?.email}</p>
-                  <div className="text-sm text-gray-500 mt-1">
-                    <p className="font-medium">{t('mentor.dashboard.courses', { count: studentData.courses.length })}</p>
-                    <div className="mt-1 space-y-1">
-                      {studentData.courses.map((course, index) => (
-                        <p key={course.id} className="text-xs">
-                          • {getCourseDisplayName(course)} • {t('mentor.dashboard.enrolled', { date: studentData.enrollments[index]?.enrollmentDate ?? '' })}
-                        </p>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex space-x-2">
-                  <button
-                    className="bg-blue-600 text-white px-3 py-2 rounded text-sm hover:bg-blue-700"
-                    onClick={() => onOpenCheckin(studentData.studentId)}
-                  >
-                    {t('mentor.dashboard.logCheckin')}
-                  </button>
+      {mentees.length === 0 ? (
+        <EmptyMentorState />
+      ) : (
+        <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+          <div className="space-y-4">
+            <div className="rounded-2xl border border-[#e5e5e5] bg-white">
+              <div className="grid gap-3 border-b border-[#eeeeee] px-4 py-3 lg:grid-cols-[minmax(240px,1fr)_auto] lg:items-center">
+                <label className="relative block">
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
+                  <input
+                    value={query}
+                    onChange={event => setQuery(event.target.value)}
+                    placeholder="Search mentees or year groups..."
+                    className="tbo-focus h-10 w-full rounded-xl border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm text-[#171717]"
+                  />
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {([
+                    ['all', 'All'],
+                    ['at_risk', 'Urgent'],
+                    ['lagging', 'Soon'],
+                    ['on_track', 'Clear'],
+                  ] as Array<[FilterKey, string]>).map(([key, label]) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => setFilter(key)}
+                      className={`tbo-focus inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs font-semibold transition ${
+                        filter === key
+                          ? 'border-[#171717] bg-[#171717] text-white'
+                          : 'border-[#e5e5e5] bg-[#fafafa] text-[#525252] hover:bg-white'
+                      }`}
+                    >
+                      {label}
+                      <span className={`rounded-full px-1.5 py-0.5 ${filter === key ? 'bg-white/20' : 'bg-white text-[#737373]'}`}>
+                        {filterCounts[key]}
+                      </span>
+                    </button>
+                  ))}
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-200">
-                <h5 className="font-medium text-gray-900 mb-2">{t('mentor.dashboard.recentCheckins')}</h5>
-                {mentorshipLogs
-                  .filter(log => log.studentId === studentData.studentId)
-                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                  .slice(0, 3)
-                  .map(log => (
-                    <div key={log.id} className="bg-white rounded p-3 mb-2">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm font-medium text-gray-900">
-                          {log.type === 'digital' ? t('mentor.dashboard.digitalCheckin') : t('mentor.dashboard.inPersonCheckin')} {t('mentor.dashboard.checkinSuffix')}
-                        </span>
-                        <div className="flex items-center space-x-2">
-                          <span className="text-xs text-gray-500">{log.date}</span>
-                          {log.mentorId === currentUser.id && (
-                            <button
-                              onClick={() => onOpenCheckin(log.studentId, log)}
-                              className="text-blue-600 hover:text-blue-800 text-xs"
-                              title={t('mentor.dashboard.editCheckinTitle')}
-                            >
-                              <Edit3 className="w-3 h-3" />
-                            </button>
-                          )}
+              <div className="divide-y divide-[#eeeeee]">
+                {filteredMentees.length === 0 ? (
+                  <p className="px-5 py-10 text-center text-sm text-[#737373]">No mentees match this view.</p>
+                ) : filteredMentees.map(mentee => {
+                  const meta = STATUS_META[mentee.status];
+                  const StatusIcon = meta.icon;
+                  const progress = getProgressFromStatus(mentee.status);
+
+                  return (
+                    <article key={mentee.studentId} className={`grid gap-4 px-4 py-4 transition hover:bg-[#fafafa] lg:grid-cols-[minmax(0,1fr)_220px] ${meta.card}`}>
+                      <div className="min-w-0">
+                        <div className="flex items-start gap-3">
+                          {mentee.student ? <UserAvatar user={mentee.student} /> : <span className="h-10 w-10 rounded-full bg-[#f5f5f5]" />}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <h2 className="truncate text-base font-semibold text-[#171717]">{mentee.student?.name ?? 'Unknown student'}</h2>
+                              <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.pill}`}>
+                                <StatusIcon className="h-3.5 w-3.5" />
+                                {meta.label}
+                              </span>
+                            </div>
+                            <div className="mt-2 flex flex-wrap items-center gap-2">
+                              {mentee.courses.map(course => (
+                                <ActiveYearGroupBadge key={course.id} course={course} />
+                              ))}
+                              <span className="text-xs font-medium text-[#737373]">{tCount('mentor.dashboard.checkinsCount', mentee.logs.length)}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid gap-3 md:grid-cols-3">
+                          <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Last in person</p>
+                            <p className="mt-1 text-sm font-semibold text-[#171717]">
+                              {mentee.lastInPerson ? formatPlatformDate(mentee.lastInPerson.date) : 'None yet'}
+                            </p>
+                            <p className="mt-0.5 text-xs text-[#737373]">{mentee.inPersonMessage}</p>
+                          </div>
+                          <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Latest note</p>
+                            <p className="mt-1 line-clamp-2 text-sm text-[#525252]">
+                              {mentee.latestLog?.mainTopic || mentee.latestLog?.notes || 'No notes yet'}
+                            </p>
+                          </div>
+                          <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Engagement</p>
+                            <span className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getEngagementTone(mentee.engagement)}`}>
+                              {mentee.engagement ? getEngagementLabel(mentee.engagement) : t('mentor.dashboard.noData')}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-[#f0f0f0]">
+                          <div className={`h-full rounded-full ${meta.progress}`} style={{ width: `${progress}%` }} />
                         </div>
                       </div>
-                      <p className="text-sm text-gray-600">{log.mainTopic || log.notes}</p>
-                      {log.meetingMonth && (
-                        <p className="text-xs text-gray-500 mt-1">{t('mentor.dashboard.month', { month: log.meetingMonth })}</p>
-                      )}
-                      {(log.engagement || log.studentProgress) && (
-                        <div className="mt-2">
-                          <span className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
-                            log.engagement === 'very_high' || log.studentProgress === 'excellent' ? 'bg-green-100 text-green-800' :
-                            log.engagement === 'good' || log.studentProgress === 'good' ? 'bg-blue-100 text-blue-800' :
-                            log.engagement === 'moderate' || log.studentProgress === 'needs_improvement' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-red-100 text-red-800'
-                          }`}>
-                            {getEngagementLabel(log.engagement || log.studentProgress || '')}
-                          </span>
+
+                      <div className="flex flex-col justify-between gap-3 lg:items-end">
+                        <div className="text-left lg:text-right">
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Assigned</p>
+                          <p className="mt-1 text-sm font-semibold text-[#171717]">
+                            {formatPlatformDate(mentee.enrollments[0]?.enrollmentDate)}
+                          </p>
+                          <p className="mt-1 text-xs text-[#737373]">
+                            {mentee.courses.map(getCourseDisplayName).join(', ')}
+                          </p>
                         </div>
-                      )}
-                    </div>
-                  ))
-                }
-                {mentorshipLogs.filter(log => log.studentId === studentData.studentId).length === 0 && (
-                  <p className="text-gray-500 text-sm">{t('mentor.dashboard.noCheckinsYet')}</p>
-                )}
+                        <button
+                          type="button"
+                          onClick={() => onOpenCheckin(mentee.studentId)}
+                          className="tbo-focus inline-flex h-9 items-center justify-center gap-2 rounded-xl border border-[#171717] bg-white px-3 text-sm font-semibold text-[#171717] hover:bg-[#171717] hover:text-white"
+                        >
+                          <Edit3 className="h-4 w-4" />
+                          {t('mentor.dashboard.logCheckin')}
+                        </button>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
             </div>
-          ))}
+          </div>
 
-          {myStudents.length === 0 && (
-            <div className="text-center py-12">
-              <UserCheck className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <p className="text-gray-500">{t('mentor.dashboard.noStudentsAssigned')}</p>
-            </div>
-          )}
-        </div>
-      </div>
+          <aside className="space-y-4">
+            <section className="rounded-2xl border border-[#e5e5e5] bg-white">
+              <div className="border-b border-[#eeeeee] px-4 py-3">
+                <p className="text-sm font-semibold text-[#171717]">Priority follow-up</p>
+                <p className="mt-1 text-xs text-[#737373]">Sorted by in-person meeting urgency.</p>
+              </div>
+              <div className="max-h-[360px] space-y-2 overflow-y-auto p-3 tbo-scrollbar">
+                {attentionQueue.length === 0 ? (
+                  <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-4 text-sm text-[#166534]">
+                    Everyone is currently within the meeting rhythm.
+                  </div>
+                ) : attentionQueue.map(mentee => {
+                  const meta = STATUS_META[mentee.status];
+                  const StatusIcon = meta.icon;
+                  return (
+                    <button
+                      key={mentee.studentId}
+                      type="button"
+                      onClick={() => onOpenCheckin(mentee.studentId)}
+                      className="tbo-focus flex w-full items-center gap-3 rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-left hover:bg-white"
+                    >
+                      {mentee.student ? <UserAvatar user={mentee.student} size="sm" /> : <span className="h-8 w-8 rounded-full bg-white" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-[#171717]">{mentee.student?.name ?? 'Unknown student'}</span>
+                        <span className="mt-0.5 flex items-center gap-1.5 text-xs text-[#737373]">
+                          <StatusIcon className="h-3.5 w-3.5" />
+                          {mentee.inPersonMessage}
+                        </span>
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="rounded-2xl border border-[#e5e5e5] bg-white">
+              <div className="border-b border-[#eeeeee] px-4 py-3">
+                <p className="text-sm font-semibold text-[#171717]">{t('mentor.dashboard.recentCheckins')}</p>
+                <p className="mt-1 text-xs text-[#737373]">Latest notes you have recorded.</p>
+              </div>
+              <div className="max-h-[420px] overflow-y-auto p-3 tbo-scrollbar">
+                {recentLogs.length === 0 ? (
+                  <p className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-3 py-6 text-center text-sm text-[#737373]">
+                    {t('mentor.dashboard.noRecentCheckins')}
+                  </p>
+                ) : (
+                  <div className="space-y-3">
+                    {recentLogs.map(log => {
+                      const student = getUserById(log.studentId);
+                      const typeLabel = log.type === 'in_person'
+                        ? t('mentorship.hub.checkin.inPerson')
+                        : t('mentorship.hub.checkin.digital');
+                      return (
+                        <article key={log.id} className="rounded-xl border border-[#eeeeee] bg-[#fafafa] p-3">
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="flex min-w-0 items-center gap-2">
+                              {student ? <UserAvatar user={student} size="sm" /> : <span className="h-8 w-8 rounded-full bg-white" />}
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-semibold text-[#171717]">{student?.name ?? t('mentorship.hub.unknownStudent')}</p>
+                                <p className="text-xs text-[#737373]">{typeLabel} - {formatPlatformDate(log.date)}</p>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => onOpenCheckin(log.studentId, log)}
+                              className="tbo-focus grid h-8 w-8 place-items-center rounded-full border border-[#e5e5e5] bg-white text-[#737373] hover:text-[#171717]"
+                              title={t('mentor.dashboard.editCheckinTitle')}
+                            >
+                              <Edit3 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                          <p className="mt-3 line-clamp-3 text-sm leading-6 text-[#525252]">
+                            {log.mainTopic || log.notes || t('mentor.dashboard.noData')}
+                          </p>
+                        </article>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </section>
+          </aside>
+        </section>
+      )}
     </div>
   );
 }

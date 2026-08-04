@@ -3,7 +3,7 @@ import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { ClassNote, ClassFile, User, Course } from '../types/lms';
 import { createMaterialGoogleDoc, uploadMaterialGoogleDriveFile } from '../utils/googleDocsV2';
-import { sendNotification } from '../utils/notifications';
+import { queueAnnouncementEmail } from '../utils/notificationJobs';
 import { findClassCourseContext } from '../utils/courseUtils';
 
 export function useClassContent(
@@ -183,7 +183,7 @@ export function useClassContent(
       const title = `New Materials: ${classInfo}`;
       const content = `New materials have been uploaded for ${classInfo}.\n\n${fileList}`;
 
-      const { error: announcementError } = await supabase.from('announcements').insert({
+      const { data: announcement, error: announcementError } = await supabase.from('announcements').insert({
         title,
         content,
         type: 'material',
@@ -192,16 +192,16 @@ export function useClassContent(
         target_roles: null,
         is_pinned: false,
         is_staff_only: false,
-      });
+      }).select('id').single();
 
       if (announcementError) throw announcementError;
 
-      sendNotification('announcement', {
-        title,
-        content,
-        authorName: currentUser.name,
-        isStaffOnly: false,
-      }).catch(console.error);
+      if (announcement?.id) {
+        queueAnnouncementEmail({
+          announcementId: announcement.id,
+          createdBy: currentUser.id,
+        }).catch(console.error);
+      }
     } catch (err) {
       console.error('Materials announcement failed:', err);
     }

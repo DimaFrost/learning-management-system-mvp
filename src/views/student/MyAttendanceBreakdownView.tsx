@@ -17,7 +17,7 @@ import type {
 import { StudentMonthCalendar } from '../../components/student/StudentMonthCalendar';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { formatDate, formatDateCapitalized } from '../../i18n/formatters';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { addDaysToLocalDateKey, formatPlatformDate, parseLocalDateKey, toLocalDateKey } from '../../utils/dateUtils';
 import {
   breakdownToCalendarEvents,
   buildStudentAttendanceBreakdown,
@@ -95,16 +95,14 @@ function SectionCard({ children, className = '' }: { children: React.ReactNode; 
 }
 
 function getWeekStart(dateString: string) {
-  const date = new Date(`${dateString}T00:00:00`);
+  const date = parseLocalDateKey(dateString);
   const mondayOffset = (date.getDay() + 6) % 7;
   date.setDate(date.getDate() - mondayOffset);
-  return date.toISOString().slice(0, 10);
+  return toLocalDateKey(date);
 }
 
 function addDays(dateString: string, amount: number) {
-  const date = new Date(`${dateString}T00:00:00`);
-  date.setDate(date.getDate() + amount);
-  return date.toISOString().slice(0, 10);
+  return addDaysToLocalDateKey(dateString, amount);
 }
 
 function formatMonthName(monthKey: string) {

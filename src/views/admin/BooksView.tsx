@@ -11,7 +11,7 @@ import type {
 import type { BookDraft, ReadingAssignmentDraft } from '../../hooks/useBooks';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
 type BooksViewProps = {
@@ -362,7 +362,7 @@ export function BooksView({
   const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
 
   const filteredAssignments = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateKey();
     return assignments.filter(assignment => {
       if (filter === 'all') return assignment.status !== 'archived';
       if (filter === 'past_due') return assignment.status === 'assigned' && !!assignment.dueDate && assignment.dueDate < today;
@@ -371,7 +371,7 @@ export function BooksView({
   }, [assignments, filter]);
 
   const filterCounts = useMemo(() => {
-    const today = new Date().toISOString().slice(0, 10);
+    const today = toLocalDateKey();
     return {
       all: assignments.filter(assignment => assignment.status !== 'archived').length,
       assigned: assignments.filter(assignment => assignment.status === 'assigned').length,

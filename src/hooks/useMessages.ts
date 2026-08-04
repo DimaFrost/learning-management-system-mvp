@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
-import { sendNotification } from '../utils/notifications';
+import { queueDirectMessageEmail } from '../utils/notificationJobs';
 import type { Message, Conversation, User } from '../types/lms';
 
 type SupabaseProfileJoin = { id: string; name: string } | null;
@@ -162,11 +162,9 @@ export function useMessages(currentUser: User, users: User[]) {
           recipient &&
           recipient.notificationPreferences?.messages !== false
         ) {
-          sendNotification('direct_message', {
+          queueDirectMessageEmail({
+            senderId: currentUser.id,
             recipientId,
-            recipientEmail: recipient.email,
-            recipientName: recipient.name,
-            senderName: currentUser.name,
             preview: content.trim().slice(0, 100) +
               (content.length > 100 ? '...' : ''),
           }).catch(console.error);

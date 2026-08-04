@@ -9,7 +9,7 @@ import { ScrollableTabs } from '../../components/ui/ScrollableTabs';
 import { MaterialsNotesTab } from '../../components/class/MaterialsNotesTab';
 import { StaffNotesTab } from '../../components/class/StaffNotesTab';
 import { HomeworkTab } from '../../components/class/HomeworkTab';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import type { WorkspaceId } from '../../types/workspace';
 import { useLanguage } from '../../i18n/LanguageContext';
 
@@ -52,7 +52,7 @@ function getInitials(name: string | null | undefined) {
 }
 
 function getClassStatus(date: string): ClassStatus {
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateKey();
   if (date > today) return 'upcoming';
   if (date === today) return 'today';
   return 'past';

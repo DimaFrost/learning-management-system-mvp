@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { MentorshipLog } from '../types/lms';
+import { toLocalDateKey } from '../utils/dateUtils';
 
 type MentorshipLogRow = {
   id: number;
@@ -116,7 +117,7 @@ export function useMentorshipLogs() {
         mentor_id: log.mentorId ?? defaultMentorId,
         student_id: log.studentId,
         type: log.type || 'digital',
-        date: log.date || new Date().toISOString().split('T')[0],
+        date: log.date || toLocalDateKey(),
         notes: log.notes || '',
         duration: log.duration ?? null,
         topics: log.topics || [],

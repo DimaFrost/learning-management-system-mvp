@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { queueWorkflowEmail } from '../utils/notificationJobs';
+import { toLocalDateKey } from '../utils/dateUtils';
 import type {
   Course,
   CourseStudent,
@@ -173,7 +174,7 @@ function isMissingTuitionTable(error: { code?: string; message?: string } | null
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateKey();
 }
 
 function deriveStatus(expected: number, paid: number, dueDate?: string | null): TuitionAccountStatus {

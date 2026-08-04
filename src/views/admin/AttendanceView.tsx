@@ -47,7 +47,7 @@ import {
   isCourseActive,
 } from '../../utils/courseUtils';
 import { formatDateCapitalized } from '../../i18n/formatters';
-import { formatPlatformDate, formatPlatformDateTime } from '../../utils/dateUtils';
+import { formatPlatformDate, formatPlatformDateTime, toLocalDateKey } from '../../utils/dateUtils';
 import {
   formatMonthYear,
   formatPercent,
@@ -840,20 +840,20 @@ export function AttendanceView({
   const [editingTeamId, setEditingTeamId] = useState<number | null>(null);
   const [sessionDraft, setSessionDraft] = useState({
     teamId: 0,
-    serviceDate: new Date().toISOString().slice(0, 10),
+    serviceDate: toLocalDateKey(),
     title: '',
   });
   const [rotationDraft, setRotationDraft] = useState({
     courseId: defaultCourseId,
     studentId: '',
     teamId: 0,
-    startDate: new Date().toISOString().slice(0, 10),
-    endDate: new Date().toISOString().slice(0, 10),
+    startDate: toLocalDateKey(),
+    endDate: toLocalDateKey(),
   });
   const [rotationModalOpen, setRotationModalOpen] = useState(false);
   const [rotationDateMode, setRotationDateMode] = useState<RotationDateMode>('month');
-  const [rotationStartMonth, setRotationStartMonth] = useState(new Date().toISOString().slice(0, 7));
-  const [rotationEndMonth, setRotationEndMonth] = useState(new Date().toISOString().slice(0, 7));
+  const [rotationStartMonth, setRotationStartMonth] = useState(toLocalDateKey().slice(0, 7));
+  const [rotationEndMonth, setRotationEndMonth] = useState(toLocalDateKey().slice(0, 7));
   const [editingRotationId, setEditingRotationId] = useState<number | null>(null);
   const [ministryTeamFilter, setMinistryTeamFilter] = useState('all');
   const [ministryCourseFilter, setMinistryCourseFilter] = useState('all');
@@ -1062,7 +1062,7 @@ export function AttendanceView({
   }, [currentWeekStart, dutyRows]);
   const prayerRows = prayerSchedule;
   const prayerLoadByStudent = useMemo(() => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = toLocalDateKey();
     const stats = new Map<string, { served: number; total: number }>();
 
     for (const entry of prayerRows) {

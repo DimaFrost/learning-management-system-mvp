@@ -3,7 +3,7 @@ import { AlertCircle, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Cli
 import { supabase } from '../../lib/supabase';
 import type { Class, Course, CourseStudent, User } from '../../types/lms';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations';
 
@@ -15,7 +15,7 @@ type NoticeRow = {
   reason: string | null;
   status: 'submitted' | 'acknowledged' | 'archived';
   submitted_at: string;
-  student?: { id: string; name: string; email: string | null; avatar_url: string | null } | null;
+  student?: { id: string; name: string; avatar_url: string | null } | null;
   sessions?: {
     id: number;
     class_id: number;
@@ -51,7 +51,7 @@ interface AbsenceNoticesViewProps {
 type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
 function todayKey() {
-  return new Date().toISOString().split('T')[0];
+  return toLocalDateKey();
 }
 
 function isSaturday(date: string) {
@@ -149,7 +149,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
       .from('absence_notices')
       .select(`
         id, student_id, reason, status, submitted_at,
-        student:profiles!student_id(id, name, email, avatar_url),
+        student:profiles!student_id(id, name, avatar_url),
         sessions:absence_notice_sessions(
           id, class_id,
           class:classes(
@@ -236,7 +236,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
         const sessionText = (notice.sessions ?? [])
           .map(session => `${session.class?.title ?? ''} ${session.class?.subject?.title ?? ''}`)
           .join(' ');
-        return `${notice.student?.name ?? ''} ${notice.student?.email ?? ''} ${notice.reason ?? ''} ${sessionText}`.toLowerCase().includes(normalized);
+        return `${notice.student?.name ?? ''} ${notice.reason ?? ''} ${sessionText}`.toLowerCase().includes(normalized);
       })
       .sort((a, b) => getNoticeSessionDate(a).localeCompare(getNoticeSessionDate(b)));
   }, [eventFilter, notices, query]);
