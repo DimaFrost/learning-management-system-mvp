@@ -170,8 +170,6 @@ export function useUsers(currentUser: User) {
         .from('profiles')
         .update({
           name: updates.name,
-          email: updates.email,
-          ...(updates.phone !== undefined && { phone: updates.phone }),
           roles: updates.roles,
           ...(updates.preferredLanguage !== undefined && { preferred_language: updates.preferredLanguage }),
           ...(updates.firstName !== undefined && { first_name: updates.firstName }),

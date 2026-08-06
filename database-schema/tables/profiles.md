@@ -9,13 +9,13 @@ Column count: 14
 | --- | --- | --- | --- | --- | --- |
 | id | string:uuid | yes | no |  | Note:<br>This is a Primary Key.<pk/> |
 | name | string:text | yes | no |  |  |
-| email | string:text | yes | no |  |  |
+| email | string:text | no | no |  |  |
 | roles | array:text[] | yes | no |  |  |
 | created_at | string:timestamp with time zone | yes | no | now() |  |
 | updated_at | string:timestamp with time zone | yes | no | now() |  |
 | first_name | string:text | yes | no | "" |  |
 | last_name | string:text | yes | no | "" |  |
-| notification_preferences | unknown:jsonb | yes | no |  |  |
+| notification_preferences | unknown:jsonb | no | no |  |  |
 | avatar_url | string:text | no | no |  |  |
 | preferred_language | string:text | yes | no | en |  |
 | phone | string:text | no | no |  |  |
@@ -29,13 +29,11 @@ Column count: 14
   "required": [
     "id",
     "name",
-    "email",
     "roles",
     "created_at",
     "updated_at",
     "first_name",
     "last_name",
-    "notification_preferences",
     "preferred_language",
     "teaching_course_types",
     "is_online_student"

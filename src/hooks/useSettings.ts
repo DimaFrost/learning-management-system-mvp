@@ -55,11 +55,6 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
   ) => {
     setSaving(true);
     setError(null);
-    const { error } = await supabase
-      .from('profiles')
-      .update({ notification_preferences: prefs })
-      .eq('id', currentUser.id);
-
     const { error: privateError } = await supabase
       .from('profile_private_data')
       .upsert({
@@ -70,9 +65,9 @@ export function useSettings(currentUser: User, onProfileUpdated: () => void) {
       }, { onConflict: 'profile_id' });
 
     setSaving(false);
-    if (error || privateError) {
+    if (privateError) {
       setError(translate('errors.settings.saveNotificationsFailed'));
-      console.error(error ?? privateError);
+      console.error(privateError);
     } else {
       setSuccessMessage('Preferences saved.');
       setTimeout(() => setSuccessMessage(null), 3000);

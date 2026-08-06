@@ -11657,13 +11657,11 @@
       "required": [
         "id",
         "name",
-        "email",
         "roles",
         "created_at",
         "updated_at",
         "first_name",
         "last_name",
-        "notification_preferences",
         "preferred_language",
         "teaching_course_types",
         "is_online_student"
