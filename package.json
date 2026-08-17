@@ -8,6 +8,7 @@
     "start": "npx create-react-app . --template typescript && npm start",
     "dev": "npx vite",
     "build": "npx vite build",
+    "typecheck": "tsc --noEmit",
     "preview": "npx vite preview",
     "mcp:supabase": "node scripts/supabase-mcp.mjs",
     "db:schema:sync": "node scripts/sync-database-schema.mjs"

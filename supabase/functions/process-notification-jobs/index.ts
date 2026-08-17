@@ -10,6 +10,9 @@ type Profile = {
   notification_preferences?: {
     announcements?: boolean;
     todos?: boolean;
+    roleChange?: boolean;
+    enrollment?: boolean;
+    messages?: boolean;
   } | null;
 };
 
@@ -35,6 +38,7 @@ type NotificationJob = {
   attempts: number;
   max_attempts: number;
   payload: Record<string, unknown>;
+  created_by: string | null;
 };
 
 type WorkflowEmailPayload = {
@@ -44,6 +48,27 @@ type WorkflowEmailPayload = {
   body?: string;
   kind?: 'announcement' | 'assignment' | 'attendance' | 'system';
   actionUrl?: string | null;
+};
+
+type DirectMessageEmailPayload = {
+  recipientId?: string;
+  preview?: string;
+};
+
+type RoleChangeEmailPayload = {
+  userId?: string;
+  newRoles?: string[];
+};
+
+type EnrollmentEmailPayload = {
+  studentId?: string;
+  courseId?: number;
+};
+
+type CourseRow = {
+  id: number;
+  course_type: string;
+  graduation_year: number;
 };
 
 type TodoItem = {
@@ -100,6 +125,8 @@ const DEFAULT_LOGO_URL = APP_URL.includes('localhost') || APP_URL.includes('127.
   : `${APP_URL.replace(/\/$/, '')}/tbo-logo.png`;
 const LOGO_URL = Deno.env.get('LOGO_URL') ?? DEFAULT_LOGO_URL;
 const CUSTOM_USER_PREFIX = 'user:';
+const WORKFLOW_EMAIL_MAX_RECIPIENTS = 250;
+const WORKFLOW_EMAIL_ROLES = ['administrator', 'team_leader'];
 
 function getAnnouncementEmailContent(announcement: Announcement, preferredLanguage: 'en' | 'bg' | null | undefined = 'en') {
   const englishTitle = announcement.title?.trim() ?? '';
@@ -140,7 +167,11 @@ serve(async req => {
     return json({ error: 'Method not allowed' }, 405);
   }
 
-  if (PROCESS_SECRET && req.headers.get('x-notification-secret') !== PROCESS_SECRET) {
+  if (!PROCESS_SECRET) {
+    return json({ error: 'Notification processor secret is not configured' }, 500);
+  }
+
+  if (req.headers.get('x-notification-secret') !== PROCESS_SECRET) {
     return json({ error: 'Unauthorized' }, 401);
   }
 
@@ -202,8 +233,14 @@ async function processJob(job: NotificationJob) {
       const noticeId = Number(job.payload?.noticeId);
       if (!noticeId) throw new Error('Missing absence notice id');
       result = await sendAbsenceNoticeEmails(job.id, noticeId);
+    } else if (job.type === 'direct_message_email') {
+      result = await sendDirectMessageEmail(job, job.payload as DirectMessageEmailPayload);
+    } else if (job.type === 'role_change_email') {
+      result = await sendRoleChangeEmail(job, job.payload as RoleChangeEmailPayload);
+    } else if (job.type === 'enrollment_email') {
+      result = await sendEnrollmentEmail(job, job.payload as EnrollmentEmailPayload);
     } else if (job.type === 'workflow_email') {
-      result = await sendWorkflowEmails(job.id, job.payload as WorkflowEmailPayload);
+      result = await sendWorkflowEmails(job, job.payload as WorkflowEmailPayload);
     } else {
       throw new Error(`Unsupported notification job type: ${job.type}`);
     }
@@ -253,21 +290,27 @@ async function processJob(job: NotificationJob) {
   }
 }
 
-async function sendWorkflowEmails(jobId: number, payload: WorkflowEmailPayload) {
+async function sendWorkflowEmails(job: NotificationJob, payload: WorkflowEmailPayload) {
+  await assertWorkflowEmailCreator(job);
+
   const recipientIds = Array.isArray(payload.recipientIds) ? payload.recipientIds.filter(Boolean) : [];
   if (recipientIds.length === 0) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'No recipients' };
+  const uniqueRecipientIds = Array.from(new Set(recipientIds));
+  if (uniqueRecipientIds.length > WORKFLOW_EMAIL_MAX_RECIPIENTS) {
+    throw new Error(`Workflow email recipient limit exceeded (${uniqueRecipientIds.length}/${WORKFLOW_EMAIL_MAX_RECIPIENTS})`);
+  }
 
   const { data: recipients, error } = await supabase
     .from('profiles')
     .select('id, name, email, roles, preferred_language, notification_preferences')
-    .in('id', Array.from(new Set(recipientIds)));
+    .in('id', uniqueRecipientIds);
   if (error) throw error;
 
   const profiles = ((recipients ?? []) as Profile[]).filter(profile => Boolean(profile.email));
   let sent = 0;
   let failed = 0;
   for (const recipient of profiles) {
-    const delivery = await createDelivery(jobId, recipient);
+    const delivery = await createDelivery(job.id, recipient);
     try {
       const response = await sendBrevoEmail({
         to: recipient,
@@ -299,6 +342,196 @@ async function sendWorkflowEmails(jobId: number, payload: WorkflowEmailPayload) 
   }
 
   return { sent, failed, recipientCount: profiles.length };
+}
+
+async function sendDirectMessageEmail(job: NotificationJob, payload: DirectMessageEmailPayload) {
+  if (!job.created_by) throw new Error('Direct message job is missing sender');
+  const recipientId = String(payload.recipientId ?? '');
+  if (!recipientId) throw new Error('Missing direct message recipient');
+
+  const { data: profiles, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, roles, preferred_language, notification_preferences')
+    .in('id', [job.created_by, recipientId]);
+  if (error) throw error;
+
+  const sender = ((profiles ?? []) as Profile[]).find(profile => profile.id === job.created_by);
+  const recipient = ((profiles ?? []) as Profile[]).find(profile => profile.id === recipientId);
+  if (!sender) throw new Error('Direct message sender not found');
+  if (!recipient?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
+  if (recipient.notification_preferences?.messages === false) {
+    return { sent: 0, failed: 0, recipientCount: 1, skipped: true, reason: 'Recipient disabled message emails' };
+  }
+
+  const preview = truncateText(String(payload.preview ?? ''), 180);
+  return sendProfileEmail({
+    jobId: job.id,
+    recipient,
+    subject: `New message from ${sender.name}`,
+    html: renderWorkflowEmail({
+      kind: 'system',
+      title: `New message from ${sender.name}`,
+      body: preview ? `"${preview}"` : 'You have a new message in the portal.',
+      actionUrl: APP_URL,
+    }),
+    text: `New message from ${sender.name}\n\n${preview}\n\nOpen: ${APP_URL}`,
+    tags: ['message', 'portal'],
+  });
+}
+
+async function sendRoleChangeEmail(job: NotificationJob, payload: RoleChangeEmailPayload) {
+  await assertJobCreatorHasRole(job, ['administrator'], 'Role-change email creator is not authorized');
+  const userId = String(payload.userId ?? '');
+  if (!userId) throw new Error('Missing role-change recipient');
+
+  const { data: recipient, error } = await supabase
+    .from('profiles')
+    .select('id, name, email, roles, preferred_language, notification_preferences')
+    .eq('id', userId)
+    .maybeSingle();
+  if (error) throw error;
+  const profile = recipient as Profile | null;
+  if (!profile?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
+  if (profile.notification_preferences?.roleChange === false) {
+    return { sent: 0, failed: 0, recipientCount: 1, skipped: true, reason: 'Recipient disabled role emails' };
+  }
+
+  const roles = Array.isArray(payload.newRoles) && payload.newRoles.length > 0
+    ? payload.newRoles
+    : profile.roles;
+  const roleText = roles.map(formatRoleLabel).join(', ');
+  return sendProfileEmail({
+    jobId: job.id,
+    recipient: profile,
+    subject: 'Your portal role has been updated',
+    html: renderWorkflowEmail({
+      kind: 'system',
+      title: 'Your portal role has been updated',
+      body: `Your current role(s): ${roleText}`,
+      actionUrl: APP_URL,
+    }),
+    text: `Your portal role has been updated.\n\nYour current role(s): ${roleText}\n\nOpen: ${APP_URL}`,
+    tags: ['role-change', 'portal'],
+  });
+}
+
+async function sendEnrollmentEmail(job: NotificationJob, payload: EnrollmentEmailPayload) {
+  await assertJobCreatorHasRole(job, ['administrator'], 'Enrollment email creator is not authorized');
+  const studentId = String(payload.studentId ?? '');
+  const courseId = Number(payload.courseId);
+  if (!studentId) throw new Error('Missing enrollment student');
+  if (!Number.isFinite(courseId)) throw new Error('Missing enrollment course');
+
+  const [{ data: recipient, error: recipientError }, { data: course, error: courseError }] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, name, email, roles, preferred_language, notification_preferences')
+      .eq('id', studentId)
+      .maybeSingle(),
+    supabase
+      .from('courses')
+      .select('id, course_type, graduation_year')
+      .eq('id', courseId)
+      .maybeSingle(),
+  ]);
+  if (recipientError) throw recipientError;
+  if (courseError) throw courseError;
+  const profile = recipient as Profile | null;
+  const typedCourse = course as CourseRow | null;
+  if (!profile?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
+  if (profile.notification_preferences?.enrollment === false) {
+    return { sent: 0, failed: 0, recipientCount: 1, skipped: true, reason: 'Recipient disabled enrollment emails' };
+  }
+
+  const courseName = typedCourse ? getCourseDisplayName(typedCourse) : 'your year group';
+  return sendProfileEmail({
+    jobId: job.id,
+    recipient: profile,
+    subject: `You've been enrolled in ${courseName}`,
+    html: renderWorkflowEmail({
+      kind: 'system',
+      title: `You've been enrolled in ${courseName}`,
+      body: 'Your year group access is now active in the portal.',
+      actionUrl: APP_URL,
+    }),
+    text: `You've been enrolled in ${courseName}.\n\nOpen: ${APP_URL}`,
+    tags: ['enrollment', 'portal'],
+  });
+}
+
+async function sendProfileEmail({
+  jobId,
+  recipient,
+  subject,
+  html,
+  text,
+  tags,
+}: {
+  jobId: number;
+  recipient: Profile;
+  subject: string;
+  html: string;
+  text: string;
+  tags: string[];
+}) {
+  const delivery = await createDelivery(jobId, recipient);
+  try {
+    const response = await sendBrevoEmail({ to: recipient, subject, html, text, tags });
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'sent',
+        provider_message_id: response.messageId ?? null,
+        sent_at: new Date().toISOString(),
+      })
+      .eq('id', delivery.id);
+    return { sent: 1, failed: 0, recipientCount: 1 };
+  } catch (sendError) {
+    const message = sendError instanceof Error ? sendError.message : String(sendError);
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'failed',
+        error_message: message,
+      })
+      .eq('id', delivery.id);
+    return { sent: 0, failed: 1, recipientCount: 1, error: message };
+  }
+}
+
+async function assertWorkflowEmailCreator(job: NotificationJob) {
+  if (!job.created_by) {
+    throw new Error('Workflow email job is missing creator');
+  }
+
+  const { data: creator, error } = await supabase
+    .from('profiles')
+    .select('id, roles')
+    .eq('id', job.created_by)
+    .maybeSingle();
+
+  if (error) throw error;
+  const roles = Array.isArray(creator?.roles) ? creator.roles : [];
+  const allowed = roles.some(role => WORKFLOW_EMAIL_ROLES.includes(role));
+  if (!allowed) {
+    throw new Error('Workflow email creator is not authorized');
+  }
+}
+
+async function assertJobCreatorHasRole(job: NotificationJob, roles: string[], message: string) {
+  if (!job.created_by) throw new Error('Notification job is missing creator');
+
+  const { data: creator, error } = await supabase
+    .from('profiles')
+    .select('id, roles')
+    .eq('id', job.created_by)
+    .maybeSingle();
+
+  if (error) throw error;
+  const creatorRoles = Array.isArray(creator?.roles) ? creator.roles : [];
+  if (!creatorRoles.some(role => roles.includes(role))) {
+    throw new Error(message);
+  }
 }
 
 async function sendAbsenceNoticeEmails(jobId: number, noticeId: number) {
@@ -1153,6 +1386,18 @@ function getCourseTypeLabel(value: string | null | undefined) {
   if (value === 'first_year') return 'First Year';
   if (value === 'second_year') return 'Second Year';
   return 'Year group';
+}
+
+function getCourseDisplayName(course: CourseRow) {
+  return `${getCourseTypeLabel(course.course_type)} ${course.graduation_year}`;
+}
+
+function formatRoleLabel(role: string) {
+  return role
+    .split('_')
+    .filter(Boolean)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
 }
 
 function getAnnouncementScopeLabel(announcement: Announcement) {

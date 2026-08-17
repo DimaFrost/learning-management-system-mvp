@@ -3,6 +3,7 @@ import type { EditingItem, User, UserRole } from './types/lms';
 import { getCourseDisplayName, checkCourseUniqueness, getCourseOptions, getTodayDateString } from './utils/courseUtils';
 import { getUserAccessStatus } from './utils/userManagementUtils';
 import { buildScheduleTodosForStudent } from './utils/scheduleTodos';
+import { toLocalDateKey } from './utils/dateUtils';
 import { checkDoubleBooking } from './utils/scheduling';
 import { useConfirmation } from './hooks/useConfirmation';
 import { useNavigation } from './hooks/useNavigation';
@@ -72,7 +73,7 @@ export function AuthenticatedApp({
     openClassDetail,
     closeClassDetail,
   } = useNavigation();
-  const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers();
+  const { users, loading: usersLoading, error: usersError, getUserById, addUser, updateUser, deleteUser } = useUsers(currentUser);
   const previewUser = previewUserId ? users.find(user => user.id === previewUserId) ?? null : null;
   const effectiveBaseUser = previewUser ?? currentUser;
   const effectiveUser = previewRoles
@@ -80,7 +81,7 @@ export function AuthenticatedApp({
     : effectiveBaseUser;
   const { courseStudents, setCourseStudents, loading: enrollmentsLoading, error: enrollmentsError,
     assignUserToCourse, setUserActiveYearGroup, removeUserFromCourse, refetchEnrollments }
-    = useEnrollments(showConfirmation, users, courses);
+    = useEnrollments(showConfirmation, users, courses, currentUser);
   const { mentorshipLogs, loading: logsLoading, error: logsError, addMentorshipLog, updateMentorshipLog }
     = useMentorshipLogs();
   const { cadenceSettings, setCadenceSettings, loading: cadenceLoading, error: cadenceError } = useCadenceSettings();
@@ -123,7 +124,7 @@ export function AuthenticatedApp({
   );
 
   const currentWeekStart = getCurrentWeekStart();
-  const todayKey = new Date().toISOString().split('T')[0];
+  const todayKey = toLocalDateKey();
   const effectiveCurrentDuties = attendance.dutySchedule.filter(
     d => d.weekStart <= todayKey
       && d.weekEnd >= todayKey
@@ -217,6 +218,14 @@ export function AuthenticatedApp({
       setActiveWorkspace(selectedWorkspace);
     }
   }, [activeWorkspace, selectedWorkspace]);
+
+  useEffect(() => {
+    if (!selectedWorkspace) return;
+    const defaultView = WORKSPACE_DEFAULT_VIEW[selectedWorkspace];
+    if (activeView === 'dashboard' && defaultView !== 'dashboard') {
+      setActiveView(defaultView);
+    }
+  }, [activeView, selectedWorkspace, setActiveView]);
 
   useEffect(() => {
     setLanguage(currentUser.preferredLanguage ?? 'en');

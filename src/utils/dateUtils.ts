@@ -5,6 +5,23 @@ function parseDate(value: string): Date {
   return value.includes('T') ? new Date(value) : new Date(`${value}T00:00:00`);
 }
 
+export function toLocalDateKey(date: Date = new Date()): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+export function parseLocalDateKey(value: string): Date {
+  return new Date(`${value}T00:00:00`);
+}
+
+export function addDaysToLocalDateKey(value: string, amount: number): string {
+  const date = parseLocalDateKey(value);
+  date.setDate(date.getDate() + amount);
+  return toLocalDateKey(date);
+}
+
 export function formatPlatformDate(dateString: string | null | undefined): string {
   if (!dateString) return '';
   const date = parseDate(dateString);

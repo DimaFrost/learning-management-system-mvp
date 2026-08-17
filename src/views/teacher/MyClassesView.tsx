@@ -13,7 +13,7 @@ import type { TranslationKey } from '../../i18n/translations';
 import type { User, Class, Course, Subject } from '../../types/lms';
 import { getClassDisplayTitle } from '../../utils/courseUtils';
 import { formatDate } from '../../i18n/formatters';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import { UserAvatar } from '../admin/users/usersShared';
 
 type SessionRow = Class & {
@@ -66,7 +66,7 @@ export function MyClassesView({
   const [query, setQuery] = useState('');
   const [timeframe, setTimeframe] = useState<'upcoming' | 'all' | 'past'>('upcoming');
   const [pastExpanded, setPastExpanded] = useState(false);
-  const today = new Date().toISOString().split('T')[0];
+  const today = toLocalDateKey();
   const isTeacher = currentUser.roles.includes('teacher');
   const isTranslator = currentUser.roles.includes('translator');
 

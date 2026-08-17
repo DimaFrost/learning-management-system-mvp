@@ -91,6 +91,22 @@ interface ClassworkViewProps {
 
 const SUBJECTS_PER_PAGE = 6;
 
+type SubjectAssignmentStatusIconName =
+  | 'none'
+  | 'upcoming'
+  | 'action'
+  | 'review'
+  | 'complete'
+  | 'action-dot'
+  | 'action-clock'
+  | 'action-message'
+  | 'action-edit'
+  | 'action-ellipsis';
+
+type SubjectAssignmentStatusDisplay = Omit<ReturnType<typeof getSubjectAssignmentStatus>, 'icon'> & {
+  icon: SubjectAssignmentStatusIconName;
+};
+
 function EmptyState() {
   const { t } = useLanguage();
   return (
@@ -121,7 +137,7 @@ function SubjectAssignmentStatusIcon({
   status,
   collapsed,
 }: {
-  status: ReturnType<typeof getSubjectAssignmentStatus>;
+  status: SubjectAssignmentStatusDisplay;
   collapsed: boolean;
 }) {
   const className = 'h-5 w-5';

@@ -24,7 +24,7 @@ import type {
   MinistryTeam,
   User,
 } from '../../types/lms';
-import { formatPlatformDate, formatPlatformDateTime } from '../../utils/dateUtils';
+import { formatPlatformDate, formatPlatformDateTime, toLocalDateKey } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 
 interface MinistryReportViewProps {
@@ -49,7 +49,7 @@ interface MinistryReportViewProps {
 }
 
 function todayString(): string {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateKey();
 }
 
 function dateLabel(date: string): string {

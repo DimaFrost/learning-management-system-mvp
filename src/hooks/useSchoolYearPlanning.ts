@@ -12,6 +12,7 @@ import {
 } from '../utils/planningDraftCache';
 import { getNextClassDate, isDateInBreak } from '../utils/scheduling';
 import { buildAcademicYearsFromCourses } from '../utils/courseUtils';
+import { toLocalDateKey } from '../utils/dateUtils';
 
 // ============================================
 // TYPES
@@ -962,7 +963,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
             course_id: courseId,
             title,
             description: '',
-            start_date: new Date().toISOString().split('T')[0],
+            start_date: toLocalDateKey(),
             duration: 0,
           })
           .select()

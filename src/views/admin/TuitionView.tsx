@@ -23,7 +23,7 @@ import type {
 import type { TuitionSummary } from '../../hooks/useTuition';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { formatCurrency } from '../../i18n/formatters';
-import { formatPlatformDate } from '../../utils/dateUtils';
+import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
 export type TuitionSection = 'overview' | 'students' | 'payments' | 'installments' | 'reminders' | 'settings';
@@ -67,7 +67,7 @@ function currency(amount: number, code = 'EUR') {
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return toLocalDateKey();
 }
 
 function SectionCard({ children, className = '' }: { children: React.ReactNode; className?: string }) {

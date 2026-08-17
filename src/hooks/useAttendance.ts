@@ -272,7 +272,7 @@ export function useAttendance(
         `).order('name', { ascending: true }),
         supabase.from('ministry_team_members').select(`
           id, team_id, user_id, role, can_submit_reports, active, created_at, updated_at,
-          user:profiles!user_id(id, name, email, phone, avatar_url)
+          user:profiles!user_id(id, name, avatar_url)
         `).order('created_at', { ascending: true }),
         supabase.from('ministry_rotations').select(`
           id, course_id, student_id, team_id, start_date, end_date,

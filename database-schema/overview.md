@@ -2,14 +2,14 @@
 
 # Database Schema Overview
 
-Generated at: 2026-07-30T05:45:08.216Z
+Generated at: 2026-08-06T07:06:46.338Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 53
+Exposed tables/views: 54
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -50,6 +50,7 @@ Exposed tables/views: 53
 | notification_deliveries | 10 | [notification_deliveries](./tables/notification_deliveries.md) |
 | notification_jobs | 13 | [notification_jobs](./tables/notification_jobs.md) |
 | prayer_schedule | 6 | [prayer_schedule](./tables/prayer_schedule.md) |
+| profile_private_data | 6 | [profile_private_data](./tables/profile_private_data.md) |
 | profiles | 14 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | stream_course_settings | 8 | [stream_course_settings](./tables/stream_course_settings.md) |

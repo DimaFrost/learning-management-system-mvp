@@ -12,7 +12,7 @@ import {
   createAssignmentFolder,
 } from '../utils/driveOperations';
 import { createHomeworkGoogleDoc, uploadHomeworkGoogleDriveFile } from '../utils/googleDocsV2';
-import { sendNotification } from '../utils/notifications';
+import { queueAnnouncementEmail } from '../utils/notificationJobs';
 import { findClassCourseContext } from '../utils/courseUtils';
 import { formatPlatformDate } from '../utils/dateUtils';
 
@@ -207,7 +207,7 @@ export function useHomework(
 
         const title = `${data.workType === 'quick_check' ? 'New Quick Check' : 'New Homework'}: ${data.title}`;
 
-        const { error: announcementError } = await supabase.from('announcements').insert({
+        const { data: announcement, error: announcementError } = await supabase.from('announcements').insert({
           title,
           content,
           type: 'homework',
@@ -216,16 +216,16 @@ export function useHomework(
           target_roles: ['student'],
           is_pinned: false,
           is_staff_only: false,
-        });
+        }).select('id').single();
 
         if (announcementError) throw announcementError;
 
-        sendNotification('announcement', {
-          title,
-          content,
-          authorName: currentUser.name,
-          isStaffOnly: false,
-        }).catch(console.error);
+        if (announcement?.id) {
+          queueAnnouncementEmail({
+            announcementId: announcement.id,
+            createdBy: currentUser.id,
+          }).catch(console.error);
+        }
       } catch (announcementErr) {
         console.error('Homework announcement failed:', announcementErr);
       }

@@ -4,26 +4,35 @@ import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
 
 async function fetchProfileFromDb(userId: string): Promise<User> {
-  const { data, error } = await supabase
+  const { data: profile, error } = await supabase
     .from('profiles')
-    .select('*')
+    .select('id, name, roles, first_name, last_name, avatar_url, preferred_language, teaching_course_types, is_online_student')
     .eq('id', userId)
     .single();
 
   if (error) throw error;
 
+  const { data: privateData, error: privateError } = await supabase
+    .from('profile_private_data')
+    .select('email, phone, notification_preferences')
+    .eq('profile_id', userId)
+    .maybeSingle();
+
+  if (privateError) throw privateError;
+
   return {
-    id: data.id,
-    name: data.name,
-    email: data.email,
-    roles: data.roles,
-    firstName: data.first_name ?? '',
-    lastName: data.last_name ?? '',
-    avatarUrl: data.avatar_url ?? null,
-    preferredLanguage: data.preferred_language === 'bg' ? 'bg' : 'en',
-    teachingCourseTypes: data.teaching_course_types ?? [],
-    isOnlineStudent: data.is_online_student ?? false,
-    notificationPreferences: data.notification_preferences ?? {
+    id: profile.id,
+    name: profile.name,
+    email: privateData?.email ?? '',
+    phone: privateData?.phone ?? null,
+    roles: profile.roles,
+    firstName: profile.first_name ?? '',
+    lastName: profile.last_name ?? '',
+    avatarUrl: profile.avatar_url ?? null,
+    preferredLanguage: profile.preferred_language === 'bg' ? 'bg' : 'en',
+    teachingCourseTypes: profile.teaching_course_types ?? [],
+    isOnlineStudent: profile.is_online_student ?? false,
+    notificationPreferences: privateData?.notification_preferences ?? {
       announcements: true,
       roleChange: true,
       enrollment: true,

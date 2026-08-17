@@ -3,14 +3,16 @@ import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseStudent, User, Course } from '../types/lms';
 import { getCourseDisplayName, isCourseActive } from '../utils/courseUtils';
-import { sendNotification } from '../utils/notifications';
+import { queueEnrollmentEmail } from '../utils/notificationJobs';
+import { toLocalDateKey } from '../utils/dateUtils';
 
 type ShowConfirmation = (title: string, message: string, confirmText: string, onConfirm: () => void) => void;
 
 export function useEnrollments(
   showConfirmation: ShowConfirmation,
   users: User[],
-  courses: Course[]
+  courses: Course[],
+  currentUser: User
 ) {
   const [courseStudents, setCourseStudents] = useState<CourseStudent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -57,7 +59,7 @@ export function useEnrollments(
           student_id: userId,
           course_id: courseId,
           mentor_id: mentorId ?? null,
-          enrollment_date: existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0],
+          enrollment_date: existingEnrollment?.enrollmentDate ?? toLocalDateKey(),
           status: 'active',
         },
         { onConflict: 'course_id,student_id' }
@@ -73,11 +75,10 @@ export function useEnrollments(
     const enrolledStudent = users.find(u => u.id === userId);
     const enrolledCourse = courses.find(c => c.id === courseId);
     if (enrolledStudent && enrolledCourse) {
-      sendNotification('enrollment', {
+      queueEnrollmentEmail({
+        createdBy: currentUser.id,
         studentId: enrolledStudent.id,
-        studentEmail: enrolledStudent.email,
-        studentName: enrolledStudent.name,
-        courseName: getCourseDisplayName(enrolledCourse),
+        courseId: enrolledCourse.id,
       }).catch(console.error);
     }
   }
@@ -86,7 +87,7 @@ export function useEnrollments(
     const existingEnrollment = courseStudents.find(
       enrollment => enrollment.studentId === userId && enrollment.courseId === courseId
     );
-    const enrollmentDate = existingEnrollment?.enrollmentDate ?? new Date().toISOString().split('T')[0];
+    const enrollmentDate = existingEnrollment?.enrollmentDate ?? toLocalDateKey();
     const activeCourseIds = new Set(courses.filter(isCourseActive).map(course => course.id));
     const otherActiveYearGroupIds = courseStudents
       .filter(enrollment => (
