@@ -1,4 +1,5 @@
 import type { Class, Course, Subject } from '../types/lms';
+import { translate } from '../i18n/translate';
 import { toLocalDateKey } from './dateUtils';
 
 export function getTodayDateString(): string {
@@ -129,8 +130,17 @@ export function userTeachesInCourse(
 }
 
 export const getCourseDisplayName = (course: Course): string => {
+  const key = course.courseType === 'first_year'
+    ? 'common.courseDisplay.first'
+    : 'common.courseDisplay.second';
+  return translate(key, { year: course.graduationYear });
+};
+
+export const getCourseStorageSlug = (course: Course): string => {
   const courseTypeLabel = course.courseType === 'first_year' ? 'First Year' : 'Second Year';
-  return `${courseTypeLabel} Group ${course.graduationYear}`;
+  return `${courseTypeLabel} Group ${course.graduationYear}`
+    .toLowerCase()
+    .replace(/\s+/g, '-');
 };
 
 export const checkCourseUniqueness = (courseType: string, graduationYear: number, courses: Course[], excludeCourseId?: number): boolean => {

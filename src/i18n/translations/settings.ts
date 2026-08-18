@@ -80,7 +80,7 @@ export const settingsTranslations = defineTranslations({
     'settings.profile.crop.previewAlt': 'Преглед на изрязването',
     'settings.profile.crop.hint': 'Плъзни за преместване · Използвай плъзгача за мащаб',
     'settings.profile.crop.save': 'Запази снимката',
-    'settings.notifications.title': 'Имейл известия',
+    'settings.notifications.title': 'Известия по имейл',
     'settings.notifications.subtitle': 'Изберете кои имейли искате да получавате.',
     'settings.notifications.announcements': 'Нови обявления',
     'settings.notifications.announcementsHint': 'Получаване на имейл при нова публикация',

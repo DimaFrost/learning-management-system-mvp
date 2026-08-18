@@ -21,7 +21,7 @@ import type {
   Class,
 } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
-import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { getCourseStorageSlug } from '../../../utils/courseUtils';
 import { formatDateTime } from '../../../i18n/formatters';
 import { formatDueDate, formatPlatformDate } from '../../../utils/dateUtils';
 import { GradeModal } from '../../../components/modals/GradeModal';
@@ -639,8 +639,7 @@ export function HomeworkTab({
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'teacher');
   const isAdmin = hasRole(currentUser, 'administrator');
 
-  const courseSlug = getCourseDisplayName(selectedCourse)
-    .toLowerCase().replace(/\s+/g, '-');
+  const courseSlug = getCourseStorageSlug(selectedCourse);
   const subjectSlug = selectedSubject.title
     .toLowerCase().replace(/\s+/g, '-');
   const classSlug = `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`;

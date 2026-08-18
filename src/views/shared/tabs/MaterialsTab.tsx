@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { ClassNote, ClassFile, User, Course, Subject, Class } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
-import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { getCourseDisplayName, getCourseStorageSlug } from '../../../utils/courseUtils';
 import { formatFileSize } from '../../../utils/formatFileSize';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 import { resolveClassFilePreview, type FilePreviewItem } from '../../../utils/filePreview';
@@ -97,9 +97,7 @@ export function MaterialsTab({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadSlugs = {
-    courseSlug: getCourseDisplayName(selectedCourse)
-      .toLowerCase()
-      .replace(/\s+/g, '-'),
+    courseSlug: getCourseStorageSlug(selectedCourse),
     subjectSlug: selectedSubject.title.toLowerCase().replace(/\s+/g, '-'),
     classSlug: `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`,
   };

@@ -13,7 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import type { Class, ClassNote, ClassFile, User, Course, Subject } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
-import { getCourseDisplayName } from '../../../utils/courseUtils';
+import { getCourseStorageSlug } from '../../../utils/courseUtils';
 import { formatPlatformDate } from '../../../utils/dateUtils';
 import { useLanguage } from '../../../i18n/LanguageContext';
 
@@ -413,8 +413,7 @@ export function StaffNotesTab({
   const canManageTranslatorNotes =
     hasRole(currentUser, 'administrator') || hasRole(currentUser, 'translator');
 
-  const courseSlug = getCourseDisplayName(selectedCourse)
-    .toLowerCase().replace(/\s+/g, '-');
+  const courseSlug = getCourseStorageSlug(selectedCourse);
   const subjectSlug = selectedSubject.title
     .toLowerCase().replace(/\s+/g, '-');
   const classSlug = `${selectedClass.date ?? 'no-date'}-${selectedClass.title.toLowerCase().replace(/\s+/g, '-')}`;
