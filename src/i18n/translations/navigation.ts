@@ -136,7 +136,7 @@ export const navigationTranslations = defineTranslations({
     'sidebar.myWork': 'Моята работа',
     'sidebar.dashboard': 'Табло',
     'sidebar.dashboard.desc': 'Преглед',
-    'sidebar.announcements': 'Съобщения',
+    'sidebar.announcements': 'Известия',
     'sidebar.announcements.desc': 'Публикации и известия',
     'sidebar.messages': 'Съобщения',
     'sidebar.messages.desc': 'Разговори',

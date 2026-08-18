@@ -130,7 +130,7 @@ export const studentTranslations = defineTranslations({
     'student.enrollment.noneYearGroup': 'Няма активно записване в година.',
     'student.dashboard.title': 'Табло',
     'student.dashboard.search': 'Търсене',
-    'student.dashboard.announcements': 'Съобщения',
+    'student.dashboard.announcements': 'Известия',
     'student.dashboard.yourWeek': 'Седмицата',
     'student.dashboard.attention.one': 'елемент изисква внимание',
     'student.dashboard.attention.other': 'елемента изискват внимание',

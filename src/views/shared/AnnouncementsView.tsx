@@ -871,9 +871,6 @@ export function AnnouncementsView({
   const pinnedList = filteredList.filter(a => a.isPinned);
   const regularList = filteredList.filter(a => !a.isPinned);
 
-  const activeFilterLabel =
-    visibleFilterOptions.find(option => option.value === filter)?.label.toLowerCase() ?? filter;
-
   const toggleComments = (id: number) => {
     setExpandedComments(prev => {
       const next = new Set(prev);
@@ -1242,7 +1239,7 @@ export function AnnouncementsView({
             <p className="text-sm text-[#737373]">
               {filter === 'all'
                 ? t('announcements.empty')
-                : `${t('announcements.emptyFiltered')} ${activeFilterLabel}`}
+                : t('announcements.emptyFiltered')}
             </p>
           </div>
         </div>

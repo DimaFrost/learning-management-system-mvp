@@ -193,7 +193,7 @@ export const errorsTranslations = defineTranslations({
     'errors.books.loadFailed': 'Книгите не можаха да бъдат заредени',
     'errors.books.titleRequired': 'Заглавието на книгата е задължително',
     'errors.books.selectYearGroup': 'Изберете поне една учебна година',
-    'errors.stream.loadFailed': 'Настройките на Съобщения не можаха да бъдат заредени',
+    'errors.stream.loadFailed': 'Настройките на Известия не можаха да бъдат заредени',
     'errors.settings.saveProfileFailed': 'Профилът не можа да бъде запазен.',
     'errors.settings.saveNotificationsFailed': 'Предпочитанията за известия не можаха да бъдат запазени.',
     'errors.settings.imageSize': 'Изображението трябва да е под 2MB.',

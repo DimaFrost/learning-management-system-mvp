@@ -65,7 +65,7 @@ export const inboxTranslations = defineTranslations({
     'inbox.detail.processed': 'Обработено',
     'inbox.error.loadFailed': 'Входящите не можаха да бъдат заредени.',
     'inbox.type.portalUpdate': 'Актуализация на портала',
-    'inbox.type.stream': 'Съобщения',
+    'inbox.type.stream': 'Известия',
     'inbox.type.todo': 'Задача',
     'inbox.type.absenceNotice': 'Известие за отсъствие',
     'inbox.status.delivered': 'Доставено',

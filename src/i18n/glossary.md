@@ -9,7 +9,7 @@ English UI copy is **not** changed by this glossary — these are Bulgarian dict
 |---|---|---|---|
 | The Burning Ones | Brand | The Burning Ones | Keep English |
 | TBO | Brand short | TBO | Keep English |
-| Stream | Announcements feed / nav | Съобщения | Already used in i18n |
+| Stream | Announcements feed / nav | Известия | Already used in i18n |
 | Classwork | Classroom module umbrella | Занятия | Covers homework + materials |
 | Classroom | Sidebar submodule | Учебна стая | |
 | Homework | Assignments | Домашна работа | |

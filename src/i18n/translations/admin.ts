@@ -344,7 +344,7 @@ export const adminTranslations = defineTranslations({
     'admin.dashboard.reviewPeople': 'Преглед на хората',
     'admin.dashboard.planCurriculum': 'Планиране на програмата',
     'admin.dashboard.checkAttendance': 'Проверка на присъствието',
-    'admin.dashboard.postToStream': 'Публикуване в Съобщения',
+    'admin.dashboard.postToStream': 'Публикуване в Известия',
     'admin.dashboard.dashboardMetric': 'Показател на таблото',
     'admin.dashboard.whatIsHoldingBack': 'Какво забавя това',
     'admin.dashboard.closeMetricExplanation': 'Затвори обяснението на показателя',
