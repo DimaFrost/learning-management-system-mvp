@@ -304,7 +304,7 @@ export function StudentDashboard({
 
   const studentScheduleTodos = useMemo(
     () => buildScheduleTodosForStudent(currentUser, dutySchedule, prayerSchedule, courses),
-    [currentUser, dutySchedule, prayerSchedule, courses]
+    [currentUser, dutySchedule, prayerSchedule, courses, language]
   );
 
   const dashboardOpenTodos = useMemo(() => {
@@ -318,7 +318,7 @@ export function StudentDashboard({
   const dashboardTodoGroups = useMemo(() => {
     const groups = new Map<string, TodoItem[]>();
     dashboardOpenTodos.forEach(todo => {
-      const key = todo.readOnly && todo.title === 'You are on duty'
+      const key = todo.readOnly && todo.title === t('todos.schedule.duty')
         ? 'schedule:duty'
         : `${todo.readOnly ? 'schedule' : 'todo'}:${todo.title}:${todo.assignedTo}`;
       if (!groups.has(key)) groups.set(key, []);
@@ -327,7 +327,7 @@ export function StudentDashboard({
     return Array.from(groups.values())
       .map(items => items.sort((a, b) => a.dueDate.localeCompare(b.dueDate)))
       .sort((a, b) => a[0].dueDate.localeCompare(b[0].dueDate));
-  }, [dashboardOpenTodos]);
+  }, [dashboardOpenTodos, t]);
 
   const todoPreview = dashboardTodoGroups.slice(0, 4);
 
@@ -549,7 +549,7 @@ export function StudentDashboard({
                             setExpandedTodoGroup(group);
                             return;
                           }
-                          onNavigate(todo.readOnly && todo.title === 'You are on duty' ? 'on-duty' : 'todos');
+                          onNavigate(todo.readOnly && todo.title === t('todos.schedule.duty') ? 'on-duty' : 'todos');
                         }}
                         className={`tbo-focus flex min-h-[3.5rem] min-w-0 items-center gap-2 rounded-xl border bg-white p-2 text-left ${
                           overdue
@@ -633,7 +633,7 @@ export function StudentDashboard({
                   type="button"
                   onClick={() => {
                     setExpandedTodoGroup(null);
-                    onNavigate(todo.readOnly && todo.title === 'You are on duty' ? 'on-duty' : 'todos');
+                    onNavigate(todo.readOnly && todo.title === t('todos.schedule.duty') ? 'on-duty' : 'todos');
                   }}
                   className="tbo-focus flex w-full items-center justify-between gap-3 py-3 text-left hover:bg-[#fafafa]"
                 >

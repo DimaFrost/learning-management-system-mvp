@@ -54,7 +54,7 @@ export function AuthenticatedApp({
   onSignOut,
   onRefetchProfile,
 }: AuthenticatedAppProps) {
-  const { setLanguage } = useLanguage();
+  const { setLanguage, language } = useLanguage();
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
   const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
     refetchCourses, addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
@@ -147,7 +147,7 @@ export function AuthenticatedApp({
       attendance.prayerSchedule,
       courses
     ),
-    [attendance.dutySchedule, attendance.prayerSchedule, courses, effectiveUser]
+    [attendance.dutySchedule, attendance.prayerSchedule, courses, effectiveUser, language]
   );
   const displayTodos = useMemo(
     () => [...scheduleTodos, ...todos.todos],

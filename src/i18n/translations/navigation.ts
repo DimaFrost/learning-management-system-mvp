@@ -141,7 +141,7 @@ export const navigationTranslations = defineTranslations({
     'sidebar.messages': 'Съобщения',
     'sidebar.messages.desc': 'Разговори',
     'sidebar.todos': 'Задачи',
-    'sidebar.todos.desc': 'Дневна работа',
+    'sidebar.todos.desc': 'Задачи за деня',
     'sidebar.curriculum': 'Програма',
     'sidebar.curriculum.desc': 'Курсове и сесии',
     'sidebar.users': 'Хора',

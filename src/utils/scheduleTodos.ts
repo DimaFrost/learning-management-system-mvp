@@ -11,6 +11,7 @@ import {
   getThursdayDateForWeek,
 } from './attendanceUtils';
 import { formatPlatformDate } from './dateUtils';
+import { translate } from '../i18n/translate';
 
 const SCHEDULE_HORIZON_DAYS = 30;
 
@@ -83,8 +84,11 @@ export function buildScheduleTodosForStudent(
       buildBaseScheduleTodo(
         user,
         `duty:${duty.id}:${duty.weekStart}`,
-        'You are on duty',
-        `Mark class attendance for the week of ${formatPlatformDate(duty.weekStart)} – ${formatPlatformDate(duty.weekEnd)}.`,
+        translate('todos.schedule.duty'),
+        translate('todos.schedule.dutyDescription', {
+          start: formatPlatformDate(duty.weekStart),
+          end: formatPlatformDate(duty.weekEnd),
+        }),
         duty.weekEnd,
         isCurrentWeek ? 'priority' : 'none'
       )
@@ -137,8 +141,11 @@ export function buildScheduleTodosForStudent(
           buildBaseScheduleTodo(
             user,
             `teaching:${cls.id}:${cls.date}`,
-            'You are teaching',
-            `${subject.title} is scheduled for ${formatPlatformDate(cls.date)}.`,
+            translate('todos.schedule.teaching'),
+            translate('todos.schedule.teachingDescription', {
+              name: subject.title,
+              date: formatPlatformDate(cls.date),
+            }),
             cls.date,
             cls.date <= addDaysToDateKey(today, 7) ? 'priority' : 'none'
           )
