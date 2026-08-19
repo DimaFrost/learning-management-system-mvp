@@ -3,7 +3,7 @@
 # book_reading_submissions
 
 
-Column count: 16
+Column count: 19
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -23,6 +23,9 @@ Column count: 16
 | grade_comment | string:text | no | no |  |  |
 | graded_at | string:timestamp with time zone | no | no |  |  |
 | graded_by | string:uuid | no | no |  | Note:<br>This is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/> |
+| google_doc_id | string:text | no | no |  |  |
+| google_doc_url | string:text | no | no |  |  |
+| file_name | string:text | no | no |  |  |
 
 ## Raw Definition
 
@@ -107,6 +110,18 @@ Column count: 16
     "graded_by": {
       "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
       "format": "uuid",
+      "type": "string"
+    },
+    "google_doc_id": {
+      "format": "text",
+      "type": "string"
+    },
+    "google_doc_url": {
+      "format": "text",
+      "type": "string"
+    },
+    "file_name": {
+      "format": "text",
       "type": "string"
     }
   },

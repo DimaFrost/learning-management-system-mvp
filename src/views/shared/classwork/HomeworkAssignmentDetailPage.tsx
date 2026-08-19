@@ -121,12 +121,25 @@ export function HomeworkAssignmentDetailPage({
     if (initialSubmission) setReviewSubmission(initialSubmission);
   }, [initialReviewSubmissionId, scope, submissions]);
   const createDoc = async () => {
+    const docWindow = window.open('about:blank', '_blank');
+    if (docWindow) {
+      docWindow.opener = null;
+      docWindow.document.write('<p style="font-family: system-ui, sans-serif; padding: 24px;">Preparing your document...</p>');
+    }
     setSaving(true);
     setError(null);
     try {
-      await createHomeworkGoogleDoc(homework.id);
+      const result = await createHomeworkGoogleDoc(homework.id);
       await onRefresh();
+      if (result.googleDocUrl) {
+        if (docWindow) {
+          docWindow.location.href = result.googleDocUrl;
+        } else {
+          window.open(result.googleDocUrl, '_blank', 'noopener,noreferrer');
+        }
+      }
     } catch (err) {
+      if (docWindow) docWindow.close();
       setError(err instanceof Error ? err.message : t('classwork.assignment.error.createDoc'));
     } finally {
       setSaving(false);
@@ -504,7 +517,7 @@ export function HomeworkAssignmentDetailPage({
                 {!isQuickCheck && !mySubmission && (
                   <button type="button" onClick={createDoc} disabled={saving} className="tbo-focus inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 text-sm font-semibold text-white hover:bg-[#262626] disabled:opacity-50">
                     <FileText className="h-4 w-4" />
-                    {t('classwork.assignment.createSchoolGoogleDoc')}
+                    {saving ? t('classwork.assignment.preparingDocument') : t('classwork.assignment.startWriting')}
                   </button>
                 )}
                 {!isQuickCheck && openUrl && (

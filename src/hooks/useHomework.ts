@@ -333,12 +333,25 @@ export function useHomework(
   };
 
   const createSchoolGoogleDoc = async (assignmentId: number) => {
+    const docWindow = window.open('about:blank', '_blank');
+    if (docWindow) {
+      docWindow.opener = null;
+      docWindow.document.write('<p style="font-family: system-ui, sans-serif; padding: 24px;">Preparing your document...</p>');
+    }
     setSaving(true);
     setError(null);
     try {
-      await createHomeworkGoogleDoc(assignmentId);
+      const result = await createHomeworkGoogleDoc(assignmentId);
       await fetchHomework();
+      if (result.googleDocUrl) {
+        if (docWindow) {
+          docWindow.location.href = result.googleDocUrl;
+        } else {
+          window.open(result.googleDocUrl, '_blank', 'noopener,noreferrer');
+        }
+      }
     } catch (err) {
+      if (docWindow) docWindow.close();
       setError(err instanceof Error ? err.message : translate('errors.homework.createGoogleDocFailed'));
       console.error(err);
     } finally {

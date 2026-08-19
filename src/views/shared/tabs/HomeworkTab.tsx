@@ -466,7 +466,7 @@ function StudentAssignmentCard({
               disabled={saving}
               className="px-4 py-2 text-sm font-semibold text-white bg-[#2563eb] rounded-lg hover:bg-[#1d4ed8] disabled:opacity-50"
             >
-              {t('classwork.assignment.createSchoolGoogleDoc')}
+              {saving ? t('classwork.assignment.preparingDocument') : t('classwork.assignment.startWriting')}
             </button>
             <button
               type="button"

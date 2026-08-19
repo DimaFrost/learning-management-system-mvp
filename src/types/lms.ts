@@ -471,6 +471,9 @@ export interface BookReadingSubmission {
   status: BookReadingSubmissionStatus;
   responseText: string | null;
   responseUrl: string | null;
+  googleDocId: string | null;
+  googleDocUrl: string | null;
+  fileName: string | null;
   submittedAt: string | null;
   points: number | null;
   gradeComment: string | null;

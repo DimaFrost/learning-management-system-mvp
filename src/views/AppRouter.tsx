@@ -476,6 +476,33 @@ export function AppRouter({
     );
   }
 
+  if (
+    activeView === 'curriculum-books' &&
+    ((hasRole('administrator') && activeWorkspace === 'administrator') ||
+      (hasRole('teacher') && activeWorkspace === 'teacher'))
+  ) {
+    return (
+      <BooksView
+        currentUser={currentUser}
+        scope={activeWorkspace === 'teacher' ? 'teacher' : 'admin'}
+        assignments={books.assignments}
+        submissions={books.submissions}
+        courses={courses}
+        courseStudents={courseStudents}
+        users={users}
+        loading={books.loading}
+        error={books.error}
+        lookupBooks={books.lookupBooks}
+        uploadBookCover={books.uploadBookCover}
+        createReadingAssignment={books.createReadingAssignment}
+        createReadingAssignments={books.createReadingAssignments}
+        updateReadingAssignment={books.updateReadingAssignment}
+        deleteReadingAssignment={books.deleteReadingAssignment}
+        gradeReadingSubmission={books.gradeReadingSubmission}
+      />
+    );
+  }
+
   if (activeView === 'grades' || activeView === 'my-grades') {
     const scope = hasRole('administrator') && activeWorkspace === 'administrator'
       ? 'admin'
@@ -601,6 +628,7 @@ export function AppRouter({
         courses={courses}
         loading={books.loading}
         onSubmit={books.upsertMySubmission}
+        onCreateGoogleDoc={books.createMyGoogleDoc}
       />
     );
   }
@@ -752,6 +780,8 @@ export function AppRouter({
       case 'curriculum-books':
         return (
           <BooksView
+            currentUser={currentUser}
+            scope="admin"
             assignments={books.assignments}
             submissions={books.submissions}
             courses={courses}
@@ -1210,6 +1240,7 @@ export function AppRouter({
             courses={courses}
             loading={books.loading}
             onSubmit={books.upsertMySubmission}
+            onCreateGoogleDoc={books.createMyGoogleDoc}
           />
         );
       case 'dashboard':

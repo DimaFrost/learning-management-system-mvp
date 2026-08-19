@@ -2,7 +2,7 @@
 
 # Database Schema Overview
 
-Generated at: 2026-08-19T19:35:58.455Z
+Generated at: 2026-08-19T20:35:59.235Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
@@ -23,7 +23,7 @@ Exposed tables/views: 55
 | attendance_settings | 42 | [attendance_settings](./tables/attendance_settings.md) |
 | book_reading_assignments | 11 | [book_reading_assignments](./tables/book_reading_assignments.md) |
 | book_reading_submission_comments | 5 | [book_reading_submission_comments](./tables/book_reading_submission_comments.md) |
-| book_reading_submissions | 16 | [book_reading_submissions](./tables/book_reading_submissions.md) |
+| book_reading_submissions | 19 | [book_reading_submissions](./tables/book_reading_submissions.md) |
 | books | 17 | [books](./tables/books.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
 | class_files | 11 | [class_files](./tables/class_files.md) |

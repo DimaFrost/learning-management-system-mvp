@@ -328,6 +328,14 @@ export function Sidebar({
       workspaces: ['administrator', 'teacher', 'student'],
     },
     {
+      id: 'curriculum-books',
+      label: t('nav.curriculum.books'),
+      description: t('nav.curriculum.books.desc'),
+      icon: BookOpen,
+      roles: ['administrator', 'teacher'],
+      workspaces: ['administrator', 'teacher'],
+    },
+    {
       id: 'submissions',
       label: t('nav.classwork.submissions'),
       description: t('nav.classwork.submissions.desc'),

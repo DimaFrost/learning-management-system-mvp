@@ -7014,6 +7014,15 @@
             "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.file_name"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -7125,6 +7134,15 @@
             "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
           },
           {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.file_name"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -7186,6 +7204,15 @@
           },
           {
             "$ref": "#/parameters/rowFilter.book_reading_submissions.graded_by"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_id"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.google_doc_url"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.book_reading_submissions.file_name"
           },
           {
             "$ref": "#/parameters/body.book_reading_submissions"
@@ -13150,6 +13177,18 @@
           "description": "Note:\nThis is a Foreign Key to `profiles.id`.<fk table='profiles' column='id'/>",
           "format": "uuid",
           "type": "string"
+        },
+        "google_doc_id": {
+          "format": "text",
+          "type": "string"
+        },
+        "google_doc_url": {
+          "format": "text",
+          "type": "string"
+        },
+        "file_name": {
+          "format": "text",
+          "type": "string"
         }
       },
       "type": "object"
@@ -17120,6 +17159,24 @@
     },
     "rowFilter.book_reading_submissions.graded_by": {
       "name": "graded_by",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.google_doc_id": {
+      "name": "google_doc_id",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.google_doc_url": {
+      "name": "google_doc_url",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.book_reading_submissions.file_name": {
+      "name": "file_name",
       "required": false,
       "in": "query",
       "type": "string"

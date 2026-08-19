@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
+import { createBookReadingGoogleDoc } from '../utils/googleDocsV2';
 import { uploadFileToStorage } from '../utils/storageOperations';
 import type {
   Book,
@@ -59,6 +60,9 @@ type SubmissionRow = {
   status: BookReadingSubmissionStatus;
   response_text: string | null;
   response_url: string | null;
+  google_doc_id: string | null;
+  google_doc_url: string | null;
+  file_name: string | null;
   submitted_at: string | null;
   points: number | null;
   grade_comment: string | null;
@@ -149,6 +153,9 @@ function mapSubmission(row: SubmissionRow): BookReadingSubmission {
     status: row.status,
     responseText: row.response_text,
     responseUrl: row.response_url,
+    googleDocId: row.google_doc_id,
+    googleDocUrl: row.google_doc_url,
+    fileName: row.file_name,
     submittedAt: row.submitted_at,
     points: row.points,
     gradeComment: row.grade_comment,
@@ -569,6 +576,34 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
     await refetchBooks();
   }, [assignments, currentUser.id, currentUser.name, refetchBooks, users]);
 
+  const createMyGoogleDoc = useCallback(async (assignmentId: number) => {
+    let docWindow: Window | null = null;
+    if (typeof window !== 'undefined') {
+      docWindow = window.open('about:blank', '_blank', 'noopener,noreferrer');
+      if (docWindow) {
+        docWindow.document.write('<p style="font:14px system-ui;padding:24px">Preparing your reading document...</p>');
+      }
+    }
+
+    try {
+      const result = await createBookReadingGoogleDoc(assignmentId);
+      await refetchBooks();
+      if (result.googleDocUrl) {
+        if (docWindow) {
+          docWindow.location.href = result.googleDocUrl;
+        } else if (typeof window !== 'undefined') {
+          window.open(result.googleDocUrl, '_blank', 'noopener,noreferrer');
+        }
+      } else {
+        docWindow?.close();
+      }
+      return result;
+    } catch (error) {
+      docWindow?.close();
+      throw error;
+    }
+  }, [refetchBooks]);
+
   const gradeReadingSubmission = useCallback(async (
     submissionId: number,
     input: {
@@ -659,6 +694,7 @@ export function useBooks(currentUser: User, courses: Course[], courseStudents: C
     updateReadingAssignment,
     deleteReadingAssignment,
     upsertMySubmission,
+    createMyGoogleDoc,
     gradeReadingSubmission,
     addReadingSubmissionComment,
     deleteReadingSubmissionComment,

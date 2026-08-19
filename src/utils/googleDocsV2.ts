@@ -114,6 +114,18 @@ export async function createHomeworkGoogleDoc(assignmentId: number): Promise<{
   });
 }
 
+export async function createBookReadingGoogleDoc(assignmentId: number): Promise<{
+  submissionId: number;
+  googleDocId: string;
+  googleDocUrl: string;
+  alreadyCreated: boolean;
+}> {
+  return callGoogleDocsV2({
+    action: 'create-book-reading-doc',
+    assignmentId,
+  });
+}
+
 export async function createMaterialGoogleDoc(params: {
   classId?: number;
   subjectId?: number;

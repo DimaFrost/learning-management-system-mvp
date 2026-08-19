@@ -70,6 +70,36 @@ type HomeworkSubmissionRow = {
   status: string;
 };
 
+type BookReadingAssignment = {
+  id: number;
+  title: string;
+  instructions: string | null;
+  due_date: string | null;
+  max_points: number | null;
+  course_id: number;
+  assigned_by: string | null;
+  book?: {
+    id: number;
+    title: string;
+    authors: string[] | null;
+  } | {
+    id: number;
+    title: string;
+    authors: string[] | null;
+  }[] | null;
+  course?: Course | Course[] | null;
+};
+
+type BookReadingSubmissionRow = {
+  id: number;
+  assignment_id: number;
+  student_id: string;
+  google_doc_id: string | null;
+  google_doc_url: string | null;
+  file_name: string | null;
+  status: string;
+};
+
 type DocsConnection = {
   connected_email: string;
   access_token: string | null;
@@ -145,6 +175,10 @@ serve(async req => {
 
     if (action === 'create-homework-doc') {
       return json(await createHomeworkDoc(user, body));
+    }
+
+    if (action === 'create-book-reading-doc') {
+      return json(await createBookReadingDoc(user, body));
     }
 
     if (action === 'upload-homework-file') {
@@ -522,6 +556,115 @@ async function createHomeworkDoc(profile: Profile, body: Record<string, unknown>
       google_doc_id: copied.id,
       google_doc_url: copied.webViewLink,
       status: 'draft',
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'assignment_id,student_id' })
+    .select('id')
+    .single();
+
+  if (submissionError) throw submissionError;
+
+  return {
+    submissionId: submission.id,
+    googleDocId: copied.id,
+    googleDocUrl: copied.webViewLink,
+    alreadyCreated: false,
+  };
+}
+
+async function createBookReadingDoc(profile: Profile, body: Record<string, unknown>) {
+  const assignmentId = Number(body.assignmentId);
+  if (!Number.isFinite(assignmentId)) {
+    throw new HttpError('Valid assignmentId is required', 400);
+  }
+
+  const { data: assignmentData, error: assignmentError } = await adminClient
+    .from('book_reading_assignments')
+    .select(`
+      id, title, instructions, due_date, max_points, course_id, assigned_by,
+      book:books(id, title, authors),
+      course:courses(id, course_type, graduation_year)
+    `)
+    .eq('id', assignmentId)
+    .single();
+
+  if (assignmentError || !assignmentData) {
+    throw new HttpError('Reading assignment not found', 404);
+  }
+
+  const assignment = assignmentData as BookReadingAssignment;
+  const course = firstItem(assignment.course);
+  const book = firstItem(assignment.book);
+
+  if (!course || !book) {
+    throw new HttpError('Reading assignment is missing book/year group context', 400);
+  }
+
+  if (!isAdmin(profile)) {
+    const { data: enrollment, error: enrollmentError } = await adminClient
+      .from('course_students')
+      .select('course_id')
+      .eq('student_id', profile.id)
+      .eq('course_id', course.id)
+      .eq('status', 'active')
+      .maybeSingle();
+
+    if (enrollmentError) throw enrollmentError;
+    if (!enrollment) {
+      throw new HttpError('This reading assignment is not assigned to your active year group', 403);
+    }
+  }
+
+  const existing = await findExistingBookReadingSubmission(assignmentId, profile.id);
+  if (existing?.google_doc_url) {
+    return {
+      submissionId: existing.id,
+      googleDocId: existing.google_doc_id,
+      googleDocUrl: existing.google_doc_url,
+      alreadyCreated: true,
+    };
+  }
+
+  const token = await getGoogleAccessToken();
+  const folderId = course.course_type === 'first_year' ? firstYearFolderId : secondYearFolderId;
+  const yearGroup = course.course_type === 'first_year' ? 'First Year' : 'Second Year';
+  const docName = sanitizeDocName(`${profile.name} - ${assignment.title}`);
+  const assignmentFolderId = await ensureDriveFolderPath(token, folderId, [
+    'Books',
+    book.title,
+    assignment.title,
+    sanitizeDocName(profile.name),
+  ]);
+
+  const copied = await copyTemplateDoc(token, docName, assignmentFolderId);
+  await replaceDocPlaceholders(token, copied.id, {
+    STUDENT_NAME: profile.name,
+    STUDENT_EMAIL: profile.email,
+    ASSIGNMENT_TITLE: assignment.title,
+    SUBJECT_TITLE: book.title,
+    CLASS_TITLE: book.title,
+    YEAR_GROUP: yearGroup,
+    DUE_DATE: assignment.due_date ?? '',
+    INSTRUCTIONS: assignment.instructions ?? '',
+  });
+  await shareFile(token, copied.id, profile.email, 'writer');
+
+  const writerIds = new Set<string>();
+  const adminIds = await getProfileIdsByRole('administrator');
+  adminIds.forEach(id => writerIds.add(id));
+  if (assignment.assigned_by) writerIds.add(assignment.assigned_by);
+  writerIds.delete(profile.id);
+  await shareFileBatch(token, copied.id, await getProfileEmails([...writerIds]), 'writer');
+
+  const { data: submission, error: submissionError } = await adminClient
+    .from('book_reading_submissions')
+    .upsert({
+      assignment_id: assignmentId,
+      student_id: profile.id,
+      file_name: docName,
+      google_doc_id: copied.id,
+      google_doc_url: copied.webViewLink,
+      response_url: copied.webViewLink,
+      status: 'reading',
       updated_at: new Date().toISOString(),
     }, { onConflict: 'assignment_id,student_id' })
     .select('id')
@@ -1443,6 +1586,18 @@ async function findExistingSubmission(assignmentId: number, studentId: string) {
 
   if (error) throw error;
   return data;
+}
+
+async function findExistingBookReadingSubmission(assignmentId: number, studentId: string) {
+  const { data, error } = await adminClient
+    .from('book_reading_submissions')
+    .select('id, google_doc_id, google_doc_url')
+    .eq('assignment_id', assignmentId)
+    .eq('student_id', studentId)
+    .maybeSingle();
+
+  if (error) throw error;
+  return data as BookReadingSubmissionRow | null;
 }
 
 async function getGoogleAccessToken(): Promise<string> {

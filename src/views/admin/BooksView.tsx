@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { BookOpen, Calendar, CheckCircle2, ExternalLink, ImagePlus, Library, Loader2, Plus, Search, Star, X } from 'lucide-react';
+import { ArrowLeft, BookOpen, Calendar, CheckCircle2, ExternalLink, FileText, ImagePlus, Library, Loader2, Plus, Search, Star, Users, X } from 'lucide-react';
 import type {
   BookLookupResult,
   BookReadingAssignment,
@@ -15,6 +15,8 @@ import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 
 type BooksViewProps = {
+  currentUser: User;
+  scope?: 'admin' | 'teacher';
   assignments: BookReadingAssignment[];
   submissions: BookReadingSubmission[];
   courses: Course[];
@@ -30,6 +32,7 @@ type BooksViewProps = {
     title: string;
     instructions: string | null;
     dueDate: string | null;
+    maxPoints: number | null;
     status: BookReadingAssignment['status'];
   }>) => Promise<void>;
   deleteReadingAssignment: (assignmentId: number) => Promise<void>;
@@ -254,8 +257,8 @@ export function ReviewReadingModal({
                   <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
                     {activeSubmission.responseText || t('books.admin.review.noWrittenResponse')}
                   </p>
-                  {activeSubmission.responseUrl && (
-                    <a href={activeSubmission.responseUrl} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
+                  {(activeSubmission.googleDocUrl || activeSubmission.responseUrl) && (
+                    <a href={activeSubmission.googleDocUrl ?? activeSubmission.responseUrl ?? '#'} target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
                       {t('books.admin.review.openLink')} <ExternalLink className="h-3 w-3" />
                     </a>
                   )}
@@ -327,6 +330,8 @@ function getActiveYearGroups(courses: Course[]) {
 }
 
 export function BooksView({
+  currentUser,
+  scope = 'admin',
   assignments,
   submissions,
   courses,
@@ -343,7 +348,16 @@ export function BooksView({
   gradeReadingSubmission,
 }: BooksViewProps) {
   const { t, tCount } = useLanguage();
-  const activeCourses = getActiveYearGroups(courses);
+  const activeCourses = getActiveYearGroups(courses).filter(course => {
+    if (scope !== 'teacher') return true;
+    if (currentUser.teachingCourseTypes.length > 0) {
+      return currentUser.teachingCourseTypes.includes(course.courseType);
+    }
+    return courses
+      .find(item => item.id === course.id)
+      ?.subjects.some(subject => subject.classes.some(cls => cls.teacherId === currentUser.id)) ?? false;
+  });
+  const visibleCourseIds = new Set(activeCourses.map(course => course.id));
   const [modalOpen, setModalOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [lookupQuery, setLookupQuery] = useState('');
@@ -360,25 +374,37 @@ export function BooksView({
   const [status, setStatus] = useState<BookReadingAssignment['status']>('assigned');
   const [filter, setFilter] = useState<'all' | 'assigned' | 'draft' | 'past_due' | 'completed'>('all');
   const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
+  const [selectedAssignmentId, setSelectedAssignmentId] = useState<number | null>(null);
+  const [detailTab, setDetailTab] = useState<'overview' | 'assignment' | 'submissions'>('overview');
+  const [editTitle, setEditTitle] = useState('');
+  const [editInstructions, setEditInstructions] = useState('');
+  const [editDueDate, setEditDueDate] = useState('');
+  const [editMaxPoints, setEditMaxPoints] = useState('');
+  const [editStatus, setEditStatus] = useState<BookReadingAssignment['status']>('assigned');
+  const [detailSaving, setDetailSaving] = useState(false);
 
   const filteredAssignments = useMemo(() => {
     const today = toLocalDateKey();
     return assignments.filter(assignment => {
+      if (scope === 'teacher' && !visibleCourseIds.has(assignment.courseId)) return false;
       if (filter === 'all') return assignment.status !== 'archived';
       if (filter === 'past_due') return assignment.status === 'assigned' && !!assignment.dueDate && assignment.dueDate < today;
       return assignment.status === filter;
     });
-  }, [assignments, filter]);
+  }, [assignments, filter, scope, visibleCourseIds]);
 
   const filterCounts = useMemo(() => {
     const today = toLocalDateKey();
+    const visibleAssignments = scope === 'teacher'
+      ? assignments.filter(assignment => visibleCourseIds.has(assignment.courseId))
+      : assignments;
     return {
-      all: assignments.filter(assignment => assignment.status !== 'archived').length,
-      assigned: assignments.filter(assignment => assignment.status === 'assigned').length,
-      draft: assignments.filter(assignment => assignment.status === 'draft').length,
-      past_due: assignments.filter(assignment => assignment.status === 'assigned' && !!assignment.dueDate && assignment.dueDate < today).length,
+      all: visibleAssignments.filter(assignment => assignment.status !== 'archived').length,
+      assigned: visibleAssignments.filter(assignment => assignment.status === 'assigned').length,
+      draft: visibleAssignments.filter(assignment => assignment.status === 'draft').length,
+      past_due: visibleAssignments.filter(assignment => assignment.status === 'assigned' && !!assignment.dueDate && assignment.dueDate < today).length,
     };
-  }, [assignments]);
+  }, [assignments, scope, visibleCourseIds]);
 
   const selectLookupResult = (result: BookLookupResult) => {
     setBookDraft({
@@ -389,6 +415,39 @@ export function BooksView({
     });
     setAssignmentTitle(result.title);
     setLookupPanelOpen(false);
+  };
+
+  const openAssignmentDetail = (assignment: BookReadingAssignment) => {
+    setSelectedAssignmentId(assignment.id);
+    setDetailTab('overview');
+    setEditTitle(assignment.title);
+    setEditInstructions(assignment.instructions ?? '');
+    setEditDueDate(assignment.dueDate ?? '');
+    setEditMaxPoints(assignment.maxPoints == null ? '' : String(assignment.maxPoints));
+    setEditStatus(assignment.status);
+  };
+
+  const selectedAssignment = selectedAssignmentId
+    ? assignments.find(assignment =>
+      assignment.id === selectedAssignmentId &&
+      (scope !== 'teacher' || visibleCourseIds.has(assignment.courseId))
+    ) ?? null
+    : null;
+
+  const saveSelectedAssignment = async () => {
+    if (!selectedAssignment) return;
+    setDetailSaving(true);
+    try {
+      await updateReadingAssignment(selectedAssignment.id, {
+        title: editTitle.trim() || selectedAssignment.book.title,
+        instructions: editInstructions.trim() || null,
+        dueDate: editDueDate || null,
+        maxPoints: editMaxPoints.trim() ? Number(editMaxPoints) : null,
+        status: editStatus,
+      });
+    } finally {
+      setDetailSaving(false);
+    }
   };
 
   const runLookup = async () => {
@@ -458,6 +517,190 @@ export function BooksView({
     }
   };
 
+  if (selectedAssignment) {
+    const course = courses.find(item => item.id === selectedAssignment.courseId);
+    const stats = getCompletionStats(selectedAssignment.id, selectedAssignment.courseId, submissions, courseStudents);
+    const students = getAssignmentStudents(selectedAssignment, users, courseStudents);
+    const submissionByStudent = new Map(
+      submissions
+        .filter(submission => submission.assignmentId === selectedAssignment.id)
+        .map(submission => [submission.studentId, submission])
+    );
+
+    return (
+      <div className="space-y-5">
+        <button
+          type="button"
+          onClick={() => setSelectedAssignmentId(null)}
+          className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          {t('books.admin.detail.back')}
+        </button>
+
+        <section className="overflow-hidden rounded-3xl border border-[#e5e5e5] bg-white">
+          <div className="grid gap-5 p-5 md:grid-cols-[144px_1fr]">
+            <div className="h-52 w-36 overflow-hidden rounded-2xl bg-[#f5f5f5] shadow-sm">
+              {selectedAssignment.book.coverUrl ? (
+                <img src={selectedAssignment.book.coverUrl} alt="" className="h-full w-full object-cover" />
+              ) : (
+                <div className="grid h-full place-items-center text-[#a3a3a3]">
+                  <BookOpen className="h-10 w-10" />
+                </div>
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                {course && <ActiveYearGroupBadge course={course} />}
+                <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252]">
+                  {getAssignmentStatusLabel(selectedAssignment.status, t)}
+                </span>
+              </div>
+              <h2 className="tbo-display mt-3 text-3xl text-[#171717]">{selectedAssignment.book.title}</h2>
+              <p className="mt-1 text-sm text-[#737373]">
+                {selectedAssignment.book.authors.join(', ') || t('student.books.unknownAuthor')}
+              </p>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <div className="rounded-2xl bg-[#fafafa] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#737373]">{t('books.admin.detail.assignment')}</p>
+                  <p className="mt-1 truncate text-sm font-semibold text-[#171717]">{selectedAssignment.title}</p>
+                </div>
+                <div className="rounded-2xl bg-[#fafafa] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#737373]">{t('books.admin.detail.submissions')}</p>
+                  <p className="mt-1 text-sm font-semibold text-[#171717]">{t('books.admin.submitted', { complete: stats.complete, total: stats.total })}</p>
+                </div>
+                <div className="rounded-2xl bg-[#fafafa] p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-[#737373]">{t('student.books.due')}</p>
+                  <p className="mt-1 text-sm font-semibold text-[#171717]">
+                    {selectedAssignment.dueDate ? formatPlatformDate(selectedAssignment.dueDate) : t('common.noDueDate')}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-[#eeeeee] px-5">
+            <div className="flex gap-2 overflow-x-auto py-3">
+              {([
+                ['overview', BookOpen, 'student.books.tabs.overview'],
+                ['assignment', FileText, 'student.books.tabs.assignment'],
+                ['submissions', Users, 'books.admin.detail.tabs.submissions'],
+              ] as const).map(([tab, Icon, label]) => (
+                <button
+                  key={tab}
+                  type="button"
+                  onClick={() => setDetailTab(tab)}
+                  className={`inline-flex h-9 items-center gap-2 rounded-full px-3 text-sm font-semibold transition ${
+                    detailTab === tab
+                      ? 'bg-[#171717] text-white'
+                      : 'bg-[#f5f5f5] text-[#525252] hover:bg-[#eeeeee]'
+                  }`}
+                >
+                  <Icon className="h-4 w-4" />
+                  {t(label)}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {detailTab === 'overview' && (
+          <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
+            <div className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+              <h3 className="text-lg font-semibold text-[#171717]">{t('student.books.aboutBook')}</h3>
+              <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-[#525252]">
+                {selectedAssignment.book.description || t('student.books.noDescription')}
+              </p>
+            </div>
+            <aside className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-5">
+              <h3 className="text-sm font-semibold text-[#171717]">{t('student.books.bookDetails')}</h3>
+              <div className="mt-3 space-y-2 text-sm text-[#525252]">
+                <p>{selectedAssignment.book.publisher || t('student.books.unknownPublisher')}</p>
+                <p>{selectedAssignment.book.publishedDate || t('student.books.unknownPublishDate')}</p>
+                <p>{selectedAssignment.book.pageCount ? t('student.books.pages', { count: selectedAssignment.book.pageCount }) : t('student.books.unknownPages')}</p>
+                <p>{selectedAssignment.book.isbn13 || selectedAssignment.book.isbn10 || t('student.books.noIsbn')}</p>
+              </div>
+            </aside>
+          </section>
+        )}
+
+        {detailTab === 'assignment' && (
+          <section className="rounded-2xl border border-[#e5e5e5] bg-white p-5">
+            <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.assignmentTitle')}</span>
+                  <input value={editTitle} onChange={event => setEditTitle(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] px-3 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.instructions')}</span>
+                  <textarea value={editInstructions} onChange={event => setEditInstructions(event.target.value)} className="min-h-56 w-full rounded-lg border border-[#d4d4d4] p-3 text-sm leading-6" />
+                </label>
+              </div>
+              <div className="space-y-3 rounded-2xl bg-[#fafafa] p-4">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('student.books.due')}</span>
+                  <input type="date" value={editDueDate} onChange={event => setEditDueDate(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.optionalPoints')}</span>
+                  <input type="number" min="0" value={editMaxPoints} onChange={event => setEditMaxPoints(event.target.value)} className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm" />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold text-[#737373]">{t('books.admin.detail.status')}</span>
+                  <select value={editStatus} onChange={event => setEditStatus(event.target.value as BookReadingAssignment['status'])} className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm">
+                    <option value="assigned">{t('books.admin.statusOption.assigned')}</option>
+                    <option value="draft">{t('books.admin.statusOption.draft')}</option>
+                    <option value="completed">{t('books.admin.statusOption.completed')}</option>
+                    <option value="archived">{t('books.admin.statusOption.archived')}</option>
+                  </select>
+                </label>
+                <button type="button" disabled={detailSaving} onClick={() => void saveSelectedAssignment()} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white disabled:opacity-50">
+                  {detailSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                  {detailSaving ? t('common.saving') : t('common.save')}
+                </button>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {detailTab === 'submissions' && (
+          <section className="rounded-2xl border border-[#e5e5e5] bg-white p-3">
+            <div className="divide-y divide-[#eeeeee]">
+              {students.map(student => {
+                const submission = submissionByStudent.get(student.id);
+                const docUrl = submission?.googleDocUrl ?? submission?.responseUrl ?? null;
+                return (
+                  <div key={student.id} className="flex flex-col gap-3 px-2 py-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex min-w-0 items-center gap-3">
+                      <UserAvatar user={student} size="md" />
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-[#171717]">{student.name}</p>
+                        <p className="text-xs text-[#737373]">{getSubmissionStatusLabel(submission?.status, t)}</p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {docUrl && (
+                        <a href={docUrl} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dbeafe] bg-[#eff6ff] px-3 text-xs font-semibold text-[#1d4ed8]">
+                          {t('student.books.openDocument')} <ExternalLink className="h-3.5 w-3.5" />
+                        </a>
+                      )}
+                      {submission && (
+                        <button type="button" onClick={() => setReviewAssignment(selectedAssignment)} className="h-9 rounded-lg border border-[#e5e5e5] bg-white px-3 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5]">
+                          {t('books.admin.reviewSubmissions')}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -502,7 +745,7 @@ export function BooksView({
             const assignedBy = users.find(user => user.id === assignment.assignedBy);
             return (
               <article key={assignment.id} className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
-                <div className="flex gap-4 p-4">
+                <button type="button" onClick={() => openAssignmentDetail(assignment)} className="flex w-full gap-4 p-4 text-left hover:bg-[#fafafa]">
                   <div className="h-32 w-24 flex-shrink-0 overflow-hidden rounded-xl bg-[#f5f5f5]">
                     {assignment.book.coverUrl ? <img src={assignment.book.coverUrl} alt="" className="h-full w-full object-cover" /> : <BookOpen className="m-auto mt-12 h-8 w-8 text-[#a3a3a3]" />}
                   </div>
@@ -519,7 +762,7 @@ export function BooksView({
                       {assignment.dueDate ? t('books.admin.dueDate', { date: formatPlatformDate(assignment.dueDate) }) : t('common.noDueDate')}
                     </div>
                   </div>
-                </div>
+                </button>
                 <div className="border-t border-[#eeeeee] bg-[#fafafa] p-4">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
@@ -539,13 +782,13 @@ export function BooksView({
                     </div>
                   </div>
                   <div className="mt-3 flex flex-wrap gap-2">
-                    <button type="button" onClick={() => setReviewAssignment(assignment)} className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
+                    <button type="button" onClick={event => { event.stopPropagation(); setReviewAssignment(assignment); }} className="rounded-lg border border-[#dbeafe] bg-white px-3 py-1.5 text-xs font-semibold text-[#1d4ed8]">
                       {t('books.admin.reviewSubmissions')}
                     </button>
-                    <button type="button" onClick={() => updateReadingAssignment(assignment.id, { status: assignment.status === 'draft' ? 'assigned' : 'completed' })} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
+                    <button type="button" onClick={event => { event.stopPropagation(); updateReadingAssignment(assignment.id, { status: assignment.status === 'draft' ? 'assigned' : 'completed' }); }} className="rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252]">
                       {assignment.status === 'draft' ? t('books.admin.publish') : t('books.admin.markComplete')}
                     </button>
-                    <button type="button" onClick={() => deleteReadingAssignment(assignment.id)} className="rounded-lg border border-[#fee2e2] bg-white px-3 py-1.5 text-xs font-semibold text-[#b91c1c]">
+                    <button type="button" onClick={event => { event.stopPropagation(); deleteReadingAssignment(assignment.id); }} className="rounded-lg border border-[#fee2e2] bg-white px-3 py-1.5 text-xs font-semibold text-[#b91c1c]">
                       {t('common.delete')}
                     </button>
                   </div>
