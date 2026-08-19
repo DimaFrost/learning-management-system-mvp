@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import {
   CalendarDays,
+  Check,
   ChevronLeft,
   ClipboardList,
   Send,
@@ -62,6 +63,25 @@ function createQuestionDraft(
     prompt: translate('classwork.composer.questionNumber', { n: index + 1 }),
     optionsText: translate('classwork.composer.defaultOptions'),
   };
+}
+
+function WorkTypeCheck({ selected, tone }: { selected: boolean; tone: 'blue' | 'green' }) {
+  const selectedClass = tone === 'green'
+    ? 'bg-[#047857] text-white shadow-[0_6px_16px_rgba(4,120,87,0.18)]'
+    : 'bg-[#2563eb] text-white shadow-[0_6px_16px_rgba(37,99,235,0.18)]';
+
+  return (
+    <span
+      className={`grid h-7 w-7 flex-shrink-0 place-items-center rounded-full border transition ${
+        selected
+          ? selectedClass
+          : 'border-[#d4d4d4] bg-white/70 text-transparent'
+      }`}
+      aria-hidden="true"
+    >
+      {selected ? <Check className="h-4 w-4 stroke-[3]" /> : null}
+    </span>
+  );
 }
 
 function toQuestionDrafts(
@@ -231,13 +251,37 @@ export function AssignmentComposer({
             <div className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4">
               <p className="text-sm font-semibold text-[#171717]">{t('classwork.composer.workType')}</p>
               <div className="mt-3 grid gap-2 sm:grid-cols-2">
-                <button type="button" onClick={() => setWorkType('assignment')} className={`rounded-xl border px-3 py-3 text-left text-sm font-semibold ${workType === 'assignment' ? 'border-[#bfdbfe] bg-white text-[#1d4ed8]' : 'border-transparent bg-[#dbeafe] text-[#1e40af]'}`}>
-                  {t('classwork.assignment.eyebrow')}
-                  <span className="mt-1 block text-xs font-medium text-[#64748b]">{t('classwork.composer.assignmentDesc')}</span>
+                <button
+                  type="button"
+                  onClick={() => setWorkType('assignment')}
+                  className={`tbo-focus flex min-h-[5.25rem] items-start justify-between gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                    workType === 'assignment'
+                      ? 'border-[#93c5fd] bg-white text-[#1d4ed8] shadow-[0_10px_28px_rgba(37,99,235,0.10)] ring-2 ring-[#dbeafe]'
+                      : 'border-transparent bg-[#dbeafe] text-[#1e40af] hover:bg-white/70'
+                  }`}
+                  aria-pressed={workType === 'assignment'}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{t('classwork.assignment.eyebrow')}</span>
+                    <span className="mt-1 block text-xs font-medium leading-5 text-[#64748b]">{t('classwork.composer.assignmentDesc')}</span>
+                  </span>
+                  <WorkTypeCheck selected={workType === 'assignment'} tone="blue" />
                 </button>
-                <button type="button" onClick={() => setWorkType('quick_check')} className={`rounded-xl border px-3 py-3 text-left text-sm font-semibold ${workType === 'quick_check' ? 'border-[#bbf7d0] bg-white text-[#047857]' : 'border-transparent bg-[#d1fae5] text-[#065f46]'}`}>
-                  {t('search.index.badge.quickCheck')}
-                  <span className="mt-1 block text-xs font-medium text-[#64748b]">{t('classwork.composer.quickCheckDesc')}</span>
+                <button
+                  type="button"
+                  onClick={() => setWorkType('quick_check')}
+                  className={`tbo-focus flex min-h-[5.25rem] items-start justify-between gap-3 rounded-xl border px-3 py-3 text-left transition ${
+                    workType === 'quick_check'
+                      ? 'border-[#86efac] bg-white text-[#047857] shadow-[0_10px_28px_rgba(4,120,87,0.10)] ring-2 ring-[#dcfce7]'
+                      : 'border-transparent bg-[#d1fae5] text-[#065f46] hover:bg-white/70'
+                  }`}
+                  aria-pressed={workType === 'quick_check'}
+                >
+                  <span className="min-w-0">
+                    <span className="block text-sm font-semibold">{t('search.index.badge.quickCheck')}</span>
+                    <span className="mt-1 block text-xs font-medium leading-5 text-[#64748b]">{t('classwork.composer.quickCheckDesc')}</span>
+                  </span>
+                  <WorkTypeCheck selected={workType === 'quick_check'} tone="green" />
                 </button>
               </div>
               {workType === 'quick_check' && (

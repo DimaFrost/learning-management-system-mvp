@@ -425,7 +425,7 @@ export function AppRouter({
     );
   }
 
-  if (activeView === 'todos' && canUseTodos) {
+  if ((activeView === 'todos' || activeView === 'todos-new') && canUseTodos) {
     return (
       <TodosView
         todos={todos}
@@ -436,6 +436,7 @@ export function AppRouter({
         error={todosError}
         isAdmin={isTodoAdmin}
         canCreate={canCreateTodos}
+        openCreateOnMount={activeView === 'todos-new'}
         onCreate={createTodo}
         onToggleStatus={toggleTodoStatus}
         onDelete={deleteTodo}
@@ -645,7 +646,6 @@ export function AppRouter({
           bookSubmissions={books.mySubmissions}
           booksLoading={books.loading}
           onNavigate={setActiveView}
-          onOpenSearch={onOpenSearch}
           onOpenClass={openSessionInClasswork}
           onOpenHomeworkAssignment={openHomeworkAssignment}
         />
@@ -692,6 +692,7 @@ export function AppRouter({
     switch (activeView) {
       case 'curriculum':
       case 'curriculum-overview':
+      case 'curriculum-overview-new':
       case 'curriculum-date-view':
       case 'curriculum-archived':
       case 'curriculum-planning':
@@ -744,6 +745,7 @@ export function AppRouter({
             onGenerateWellScheduleForCourse={attendance.generateWellScheduleForCourse}
             onRemoveWellScheduleDate={attendance.removeWellScheduleDate}
             curriculumCapability="full"
+            openCreateYearOnMount={activeView === 'curriculum-overview-new'}
           />
         );
       case 'curriculum-books':
@@ -766,6 +768,7 @@ export function AppRouter({
           />
         );
       case 'users':
+      case 'users-new':
       case 'users-directory':
       case 'users-pending':
       case 'users-enrollments':
@@ -791,6 +794,7 @@ export function AppRouter({
             getCourseDisplayName={getCourseDisplayName}
             selectedPersonId={selectedPersonId}
             onSelectedPersonHandled={onSelectedPersonHandled}
+            openCreateOnMount={activeView === 'users-new'}
             onEditUser={(user?) => setEditingItem({ type: 'user', data: user ?? null })}
             onOpenStudentDashboard={onOpenAdminStudentDashboard}
             onDeleteUser={deleteUser}
@@ -922,6 +926,7 @@ export function AppRouter({
       case 'tuition-overview':
       case 'tuition-students':
       case 'tuition-payments':
+      case 'tuition-payments-new':
       case 'tuition-installments':
       case 'tuition-reminders':
       case 'tuition-settings':
@@ -930,7 +935,7 @@ export function AppRouter({
             activeSection={
               activeView === 'tuition-students'
                 ? 'students'
-                : activeView === 'tuition-payments'
+                : activeView === 'tuition-payments' || activeView === 'tuition-payments-new'
                   ? 'payments'
                   : activeView === 'tuition-installments'
                     ? 'installments'
@@ -954,6 +959,7 @@ export function AppRouter({
             summary={tuition.summary}
             loading={tuition.loading}
             error={tuition.error}
+            quickAddAction={activeView === 'tuition-payments-new' ? 'payment' : undefined}
             onCreatePlan={tuition.createPlan}
             onUpsertInstallment={tuition.upsertInstallment}
             onEnrollStudent={tuition.enrollStudent}
@@ -1127,7 +1133,6 @@ export function AppRouter({
             staffWorkspace={activeWorkspace as 'teacher' | 'translator'}
             getCourseDisplayName={getCourseDisplayName}
             onNavigate={setActiveView}
-            onOpenSearch={onOpenSearch}
             onOpenClass={openSessionInClasswork}
           />
         );
@@ -1176,7 +1181,6 @@ export function AppRouter({
         bookSubmissions={books.mySubmissions}
         booksLoading={books.loading}
         onNavigate={setActiveView}
-          onOpenSearch={onOpenSearch}
         onOpenClass={openSessionInClasswork}
         onOpenHomeworkAssignment={openHomeworkAssignment}
       />
@@ -1235,7 +1239,6 @@ export function AppRouter({
             bookSubmissions={books.mySubmissions}
             booksLoading={books.loading}
             onNavigate={setActiveView}
-          onOpenSearch={onOpenSearch}
             onOpenClass={openSessionInClasswork}
             onOpenHomeworkAssignment={openHomeworkAssignment}
           />

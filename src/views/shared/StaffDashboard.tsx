@@ -1,5 +1,5 @@
 import { useMemo, type ReactNode } from 'react';
-import { Calendar, Users } from 'lucide-react';
+import { ArrowUpRight, Calendar, Users } from 'lucide-react';
 import type { Class, Course, User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { PageHeader } from '../../components/ui/PageHeader';
@@ -54,9 +54,10 @@ function GhostButton({ children, onClick }: { children: ReactNode; onClick: () =
     <button
       type="button"
       onClick={onClick}
-      className="tbo-focus rounded-full border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+      className="tbo-focus inline-flex items-center gap-1.5 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-medium text-[#171717] hover:bg-[#f5f5f5]"
     >
       {children}
+      <ArrowUpRight className="h-3.5 w-3.5" />
     </button>
   );
 }
@@ -231,7 +232,6 @@ interface StaffDashboardProps {
   staffWorkspace: Extract<WorkspaceId, 'teacher' | 'translator'>;
   getCourseDisplayName: (course: Course) => string;
   onNavigate: (view: string) => void;
-  onOpenSearch: () => void;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
 }
 
@@ -242,7 +242,6 @@ export function StaffDashboard({
   staffWorkspace,
   getCourseDisplayName,
   onNavigate,
-  onOpenSearch,
   onOpenClass,
 }: StaffDashboardProps) {
   const { t } = useLanguage();
@@ -281,12 +280,9 @@ export function StaffDashboard({
     <div className="space-y-5">
       <PageHeader
         title={title}
-        action={
-          <div className="flex flex-wrap justify-end gap-2">
-            <GhostButton onClick={onOpenSearch}>{t('staffDashboard.search')}</GhostButton>
-            <GhostButton onClick={() => onNavigate('my-classes')}>{t('staffDashboard.allMySessions')}</GhostButton>
-          </div>
-        }
+        action={staffWorkspace === 'teacher'
+          ? <GhostButton onClick={() => onNavigate('announcements-new')}>{t('admin.dashboard.newPost')}</GhostButton>
+          : undefined}
       />
 
       <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">

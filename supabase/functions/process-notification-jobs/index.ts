@@ -50,6 +50,13 @@ type WorkflowEmailPayload = {
   actionUrl?: string | null;
 };
 
+type ProfileInviteEmailPayload = {
+  email?: string;
+  name?: string;
+  roles?: string[];
+  actionUrl?: string | null;
+};
+
 type DirectMessageEmailPayload = {
   recipientId?: string;
   preview?: string;
@@ -241,6 +248,8 @@ async function processJob(job: NotificationJob) {
       result = await sendEnrollmentEmail(job, job.payload as EnrollmentEmailPayload);
     } else if (job.type === 'workflow_email') {
       result = await sendWorkflowEmails(job, job.payload as WorkflowEmailPayload);
+    } else if (job.type === 'profile_invite_email') {
+      result = await sendProfileInviteEmail(job, job.payload as ProfileInviteEmailPayload);
     } else {
       throw new Error(`Unsupported notification job type: ${job.type}`);
     }
@@ -342,6 +351,41 @@ async function sendWorkflowEmails(job: NotificationJob, payload: WorkflowEmailPa
   }
 
   return { sent, failed, recipientCount: profiles.length };
+}
+
+async function sendProfileInviteEmail(job: NotificationJob, payload: ProfileInviteEmailPayload) {
+  await assertJobCreatorHasRole(job, ['administrator'], 'Profile invite email creator is not authorized');
+
+  const email = String(payload.email ?? '').trim().toLowerCase();
+  if (!email || !email.includes('@')) {
+    throw new Error('Missing invite email address');
+  }
+
+  const name = String(payload.name ?? '').trim() || email.split('@')[0] || 'there';
+  const roles = Array.isArray(payload.roles) ? payload.roles.filter(Boolean) : [];
+  const actionUrl = String(payload.actionUrl ?? APP_URL);
+  const subject = 'Your Burning Ones Portal access is ready';
+
+  const response = await sendBrevoEmail({
+    to: {
+      id: `invite:${email}`,
+      email,
+      name,
+      roles: [],
+    },
+    subject,
+    html: renderProfileInviteEmail({ email, name, roles, actionUrl }),
+    text: `Your Burning Ones Portal access is ready.\n\nSign in with this Google account: ${email}\n\n${roles.length > 0 ? `Access prepared for: ${roles.map(formatRoleLabel).join(', ')}\n\n` : ''}Open: ${actionUrl}`,
+    tags: ['system', 'invite', 'portal'],
+  });
+
+  return {
+    sent: 1,
+    failed: 0,
+    recipientCount: 1,
+    email,
+    providerMessageId: response.messageId ?? null,
+  };
 }
 
 async function sendDirectMessageEmail(job: NotificationJob, payload: DirectMessageEmailPayload) {
@@ -1325,6 +1369,91 @@ function renderWorkflowEmail(payload: WorkflowEmailPayload) {
 </html>`;
 }
 
+function renderProfileInviteEmail(payload: Required<Pick<ProfileInviteEmailPayload, 'email' | 'name' | 'roles' | 'actionUrl'>>) {
+  const theme = getNotificationTheme('system');
+  const name = escapeHtml(payload.name);
+  const email = escapeHtml(payload.email);
+  const appUrl = escapeHtml(payload.actionUrl || APP_URL);
+  const logoUrl = escapeHtml(LOGO_URL);
+  const roleText = payload.roles.length > 0
+    ? escapeHtml(payload.roles.map(formatRoleLabel).join(', '))
+    : 'Portal access';
+  const brandMark = logoUrl
+    ? `<img src="${logoUrl}" width="36" height="36" alt="The Burning Ones" style="display:block;width:36px;height:36px;margin:6px auto;object-fit:contain;border:0;">`
+    : `<div style="width:36px;height:36px;margin:6px auto;border-radius:50%;background:${theme.accent};color:#ffffff;font-size:11px;font-weight:700;line-height:36px;text-align:center;letter-spacing:.02em;">TBO</div>`;
+
+  return `
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="supported-color-schemes" content="light">
+    <title>Portal access</title>
+  </head>
+  <body style="margin:0;background:#f8faf7;padding:0;font-family:Roboto,Arial,'Segoe UI',sans-serif;color:#202124;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f8faf7;">
+      <tr>
+        <td align="center" style="padding:32px 16px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="width:100%;max-width:620px;margin:0 auto;">
+            <tr>
+              <td style="padding:0 4px 14px;">
+                <table role="presentation" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="width:48px;height:48px;border-radius:14px;background:#ffffff;border:1px solid ${theme.border};text-align:center;vertical-align:middle;">${brandMark}</td>
+                    <td style="padding-left:12px;">
+                      <div style="font-size:15px;font-weight:600;line-height:1.2;color:#202124;">The Burning Ones</div>
+                      <div style="padding-top:3px;font-size:12px;line-height:1.3;color:#5f6368;">Portal access</div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+            <tr>
+              <td style="border:1px solid #dadce0;border-radius:24px;background:#ffffff;box-shadow:0 1px 2px rgba(60,64,67,.12),0 2px 6px rgba(60,64,67,.08);overflow:hidden;">
+                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                  <tr>
+                    <td style="height:10px;background:${theme.accent};font-size:0;line-height:0;">&nbsp;</td>
+                  </tr>
+                  <tr>
+                    <td style="padding:28px;">
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-bottom:18px;">
+                        <tr>
+                          <td style="width:34px;height:34px;border-radius:50%;background:${theme.tint};text-align:center;vertical-align:middle;">
+                            <img src="${theme.groupIconUrl}" width="18" height="18" alt="" style="display:block;width:18px;height:18px;margin:8px auto;border:0;object-fit:contain;">
+                          </td>
+                          <td style="padding-left:10px;font-size:13px;line-height:1.4;color:#5f6368;">Your school portal access has been prepared.</td>
+                        </tr>
+                      </table>
+                      <h1 style="margin:0;font-size:24px;line-height:1.25;font-weight:500;color:#202124;">Sign in to continue, ${name}</h1>
+                      <div style="margin-top:16px;border-radius:18px;background:#f8fafd;border:1px solid #e5e7eb;padding:16px;">
+                        <div style="font-size:12px;font-weight:700;color:#5f6368;text-transform:uppercase;letter-spacing:.08em;">Google account</div>
+                        <div style="margin-top:7px;font-size:15px;font-weight:600;color:#202124;">${email}</div>
+                        <div style="margin-top:12px;font-size:12px;font-weight:700;color:#5f6368;text-transform:uppercase;letter-spacing:.08em;">Access prepared for</div>
+                        <div style="margin-top:7px;font-size:14px;color:#3c4043;">${roleText}</div>
+                      </div>
+                      <p style="margin:18px 0 0;font-size:14px;line-height:1.7;color:#5f6368;">Use the Google account above. Signing in does not change your Google password or give the portal access to your inbox.</p>
+                      <table role="presentation" cellspacing="0" cellpadding="0" style="margin-top:26px;">
+                        <tr>
+                          <td style="border-radius:999px;background:${theme.accent};">
+                            <a href="${appUrl}" style="display:inline-block;padding:12px 22px;border-radius:999px;color:#ffffff;text-decoration:none;font-size:14px;font-weight:600;line-height:1;">Open</a>
+                          </td>
+                        </tr>
+                      </table>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>`;
+}
+
 function getNotificationTheme(kind: 'announcement' | 'assignment' | 'attendance' | 'system') {
   const iconBaseUrl = 'https://theburningones.bg/wp-content/uploads/2026/07';
   const themes = {
@@ -1355,6 +1484,14 @@ function getNotificationTheme(kind: 'announcement' | 'assignment' | 'attendance'
   };
 
   return themes[kind];
+}
+
+function formatRoleLabel(role: string) {
+  return role
+    .split('_')
+    .filter(Boolean)
+    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
+    .join(' ');
 }
 
 function formatDateLabel(value: string) {
@@ -1390,14 +1527,6 @@ function getCourseTypeLabel(value: string | null | undefined) {
 
 function getCourseDisplayName(course: CourseRow) {
   return `${getCourseTypeLabel(course.course_type)} ${course.graduation_year}`;
-}
-
-function formatRoleLabel(role: string) {
-  return role
-    .split('_')
-    .filter(Boolean)
-    .map(part => `${part.charAt(0).toUpperCase()}${part.slice(1)}`)
-    .join(' ');
 }
 
 function getAnnouncementScopeLabel(announcement: Announcement) {

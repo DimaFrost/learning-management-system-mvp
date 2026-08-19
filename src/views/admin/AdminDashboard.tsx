@@ -17,6 +17,7 @@ import {
   Mail,
   Megaphone,
   MessageSquare,
+  Plus,
   ShieldCheck,
   Sparkles,
   TrendingDown,
@@ -161,7 +162,7 @@ type ActionItem = {
 
 type MetricInsight = {
   title: string;
-  value: number | string;
+  value: ReactNode;
   detail: string;
   description: string;
   notes?: string[];
@@ -545,7 +546,7 @@ function MiniMetric({
   onClick,
 }: {
   label: string;
-  value: number | string;
+  value: ReactNode;
   detail: string;
   progress: number;
   icon: LucideIcon;
@@ -557,7 +558,7 @@ function MiniMetric({
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{label}</p>
-          <p className="mt-2 text-3xl font-semibold leading-none text-[#171717]">{value}</p>
+          <div className="mt-2 text-3xl font-semibold leading-none text-[#171717]">{value}</div>
         </div>
         <span className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${toneClasses[tone]}`}>
           <Icon className="h-4 w-4" />
@@ -634,6 +635,23 @@ function GhostButton({
       {children}
       <ArrowUpRight className="h-3.5 w-3.5" />
     </button>
+  );
+}
+
+function SetupChecksValue({
+  ready,
+  suffix,
+}: {
+  ready: number;
+  suffix: string;
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span>{ready}</span>
+      <span className="text-sm font-semibold leading-none text-[#737373]">
+        {suffix}
+      </span>
+    </span>
   );
 }
 
@@ -749,6 +767,7 @@ export function AdminDashboard({
   const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(startOfToday()));
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [selectedMetricInsight, setSelectedMetricInsight] = useState<MetricInsight | null>(null);
+  const [quickAddOpen, setQuickAddOpen] = useState(false);
   const activeCourses = courses.filter(course => course.status === 'active');
 
   useEffect(() => {
@@ -1179,7 +1198,8 @@ export function AdminDashboard({
     activeClassCount * 2;
   const missingReadinessChecks = staffingGaps + driveGaps;
   const readinessTotal = Math.max(readinessChecks, 1);
-  const courseReadiness = clampPercent(((readinessTotal - missingReadinessChecks) / readinessTotal) * 100);
+  const completedReadinessChecks = Math.max(readinessChecks - missingReadinessChecks, 0);
+  const courseReadiness = clampPercent((completedReadinessChecks / readinessTotal) * 100);
   const mentorCoverage = clampPercent(
     activeStudents.length === 0
       ? 100
@@ -1205,12 +1225,20 @@ export function AdminDashboard({
   const metricInsights: MetricInsight[] = [
     {
       title: t('admin.dashboard.yearGroupHealth'),
-      value: activeCourses.length,
-      detail: t('admin.dashboard.staffingGaps', { count: staffingGaps }),
+      value: (
+        <SetupChecksValue
+          ready={completedReadinessChecks}
+          suffix={t('admin.dashboard.setupChecksReadySuffix', { total: readinessChecks })}
+        />
+      ),
+      detail: t('admin.dashboard.setupItemsMissing', { count: missingReadinessChecks }),
       description: t('admin.dashboard.yearGroupHealthDesc'),
       notes: yearGroupHealthGaps.length > 0 ? yearGroupHealthGaps : [t('admin.dashboard.readinessComplete')],
       progressValue: courseReadiness,
-      progressLabel: t('admin.dashboard.yearGroupReadiness', { n: courseReadiness }),
+      progressLabel: t('admin.dashboard.setupChecksProgress', {
+        ready: completedReadinessChecks,
+        total: readinessChecks,
+      }),
       actionLabel: t('admin.dashboard.openCurriculum'),
       view: 'curriculum',
       tone: 'blue',
@@ -1354,13 +1382,84 @@ export function AdminDashboard({
     setSelectedMetricInsight(null);
   };
 
+  const quickAddItems: Array<{
+    label: string;
+    description: string;
+    icon: LucideIcon;
+    view: string;
+  }> = [
+    {
+      label: t('admin.dashboard.quickAdd.todo'),
+      description: t('admin.dashboard.quickAdd.todoDesc'),
+      icon: ClipboardList,
+      view: 'todos-new',
+    },
+    {
+      label: t('admin.dashboard.quickAdd.person'),
+      description: t('admin.dashboard.quickAdd.personDesc'),
+      icon: UserCog,
+      view: 'users-new',
+    },
+    {
+      label: t('admin.dashboard.quickAdd.payment'),
+      description: t('admin.dashboard.quickAdd.paymentDesc'),
+      icon: Banknote,
+      view: 'tuition-payments-new',
+    },
+    {
+      label: t('admin.dashboard.quickAdd.yearGroup'),
+      description: t('admin.dashboard.quickAdd.yearGroupDesc'),
+      icon: GraduationCap,
+      view: 'curriculum-overview-new',
+    },
+  ];
+
   return (
     <div className="space-y-5">
       <PageHeader
         title={t('sidebar.dashboard')}
         action={
           <div className="flex flex-wrap justify-end gap-2">
-            <GhostButton onClick={onOpenSearch}>{t('common.search')}</GhostButton>
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setQuickAddOpen(open => !open)}
+                onBlur={() => window.setTimeout(() => setQuickAddOpen(false), 120)}
+                className="tbo-focus inline-flex items-center gap-2 rounded-lg border border-[#e5e5e5] bg-white px-3 py-1.5 text-xs font-semibold text-[#171717] hover:bg-[#f5f5f5]"
+                aria-expanded={quickAddOpen}
+              >
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d]">
+                  <Plus className="h-3.5 w-3.5" />
+                </span>
+                {t('admin.dashboard.quickAdd')}
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${quickAddOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {quickAddOpen && (
+                <div className="absolute right-0 top-full z-30 mt-2 w-72 overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white p-2 shadow-[0_18px_45px_rgba(15,23,42,0.14)]">
+                  {quickAddItems.map(item => (
+                    <button
+                      key={item.view}
+                      type="button"
+                      onMouseDown={event => event.preventDefault()}
+                      onClick={() => {
+                        setQuickAddOpen(false);
+                        onNavigate(item.view);
+                      }}
+                      className="tbo-focus flex w-full items-start gap-3 rounded-xl px-3 py-2.5 text-left hover:bg-[#fafafa]"
+                    >
+                      <span className="mt-0.5 grid h-8 w-8 flex-shrink-0 place-items-center rounded-xl bg-[#f5f5f5] text-[#525252]">
+                        <item.icon className="h-4 w-4" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-sm font-semibold text-[#171717]">{item.label}</span>
+                        <span className="mt-0.5 block text-xs leading-5 text-[#737373]">{item.description}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <GhostButton onClick={() => onNavigate('announcements-new')}>
               {t('admin.dashboard.newPost')}
             </GhostButton>
@@ -1620,8 +1719,13 @@ export function AdminDashboard({
       <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
         <MiniMetric
           label={t('admin.dashboard.yearGroupHealth')}
-          value={activeCourses.length}
-          detail={t('admin.dashboard.staffingGaps', { count: staffingGaps })}
+          value={(
+            <SetupChecksValue
+              ready={completedReadinessChecks}
+              suffix={t('admin.dashboard.setupChecksReadySuffix', { total: readinessChecks })}
+            />
+          )}
+          detail={t('admin.dashboard.setupItemsMissing', { count: missingReadinessChecks })}
           progress={courseReadiness}
           icon={BookOpen}
           tone="blue"

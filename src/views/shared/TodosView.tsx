@@ -50,6 +50,7 @@ interface TodosViewProps {
   error: string | null;
   isAdmin: boolean;
   canCreate: boolean;
+  openCreateOnMount?: boolean;
   onCreate: (input: {
     title: string;
     description?: string | null;
@@ -184,6 +185,7 @@ export function TodosView({
   error,
   isAdmin,
   canCreate,
+  openCreateOnMount = false,
   onCreate,
   onToggleStatus,
   onDelete,
@@ -199,7 +201,7 @@ export function TodosView({
   const [submitting, setSubmitting] = useState(false);
   const [busyTodoId, setBusyTodoId] = useState<number | null>(null);
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
-  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(openCreateOnMount && canCreate);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'person' | 'category'>('person');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);

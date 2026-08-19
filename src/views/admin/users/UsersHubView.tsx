@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type MouseEvent, type ReactNode } from 'react';
 import {
   ArrowUpDown,
   ArrowUpRight,
@@ -63,6 +63,7 @@ export interface UsersHubViewProps {
   getCourseDisplayName: (course: Course) => string;
   selectedPersonId?: string | null;
   onSelectedPersonHandled?: () => void;
+  openCreateOnMount?: boolean;
   onEditUser: (user?: User) => void;
   onOpenStudentDashboard?: (studentId: string) => void;
   onDeleteUser: (id: string) => void;
@@ -481,6 +482,7 @@ function DirectoryPanel({
   getCourseDisplayName,
   selectedPersonId,
   onSelectedPersonHandled,
+  openCreateOnMount = false,
   onEditUser,
   onOpenStudentDashboard,
   onDeleteUser,
@@ -985,11 +987,19 @@ export function UsersHubView({
   getCourseDisplayName,
   selectedPersonId,
   onSelectedPersonHandled,
+  openCreateOnMount = false,
   onEditUser,
   onOpenStudentDashboard,
   onDeleteUser,
 }: UsersHubViewProps) {
   const { t } = useLanguage();
+  const openedCreateRef = useRef(false);
+
+  useEffect(() => {
+    if (!openCreateOnMount || openedCreateRef.current) return;
+    openedCreateRef.current = true;
+    onEditUser();
+  }, [onEditUser, openCreateOnMount]);
 
   const directoryRows = useMemo(
     () => buildUserDirectoryRows({

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowUpRight, Award, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, GraduationCap, MessageSquare, MinusCircle, Paperclip, Plus, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
+import { ArrowUpRight, Award, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, GraduationCap, Info, MessageSquare, MinusCircle, Paperclip, Plus, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, StudentAttendanceSummary, User } from '../../types/lms';
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
@@ -8,6 +8,7 @@ import { formatDate, formatTime } from '../../i18n/formatters';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { TranslationKey } from '../../i18n/translations';
 import { translate } from '../../i18n/translate';
+import { getCourseDisplayName } from '../../utils/courseUtils';
 import { HomeworkAssignmentDetailPage } from './classwork/HomeworkAssignmentDetailPage';
 import type { HomeworkDetailSelection, HomeworkRow, SubjectRun } from './classwork/types';
 
@@ -277,6 +278,8 @@ export function GradesView({
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
   const [gradeSettingsOpen, setGradeSettingsOpen] = useState(false);
+  const [gradeSetupExpanded, setGradeSetupExpanded] = useState(true);
+  const [gradeSetupInfoOpen, setGradeSetupInfoOpen] = useState(false);
   const [configCourseId, setConfigCourseId] = useState('');
   const [calculationMethod, setCalculationMethod] = useState<'no_overall_grade' | 'total_points' | 'weighted_by_category'>('total_points');
   const [categoryDraft, setCategoryDraft] = useState({ name: '', defaultPoints: '100', weightPercent: '', color: '#2563eb' });
@@ -297,7 +300,10 @@ export function GradesView({
     [courses, scopedCourseIds]
   );
   const selectedConfigCourseId = configCourseId ? Number(configCourseId) : (configCourses[0]?.id ?? null);
-  const selectedConfigCourse = selectedConfigCourseId ? courses.find(course => course.id === selectedConfigCourseId) ?? null : null;
+  const selectedConfigCourse = selectedConfigCourseId
+    ? configCourses.find(course => course.id === selectedConfigCourseId) ?? courses.find(course => course.id === selectedConfigCourseId) ?? null
+    : configCourses[0] ?? null;
+  const selectedConfigCourseLabel = selectedConfigCourse ? getCourseDisplayName(selectedConfigCourse) : t('grades.setup.yearGroupFallback');
   const selectedGradeSetting = gradebookConfig.settings.find(setting => setting.courseId === selectedConfigCourseId)
     ?? gradebookConfig.settings.find(setting => setting.courseId == null)
     ?? null;
@@ -1029,22 +1035,62 @@ export function GradesView({
           </div>
           {gradeSettingsOpen ? (
             <section className="rounded-2xl border border-[#d4d4d4] bg-white p-4 shadow-sm">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#e5e5e5] pb-3">
+              <div className={`flex flex-wrap items-center justify-between gap-3 ${gradeSetupExpanded ? 'border-b border-[#e5e5e5] pb-3' : ''}`}>
                 <div>
                   <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('grades.setup.eyebrow')}</p>
-                  <h2 className="mt-1 text-lg font-semibold text-[#171717]">{t('grades.setup.title', { course: selectedConfigCourse?.name ?? t('grades.setup.yearGroupFallback') })}</h2>
+                  <h2 className="mt-1 text-lg font-semibold text-[#171717]">{t('grades.setup.title', { course: selectedConfigCourseLabel })}</h2>
                 </div>
-                <select
-                  value={configCourseId}
-                  onChange={event => setConfigCourseId(event.target.value)}
-                  className="tbo-focus h-10 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm font-semibold text-[#171717]"
-                >
-                  {configCourses.map(course => (
-                    <option key={course.id} value={course.id}>{course.name}</option>
-                  ))}
-                </select>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setGradeSetupInfoOpen(true)}
+                    className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl border border-[#bfdbfe] bg-[#eff6ff] px-3 text-sm font-semibold text-[#1d4ed8] hover:bg-[#dbeafe]"
+                  >
+                    <Info className="h-4 w-4" />
+                    {t('grades.setup.info')}
+                  </button>
+                  {configCourses.length > 1 ? (
+                    <div className="relative w-[10.75rem]">
+                      <select
+                        value={configCourseId}
+                        onChange={event => setConfigCourseId(event.target.value)}
+                        className="tbo-focus h-10 w-full appearance-none truncate rounded-xl border border-[#d4d4d4] bg-[#fafafa] py-0 pl-3 pr-8 text-sm font-semibold text-[#171717]"
+                        title={selectedConfigCourseLabel}
+                      >
+                        {configCourses.map(course => (
+                          <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+                    </div>
+                  ) : (
+                    <span
+                      className="inline-flex h-10 max-w-[14rem] items-center gap-2 rounded-xl border border-[#d4d4d4] bg-[#fafafa] px-3 text-sm text-[#171717]"
+                      title={selectedConfigCourseLabel}
+                    >
+                      <span className="shrink-0 text-[0.65rem] font-bold uppercase tracking-[0.14em] text-[#737373]">
+                        {t('grades.setup.selectedYearGroup')}
+                      </span>
+                      {selectedConfigCourse ? (
+                        <ActiveYearGroupBadge course={selectedConfigCourse} />
+                      ) : (
+                        <span className="truncate font-semibold">{selectedConfigCourseLabel}</span>
+                      )}
+                    </span>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setGradeSetupExpanded(prev => !prev)}
+                    className="tbo-focus inline-flex h-10 w-10 items-center justify-center rounded-xl border border-[#d4d4d4] bg-[#fafafa] text-[#525252] hover:bg-white"
+                    aria-label={t(gradeSetupExpanded ? 'grades.setup.collapse' : 'grades.setup.expand')}
+                    title={t(gradeSetupExpanded ? 'grades.setup.collapse' : 'grades.setup.expand')}
+                  >
+                    <ChevronRight className={`h-4 w-4 transition-transform ${gradeSetupExpanded ? 'rotate-90' : ''}`} />
+                  </button>
+                </div>
               </div>
 
+              {gradeSetupExpanded ? (
               <div className="mt-4 grid gap-4 xl:grid-cols-3">
                 <div className="rounded-xl border border-[#e5e5e5] bg-[#f8fbff] p-3">
                   <div className="flex items-start gap-2">
@@ -1130,6 +1176,7 @@ export function GradesView({
                   </div>
                 </div>
               </div>
+              ) : null}
             </section>
           ) : null}
       </>
@@ -1173,6 +1220,62 @@ export function GradesView({
           </div>
         )}
       </div>
+      {gradeSetupInfoOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#171717]/35 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg overflow-hidden rounded-3xl border border-[#e5e5e5] bg-white shadow-[0_24px_70px_rgba(15,23,42,0.22)]">
+            <div className="flex items-start justify-between gap-4 border-b border-[#eeeeee] p-5">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#2563eb]">
+                  {t('grades.setup.infoEyebrow')}
+                </p>
+                <h3 className="mt-1 text-xl font-semibold text-[#171717]">
+                  {t('grades.setup.infoTitle')}
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => setGradeSetupInfoOpen(false)}
+                className="tbo-focus grid h-9 w-9 flex-shrink-0 place-items-center rounded-full bg-[#f5f5f5] text-[#525252] hover:bg-[#eeeeee] hover:text-[#171717]"
+                aria-label={t('common.close')}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="grid gap-3 p-5">
+              <div className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-white text-[#2563eb]">
+                    <Award className="h-4 w-4" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#1e40af]">{t('grades.setup.overallGrade')}</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#1e3a8a]">{t('grades.setup.overallGradeInfo')}</p>
+              </div>
+              <div className="rounded-2xl border border-[#fed7aa] bg-[#fff7ed] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-white text-[#ea580c]">
+                    <BookOpen className="h-4 w-4" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#c2410c]">{t('grades.setup.categories')}</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#7c2d12]">{t('grades.setup.categoriesInfo')}</p>
+              </div>
+              <div className="rounded-2xl border border-[#bbf7d0] bg-[#f0fdf4] p-4">
+                <div className="flex items-center gap-2">
+                  <span className="grid h-8 w-8 place-items-center rounded-xl bg-white text-[#047857]">
+                    <CalendarDays className="h-4 w-4" />
+                  </span>
+                  <p className="text-sm font-semibold text-[#047857]">{t('grades.setup.periods')}</p>
+                </div>
+                <p className="mt-3 text-sm leading-6 text-[#14532d]">{t('grades.setup.periodsInfo')}</p>
+              </div>
+              <p className="rounded-2xl bg-[#f5f5f5] p-4 text-sm leading-6 text-[#525252]">
+                {t('grades.setup.infoHint')}
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

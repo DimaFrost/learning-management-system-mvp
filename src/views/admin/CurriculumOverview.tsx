@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CalendarDays, ChevronRight, ChevronDown, Edit3, Trash2, Plus, ExternalLink, Eye } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { translate } from '../../i18n/translate';
@@ -45,6 +45,7 @@ interface CurriculumOverviewProps {
   onDetailActiveChange?: (active: boolean) => void;
   selectedYearGroupIds?: Set<number>;
   curriculumCapability?: CurriculumCapability;
+  openCreateYearOnMount?: boolean;
 }
 
 const SESSION_GRID = '72px 28px minmax(180px,1fr) 88px minmax(100px,1fr) minmax(100px,1fr) 96px';
@@ -109,15 +110,23 @@ export function CurriculumOverview({
   onDetailActiveChange,
   selectedYearGroupIds,
   curriculumCapability = 'full',
+  openCreateYearOnMount = false,
 }: CurriculumOverviewProps) {
   const { t, tCount } = useLanguage();
   const canFullyManage = curriculumCapability === 'full';
+  const openedCreateYearRef = useRef(false);
   const [selectedSubject, setSelectedSubject] = useState<SelectedSubject | null>(null);
   const [selectedHomeworkDetail, setSelectedHomeworkDetail] = useState<HomeworkDetailSelection | null>(null);
   const [homeworkRows, setHomeworkRows] = useState<HomeworkRow[]>([]);
   const [homeworkSubmissions, setHomeworkSubmissions] = useState<HomeworkSubmission[]>([]);
   const [materialRows, setMaterialRows] = useState<ClassFileSummaryRow[]>([]);
   const [assignmentSaving, setAssignmentSaving] = useState(false);
+
+  useEffect(() => {
+    if (!openCreateYearOnMount || openedCreateYearRef.current || !canFullyManage) return;
+    openedCreateYearRef.current = true;
+    onEditCourse();
+  }, [canFullyManage, onEditCourse, openCreateYearOnMount]);
 
   const sortedActiveCourses = useMemo(() => courses.filter(isCourseActive).sort((a, b) => {
     if (a.graduationYear !== b.graduationYear) {

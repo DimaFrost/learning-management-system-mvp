@@ -54,6 +54,25 @@ export async function queueRoleChangeEmail(params: {
   });
 }
 
+export async function queueProfileInviteEmail(params: {
+  createdBy: string;
+  email: string;
+  name?: string;
+  roles?: string[];
+  actionUrl?: string;
+}) {
+  return queueNotificationJob({
+    type: 'profile_invite_email',
+    createdBy: params.createdBy,
+    payload: {
+      email: params.email,
+      name: params.name ?? '',
+      roles: params.roles ?? [],
+      actionUrl: params.actionUrl ?? window.location.origin,
+    },
+  });
+}
+
 export async function queueEnrollmentEmail(params: {
   createdBy: string;
   studentId: string;

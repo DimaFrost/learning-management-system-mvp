@@ -47,6 +47,7 @@ type TuitionViewProps = {
   loading: boolean;
   error: string | null;
   onOpenStudentDashboard?: (studentId: string) => void;
+  quickAddAction?: 'payment';
   onCreatePlan: (input: {
     name: string;
     courseId?: number | null;
@@ -119,6 +120,7 @@ export function TuitionView({
   loading,
   error,
   onOpenStudentDashboard,
+  quickAddAction,
   onCreatePlan,
   onUpsertInstallment,
   onEnrollStudent,
@@ -128,7 +130,7 @@ export function TuitionView({
   const { t, tCount } = useLanguage();
   const [search, setSearch] = useState('');
   const [planFormOpen, setPlanFormOpen] = useState(false);
-  const [paymentFormOpen, setPaymentFormOpen] = useState(false);
+  const [paymentFormOpen, setPaymentFormOpen] = useState(quickAddAction === 'payment');
   const [installmentFormOpen, setInstallmentFormOpen] = useState(false);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
   const [confirmOutstandingOpen, setConfirmOutstandingOpen] = useState(false);

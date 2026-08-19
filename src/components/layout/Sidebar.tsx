@@ -465,17 +465,8 @@ export function Sidebar({
       ],
     },
     {
-      label: t('sidebar.operations'),
+      label: t('sidebar.care'),
       items: [
-        {
-          id: 'curriculum-overview',
-          label: t('sidebar.curriculum'),
-          description: t('sidebar.curriculum.desc'),
-          icon: BookOpen,
-          roles: ['administrator', 'team_leader'],
-          workspaces: ['administrator', 'team_leader'],
-          requiresTranslationTeamLead: true,
-        },
         {
           id: 'users-directory',
           label: t('sidebar.users'),
@@ -500,6 +491,20 @@ export function Sidebar({
           icon: UserCheck,
           roles: ['administrator'],
           workspaces: ['administrator'],
+        },
+      ],
+    },
+    {
+      label: t('sidebar.operations'),
+      items: [
+        {
+          id: 'curriculum-overview',
+          label: t('sidebar.curriculum'),
+          description: t('sidebar.curriculum.desc'),
+          icon: BookOpen,
+          roles: ['administrator', 'team_leader'],
+          workspaces: ['administrator', 'team_leader'],
+          requiresTranslationTeamLead: true,
         },
         {
           id: 'tuition-overview',

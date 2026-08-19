@@ -72,7 +72,7 @@ export function EditUserForm({
   const hasMentorRole = formData.roles?.includes('mentor') || false;
   const hasTeamLeaderRole = formData.roles?.includes('team_leader') || false;
   const roleSettingsTabs = useMemo(() => [
-    hasStudentRole ? {
+    editedUser && hasStudentRole ? {
       id: 'student' as const,
       label: t('edit.user.tab.student'),
       icon: BookOpen,
@@ -84,13 +84,13 @@ export function EditUserForm({
       icon: GraduationCap,
       activeClassName: 'border-[#93c5fd] bg-[#eff6ff] text-[#1d4ed8] shadow-sm ring-1 ring-[#bfdbfe]',
     } : null,
-    hasMentorRole ? {
+    editedUser && hasMentorRole ? {
       id: 'mentor' as const,
       label: t('edit.user.tab.mentorship'),
       icon: HeartHandshake,
       activeClassName: 'border-[#86efac] bg-[#f0fdf4] text-[#15803d]',
     } : null,
-    hasTeamLeaderRole ? {
+    editedUser && hasTeamLeaderRole ? {
       id: 'team_leader' as const,
       label: t('edit.user.tab.teams'),
       icon: ShieldCheck,
@@ -101,7 +101,7 @@ export function EditUserForm({
     label: string;
     icon: typeof BookOpen;
     activeClassName: string;
-  }>, [hasStudentRole, hasTeacherRole, hasMentorRole, hasTeamLeaderRole, language, t]);
+  }>, [editedUser, hasStudentRole, hasTeacherRole, hasMentorRole, hasTeamLeaderRole, language, t]);
   const activeYearGroupChoices = useMemo(() => [
     {
       key: 'first_year',
@@ -361,7 +361,33 @@ export function EditUserForm({
         </div>
       </div>
 
-      {editedUser && roleSettingsTabs.length > 0 && (
+      {!editedUser && (
+        <button
+          type="button"
+          onClick={() => onChange('sendInviteEmail', !(formData.sendInviteEmail ?? true))}
+          className={`flex w-full items-start gap-3 rounded-2xl border p-4 text-left transition ${
+            formData.sendInviteEmail ?? true
+              ? 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] shadow-sm ring-1 ring-[#dbeafe]'
+              : 'border-[#e5e5e5] bg-white text-[#525252] hover:bg-[#fafafa]'
+          }`}
+        >
+          <span className={`mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-md border ${
+            formData.sendInviteEmail ?? true
+              ? 'border-[#2563eb] bg-[#2563eb] text-white'
+              : 'border-[#d4d4d4] bg-white text-transparent'
+          }`}>
+            <Check className="h-3.5 w-3.5" />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">{t('edit.user.sendInviteEmail')}</span>
+            <span className="mt-1 block text-xs leading-5 text-[#737373]">
+              {t('edit.user.sendInviteEmailHint')}
+            </span>
+          </span>
+        </button>
+      )}
+
+      {roleSettingsTabs.length > 0 && (
         <section className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
           <div className="mb-3 flex flex-wrap gap-2">
             {roleSettingsTabs.map(tab => {

@@ -4,6 +4,7 @@ export const navigationTranslations = defineTranslations({
   en: {
     'sidebar.school': 'School',
     'sidebar.operations': 'Operations',
+    'sidebar.care': 'Care',
     'sidebar.myWork': 'My Work',
     'sidebar.dashboard': 'Dashboard',
     'sidebar.dashboard.desc': 'Overview',
@@ -133,6 +134,7 @@ export const navigationTranslations = defineTranslations({
   bg: {
     'sidebar.school': 'Училище',
     'sidebar.operations': 'Операции',
+    'sidebar.care': 'Грижа',
     'sidebar.myWork': 'Моята работа',
     'sidebar.dashboard': 'Табло',
     'sidebar.dashboard.desc': 'Преглед',

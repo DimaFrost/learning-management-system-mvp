@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseType, User, UserRole } from '../types/lms';
-import { queueRoleChangeEmail } from '../utils/notificationJobs';
+import { queueProfileInviteEmail, queueRoleChangeEmail } from '../utils/notificationJobs';
 
 type ShowConfirmation = (
   title: string,
@@ -25,6 +25,40 @@ type ProfileUserRow = {
   is_online_student?: boolean | null;
   notification_preferences?: Partial<User['notificationPreferences']> | null;
 };
+
+type ProfileInvitePayload = {
+  name?: string;
+  firstName?: string;
+  lastName?: string;
+  roles?: UserRole[];
+  preferredLanguage?: 'en' | 'bg';
+  teachingCourseTypes?: CourseType[];
+  isOnlineStudent?: boolean;
+  phone?: string | null;
+  notificationPreferences?: Partial<User['notificationPreferences']>;
+};
+
+type AddUserInput = Partial<User> & {
+  sendInviteEmail?: boolean;
+};
+
+function normalizeEmail(email: string | undefined | null) {
+  return (email ?? '').trim().toLowerCase();
+}
+
+function getInvitePayload(user: Partial<User>): ProfileInvitePayload {
+  return {
+    name: user.name?.trim(),
+    firstName: user.firstName?.trim(),
+    lastName: user.lastName?.trim(),
+    roles: user.roles ?? [],
+    preferredLanguage: user.preferredLanguage === 'bg' ? 'bg' : 'en',
+    teachingCourseTypes: user.teachingCourseTypes ?? [],
+    isOnlineStudent: user.isOnlineStudent ?? false,
+    phone: user.phone?.trim() || null,
+    notificationPreferences: user.notificationPreferences,
+  };
+}
 
 function mapProfileToUser(row: ProfileUserRow): User {
   const teachingCourseTypes = (row.teaching_course_types ?? [])
@@ -124,10 +158,55 @@ export function useUsers(currentUser: User) {
     [users]
   );
 
-  const addUser = useCallback(async (user: Partial<User>) => {
+  const addUser = useCallback(async (user: AddUserInput) => {
     if (!user.id) {
-      setError(translate('errors.users.googleSignupRequired'));
-      console.warn('addUser: no profile id — user must sign up via Google auth first.');
+      const email = normalizeEmail(user.email);
+      if (!email) {
+        const message = translate('errors.users.inviteEmailRequired');
+        setError(message);
+        throw new Error(message);
+      }
+
+      const existingByEmail = users.find(existing => normalizeEmail(existing.email) === email);
+      if (existingByEmail) {
+        await updateUser(existingByEmail.id, user);
+        return;
+      }
+
+      setError(null);
+      try {
+        const { error: inviteError } = await supabase
+          .from('profile_invites')
+          .insert({
+            email,
+            payload: getInvitePayload({ ...user, email }),
+            created_by: currentUser.id,
+          });
+
+        if (inviteError) throw inviteError;
+
+        if (user.sendInviteEmail !== false) {
+          const queued = await queueProfileInviteEmail({
+            createdBy: currentUser.id,
+            email,
+            name: user.name,
+            roles: user.roles,
+            actionUrl: window.location.origin,
+          });
+          if (!queued) {
+            console.warn(`Profile invite was created, but invite email could not be queued for ${email}.`);
+          }
+        }
+
+        await refetchUsers();
+      } catch (err: any) {
+        const message = err?.code === '23505'
+          ? translate('errors.users.inviteAlreadyExists')
+          : translate('errors.users.inviteFailed');
+        setError(message);
+        console.error(err);
+        throw new Error(message);
+      }
       return;
     }
 

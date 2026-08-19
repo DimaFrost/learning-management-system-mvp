@@ -264,8 +264,8 @@ export function MentorDashboard({
     <div className="space-y-5">
       <section className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
         <div className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white">
-          <div className="border-b border-[#eeeeee] px-5 py-4">
-            <div className="flex flex-wrap items-start justify-between gap-4">
+          <div className="relative border-b border-[#eeeeee] px-5 py-4">
+            <div className="flex flex-col gap-4 lg:block lg:pr-48">
               <div>
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#15803d]">Mentor workspace</p>
                 <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('mentor.dashboard.title')}</h1>
@@ -277,7 +277,7 @@ export function MentorDashboard({
                 type="button"
                 onClick={() => filteredMentees[0] && onOpenCheckin(filteredMentees[0].studentId)}
                 disabled={filteredMentees.length === 0}
-                className="tbo-focus inline-flex h-10 items-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-40"
+                className="tbo-focus inline-flex h-10 w-fit items-center gap-2 rounded-xl bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-40 lg:absolute lg:right-5 lg:top-4"
               >
                 <Edit3 className="h-4 w-4" />
                 {t('mentor.dashboard.logCheckin')}
@@ -323,7 +323,7 @@ export function MentorDashboard({
               <p className="text-sm font-semibold text-[#171717]">In-person rhythm</p>
               <p className="mt-1 text-xs leading-5 text-[#737373]">{t('mentor.dashboard.inPersonExpectations.desc')}</p>
             </div>
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
+            <span className="grid h-9 min-h-[36px] w-9 min-w-[36px] shrink-0 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
               <CalendarClock className="h-4 w-4" />
             </span>
           </div>

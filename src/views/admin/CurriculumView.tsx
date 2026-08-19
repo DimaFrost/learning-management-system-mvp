@@ -38,6 +38,7 @@ interface CurriculumViewProps {
   onGenerateWellScheduleForCourse: (courseId: number) => Promise<void>;
   onRemoveWellScheduleDate: (wellDate: string, courseIds?: number[]) => Promise<void>;
   curriculumCapability?: CurriculumCapability;
+  openCreateYearOnMount?: boolean;
 }
 
 export function CurriculumView({
@@ -68,6 +69,7 @@ export function CurriculumView({
   onGenerateWellScheduleForCourse,
   onRemoveWellScheduleDate,
   curriculumCapability = 'full',
+  openCreateYearOnMount = false,
 }: CurriculumViewProps) {
   const { t } = useLanguage();
   const canFullyManage = curriculumCapability === 'full';
@@ -194,6 +196,7 @@ export function CurriculumView({
           onDetailActiveChange={setOverviewDetailActive}
           selectedYearGroupIds={selectedYearGroupIds}
           curriculumCapability={curriculumCapability}
+          openCreateYearOnMount={openCreateYearOnMount}
         />
       )}
       {activeCurriculumSection === 'date-view' && (

@@ -25,8 +25,8 @@ interface EditModalProps {
   onUpdateSubject: (courseId: number, subjectId: number, data: Partial<Subject>) => void;
   onAddClass: (courseId: number, subjectId: number, data: Partial<Class>) => void | Promise<void>;
   onUpdateClass: (courseId: number, subjectId: number, classId: number, data: Partial<Class>) => void | Promise<void>;
-  onAddUser: (data: Partial<User>) => void;
-  onUpdateUser: (id: string, data: Partial<User>) => void;
+  onAddUser: (data: Partial<User>) => void | Promise<void>;
+  onUpdateUser: (id: string, data: Partial<User>) => void | Promise<void>;
   onAssignUserToCourse: (userId: string, courseId: number, mentorId?: string | null) => void;
   onSetUserActiveYearGroup?: (userId: string, courseId: number) => void | Promise<void>;
   onRemoveUserFromCourse: (userId: string, courseId: number, users: User[], courses: Course[]) => void;
@@ -83,6 +83,9 @@ export function EditModal({
       }
       if (editingItem?.type === 'class') {
         initialData.subjectId = editingItem.subjectId ?? '';
+      }
+      if (editingItem?.type === 'user') {
+        initialData.sendInviteEmail = true;
       }
       if (
         editingItem?.type === 'subject' &&
@@ -264,42 +267,50 @@ export function EditModal({
         assignedMenteeKey,
         ...userFormData
       } = formData;
-      if (editingItem.data) {
-        const userId = (editingItem.data as User).id;
-        onUpdateUser(userId, userFormData);
-        if (assignedYearGroupId && onSetUserActiveYearGroup) {
-          await onSetUserActiveYearGroup(userId, Number(assignedYearGroupId));
+      try {
+        if (editingItem.data) {
+          const userId = (editingItem.data as User).id;
+          await onUpdateUser(userId, userFormData);
+          if (assignedYearGroupId && onSetUserActiveYearGroup) {
+            await onSetUserActiveYearGroup(userId, Number(assignedYearGroupId));
+          }
+          if (Array.isArray(assignedMenteeKeys)) {
+            await Promise.all(assignedMenteeKeys.map(async (key: string) => {
+              const [studentId, courseId] = String(key).split(':');
+              if (studentId && courseId) {
+                await onAssignUserToCourse(studentId, Number(courseId), userId);
+              }
+            }));
+          }
+          if (Array.isArray(ledTeamIds) && onUpsertMinistryTeam) {
+            await Promise.all(ministryTeams.map(async team => {
+              const currentMemberIds = team.members.filter(member => member.active).map(member => member.userId);
+              const shouldLead = ledTeamIds.includes(team.id);
+              const currentlyLeads = team.members.some(member =>
+                member.userId === userId &&
+                member.active &&
+                (member.role === 'leader' || member.role === 'assistant')
+              );
+              if (shouldLead === currentlyLeads) return;
+              const nextMemberIds = shouldLead
+                ? [...currentMemberIds, userId]
+                : currentMemberIds.filter(id => id !== userId);
+              await onUpsertMinistryTeam({
+                ...team,
+                memberIds: nextMemberIds,
+                leaderId: nextMemberIds[0] ?? null,
+              });
+            }));
+          }
+        } else {
+          await onAddUser(userFormData);
         }
-        if (Array.isArray(assignedMenteeKeys)) {
-          await Promise.all(assignedMenteeKeys.map(async (key: string) => {
-            const [studentId, courseId] = String(key).split(':');
-            if (studentId && courseId) {
-              await onAssignUserToCourse(studentId, Number(courseId), userId);
-            }
-          }));
-        }
-        if (Array.isArray(ledTeamIds) && onUpsertMinistryTeam) {
-          await Promise.all(ministryTeams.map(async team => {
-            const currentMemberIds = team.members.filter(member => member.active).map(member => member.userId);
-            const shouldLead = ledTeamIds.includes(team.id);
-            const currentlyLeads = team.members.some(member =>
-              member.userId === userId &&
-              member.active &&
-              (member.role === 'leader' || member.role === 'assistant')
-            );
-            if (shouldLead === currentlyLeads) return;
-            const nextMemberIds = shouldLead
-              ? [...currentMemberIds, userId]
-              : currentMemberIds.filter(id => id !== userId);
-            await onUpsertMinistryTeam({
-              ...team,
-              memberIds: nextMemberIds,
-              leaderId: nextMemberIds[0] ?? null,
-            });
-          }));
-        }
-      } else {
-        onAddUser(userFormData);
+      } catch (err) {
+        const message = err instanceof Error && err.message
+          ? err.message
+          : t('errors.users.updateFailed');
+        setErrors(prev => ({ ...prev, form: message }));
+        return;
       }
     }
 
