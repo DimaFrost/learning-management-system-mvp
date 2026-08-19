@@ -438,6 +438,7 @@ export function AppRouter({
         canCreate={canCreateTodos}
         openCreateOnMount={activeView === 'todos-new'}
         onCreate={createTodo}
+        onUpdate={updateTodo}
         onToggleStatus={toggleTodoStatus}
         onDelete={deleteTodo}
       />

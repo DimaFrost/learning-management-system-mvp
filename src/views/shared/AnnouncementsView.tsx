@@ -36,6 +36,7 @@ import { canPreviewInApp, resolveAnnouncementPreview } from '../../utils/filePre
 import { FilePreviewModal } from '../../components/modals/FilePreviewModal';
 import type { FilePreviewItem } from '../../utils/filePreview';
 import type { useStreamSettings } from '../../hooks/useStreamSettings';
+import { ensureStreamAttachmentAccess } from '../../utils/googleDocsV2';
 
 interface AnnouncementsViewProps {
   announcements: Announcement[];
@@ -288,7 +289,40 @@ function AnnouncementAttachmentsRow({
   onPreviewAttachment,
 }: AnnouncementAttachmentsRowProps) {
   const { t } = useLanguage();
+  const [openingAttachmentId, setOpeningAttachmentId] = useState<number | null>(null);
   if (attachments.length === 0) return null;
+
+  const ensureDriveAccess = async (attachment: AnnouncementAttachment) => {
+    if (attachment.attachmentType === 'file' && attachment.storagePath) {
+      await ensureStreamAttachmentAccess(attachment.id);
+    }
+  };
+
+  const handlePreview = async (attachment: AnnouncementAttachment, item: FilePreviewItem) => {
+    setOpeningAttachmentId(attachment.id);
+    try {
+      await ensureDriveAccess(attachment);
+      onPreviewAttachment(item);
+    } catch (error) {
+      console.error(error);
+      const openUrl = getAttachmentOpenUrl(attachment);
+      if (openUrl) window.open(openUrl, '_blank', 'noopener,noreferrer');
+    } finally {
+      setOpeningAttachmentId(null);
+    }
+  };
+
+  const handleOpen = async (attachment: AnnouncementAttachment, url: string) => {
+    setOpeningAttachmentId(attachment.id);
+    try {
+      await ensureDriveAccess(attachment);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setOpeningAttachmentId(null);
+    }
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
 
   return (
     <div className="mb-4 flex flex-wrap gap-2">
@@ -297,6 +331,7 @@ function AnnouncementAttachmentsRow({
         const preview = resolveAnnouncementPreview(attachment);
         const canPreview = canPreviewInApp(attachment);
         const canDelete = isAdmin || attachment.uploaderId === currentUser.id;
+        const isOpening = openingAttachmentId === attachment.id;
         const meta =
           attachment.attachmentType === 'file' && attachment.fileSize != null
             ? formatFileSize(attachment.fileSize)
@@ -324,22 +359,23 @@ function AnnouncementAttachmentsRow({
               canPreview && preview ? (
                 <button
                   type="button"
-                  onClick={() => onPreviewAttachment(preview)}
-                  className="tbo-focus inline-flex min-w-0 items-center gap-2 text-left"
+                  onClick={() => handlePreview(attachment, preview)}
+                  disabled={isOpening}
+                  className="tbo-focus inline-flex min-w-0 items-center gap-2 text-left disabled:cursor-wait disabled:opacity-70"
                   title={t('announcements.attachment.preview', { name: getAttachmentLabel(attachment) })}
                 >
                   {chipContent}
                 </button>
               ) : (
-                <a
-                  href={openUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex min-w-0 items-center gap-2"
+                <button
+                  type="button"
+                  onClick={() => handleOpen(attachment, openUrl)}
+                  disabled={isOpening}
+                  className="inline-flex min-w-0 items-center gap-2 text-left disabled:cursor-wait disabled:opacity-70"
                   title={getAttachmentLabel(attachment)}
                 >
                   {chipContent}
-                </a>
+                </button>
               )
             ) : (
               <span className="inline-flex min-w-0 items-center gap-2" title={getAttachmentLabel(attachment)}>

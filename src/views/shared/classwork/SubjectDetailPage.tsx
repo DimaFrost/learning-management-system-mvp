@@ -66,6 +66,12 @@ function getMaterialFileIcon(mimeType: string | null) {
   return FileIcon;
 }
 
+function getAttendanceStatusClasses(status: SubjectAttendanceRow['status']) {
+  if (status === 'present') return 'border-[#bbf7d0] bg-[#f0fdf4] text-[#047857]';
+  if (status === 'late') return 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]';
+  return 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]';
+}
+
 export function SubjectDetailPage({
   run,
   initialTab,
@@ -128,6 +134,7 @@ export function SubjectDetailPage({
   const [relatedClassId, setRelatedClassId] = useState<number | null>(null);
   const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
   const [sessionsPage, setSessionsPage] = useState(0);
+  const [attendanceSessionFilter, setAttendanceSessionFilter] = useState('all');
   const highlightedSessionRef = useRef<HTMLDivElement | null>(null);
   const materialFileInputRef = useRef<HTMLInputElement>(null);
 
@@ -227,6 +234,25 @@ export function SubjectDetailPage({
   );
   const attendanceMarked = attendanceSummary.present + attendanceSummary.late + attendanceSummary.absent;
   const attendancePercent = attendanceMarked === 0 ? 0 : Math.round((attendanceSummary.credit / attendanceMarked) * 100);
+  const sessionByClassId = useMemo(
+    () => new Map(sessionItems
+      .map(item => [item.classInfo?.classId, item] as const)
+      .filter(([classId]) => typeof classId === 'number')),
+    [sessionItems]
+  );
+  const userById = useMemo(() => new Map(users.map(user => [user.id, user])), [users]);
+  const attendanceDetailRows = useMemo(() => attendanceRows
+    .filter(row => attendanceSessionFilter === 'all' || row.class_id === Number(attendanceSessionFilter))
+    .map(row => ({
+      record: row,
+      session: sessionByClassId.get(row.class_id),
+      student: userById.get(row.student_id) ?? null,
+    }))
+    .sort((a, b) => {
+      const dateCompare = (a.session?.dueDate ?? '').localeCompare(b.session?.dueDate ?? '');
+      if (dateCompare !== 0) return dateCompare;
+      return (a.student?.name ?? '').localeCompare(b.student?.name ?? '');
+    }), [attendanceRows, attendanceSessionFilter, sessionByClassId, userById]);
   const insightItems = useMemo(() => [
     homeworkItems.length > 0 && scope === 'student' && studentHomeworkCompleted < homeworkItems.length
       ? tCount('classwork.subject.insightHomeworkAttention', homeworkItems.length - studentHomeworkCompleted)
@@ -1259,25 +1285,76 @@ export function SubjectDetailPage({
               {attendanceLoading ? (
                 <p className="text-sm text-[#737373]">{t('classwork.subject.loadingAttendance')}</p>
               ) : (
-                <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
-                  <div className="border-l-2 border-[#171717] bg-[#fafafa] p-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.subject.attendanceCredit')}</p>
-                    <p className="mt-2 text-4xl font-semibold text-[#171717]">{attendancePercent}%</p>
-                    <p className="mt-1 text-xs text-[#737373]">{tCount('classwork.subject.markedRecords', attendanceMarked)}</p>
+                <div className="space-y-4">
+                  <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+                    <div className="border-l-2 border-[#171717] bg-[#fafafa] p-4">
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#737373]">{t('classwork.subject.attendanceCredit')}</p>
+                      <p className="mt-2 text-4xl font-semibold text-[#171717]">{attendancePercent}%</p>
+                      <p className="mt-1 text-xs text-[#737373]">{tCount('classwork.subject.markedRecords', attendanceMarked)}</p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-3">
+                      <div className="bg-[#ecfdf5] p-4 text-[#047857] ring-1 ring-[#bbf7d0]">
+                        <p className="text-2xl font-semibold">{attendanceSummary.present}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.present')}</p>
+                      </div>
+                      <div className="bg-[#fff7ed] p-4 text-[#c2410c] ring-1 ring-[#fed7aa]">
+                        <p className="text-2xl font-semibold">{attendanceSummary.late}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.late')}</p>
+                      </div>
+                      <div className="bg-[#fef2f2] p-4 text-[#b91c1c] ring-1 ring-[#fecaca]">
+                        <p className="text-2xl font-semibold">{attendanceSummary.absent}</p>
+                        <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.absent')}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid gap-2 sm:grid-cols-3">
-                    <div className="bg-[#ecfdf5] p-4 text-[#047857] ring-1 ring-[#bbf7d0]">
-                      <p className="text-2xl font-semibold">{attendanceSummary.present}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.present')}</p>
+                  <div className="overflow-hidden border border-[#e5e5e5] bg-white">
+                    <div className="flex flex-wrap items-center justify-between gap-3 border-b border-[#eeeeee] bg-[#fafafa] px-4 py-3">
+                      <div>
+                        <p className="text-sm font-semibold text-[#171717]">{scope === 'student' ? t('classwork.subject.yourAttendanceRecords') : t('classwork.subject.attendanceRecords')}</p>
+                        <p className="text-xs text-[#737373]">{tCount('classwork.subject.markedRecords', attendanceDetailRows.length)}</p>
+                      </div>
+                      {scope !== 'student' && (
+                        <select
+                          value={attendanceSessionFilter}
+                          onChange={event => setAttendanceSessionFilter(event.target.value)}
+                          className="tbo-focus h-9 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#171717]"
+                        >
+                          <option value="all">{t('classwork.subject.allSessions')}</option>
+                          {sessionItems.map(item => (
+                            <option key={item.classInfo?.classId} value={item.classInfo?.classId}>
+                              {formatPlatformDate(item.dueDate)} · {item.title}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
-                    <div className="bg-[#fff7ed] p-4 text-[#c2410c] ring-1 ring-[#fed7aa]">
-                      <p className="text-2xl font-semibold">{attendanceSummary.late}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.late')}</p>
-                    </div>
-                    <div className="bg-[#fef2f2] p-4 text-[#b91c1c] ring-1 ring-[#fecaca]">
-                      <p className="text-2xl font-semibold">{attendanceSummary.absent}</p>
-                      <p className="text-xs font-semibold uppercase tracking-[0.12em]">{t('attendance.absent')}</p>
-                    </div>
+                    {attendanceDetailRows.length === 0 ? (
+                      <p className="px-4 py-6 text-center text-sm text-[#737373]">{t('classwork.subject.noAttendanceRecords')}</p>
+                    ) : (
+                      <div className="divide-y divide-[#eeeeee]">
+                        {attendanceDetailRows.map(({ record, session, student }) => (
+                          <div key={record.id} className={`grid gap-3 px-4 py-3 text-sm ${scope === 'student' ? 'sm:grid-cols-[1fr_auto]' : 'sm:grid-cols-[1fr_220px_auto]'} sm:items-center`}>
+                            <div className="min-w-0">
+                              <p className="truncate font-semibold text-[#171717]">{session?.title ?? t('classwork.dueGroup.session')}</p>
+                              <p className="mt-0.5 text-xs text-[#737373]">{session?.dueDate ? formatPlatformDate(session.dueDate) : '-'}</p>
+                            </div>
+                            {scope !== 'student' && (
+                              <div className="flex min-w-0 items-center gap-2">
+                                {student ? (
+                                  <UserAvatar user={student} size="sm" />
+                                ) : (
+                                  <span className="grid h-8 w-8 flex-shrink-0 place-items-center rounded-full border border-[#e5e5e5] bg-[#f5f5f5] text-[10px] font-semibold text-[#737373]">?</span>
+                                )}
+                                <span className="truncate font-semibold text-[#171717]">{student?.name ?? t('common.unknown')}</span>
+                              </div>
+                            )}
+                            <span className={`inline-flex w-fit items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getAttendanceStatusClasses(record.status)}`}>
+                              {t(`attendance.${record.status}` as const)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

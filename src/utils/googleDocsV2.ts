@@ -229,6 +229,18 @@ export async function uploadStreamGoogleDriveAttachment(params: {
   });
 }
 
+export async function ensureStreamAttachmentAccess(attachmentId: number): Promise<{
+  ok: boolean;
+  attachmentId: number;
+  googleDriveFileId: string | null;
+  googleDriveUrl: string | null;
+}> {
+  return callGoogleDocsV2({
+    action: 'ensure-stream-attachment-access',
+    attachmentId,
+  });
+}
+
 export async function ensureStaffNoteAccess(classFileId: number): Promise<{
   ok: boolean;
   classFileId: number;

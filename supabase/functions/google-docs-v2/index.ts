@@ -8,6 +8,15 @@ type Profile = {
   roles: string[];
 };
 
+type AnnouncementRow = {
+  id: number;
+  title: string | null;
+  course_id: number | null;
+  target_roles: string[] | null;
+  author_id: string | null;
+  is_staff_only?: boolean | null;
+};
+
 type Course = {
   id: number;
   course_type: 'first_year' | 'second_year';
@@ -162,6 +171,10 @@ serve(async req => {
       return json(await uploadStreamAttachment(user, body));
     }
 
+    if (action === 'ensure-stream-attachment-access') {
+      return json(await ensureStreamAttachmentAccess(user, body));
+    }
+
     return json({ error: 'Unknown action' }, 400);
   } catch (error) {
     console.error('google-docs-v2 error:', error);
@@ -187,7 +200,7 @@ async function getCurrentProfile(authHeader: string): Promise<Profile> {
 
   const { data, error } = await adminClient
     .from('profiles')
-    .select('id, name, email, roles')
+    .select('id, name, email, roles, private_data:profile_private_data(email)')
     .eq('id', authData.user.id)
     .single();
 
@@ -195,7 +208,12 @@ async function getCurrentProfile(authHeader: string): Promise<Profile> {
     throw new HttpError('Profile not found', 404);
   }
 
-  return data as Profile;
+  return {
+    id: data.id,
+    name: data.name,
+    email: firstItem(data.private_data)?.email ?? data.email ?? authData.user.email ?? '',
+    roles: data.roles ?? [],
+  };
 }
 
 function isAdmin(profile: Profile): boolean {
@@ -1011,7 +1029,7 @@ async function uploadStreamAttachment(profile: Profile, body: Record<string, unk
 
   const { data: announcement, error: announcementError } = await adminClient
     .from('announcements')
-    .select('id, title, course_id, target_roles, author_id')
+    .select('id, title, course_id, target_roles, author_id, is_staff_only')
     .eq('id', announcementId)
     .single();
   if (announcementError || !announcement) {
@@ -1044,6 +1062,14 @@ async function uploadStreamAttachment(profile: Profile, body: Record<string, unk
     bytes: base64ToBytes(base64),
   });
 
+  const writerIds = new Set<string>([profile.id]);
+  if (announcement.author_id) writerIds.add(announcement.author_id);
+  const writerEmails = await getProfileEmails([...writerIds]);
+  await shareFileBatch(token, uploaded.id, writerEmails, 'writer');
+
+  const readerEmails = await resolveStreamAttachmentReaderEmails(announcement as AnnouncementRow);
+  await shareFileBatch(token, uploaded.id, readerEmails, 'reader');
+
   const { data: attachment, error: attachmentError } = await adminClient
     .from('announcement_attachments')
     .insert({
@@ -1067,6 +1093,192 @@ async function uploadStreamAttachment(profile: Profile, body: Record<string, unk
     googleDriveUrl: uploaded.webViewLink,
     folderId: streamFolderId,
   };
+}
+
+async function ensureStreamAttachmentAccess(profile: Profile, body: Record<string, unknown>) {
+  const attachmentId = Number(body.attachmentId);
+  if (!Number.isFinite(attachmentId)) {
+    throw new HttpError('Valid attachmentId is required', 400);
+  }
+
+  const { data: attachment, error: attachmentError } = await adminClient
+    .from('announcement_attachments')
+    .select(`
+      id,
+      storage_path,
+      public_url,
+      attachment_type,
+      announcement:announcements(
+        id,
+        title,
+        course_id,
+        target_roles,
+        author_id,
+        is_staff_only
+      )
+    `)
+    .eq('id', attachmentId)
+    .single();
+
+  if (attachmentError || !attachment) {
+    throw new HttpError('Stream attachment not found', 404);
+  }
+  if (attachment.attachment_type !== 'file') {
+    return {
+      ok: true,
+      attachmentId,
+      googleDriveFileId: null,
+      googleDriveUrl: attachment.public_url ?? null,
+    };
+  }
+  if (!attachment.storage_path) {
+    throw new HttpError('Stream attachment is missing a Google Drive file id', 400);
+  }
+
+  const announcement = firstItem(attachment.announcement) as AnnouncementRow | null;
+  if (!announcement) {
+    throw new HttpError('Stream post not found for attachment', 404);
+  }
+
+  const canAccess =
+    isAdmin(profile) ||
+    announcement.author_id === profile.id ||
+    (await resolveStreamRecipientIds(announcement)).has(profile.id);
+
+  if (!canAccess) {
+    throw new HttpError('You do not have access to this Stream attachment', 403);
+  }
+
+  if (!profile.email) {
+    throw new HttpError('Your profile email is required to share Drive files', 400);
+  }
+
+  const token = await getGoogleAccessToken();
+  await shareFileBatch(
+    token,
+    attachment.storage_path,
+    [profile.email],
+    isAdmin(profile) || announcement.author_id === profile.id ? 'writer' : 'reader'
+  );
+
+  return {
+    ok: true,
+    attachmentId,
+    googleDriveFileId: attachment.storage_path,
+    googleDriveUrl: attachment.public_url ?? null,
+  };
+}
+
+async function resolveStreamAttachmentReaderEmails(announcement: AnnouncementRow) {
+  const recipientIds = await resolveStreamRecipientIds(announcement);
+  const writerIds = new Set<string>();
+  if (announcement.author_id) writerIds.add(announcement.author_id);
+
+  return getProfileEmails([...recipientIds].filter(id => !writerIds.has(id)));
+}
+
+async function resolveStreamRecipientIds(announcement: AnnouncementRow) {
+  const tokens = announcement.target_roles ?? [];
+  let ids = tokens.length > 0
+    ? await resolveStreamRecipientIdsFromTokens(tokens)
+    : new Set<string>();
+
+  if (tokens.length === 0 && announcement.course_id !== null) {
+    ids = await resolveCourseAudienceProfileIds(announcement.course_id);
+  }
+
+  if (tokens.length === 0 && announcement.course_id === null) {
+    ids = await getAllProfileIds();
+  }
+
+  if (announcement.is_staff_only) {
+    const staffIds = await getStaffProfileIds();
+    ids = new Set([...ids].filter(id => staffIds.has(id)));
+  }
+
+  return ids;
+}
+
+async function resolveStreamRecipientIdsFromTokens(tokens: string[]) {
+  const ids = new Set<string>();
+
+  tokens
+    .filter(token => token.startsWith('user:'))
+    .forEach(token => ids.add(token.slice('user:'.length)));
+
+  if (tokens.includes('audience:staff')) {
+    const staffIds = await getStaffProfileIds();
+    staffIds.forEach(id => ids.add(id));
+  }
+
+  if (tokens.includes('role:teacher')) {
+    const teacherIds = await getProfileIdsByRole('teacher');
+    teacherIds.forEach(id => ids.add(id));
+  }
+
+  if (tokens.includes('role:translator')) {
+    const translatorIds = await getProfileIdsByRole('translator');
+    translatorIds.forEach(id => ids.add(id));
+  }
+
+  for (const courseTypeToken of ['course:first_year', 'course:second_year']) {
+    if (!tokens.includes(courseTypeToken)) continue;
+    const courseType = courseTypeToken === 'course:first_year' ? 'first_year' : 'second_year';
+    const { data: courses, error } = await adminClient
+      .from('courses')
+      .select('id')
+      .eq('course_type', courseType)
+      .eq('status', 'active');
+    if (error) throw error;
+
+    for (const course of data ?? []) {
+      const courseAudienceIds = await resolveCourseAudienceProfileIds(course.id);
+      courseAudienceIds.forEach(id => ids.add(id));
+    }
+  }
+
+  return ids;
+}
+
+async function resolveCourseAudienceProfileIds(courseId: number) {
+  const ids = new Set<string>();
+
+  const { data: enrollments, error: enrollmentError } = await adminClient
+    .from('course_students')
+    .select('student_id, mentor_id')
+    .eq('course_id', courseId)
+    .eq('status', 'active');
+  if (enrollmentError) throw enrollmentError;
+
+  (enrollments ?? []).forEach((row: { student_id: string | null; mentor_id: string | null }) => {
+    if (row.student_id) ids.add(row.student_id);
+    if (row.mentor_id) ids.add(row.mentor_id);
+  });
+
+  const { data: subjects, error: subjectError } = await adminClient
+    .from('subjects')
+    .select('id, primary_teacher_id')
+    .eq('course_id', courseId);
+  if (subjectError) throw subjectError;
+
+  const subjectIds = (subjects ?? []).map((row: { id: number }) => row.id);
+  (subjects ?? []).forEach((row: { primary_teacher_id: string | null }) => {
+    if (row.primary_teacher_id) ids.add(row.primary_teacher_id);
+  });
+
+  if (subjectIds.length > 0) {
+    const { data: classes, error: classError } = await adminClient
+      .from('classes')
+      .select('teacher_id')
+      .in('subject_id', subjectIds);
+    if (classError) throw classError;
+
+    (classes ?? []).forEach((row: { teacher_id: string | null }) => {
+      if (row.teacher_id) ids.add(row.teacher_id);
+    });
+  }
+
+  return ids;
 }
 
 async function resolveStreamRootFolderId(courseId: number | null, targetRoles: string[]) {
@@ -1167,24 +1379,58 @@ async function getProfileEmails(userIds: string[]) {
   if (userIds.length === 0) return [];
   const { data, error } = await adminClient
     .from('profiles')
-    .select('email')
+    .select('email, private_data:profile_private_data(email)')
     .in('id', userIds);
   if (error) throw error;
   return Array.from(new Set((data ?? [])
-    .map((row: { email: string | null }) => row.email)
+    .map((row: {
+      email: string | null;
+      private_data?: { email?: string | null } | { email?: string | null }[] | null;
+    }) => firstItem(row.private_data)?.email ?? row.email)
     .filter((email): email is string => Boolean(email))));
+}
+
+async function getAllProfileIds() {
+  const { data, error } = await adminClient
+    .from('profiles')
+    .select('id');
+  if (error) throw error;
+  return new Set((data ?? []).map((row: { id: string }) => row.id));
+}
+
+async function getProfileIdsByRole(role: string) {
+  const { data, error } = await adminClient
+    .from('profiles')
+    .select('id')
+    .contains('roles', [role]);
+  if (error) throw error;
+  return new Set((data ?? []).map((row: { id: string }) => row.id));
+}
+
+async function getStaffProfileIds() {
+  const { data, error } = await adminClient
+    .from('profiles')
+    .select('id, roles');
+  if (error) throw error;
+
+  return new Set((data ?? [])
+    .filter((row: { id: string; roles: string[] | null }) => {
+      const realRoles = (row.roles ?? []).filter(role => role !== 'dev');
+      return realRoles.length > 0 && !realRoles.every(role => role === 'student');
+    })
+    .map((row: { id: string }) => row.id));
 }
 
 async function getActiveCourseStudentEmails(courseId: number) {
   const { data, error } = await adminClient
     .from('course_students')
-    .select('student:profiles!student_id(email)')
+    .select('student_id')
     .eq('course_id', courseId)
     .eq('status', 'active');
   if (error) throw error;
-  return Array.from(new Set((data ?? [])
-    .map((row: { student?: { email?: string | null } | { email?: string | null }[] | null }) => firstItem(row.student)?.email)
-    .filter((email): email is string => Boolean(email))));
+  return getProfileEmails((data ?? [])
+    .map((row: { student_id: string | null }) => row.student_id)
+    .filter((id): id is string => Boolean(id)));
 }
 
 async function findExistingSubmission(assignmentId: number, studentId: string) {

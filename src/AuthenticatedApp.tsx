@@ -173,6 +173,14 @@ export function AuthenticatedApp({
     enrollmentsLoading ||
     cadenceLoading;
 
+  const [hasLoadedSchoolData, setHasLoadedSchoolData] = useState(false);
+
+  useEffect(() => {
+    if (!isLoading) {
+      setHasLoadedSchoolData(true);
+    }
+  }, [isLoading]);
+
   const globalError =
     coursesError ||
     usersError ||
@@ -361,7 +369,7 @@ export function AuthenticatedApp({
     );
   }
 
-  if (isLoading) {
+  if (isLoading && !hasLoadedSchoolData) {
     return (
       <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-white p-4">
         <div className="absolute inset-0 tbo-dot-grid opacity-60" aria-hidden="true" />

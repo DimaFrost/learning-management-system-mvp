@@ -7,6 +7,7 @@ import {
   ChevronDown,
   Circle,
   ClipboardList,
+  Pencil,
   Plus,
   Search,
   Trash2,
@@ -62,6 +63,14 @@ interface TodosViewProps {
     dueDate: string;
     priority: TodoPriority;
   }) => Promise<TodoItem>;
+  onUpdate: (todoId: number, updates: Partial<{
+    title: string;
+    description: string | null;
+    assignedTo: string;
+    dueDate: string;
+    priority: TodoPriority;
+    status: TodoItem['status'];
+  }>) => Promise<TodoItem>;
   onToggleStatus: (todoId: number, completed: boolean) => Promise<TodoItem>;
   onDelete: (todoId: number) => Promise<void>;
 }
@@ -187,6 +196,7 @@ export function TodosView({
   canCreate,
   openCreateOnMount = false,
   onCreate,
+  onUpdate,
   onToggleStatus,
   onDelete,
 }: TodosViewProps) {
@@ -202,6 +212,7 @@ export function TodosView({
   const [busyTodoId, setBusyTodoId] = useState<number | null>(null);
   const [assigneePickerOpen, setAssigneePickerOpen] = useState(false);
   const [createModalOpen, setCreateModalOpen] = useState(openCreateOnMount && canCreate);
+  const [editingTodo, setEditingTodo] = useState<TodoItem | null>(null);
   const [searchOpen, setSearchOpen] = useState(false);
   const [assignmentMode, setAssignmentMode] = useState<'person' | 'category'>('person');
   const [selectedCategoryIds, setSelectedCategoryIds] = useState<string[]>([]);
@@ -313,39 +324,82 @@ export function TodosView({
     };
   }, [assigneePickerOpen]);
 
+  const resetTodoForm = () => {
+    setTitle('');
+    setDescription('');
+    setSelectedAssigneeIds([currentUser.id]);
+    setAssignmentMode('person');
+    setSelectedCategoryIds([]);
+    setAssigneeQuery('');
+    setDueDate(todayKey());
+    setPriority('none');
+  };
+
+  const closeTodoModal = () => {
+    setCreateModalOpen(false);
+    setEditingTodo(null);
+    setAssigneePickerOpen(false);
+    setAssigneeQuery('');
+  };
+
+  const openCreateTodoModal = () => {
+    setEditingTodo(null);
+    resetTodoForm();
+    setCreateModalOpen(true);
+  };
+
+  const openEditTodoModal = (todo: TodoItem) => {
+    if (todo.readOnly) return;
+    setEditingTodo(todo);
+    setTitle(todo.title);
+    setDescription(todo.description ?? '');
+    setSelectedAssigneeIds([todo.assignedTo || currentUser.id]);
+    setAssignmentMode('person');
+    setSelectedCategoryIds([]);
+    setAssigneeQuery('');
+    setDueDate(todo.dueDate);
+    setPriority(todo.priority);
+    setAssigneePickerOpen(false);
+    setCreateModalOpen(true);
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!title.trim()) return;
+    const isEditing = Boolean(editingTodo);
     if (isAdmin && assignmentMode === 'person' && selectedAssignees.length === 0) return;
-    if (isAdmin && assignmentMode === 'category' && selectedCategoryUserIds.length === 0) return;
+    if (!isEditing && isAdmin && assignmentMode === 'category' && selectedCategoryUserIds.length === 0) return;
     setSubmitting(true);
     try {
-      await onCreate({
-        title,
-        description,
-        assignedTo: isAdmin ? selectedAssignees[0]?.id : currentUser.id,
-        assignedToIds: isAdmin
-          ? assignmentMode === 'category'
-            ? selectedCategoryUserIds
-            : selectedAssignees.map(user => user.id)
-          : undefined,
-        assignmentType: isAdmin && assignmentMode === 'category' ? 'category' : 'person',
-        targetLabel: isAdmin && assignmentMode === 'category' ? selectedCategoryLabel : selectedPersonLabel,
-        targetIds: isAdmin && assignmentMode === 'category'
-          ? selectedCategoryIds
-          : selectedAssignees.map(user => user.id),
-        dueDate,
-        priority,
-      });
-      setTitle('');
-      setDescription('');
-      setSelectedAssigneeIds([currentUser.id]);
-      setAssignmentMode('person');
-      setSelectedCategoryIds([]);
-      setAssigneeQuery('');
-      setDueDate(todayKey());
-      setPriority('none');
-      setCreateModalOpen(false);
+      if (editingTodo) {
+        await onUpdate(editingTodo.id, {
+          title: title.trim(),
+          description: description.trim() || null,
+          assignedTo: isAdmin ? selectedAssignees[0]?.id : currentUser.id,
+          dueDate,
+          priority,
+        });
+      } else {
+        await onCreate({
+          title,
+          description,
+          assignedTo: isAdmin ? selectedAssignees[0]?.id : currentUser.id,
+          assignedToIds: isAdmin
+            ? assignmentMode === 'category'
+              ? selectedCategoryUserIds
+              : selectedAssignees.map(user => user.id)
+            : undefined,
+          assignmentType: isAdmin && assignmentMode === 'category' ? 'category' : 'person',
+          targetLabel: isAdmin && assignmentMode === 'category' ? selectedCategoryLabel : selectedPersonLabel,
+          targetIds: isAdmin && assignmentMode === 'category'
+            ? selectedCategoryIds
+            : selectedAssignees.map(user => user.id),
+          dueDate,
+          priority,
+        });
+      }
+      resetTodoForm();
+      closeTodoModal();
     } finally {
       setSubmitting(false);
     }
@@ -416,7 +470,7 @@ export function TodosView({
         action={canCreate ? (
           <button
             type="button"
-            onClick={() => setCreateModalOpen(true)}
+            onClick={openCreateTodoModal}
             className="tbo-focus inline-flex items-center gap-2 rounded-full bg-[#171717] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#404040]"
           >
             <Plus className="h-4 w-4" />
@@ -608,15 +662,26 @@ export function TodosView({
                                   </div>
                                 </div>
                                 {!todo.readOnly && (
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDelete(todo)}
-                                    disabled={busyTodoId === todo.id}
-                                    className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] opacity-100 transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626] sm:opacity-0 sm:group-hover:opacity-100"
-                                    aria-label={t('todos.delete')}
-                                  >
-                                    <Trash2 className="h-4 w-4" />
-                                  </button>
+                                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                                    <button
+                                      type="button"
+                                      onClick={() => openEditTodoModal(todo)}
+                                      disabled={busyTodoId === todo.id}
+                                      className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] transition-colors hover:bg-[#eff6ff] hover:text-[#2563eb]"
+                                      aria-label={t('todos.edit')}
+                                    >
+                                      <Pencil className="h-4 w-4" />
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDelete(todo)}
+                                      disabled={busyTodoId === todo.id}
+                                      className="tbo-focus grid h-8 w-8 flex-shrink-0 place-items-center rounded-full text-[#a3a3a3] transition-colors hover:bg-[#fef2f2] hover:text-[#dc2626]"
+                                      aria-label={t('todos.delete')}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </button>
+                                  </div>
                                 )}
                               </article>
                             );
@@ -639,18 +704,15 @@ export function TodosView({
                   <Plus className="h-4 w-4" />
                 </span>
                 <div>
-                  <p className="text-sm font-semibold text-[#171717]">{t('todos.create.title')}</p>
+                  <p className="text-sm font-semibold text-[#171717]">{editingTodo ? t('todos.edit.title') : t('todos.create.title')}</p>
                   <p className="text-xs text-[#737373]">
-                    {isAdmin ? t('todos.create.subtitleAdmin') : t('todos.create.subtitleStaff')}
+                    {editingTodo ? t('todos.edit.subtitle') : isAdmin ? t('todos.create.subtitleAdmin') : t('todos.create.subtitleStaff')}
                   </p>
                 </div>
               </div>
               <button
                 type="button"
-                onClick={() => {
-                  setCreateModalOpen(false);
-                  setAssigneePickerOpen(false);
-                }}
+                onClick={closeTodoModal}
                 className="tbo-focus grid h-9 w-9 place-items-center rounded-full text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
                 aria-label={t('todos.create.close')}
               >
@@ -704,33 +766,35 @@ export function TodosView({
               </div>
               {isAdmin && (
                 <div className="space-y-3 rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
-                  <div className="grid gap-3 sm:grid-cols-[auto_minmax(0,1fr)] sm:items-end">
-                    <div>
-                      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.type')}</span>
-                      <div className="inline-grid grid-cols-2 rounded-full border border-[#e5e5e5] bg-white p-1">
-                        {([
-                          ['person', t('todos.create.type.people')],
-                          ['category', t('todos.create.type.category')],
-                        ] as const).map(([mode, label]) => (
-                          <button
-                            key={mode}
-                            type="button"
-                            onClick={() => {
-                              setAssignmentMode(mode);
-                              setAssigneePickerOpen(false);
-                              setAssigneeQuery('');
-                            }}
-                            className={`tbo-focus rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
-                              assignmentMode === mode
-                                ? 'bg-[#171717] text-white'
-                                : 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
-                            }`}
-                          >
-                            {label}
-                          </button>
-                        ))}
+                  <div className={`grid gap-3 sm:items-end ${editingTodo ? '' : 'sm:grid-cols-[auto_minmax(0,1fr)]'}`}>
+                    {!editingTodo && (
+                      <div>
+                        <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.type')}</span>
+                        <div className="inline-grid grid-cols-2 rounded-full border border-[#e5e5e5] bg-white p-1">
+                          {([
+                            ['person', t('todos.create.type.people')],
+                            ['category', t('todos.create.type.category')],
+                          ] as const).map(([mode, label]) => (
+                            <button
+                              key={mode}
+                              type="button"
+                              onClick={() => {
+                                setAssignmentMode(mode);
+                                setAssigneePickerOpen(false);
+                                setAssigneeQuery('');
+                              }}
+                              className={`tbo-focus rounded-full px-3 py-1.5 text-xs font-semibold transition-colors ${
+                                assignmentMode === mode
+                                  ? 'bg-[#171717] text-white'
+                                  : 'text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                              }`}
+                            >
+                              {label}
+                            </button>
+                          ))}
+                        </div>
                       </div>
-                    </div>
+                    )}
                     <div className="block min-w-0">
                       <span className="mb-1 block text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('todos.create.assign')}</span>
                       <div ref={assigneePickerRef} className="relative z-40">
@@ -879,7 +943,7 @@ export function TodosView({
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setCreateModalOpen(false)}
+                    onClick={closeTodoModal}
                     className="tbo-focus rounded-full border border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
                   >
                     {t('common.cancel')}
@@ -890,11 +954,13 @@ export function TodosView({
                       !title.trim() ||
                       submitting ||
                       (isAdmin && assignmentMode === 'person' && selectedAssignees.length === 0) ||
-                      (isAdmin && assignmentMode === 'category' && selectedCategoryUserIds.length === 0)
+                      (!editingTodo && isAdmin && assignmentMode === 'category' && selectedCategoryUserIds.length === 0)
                     }
                     className="tbo-focus rounded-full bg-[#171717] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[#404040] disabled:cursor-not-allowed disabled:bg-[#d4d4d4]"
                   >
-                    {submitting ? t('todos.create.adding') : t('todos.create.add')}
+                    {submitting
+                      ? editingTodo ? t('todos.edit.saving') : t('todos.create.adding')
+                      : editingTodo ? t('todos.edit.save') : t('todos.create.add')}
                   </button>
                 </div>
               </div>
