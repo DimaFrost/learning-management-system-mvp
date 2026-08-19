@@ -202,7 +202,7 @@ export const errorsTranslations = defineTranslations({
     'errors.curriculumPlan.uploadFailed': 'Планът на програмата не можа да бъде качен.',
     'errors.curriculumPlan.removeFailed': 'Планът на програмата не можа да бъде премахнат.',
     'errors.subjectMaterials.loadFailed': 'Материалите по предмет не можаха да бъдат заредени',
-    'errors.enrollments.loadFailed': 'Записванията не можаха да бъдат заредени',
+    'errors.enrollments.loadFailed': 'Приетите студенти бяха заредени',
     'errors.gradebook.loadFailed': 'Настройките на оценяването не можаха да бъдат заредени',
     'errors.todos.noneCreated': 'Не бяха създадени задачи.',
     'errors.tuition.accountNotFound': 'Сметката за такса не е намерена.',

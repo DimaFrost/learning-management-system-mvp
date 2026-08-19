@@ -239,7 +239,7 @@ export const editTranslations = defineTranslations({
     'edit.user.filterSecondYear': 'II година',
     'edit.user.noMatchingStudents': 'Няма съответстващи студенти.',
     'edit.user.pendingCount': '{count} чакащи',
-    'edit.user.teamLeadership': 'Лидерство на екип',
+    'edit.user.teamLeadership': 'Водене на екип',
     'edit.user.teamLeadershipHint': 'Изберете един или повече екипа за служение, които този потребител може да ръководи. Запазва се при натискане на Обнови.',
     'edit.user.teamsSelected.one': '1 избран екип',
     'edit.user.teamsSelected.other': '{count} избрани екипа',

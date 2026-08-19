@@ -85,7 +85,7 @@ export const booksTranslations = defineTranslations({
     'books.admin.dueDate': 'Краен срок {date}',
     'books.admin.submitted': '{complete}/{total} предадени',
     'books.admin.points': '{count} точки',
-    'books.admin.reviewSubmissions': 'Преглед на предавания',
+    'books.admin.reviewSubmissions': 'Преглед на предадени задания',
     'books.admin.publish': 'Публикувай',
     'books.admin.markComplete': 'Маркирай като завършено',
     'books.admin.status.assigned': 'назначено',

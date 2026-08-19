@@ -299,7 +299,7 @@ export function StudentDashboard({
     () => enrolledCourses.flatMap(course =>
       getCourseSummaries(course.id).filter(summary => summary.studentId === currentUser.id)
     ),
-    [currentUser.id, enrolledCourses, getCourseSummaries]
+    [currentUser.id, enrolledCourses, getCourseSummaries, language]
   );
 
   const studentScheduleTodos = useMemo(

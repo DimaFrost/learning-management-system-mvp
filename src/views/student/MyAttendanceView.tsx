@@ -212,7 +212,7 @@ export function MyAttendanceView({
   const summary = useMemo(() => {
     if (!selectedCourse) return null;
     return getCourseSummaries(selectedCourse.id).find(item => item.studentId === currentUser.id) ?? null;
-  }, [currentUser.id, getCourseSummaries, selectedCourse]);
+  }, [currentUser.id, getCourseSummaries, language, selectedCourse]);
 
   const passingGates = summary?.gates.filter(gate => gate.status === 'passing').length ?? 0;
   const gateCount = summary?.gates.length ?? 0;

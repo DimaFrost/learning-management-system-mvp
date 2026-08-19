@@ -110,8 +110,8 @@ export const gradesTranslations = defineTranslations({
   bg: {
     'grades.title': 'Оценки',
     'grades.titleMy': 'Моите оценки',
-    'grades.eyebrow.student': 'Учебен запис',
-    'grades.eyebrow.staff': 'Академичен запис',
+    'grades.eyebrow.student': 'Учебни данни',
+    'grades.eyebrow.staff': 'Учебни данни',
     'grades.subtitle.student': 'Проследяване на върната работа, оценените точки и готовността за завършване поотделно.',
     'grades.subtitle.staff': 'Академичните оценки са отделени от готовността за завършване.',
     'grades.loading': 'Зареждане на оценки...',

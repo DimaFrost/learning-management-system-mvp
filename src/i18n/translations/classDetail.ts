@@ -37,7 +37,7 @@ export const classDetailTranslations = defineTranslations({
     'classDetail.drive.setup': 'Настрой Google Drive папки',
     'classDetail.drive.setupFailed': 'Google Drive папките не можаха да бъдат настроени',
     'classDetail.tabs.aria': 'Раздели на сесията',
-    'classDetail.tab.staffNotes': 'Бележки за екипа',
+    'classDetail.tab.staffNotes': 'Записки за екипа',
     'classDetail.tab.materialsNotes': 'Материали и бележки',
     'classDetail.tab.homework': 'Домашна работа',
   },

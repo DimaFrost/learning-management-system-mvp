@@ -1429,7 +1429,9 @@ export function useAttendance(
           possibleCredits: Math.max(ministryRequiredCredits, myMinistryAttendance.length),
           score: ministryScore,
           status: ministryCredits >= ministryRequiredCredits ? 'passing' : ministryScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
-          detail: ministryRequiredCredits === 0 ? 'No ministry rotation assigned' : `${ministryCredits.toFixed(1)} of ${ministryRequiredCredits.toFixed(1)} service credits`,
+          detail: ministryRequiredCredits === 0
+            ? translate('attendance.ministry.noRotationAssigned')
+            : `${ministryCredits.toFixed(1)} of ${ministryRequiredCredits.toFixed(1)} service credits`,
         },
       ];
       const overall = calculateOverallScore(

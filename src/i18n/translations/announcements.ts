@@ -357,7 +357,7 @@ export const announcementsTranslations = defineTranslations({
     'announcements.create.pinPostHint': 'Закачените публикации се показват най-отгоре в Известия.',
     'announcements.create.summary': 'Обобщение',
     'announcements.create.recipients': 'Получатели',
-    'announcements.create.recipientsEstimate': 'Оценка на база текущи хора, роли и активни записвания по учебна година.',
+    'announcements.create.recipientsEstimate': 'Оценка на база текущи хора, роли и активни студенти по учебна година.',
     'announcements.create.summaryAudience': 'Получатели',
     'announcements.create.summaryDelivery': 'Публикуване',
     'announcements.create.summaryAttachments': 'Прикачени файлове',
