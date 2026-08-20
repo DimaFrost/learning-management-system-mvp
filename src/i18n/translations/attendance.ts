@@ -401,7 +401,7 @@ export const attendanceTranslations = defineTranslations({
     'attendance.ministry.details.rotation': 'Данни за служението',
     'attendance.ministry.details.team': 'Екип за служение',
     'attendance.ministry.details.period': 'Период',
-    'attendance.ministry.details.required': 'Изискване',
+    'attendance.ministry.details.required': 'Задължително',
     'attendance.ministry.details.type': 'Тип',
     'attendance.ministry.contacts': 'Контакти на екипа',
     'attendance.ministry.contactsEmpty': 'Все още няма посочени лидери на екип.',

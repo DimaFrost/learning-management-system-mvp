@@ -28,6 +28,7 @@ type SessionRow = Class & {
 interface MyClassesViewProps {
   currentUser: User;
   courses: Course[];
+  staffWorkspace: 'teacher' | 'translator';
   getUserById: (id: string | null) => User | undefined;
   getCourseDisplayName: (course: Course) => string;
   onOpenClass: (classId: number, subjectId: number, courseId: number) => void;
@@ -58,6 +59,7 @@ function groupByDate(rows: SessionRow[]) {
 export function MyClassesView({
   currentUser,
   courses,
+  staffWorkspace,
   getUserById,
   getCourseDisplayName,
   onOpenClass,
@@ -202,7 +204,9 @@ export function MyClassesView({
               </div>
             </div>
             <p className="mt-1 max-w-2xl text-sm text-[#737373]">
-              {t('teacher.mySessions.subtitle')}
+              {t(staffWorkspace === 'translator'
+                ? 'teacher.mySessions.subtitle.translator'
+                : 'teacher.mySessions.subtitle')}
             </p>
           </div>
           <div className="flex flex-col gap-2 lg:items-end">

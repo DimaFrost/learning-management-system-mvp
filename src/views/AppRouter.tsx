@@ -1149,6 +1149,7 @@ export function AppRouter({
           <MyClassesView
             currentUser={currentUser}
             courses={courses}
+            staffWorkspace={activeWorkspace === 'translator' ? 'translator' : 'teacher'}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onOpenClass={openSessionInClasswork}
@@ -1177,6 +1178,7 @@ export function AppRouter({
           <MyClassesView
             currentUser={currentUser}
             courses={courses}
+            staffWorkspace={activeWorkspace === 'translator' ? 'translator' : 'teacher'}
             getUserById={getUserById}
             getCourseDisplayName={getCourseDisplayName}
             onOpenClass={openSessionInClasswork}
@@ -1321,6 +1323,7 @@ export function AppRouter({
       <MyClassesView
         currentUser={currentUser}
         courses={courses}
+        staffWorkspace={activeWorkspace === 'translator' ? 'translator' : 'teacher'}
         getUserById={getUserById}
         getCourseDisplayName={getCourseDisplayName}
         onOpenClass={openSessionInClasswork}
