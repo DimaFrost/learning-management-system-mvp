@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import type { CadenceSettings } from '../../hooks/useCadenceSettings';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import type { User, Course, CourseStudent, MentorshipLog } from '../../types/lms';
 import { isCourseActive } from '../../utils/courseUtils';
 import { formatPlatformDate } from '../../utils/dateUtils';
@@ -51,28 +52,28 @@ type MenteeSummary = {
 };
 
 const STATUS_META: Record<MenteeStatus, {
-  label: string;
+  labelKey: TranslationKey;
   card: string;
   pill: string;
   icon: typeof CheckCircle2;
   progress: string;
 }> = {
   at_risk: {
-    label: 'Needs attention',
+    labelKey: 'common.needsAttention',
     card: 'border-[#fecaca] bg-[#fffafa]',
     pill: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
     icon: AlertTriangle,
     progress: 'bg-[#dc2626]',
   },
   lagging: {
-    label: 'Follow up soon',
+    labelKey: 'mentor.dashboard.status.followUpSoon',
     card: 'border-[#fde68a] bg-[#fffdf4]',
     pill: 'border-[#fde68a] bg-[#fffbeb] text-[#b45309]',
     icon: Clock3,
     progress: 'bg-[#f59e0b]',
   },
   on_track: {
-    label: 'On track',
+    labelKey: 'mentorship.status.onTrack',
     card: 'border-[#bbf7d0] bg-[#fbfffc]',
     pill: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
     icon: CheckCircle2,
@@ -136,14 +137,15 @@ function StatCard({
 }
 
 function EmptyMentorState() {
+  const { t } = useLanguage();
   return (
     <div className="rounded-2xl border border-dashed border-[#d4d4d4] bg-white px-6 py-14 text-center">
       <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
         <HeartHandshake className="h-5 w-5" />
       </span>
-      <p className="mt-4 text-base font-semibold text-[#171717]">No mentees assigned yet</p>
+      <p className="mt-4 text-base font-semibold text-[#171717]">{t('mentor.dashboard.empty.title')}</p>
       <p className="mx-auto mt-1 max-w-md text-sm leading-6 text-[#737373]">
-        Once students are assigned to you, this dashboard will show their check-in rhythm, current needs, and recent mentorship notes.
+        {t('mentor.dashboard.empty.desc')}
       </p>
     </div>
   );
@@ -159,7 +161,7 @@ export function MentorDashboard({
   getCourseDisplayName,
   onOpenCheckin,
 }: MentorDashboardProps) {
-  const { t, tCount } = useLanguage();
+  const { t, tCount, language } = useLanguage();
   const [query, setQuery] = useState('');
   const [filter, setFilter] = useState<FilterKey>('all');
 
@@ -228,7 +230,7 @@ export function MentorDashboard({
       if (byPriority !== 0) return byPriority;
       return (b.inPersonDays ?? -1) - (a.inPersonDays ?? -1);
     });
-  }, [activeCourseIds, cadenceSettings, courseStudents, courses, currentUser.id, getUserById, myLogs]);
+  }, [activeCourseIds, cadenceSettings, courseStudents, courses, currentUser.id, getUserById, language, myLogs]);
 
   const filteredMentees = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -267,10 +269,10 @@ export function MentorDashboard({
           <div className="relative border-b border-[#eeeeee] px-5 py-4">
             <div className="flex flex-col gap-4 lg:block lg:pr-48">
               <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#15803d]">Mentor workspace</p>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#15803d]">{t('mentor.dashboard.eyebrow')}</p>
                 <h1 className="tbo-display mt-1 text-3xl text-[#171717]">{t('mentor.dashboard.title')}</h1>
                 <p className="mt-1 max-w-2xl text-sm leading-6 text-[#737373]">
-                  Keep each mentee visible, know who needs a meeting, and record follow-up without digging through the admin mentorship hub.
+                  {t('mentor.dashboard.subtitle')}
                 </p>
               </div>
               <button
@@ -295,23 +297,23 @@ export function MentorDashboard({
             />
             <StatCard
               icon={AlertTriangle}
-              label="Needs attention"
+              label={t('common.needsAttention')}
               value={atRiskCount + laggingCount}
-              detail={`${atRiskCount} urgent, ${laggingCount} approaching`}
+              detail={t('mentor.dashboard.needsAttention.detail', { urgent: atRiskCount, approaching: laggingCount })}
               tone="bg-[#fff7ed] text-[#c2410c]"
             />
             <StatCard
               icon={MessageCircle}
               label={t('mentor.dashboard.thisMonth')}
               value={thisMonthLogs.length}
-              detail="Check-ins recorded this month"
+              detail={t('mentor.dashboard.thisMonth.detail')}
               tone="bg-[#eff6ff] text-[#2563eb]"
             />
             <StatCard
               icon={Sparkles}
-              label="Follow-up health"
+              label={t('mentorship.hub.followUpHealth')}
               value={`${healthPercent}%`}
-              detail={`${onTrackCount} of ${mentees.length || 0} currently on track`}
+              detail={t('mentor.dashboard.followUpHealth.detail', { onTrack: onTrackCount, total: mentees.length || 0 })}
               tone="bg-[#fafafa] text-[#525252]"
             />
           </div>
@@ -320,7 +322,7 @@ export function MentorDashboard({
         <aside className="rounded-2xl border border-[#e5e5e5] bg-white p-4">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-[#171717]">In-person rhythm</p>
+              <p className="text-sm font-semibold text-[#171717]">{t('mentor.dashboard.inPersonRhythm')}</p>
               <p className="mt-1 text-xs leading-5 text-[#737373]">{t('mentor.dashboard.inPersonExpectations.desc')}</p>
             </div>
             <span className="grid h-9 min-h-[36px] w-9 min-w-[36px] shrink-0 place-items-center rounded-full bg-[#f0fdf4] text-[#15803d] ring-1 ring-[#bbf7d0]">
@@ -330,13 +332,13 @@ export function MentorDashboard({
 
           <div className="mt-4 space-y-3">
             {[
-              { label: 'Expected', value: cadenceSettings.inPerson.expectedDays, tone: 'bg-[#dcfce7] text-[#166534]' },
-              { label: 'Lagging', value: cadenceSettings.inPerson.warningDays, tone: 'bg-[#fef3c7] text-[#92400e]' },
-              { label: 'At risk', value: cadenceSettings.inPerson.criticalDays, tone: 'bg-[#fee2e2] text-[#991b1b]' },
+              { key: 'expected', labelKey: 'mentorship.cadence.step.expected.title' as const, value: cadenceSettings.inPerson.expectedDays, tone: 'bg-[#dcfce7] text-[#166534]' },
+              { key: 'lagging', labelKey: 'mentorship.status.lagging' as const, value: cadenceSettings.inPerson.warningDays, tone: 'bg-[#fef3c7] text-[#92400e]' },
+              { key: 'at_risk', labelKey: 'mentorship.status.atRisk' as const, value: cadenceSettings.inPerson.criticalDays, tone: 'bg-[#fee2e2] text-[#991b1b]' },
             ].map(item => (
-              <div key={item.label} className="flex items-center justify-between rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
-                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{item.label}</span>
-                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{item.value} days</span>
+              <div key={item.key} className="flex items-center justify-between rounded-xl border border-[#eeeeee] bg-[#fafafa] px-3 py-2">
+                <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t(item.labelKey)}</span>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${item.tone}`}>{tCount('admin.dashboard.days', item.value)}</span>
               </div>
             ))}
           </div>
@@ -355,17 +357,17 @@ export function MentorDashboard({
                   <input
                     value={query}
                     onChange={event => setQuery(event.target.value)}
-                    placeholder="Search mentees or year groups..."
+                    placeholder={t('mentor.dashboard.searchPlaceholder')}
                     className="tbo-focus h-10 w-full rounded-xl border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm text-[#171717]"
                   />
                 </label>
                 <div className="flex flex-wrap gap-2">
                   {([
-                    ['all', 'All'],
-                    ['at_risk', 'Urgent'],
-                    ['lagging', 'Soon'],
-                    ['on_track', 'Clear'],
-                  ] as Array<[FilterKey, string]>).map(([key, label]) => (
+                    ['all', 'common.all'],
+                    ['at_risk', 'mentor.dashboard.filter.urgent'],
+                    ['lagging', 'mentor.dashboard.filter.soon'],
+                    ['on_track', 'mentor.dashboard.filter.clear'],
+                  ] as Array<[FilterKey, TranslationKey]>).map(([key, labelKey]) => (
                     <button
                       key={key}
                       type="button"
@@ -376,7 +378,7 @@ export function MentorDashboard({
                           : 'border-[#e5e5e5] bg-[#fafafa] text-[#525252] hover:bg-white'
                       }`}
                     >
-                      {label}
+                      {t(labelKey)}
                       <span className={`rounded-full px-1.5 py-0.5 ${filter === key ? 'bg-white/20' : 'bg-white text-[#737373]'}`}>
                         {filterCounts[key]}
                       </span>
@@ -387,7 +389,7 @@ export function MentorDashboard({
 
               <div className="divide-y divide-[#eeeeee]">
                 {filteredMentees.length === 0 ? (
-                  <p className="px-5 py-10 text-center text-sm text-[#737373]">No mentees match this view.</p>
+                  <p className="px-5 py-10 text-center text-sm text-[#737373]">{t('mentor.dashboard.noMatch')}</p>
                 ) : filteredMentees.map(mentee => {
                   const meta = STATUS_META[mentee.status];
                   const StatusIcon = meta.icon;
@@ -400,10 +402,10 @@ export function MentorDashboard({
                           {mentee.student ? <UserAvatar user={mentee.student} /> : <span className="h-10 w-10 rounded-full bg-[#f5f5f5]" />}
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
-                              <h2 className="truncate text-base font-semibold text-[#171717]">{mentee.student?.name ?? 'Unknown student'}</h2>
+                              <h2 className="truncate text-base font-semibold text-[#171717]">{mentee.student?.name ?? t('mentorship.hub.unknownStudent')}</h2>
                               <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-semibold ${meta.pill}`}>
                                 <StatusIcon className="h-3.5 w-3.5" />
-                                {meta.label}
+                                {t(meta.labelKey)}
                               </span>
                             </div>
                             <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -417,20 +419,20 @@ export function MentorDashboard({
 
                         <div className="mt-4 grid gap-3 md:grid-cols-3">
                           <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Last in person</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('mentorship.followUp.column.lastInPerson')}</p>
                             <p className="mt-1 text-sm font-semibold text-[#171717]">
-                              {mentee.lastInPerson ? formatPlatformDate(mentee.lastInPerson.date) : 'None yet'}
+                              {mentee.lastInPerson ? formatPlatformDate(mentee.lastInPerson.date) : t('mentorship.assignments.noneYet')}
                             </p>
                             <p className="mt-0.5 text-xs text-[#737373]">{mentee.inPersonMessage}</p>
                           </div>
                           <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Latest note</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('mentor.dashboard.latestNote')}</p>
                             <p className="mt-1 line-clamp-2 text-sm text-[#525252]">
-                              {mentee.latestLog?.mainTopic || mentee.latestLog?.notes || 'No notes yet'}
+                              {mentee.latestLog?.mainTopic || mentee.latestLog?.notes || t('mentor.dashboard.noNotesYet')}
                             </p>
                           </div>
                           <div className="rounded-xl border border-[#eeeeee] bg-white px-3 py-2">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Engagement</p>
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('mentor.dashboard.engagement')}</p>
                             <span className={`mt-1 inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${getEngagementTone(mentee.engagement)}`}>
                               {mentee.engagement ? getEngagementLabel(mentee.engagement) : t('mentor.dashboard.noData')}
                             </span>
@@ -444,7 +446,7 @@ export function MentorDashboard({
 
                       <div className="flex flex-col justify-between gap-3 lg:items-end">
                         <div className="text-left lg:text-right">
-                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">Assigned</p>
+                          <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('mentor.dashboard.assigned')}</p>
                           <p className="mt-1 text-sm font-semibold text-[#171717]">
                             {formatPlatformDate(mentee.enrollments[0]?.enrollmentDate)}
                           </p>
@@ -471,13 +473,13 @@ export function MentorDashboard({
           <aside className="space-y-4">
             <section className="rounded-2xl border border-[#e5e5e5] bg-white">
               <div className="border-b border-[#eeeeee] px-4 py-3">
-                <p className="text-sm font-semibold text-[#171717]">Priority follow-up</p>
-                <p className="mt-1 text-xs text-[#737373]">Sorted by in-person meeting urgency.</p>
+                <p className="text-sm font-semibold text-[#171717]">{t('mentorship.followUp.priority.title')}</p>
+                <p className="mt-1 text-xs text-[#737373]">{t('mentor.dashboard.priority.desc')}</p>
               </div>
               <div className="max-h-[360px] space-y-2 overflow-y-auto p-3 tbo-scrollbar">
                 {attentionQueue.length === 0 ? (
                   <div className="rounded-xl border border-[#bbf7d0] bg-[#f0fdf4] px-3 py-4 text-sm text-[#166534]">
-                    Everyone is currently within the meeting rhythm.
+                    {t('mentor.dashboard.priority.clear')}
                   </div>
                 ) : attentionQueue.map(mentee => {
                   const meta = STATUS_META[mentee.status];
@@ -491,7 +493,7 @@ export function MentorDashboard({
                     >
                       {mentee.student ? <UserAvatar user={mentee.student} size="sm" /> : <span className="h-8 w-8 rounded-full bg-white" />}
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-[#171717]">{mentee.student?.name ?? 'Unknown student'}</span>
+                        <span className="block truncate text-sm font-semibold text-[#171717]">{mentee.student?.name ?? t('mentorship.hub.unknownStudent')}</span>
                         <span className="mt-0.5 flex items-center gap-1.5 text-xs text-[#737373]">
                           <StatusIcon className="h-3.5 w-3.5" />
                           {mentee.inPersonMessage}
@@ -506,7 +508,7 @@ export function MentorDashboard({
             <section className="rounded-2xl border border-[#e5e5e5] bg-white">
               <div className="border-b border-[#eeeeee] px-4 py-3">
                 <p className="text-sm font-semibold text-[#171717]">{t('mentor.dashboard.recentCheckins')}</p>
-                <p className="mt-1 text-xs text-[#737373]">Latest notes you have recorded.</p>
+                <p className="mt-1 text-xs text-[#737373]">{t('mentor.dashboard.recentCheckins.desc')}</p>
               </div>
               <div className="max-h-[420px] overflow-y-auto p-3 tbo-scrollbar">
                 {recentLogs.length === 0 ? (
