@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { ArrowUpRight, Award, BookOpen, CalendarDays, CheckCircle2, ChevronDown, ChevronRight, Clock3, ExternalLink, FileText, GraduationCap, Info, MessageSquare, MinusCircle, Paperclip, Plus, Search, ShieldCheck, SlidersHorizontal, X } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
-import type { BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, StudentAttendanceSummary, User } from '../../types/lms';
+import type { AttendanceGateSummary, BookReadingAssignment, BookReadingSubmission, Course, CourseStudent, HomeworkSubmission, StudentAttendanceSummary, User } from '../../types/lms';
 import type { useGradebookConfig } from '../../hooks/useGradebookConfig';
 import { ActiveYearGroupBadge, UserAvatar } from '../admin/users/usersShared';
 import { formatDate, formatTime } from '../../i18n/formatters';
@@ -172,6 +172,13 @@ function gradeMeta(points: number | null, maxPoints: number | null | undefined, 
   }
   return { label: t('grades.status.notGraded'), icon: Clock3, tone: 'text-[#c2410c]' };
 }
+
+const GATE_LABEL_KEYS: Record<AttendanceGateSummary['key'], TranslationKey> = {
+  classes: 'attendance.gate.classes',
+  the_well: 'attendance.gate.the_well',
+  activation: 'attendance.gate.activation',
+  ministry: 'attendance.gate.ministry',
+};
 
 function getGateStatusLabel(status: string, t: TFunction) {
   const keyMap: Record<string, TranslationKey> = {
@@ -867,9 +874,9 @@ export function GradesView({
                   </div>
                   <div className="mt-3 space-y-2">
                     {(studentRow.attendance?.gates ?? []).map(gate => (
-                      <div key={gate.label} className="flex items-center justify-between gap-2 text-sm">
+                      <div key={gate.key} className="flex items-center justify-between gap-2 text-sm">
                         <span className="flex min-w-0 items-center gap-1.5">
-                          <span className="truncate text-[#525252]">{gate.label}</span>
+                          <span className="truncate text-[#525252]">{t(GATE_LABEL_KEYS[gate.key])}</span>
                         </span>
                         <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${gate.status === 'passing' ? 'bg-[#ecfdf5] text-[#047857]' : gate.status === 'at_risk' ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#fef2f2] text-[#dc2626]'}`}>
                           {getGateStatusLabel(gate.status, t)}

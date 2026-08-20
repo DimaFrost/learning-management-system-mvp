@@ -1398,7 +1398,10 @@ export function useAttendance(
           possibleCredits: regularClasses.length,
           score: classScore,
           status: classCredits >= classRequiredCredits ? 'passing' : classScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
-          detail: `${classCredits.toFixed(1)} of ${classRequiredCredits.toFixed(1)} required credits`,
+          detail: translate('attendance.gate.detail.requiredCredits', {
+            earned: classCredits.toFixed(1),
+            required: classRequiredCredits.toFixed(1),
+          }),
         },
         {
           key: 'the_well',
@@ -1408,8 +1411,14 @@ export function useAttendance(
           possibleCredits: myWell.length * effectiveSettings.theWellRequiredPerMonth,
           score: wellScore,
           status: wellPassing ? 'passing' : wellScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
-          detail: `${wellCredits.toFixed(1)} monthly credits recorded`,
-          fallbackDetail: effectiveSettings.theWellFallbackEnabled ? `${wellFallbackRequiredCredits.toFixed(1)} yearly fallback credits required` : undefined,
+          detail: translate('attendance.gate.detail.monthlyCreditsRecorded', {
+            count: wellCredits.toFixed(1),
+          }),
+          fallbackDetail: effectiveSettings.theWellFallbackEnabled
+            ? translate('attendance.gate.detail.yearlyFallbackRequired', {
+                count: wellFallbackRequiredCredits.toFixed(1),
+              })
+            : undefined,
         },
         {
           key: 'activation',
@@ -1419,7 +1428,10 @@ export function useAttendance(
           possibleCredits: saturdayClasses.length,
           score: satScore,
           status: saturdayLostCredits <= effectiveSettings.activationMaxLostCredits ? 'passing' : 'failing',
-          detail: `${saturdayLostCredits.toFixed(1)} lost credits; max ${effectiveSettings.activationMaxLostCredits}`,
+          detail: translate('attendance.gate.detail.lostCreditsMax', {
+            lost: saturdayLostCredits.toFixed(1),
+            max: effectiveSettings.activationMaxLostCredits,
+          }),
         },
         {
           key: 'ministry',
@@ -1431,7 +1443,10 @@ export function useAttendance(
           status: ministryCredits >= ministryRequiredCredits ? 'passing' : ministryScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
           detail: ministryRequiredCredits === 0
             ? translate('attendance.ministry.noRotationAssigned')
-            : `${ministryCredits.toFixed(1)} of ${ministryRequiredCredits.toFixed(1)} service credits`,
+            : translate('attendance.gate.detail.serviceCredits', {
+                earned: ministryCredits.toFixed(1),
+                required: ministryRequiredCredits.toFixed(1),
+              }),
         },
       ];
       const overall = calculateOverallScore(

@@ -15,6 +15,7 @@ import type {
   User,
 } from '../../types/lms';
 import { useLanguage } from '../../i18n/LanguageContext';
+import type { TranslationKey } from '../../i18n/translations';
 import { formatPercent } from '../../utils/attendanceUtils';
 import { MyAttendancePageHeader, useStudentCourseSelection } from './myAttendanceShared';
 interface MyAttendanceViewProps {
@@ -29,6 +30,13 @@ const STATUS_CLASS = {
   passing: 'bg-[#dcfce7] text-[#166534]',
   at_risk: 'bg-[#fff7ed] text-[#c2410c]',
   failing: 'bg-[#fee2e2] text-[#b91c1c]',
+};
+
+const GATE_LABEL_KEYS: Record<AttendanceGateSummary['key'], TranslationKey> = {
+  classes: 'attendance.gate.classes',
+  the_well: 'attendance.gate.the_well',
+  activation: 'attendance.gate.activation',
+  ministry: 'attendance.gate.ministry',
 };
 
 const GATE_ICONS = {
@@ -115,7 +123,7 @@ function GateCard({
             <Icon className="h-5 w-5" />
           </span>
           <div className="min-w-0">
-            <p className="text-sm font-semibold text-[#171717]">{gate.label}</p>
+            <p className="text-sm font-semibold text-[#171717]">{t(GATE_LABEL_KEYS[gate.key])}</p>
             <p className="mt-1 text-xs text-[#737373]">{gate.detail}</p>
             {gate.fallbackDetail && (
               <p className="mt-1 text-xs text-[#a3a3a3]">{gate.fallbackDetail}</p>
