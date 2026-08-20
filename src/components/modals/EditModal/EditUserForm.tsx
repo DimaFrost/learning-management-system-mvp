@@ -1,4 +1,4 @@
-import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, Wifi, X } from 'lucide-react';
+import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Course, CourseStudent, CourseType, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
@@ -454,36 +454,27 @@ export function EditUserForm({
               </div>
             </AssignmentPanel>
 
-            <AssignmentPanel icon={Wifi} title={t('edit.user.onlineStudent')} detail={t('edit.user.onlineStudentHint')}>
+            <div className="flex items-center justify-between gap-4 rounded-2xl border border-[#e5e5e5] bg-white p-4">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-[#171717]">{t('edit.user.onlineStudent')}</p>
+                <p className="mt-0.5 text-xs leading-5 text-[#737373]">{t('edit.user.onlineStudentHint')}</p>
+              </div>
               <button
                 type="button"
+                role="switch"
+                aria-checked={formData.isOnlineStudent ?? false}
                 onClick={() => onChange('isOnlineStudent', !(formData.isOnlineStudent ?? false))}
-                className={`relative flex w-full items-center gap-3 rounded-xl border p-3 text-left transition ${
-                  formData.isOnlineStudent
-                    ? 'border-[#0ea5e9] bg-[#f0f9ff] text-[#0369a1] shadow-sm ring-2 ring-[#bae6fd]'
-                    : 'border-[#d4d4d4] bg-[#fafafa] text-[#404040] hover:border-[#94a3b8] hover:bg-[#f8fafc]'
+                className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-amber-500 focus:ring-offset-2 ${
+                  formData.isOnlineStudent ? 'bg-amber-600' : 'bg-[#d4d4d4]'
                 }`}
               >
-                {formData.isOnlineStudent && (
-                  <span className="absolute right-3 top-3 grid h-5 w-5 place-items-center rounded-full bg-[#171717] text-white shadow-sm">
-                    <Check className="h-3.5 w-3.5" />
-                  </span>
-                )}
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl border border-current/20 bg-white/80">
-                  <Wifi className="h-5 w-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block text-sm font-semibold">
-                    {formData.isOnlineStudent ? t('edit.user.onlineStudentLabel') : t('edit.user.inPersonStudentLabel')}
-                  </span>
-                  <span className="mt-0.5 block text-xs text-[#737373]">
-                    {formData.isOnlineStudent
-                      ? t('edit.user.onlineStudentDetail')
-                      : t('edit.user.inPersonStudentDetail')}
-                  </span>
-                </span>
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    formData.isOnlineStudent ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
               </button>
-            </AssignmentPanel>
+            </div>
             </div>
           )}
 
