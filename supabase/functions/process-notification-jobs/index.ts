@@ -4,7 +4,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 type Profile = {
   id: string;
   name: string;
-  email: string;
+  email: string | null;
   roles: string[];
   preferred_language?: 'en' | 'bg' | null;
   notification_preferences?: {
@@ -14,6 +14,12 @@ type Profile = {
     enrollment?: boolean;
     messages?: boolean;
   } | null;
+};
+
+type ProfilePrivateData = {
+  profile_id: string;
+  email: string | null;
+  notification_preferences?: Profile['notification_preferences'];
 };
 
 type Announcement = {
@@ -165,6 +171,36 @@ const supabase = createClient(
   }
 );
 
+async function hydrateProfilePrivateData<T extends Profile>(profiles: T[]): Promise<T[]> {
+  const ids = Array.from(new Set(profiles.map(profile => profile.id).filter(Boolean)));
+  if (ids.length === 0) return profiles;
+
+  const { data, error } = await supabase
+    .from('profile_private_data')
+    .select('profile_id, email, notification_preferences')
+    .in('profile_id', ids);
+  if (error) throw error;
+
+  const privateByProfileId = new Map(
+    ((data ?? []) as ProfilePrivateData[]).map(row => [row.profile_id, row])
+  );
+
+  return profiles.map(profile => {
+    const privateData = privateByProfileId.get(profile.id);
+    return {
+      ...profile,
+      email: profile.email ?? privateData?.email ?? null,
+      notification_preferences: profile.notification_preferences ?? privateData?.notification_preferences ?? null,
+    };
+  });
+}
+
+async function hydrateProfilePrivateDataForOne<T extends Profile>(profile: T | null | undefined): Promise<T | null> {
+  if (!profile) return null;
+  const [hydrated] = await hydrateProfilePrivateData([profile]);
+  return hydrated ?? null;
+}
+
 serve(async req => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
@@ -315,7 +351,8 @@ async function sendWorkflowEmails(job: NotificationJob, payload: WorkflowEmailPa
     .in('id', uniqueRecipientIds);
   if (error) throw error;
 
-  const profiles = ((recipients ?? []) as Profile[]).filter(profile => Boolean(profile.email));
+  const profiles = (await hydrateProfilePrivateData((recipients ?? []) as Profile[]))
+    .filter(profile => Boolean(profile.email));
   let sent = 0;
   let failed = 0;
   for (const recipient of profiles) {
@@ -365,27 +402,54 @@ async function sendProfileInviteEmail(job: NotificationJob, payload: ProfileInvi
   const roles = Array.isArray(payload.roles) ? payload.roles.filter(Boolean) : [];
   const actionUrl = String(payload.actionUrl ?? APP_URL);
   const subject = 'Your Burning Ones Portal access is ready';
-
-  const response = await sendBrevoEmail({
-    to: {
-      id: `invite:${email}`,
-      email,
-      name,
-      roles: [],
-    },
-    subject,
-    html: renderProfileInviteEmail({ email, name, roles, actionUrl }),
-    text: `Your Burning Ones Portal access is ready.\n\nSign in with this Google account: ${email}\n\n${roles.length > 0 ? `Access prepared for: ${roles.map(formatRoleLabel).join(', ')}\n\n` : ''}Open: ${actionUrl}`,
-    tags: ['system', 'invite', 'portal'],
+  const delivery = await createDeliveryForAddress({
+    jobId: job.id,
+    email,
+    name,
+    status: 'pending',
   });
 
-  return {
-    sent: 1,
-    failed: 0,
-    recipientCount: 1,
-    email,
-    providerMessageId: response.messageId ?? null,
-  };
+  try {
+    const response = await sendBrevoEmail({
+      to: {
+        id: `invite:${email}`,
+        email,
+        name,
+        roles: [],
+      },
+      subject,
+      html: renderProfileInviteEmail({ email, name, roles, actionUrl }),
+      text: `Your Burning Ones Portal access is ready.\n\nSign in with this Google account: ${email}\n\n${roles.length > 0 ? `Access prepared for: ${roles.map(formatRoleLabel).join(', ')}\n\n` : ''}Open: ${actionUrl}`,
+      tags: ['system', 'invite', 'portal'],
+    });
+
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'sent',
+        provider_message_id: response.messageId ?? null,
+        sent_at: new Date().toISOString(),
+      })
+      .eq('id', delivery.id);
+
+    return {
+      sent: 1,
+      failed: 0,
+      recipientCount: 1,
+      email,
+      providerMessageId: response.messageId ?? null,
+    };
+  } catch (sendError) {
+    const message = sendError instanceof Error ? sendError.message : String(sendError);
+    await supabase
+      .from('notification_deliveries')
+      .update({
+        status: 'failed',
+        error_message: message,
+      })
+      .eq('id', delivery.id);
+    return { sent: 0, failed: 1, recipientCount: 1, email, error: message };
+  }
 }
 
 async function sendDirectMessageEmail(job: NotificationJob, payload: DirectMessageEmailPayload) {
@@ -399,8 +463,9 @@ async function sendDirectMessageEmail(job: NotificationJob, payload: DirectMessa
     .in('id', [job.created_by, recipientId]);
   if (error) throw error;
 
-  const sender = ((profiles ?? []) as Profile[]).find(profile => profile.id === job.created_by);
-  const recipient = ((profiles ?? []) as Profile[]).find(profile => profile.id === recipientId);
+  const hydratedProfiles = await hydrateProfilePrivateData((profiles ?? []) as Profile[]);
+  const sender = hydratedProfiles.find(profile => profile.id === job.created_by);
+  const recipient = hydratedProfiles.find(profile => profile.id === recipientId);
   if (!sender) throw new Error('Direct message sender not found');
   if (!recipient?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
   if (recipient.notification_preferences?.messages === false) {
@@ -434,7 +499,7 @@ async function sendRoleChangeEmail(job: NotificationJob, payload: RoleChangeEmai
     .eq('id', userId)
     .maybeSingle();
   if (error) throw error;
-  const profile = recipient as Profile | null;
+  const profile = await hydrateProfilePrivateDataForOne(recipient as Profile | null);
   if (!profile?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
   if (profile.notification_preferences?.roleChange === false) {
     return { sent: 0, failed: 0, recipientCount: 1, skipped: true, reason: 'Recipient disabled role emails' };
@@ -480,7 +545,7 @@ async function sendEnrollmentEmail(job: NotificationJob, payload: EnrollmentEmai
   ]);
   if (recipientError) throw recipientError;
   if (courseError) throw courseError;
-  const profile = recipient as Profile | null;
+  const profile = await hydrateProfilePrivateDataForOne(recipient as Profile | null);
   const typedCourse = course as CourseRow | null;
   if (!profile?.email) return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Recipient has no email' };
   if (profile.notification_preferences?.enrollment === false) {
@@ -647,8 +712,12 @@ async function resolveAbsenceNoticeRecipients(notice: AbsenceNotice) {
   if (error) throw error;
 
   const recipients = new Map<string, Profile>();
-  if (notice.student?.email) recipients.set(notice.student.id, notice.student);
-  for (const admin of (admins ?? []) as Profile[]) {
+  const [student] = notice.student
+    ? await hydrateProfilePrivateData([notice.student])
+    : [];
+  if (student?.email) recipients.set(student.id, student);
+  const hydratedAdmins = await hydrateProfilePrivateData((admins ?? []) as Profile[]);
+  for (const admin of hydratedAdmins) {
     if (admin.email) recipients.set(admin.id, admin);
   }
   return [...recipients.values()];
@@ -741,7 +810,7 @@ async function sendTodoReminderEmail(
     return { skipped: true, reason: 'Todo is no longer priority' };
   }
 
-  const recipient = typedTodo.assigned;
+  const recipient = await hydrateProfilePrivateDataForOne(typedTodo.assigned);
   if (!recipient?.email) {
     return { sent: 0, failed: 0, recipientCount: 0, skipped: true, reason: 'Assigned user has no email' };
   }
@@ -830,7 +899,9 @@ async function resolveAnnouncementRecipients(announcement: Announcement): Promis
     }
   }
 
-  return ((profiles ?? []) as Profile[]).filter(profile => {
+  const hydratedProfiles = await hydrateProfilePrivateData((profiles ?? []) as Profile[]);
+
+  return hydratedProfiles.filter(profile => {
     if (!profile.email) return false;
     if (profile.notification_preferences?.announcements === false) return false;
     if (recipientIds && !recipientIds.has(profile.id)) return false;
@@ -896,6 +967,10 @@ async function resolveRecipientIdsFromTokens(tokens: string[]) {
 }
 
 async function createDelivery(jobId: number, recipient: Profile) {
+  if (!recipient.email) {
+    throw new Error(`Cannot create delivery without recipient email for ${recipient.id}`);
+  }
+
   const { data, error } = await supabase
     .from('notification_deliveries')
     .insert({
@@ -904,6 +979,37 @@ async function createDelivery(jobId: number, recipient: Profile) {
       recipient_email: recipient.email,
       status: 'pending',
       provider: 'brevo',
+    })
+    .select('id')
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function createDeliveryForAddress({
+  jobId,
+  email,
+  name,
+  status,
+  providerMessageId,
+}: {
+  jobId: number;
+  email: string;
+  name: string;
+  status: 'pending' | 'sent' | 'failed' | 'skipped';
+  providerMessageId?: string | null;
+}) {
+  const { data, error } = await supabase
+    .from('notification_deliveries')
+    .insert({
+      job_id: jobId,
+      recipient_id: null,
+      recipient_email: email,
+      status,
+      provider: 'brevo',
+      provider_message_id: providerMessageId ?? null,
+      sent_at: status === 'sent' ? new Date().toISOString() : null,
     })
     .select('id')
     .single();
@@ -926,6 +1032,7 @@ async function sendBrevoEmail({
   tags?: string[];
 }) {
   if (!BREVO_API_KEY) throw new Error('Missing BREVO_API_KEY');
+  if (!to.email) throw new Error(`Missing recipient email for ${to.id}`);
 
   const response = await fetch('https://api.brevo.com/v3/smtp/email', {
     method: 'POST',

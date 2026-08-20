@@ -12,6 +12,7 @@ import {
   LayoutDashboard,
   Library,
   ListChecks,
+  MailCheck,
   Mail,
   MessageSquare,
   Send,
@@ -145,6 +146,19 @@ const topicSpecs: TopicSpec[] = [
       { icon: CheckCircle2, index: 0 },
       { icon: Mail, index: 1 },
       { icon: Send, index: 2 },
+    ],
+  },
+  {
+    id: 'emailLog',
+    sectionKey: 'communication',
+    icon: MailCheck,
+    tone: 'slate',
+    keywords: 6,
+    essentials: 4,
+    visual: [
+      { icon: MailCheck, index: 0 },
+      { icon: Users, index: 1 },
+      { icon: CheckCircle2, index: 2 },
     ],
   },
   {

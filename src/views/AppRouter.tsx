@@ -34,6 +34,7 @@ import { DutyMarkingView } from './student/DutyMarkingView';
 import { MyClassesView } from './teacher/MyClassesView';
 import { StaffDashboard } from './shared/StaffDashboard';
 import { AdminDashboard } from './admin/AdminDashboard';
+import { EmailLogView } from './admin/EmailLogView';
 import { InboxView } from './admin/InboxView';
 import { KnowledgeBaseView } from './admin/KnowledgeBaseView';
 import { CurriculumView } from './admin/CurriculumView';
@@ -1023,6 +1024,8 @@ export function AppRouter({
         );
       case 'inbox':
         return <InboxView currentUser={currentUser} />;
+      case 'email-log':
+        return <EmailLogView users={users} />;
       case 'knowledge-base':
         return <KnowledgeBaseView />;
     }

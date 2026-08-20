@@ -13,6 +13,7 @@ import {
   Inbox,
   LayoutDashboard,
   ListTodo,
+  MailCheck,
   Megaphone,
   MessageSquare,
   Search,
@@ -225,6 +226,7 @@ function navigationResults({
     { view: 'mentorship-overview', titleKey: 'sidebar.mentorship', subtitleKey: 'search.index.nav.mentorship.desc', icon: UserCheck },
     { view: 'tuition-overview', titleKey: 'sidebar.tuition', subtitleKey: 'search.index.nav.tuition.desc', icon: Banknote },
     { view: 'inbox', titleKey: 'sidebar.inbox', subtitleKey: 'sidebar.inbox.desc', icon: Inbox },
+    { view: 'email-log', titleKey: 'sidebar.emailLog', subtitleKey: 'sidebar.emailLog.desc', icon: MailCheck },
     { view: 'knowledge-base', titleKey: 'sidebar.knowledgeBase', subtitleKey: 'search.index.nav.knowledgeBase.desc', icon: BookOpen },
   ];
   const classroom: NavEntry[] = [

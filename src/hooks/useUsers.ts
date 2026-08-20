@@ -219,6 +219,14 @@ export function useUsers(currentUser: User) {
 
     setError(null);
     try {
+      const rolesChanged = Boolean(
+        user.roles &&
+        (
+          user.roles.length !== existing.roles.length ||
+          user.roles.some(role => !existing.roles.includes(role))
+        )
+      );
+
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -235,6 +243,17 @@ export function useUsers(currentUser: User) {
       if (updateError) throw updateError;
 
       await refetchUsers();
+
+      if (rolesChanged && user.roles) {
+        const queued = await queueRoleChangeEmail({
+          createdBy: currentUser.id,
+          userId: existing.id,
+          newRoles: user.roles,
+        });
+        if (!queued) {
+          console.warn(`Profile roles were updated, but role-change email could not be queued for ${existing.id}.`);
+        }
+      }
     } catch (err) {
       setError(translate('errors.users.updateProfileFailed'));
       console.error(err);
