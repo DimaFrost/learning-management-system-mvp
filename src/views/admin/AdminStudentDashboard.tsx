@@ -451,6 +451,22 @@ export function AdminStudentDashboard({
   const gateCount = attendanceSummary?.gates.length ?? 0;
   const submittedHomework = homeworkRows.filter(row => row.status === 'submitted' || row.status === 'graded').length;
   const gradedHomework = homeworkRows.filter(row => row.status === 'graded').length;
+  const homeworkCompletionScore = homeworkRows.length === 0 ? 1 : submittedHomework / homeworkRows.length;
+  const homeworkGradeScore = homeworkRows.length === 0 ? 1 : gradedHomework / homeworkRows.length;
+  const academicGraduationScore = homeworkRows.length === 0
+    ? 1
+    : Math.min(1, (homeworkCompletionScore * 0.7) + (homeworkGradeScore * 0.3));
+  const attendanceGraduationScore = attendanceSummary?.graduationProjectionScore ?? 1;
+  const graduationProjectionScore = Math.min(
+    1,
+    (attendanceGraduationScore * 0.55) + (academicGraduationScore * 0.45)
+  );
+  const graduationProjectionPercent = Math.round(graduationProjectionScore * 100);
+  const graduationProjectionStatus = graduationProjectionScore >= 0.95
+    ? t('attendance.projectionStrong')
+    : graduationProjectionScore >= 0.8
+      ? t('attendance.projectionFragile')
+      : t('attendance.projectionNeedsWork');
   const tuitionAccounts = student ? tuition.accounts.filter(account => account.studentId === student.id) : [];
   const tuitionPayments = student ? tuition.payments.filter(payment => payment.studentId === student.id) : [];
   const tuitionReminders = student ? tuition.reminders.filter(reminder => reminder.studentId === student.id) : [];
@@ -551,7 +567,7 @@ export function AdminStudentDashboard({
       </div>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <StatCard label={t('admin.student.attendanceGates')} value={gateCount ? `${passingGates}/${gateCount}` : '-'} detail={attendanceSummary?.meetsGraduationThreshold ? t('admin.student.onTrack') : t('attendance.needsReview')} />
+        <StatCard label={t('attendance.currentReadiness')} value={attendanceSummary ? `${Math.round(attendanceSummary.currentReadinessScore * 100)}%` : '-'} detail={gateCount ? `${passingGates}/${gateCount} ${t('attendance.gates')}` : t('attendance.needsReview')} />
         <StatCard label={t('admin.student.tab.classwork')} value={`${submittedHomework}/${homeworkRows.length}`} detail={t('admin.student.gradedCount', { count: gradedHomework })} />
         <StatCard label={t('admin.student.books')} value={`${completedBooks}/${studentBookAssignments.length}`} detail={overdueBooks > 0 ? t('admin.student.overdueCount', { count: overdueBooks }) : t('admin.student.readingProgress')} />
         <StatCard label={t('admin.student.mentor')} value={activeEnrollments.some(item => item.mentor) ? t('admin.student.assigned') : t('admin.student.missing')} detail={activeEnrollments.map(item => item.mentor?.name).filter(Boolean).join(', ') || t('admin.student.noMentor')} />
@@ -589,12 +605,12 @@ export function AdminStudentDashboard({
           <div className="flex flex-wrap items-start justify-between gap-4 border-b border-[#e5e5e5] pb-4">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('admin.student.attendanceReadiness')}</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('admin.student.graduationGates')}</h3>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{t('admin.student.attendanceGates')}</h3>
               <p className="mt-1 text-sm text-[#737373]">{t('admin.student.gatesHint')}</p>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-semibold text-[#171717]">{attendanceSummary?.overallScore != null ? `${Math.round(attendanceSummary.overallScore * 100)}%` : '-'}</p>
-              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('admin.student.overall')}</p>
+              <p className="text-3xl font-semibold text-[#171717]">{attendanceSummary?.currentReadinessScore != null ? `${Math.round(attendanceSummary.currentReadinessScore * 100)}%` : '-'}</p>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.currentReadiness')}</p>
             </div>
           </div>
           {attendanceSummary ? (
@@ -616,7 +632,7 @@ export function AdminStudentDashboard({
                       <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
                         <div className="h-full rounded-full bg-[#171717]" style={{ width: `${score}%` }} />
                       </div>
-                      <p className="mt-2 text-xs font-semibold text-[#525252]">{t('admin.student.credits', { earned: gate.earnedCredits, required: gate.requiredCredits })}</p>
+                      <p className="mt-2 text-xs font-semibold text-[#525252]">{t('admin.student.yearCreditTarget', { required: gate.totalRequiredCredits.toFixed(1) })}</p>
                     </div>
                   );
                 })}
@@ -816,6 +832,39 @@ export function AdminStudentDashboard({
 
       {activeTab === 'overview' && (
       <div className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
+        <section className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4 xl:col-span-2">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">{t('admin.student.graduationProjection')}</p>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{graduationProjectionStatus}</h3>
+              <p className="mt-1 max-w-2xl text-sm text-[#525252]">{t('admin.student.graduationProjectionHint')}</p>
+            </div>
+            <div className="text-left md:text-right">
+              <p className="text-4xl font-semibold leading-none text-[#171717]">{graduationProjectionPercent}%</p>
+              <p className="mt-1 text-xs font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">{t('admin.student.overall')}</p>
+            </div>
+          </div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">
+            <div className="rounded-xl border border-[#bfdbfe] bg-white/75 p-3">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold text-[#171717]">{t('admin.student.attendanceReadiness')}</span>
+                <span className="font-semibold text-[#1d4ed8]">{Math.round(attendanceGraduationScore * 100)}%</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#dbeafe]">
+                <div className="h-full rounded-full bg-[#2563eb]" style={{ width: `${Math.max(4, Math.round(attendanceGraduationScore * 100))}%` }} />
+              </div>
+            </div>
+            <div className="rounded-xl border border-[#bbf7d0] bg-white/75 p-3">
+              <div className="flex items-center justify-between gap-3 text-sm">
+                <span className="font-semibold text-[#171717]">{t('admin.student.homeworkRecord')}</span>
+                <span className="font-semibold text-[#15803d]">{Math.round(academicGraduationScore * 100)}%</span>
+              </div>
+              <div className="mt-2 h-2 overflow-hidden rounded-full bg-[#dcfce7]">
+                <div className="h-full rounded-full bg-[#16a34a]" style={{ width: `${Math.max(4, Math.round(academicGraduationScore * 100))}%` }} />
+              </div>
+            </div>
+          </div>
+        </section>
         {(activeTab === 'overview' || activeTab === 'attendance') && (
         <SectionCard
           title={t('sidebar.attendance')}
@@ -833,7 +882,7 @@ export function AdminStudentDashboard({
                     </span>
                   </div>
                   <p className="mt-2 text-sm text-[#525252]">{gate.detail}</p>
-                  <p className="mt-1 text-xs text-[#737373]">{t('admin.student.credits', { earned: gate.earnedCredits, required: gate.requiredCredits })}</p>
+                  <p className="mt-1 text-xs text-[#737373]">{t('admin.student.yearCreditTarget', { required: gate.totalRequiredCredits.toFixed(1) })}</p>
                 </div>
               ))}
             </div>

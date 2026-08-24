@@ -39,6 +39,7 @@ import type {
   StudentAttendanceSummary,
   SundayAttendanceRecord,
   TheWellAttendanceRecord,
+  TheWellSessionRecord,
   User,
 } from '../../types/lms';
 import {
@@ -64,7 +65,27 @@ import { useLanguage } from '../../i18n/LanguageContext';
 import type { PluralKey, TranslationKey } from '../../i18n/translations';
 import type { TranslationParams } from '../../i18n/translate';
 
-type TabId = 'overview' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
+type TabId = 'overview' | 'date' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
+type DateAttendanceEventType = 'class' | 'activation' | 'well' | 'ministry';
+type DateAttendanceEvent = {
+  id: string;
+  type: DateAttendanceEventType;
+  date: string;
+  title: string;
+  subtitle: string;
+  courseId: number | null;
+  course?: Course | null;
+  classId?: number;
+  weekStart?: string;
+  sessionId?: number;
+  teamId?: number;
+};
+type DateAttendanceRow = {
+  student: User;
+  course: Course | null;
+  status: AttendanceStatus | 'unmarked';
+  markedAt: string | null;
+};
 type MinistrySortKey =
   | 'student'
   | 'course'
@@ -137,6 +158,7 @@ export interface AttendanceViewProps {
   correctionRequests: AttendanceCorrectionRequest[];
   classAttendance: ClassAttendanceRecord[];
   theWellAttendance: TheWellAttendanceRecord[];
+  theWellSessionAttendance: TheWellSessionRecord[];
   sundayAttendance: SundayAttendanceRecord[];
   ministryTeams: MinistryTeam[];
   ministryRotations: MinistryRotation[];
@@ -209,6 +231,24 @@ function formatCompactWeekDate(dateStr: string): string {
     day: 'numeric',
     month: 'short',
   });
+}
+
+function ordinalDay(day: number): string {
+  if (day % 100 >= 11 && day % 100 <= 13) return `${day}th`;
+  if (day % 10 === 1) return `${day}st`;
+  if (day % 10 === 2) return `${day}nd`;
+  if (day % 10 === 3) return `${day}rd`;
+  return `${day}th`;
+}
+
+function formatDateAttendanceHeadingDate(dateStr: string, language: string): string {
+  const date = new Date(`${dateStr}T00:00:00`);
+  if (language === 'bg') {
+    return formatDateCapitalized(date, { weekday: 'long', day: 'numeric', month: 'short' });
+  }
+  const weekday = date.toLocaleDateString('en', { weekday: 'long' });
+  const month = date.toLocaleDateString('en', { month: 'short' });
+  return `${weekday}, ${ordinalDay(date.getDate())} ${month}`;
 }
 
 function getWeekLabel(
@@ -780,6 +820,7 @@ export function AttendanceView({
   correctionRequests,
   classAttendance,
   theWellAttendance,
+  theWellSessionAttendance,
   ministryTeams,
   ministryRotations,
   ministrySessions,
@@ -815,6 +856,8 @@ export function AttendanceView({
   const defaultCourseId = courseOptions[0]?.id ?? 0;
   const [courseId, setCourseId] = useState(defaultCourseId);
   const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<number[]>([]);
+  const [dateAttendanceDate, setDateAttendanceDate] = useState(toLocalDateKey());
+  const [selectedDateAttendanceEventId, setSelectedDateAttendanceEventId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [month, setMonth] = useState(() => {
     const now = new Date();
@@ -1029,6 +1072,169 @@ export function AttendanceView({
     .filter(entry => activeCourses.some(course => course.id === entry.courseId))
     .sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   const courseById = useMemo(() => new Map(courses.map(course => [course.id, course])), [courses]);
+  const userById = useMemo(() => new Map(users.map(user => [user.id, user])), [users]);
+  const ministryTeamById = useMemo(() => new Map(ministryTeams.map(team => [team.id, team])), [ministryTeams]);
+  const dateAttendanceEvents = useMemo<DateAttendanceEvent[]>(() => {
+    const events: DateAttendanceEvent[] = [];
+    selectedYearGroupCourses.forEach(course => {
+      course.subjects.forEach(subject => {
+        subject.classes
+          .filter(cls => cls.date === dateAttendanceDate)
+          .forEach(cls => {
+            const activation = isActivationSaturdayClass(cls);
+            events.push({
+              id: `class-${cls.id}`,
+              type: activation ? 'activation' : 'class',
+              date: cls.date,
+              title: activation ? t('nav.attendance.activation') : cls.title,
+              subtitle: `${subject.title} · ${getCourseDisplayName(course)}`,
+              courseId: course.id,
+              course,
+              classId: cls.id,
+            });
+          });
+      });
+    });
+
+    wellSchedule
+      .filter(entry => entry.wellDate === dateAttendanceDate && selectedYearGroupIdSet.has(entry.courseId))
+      .forEach(entry => {
+        const course = courseById.get(entry.courseId) ?? null;
+        events.push({
+          id: `well-${entry.id}`,
+          type: 'well',
+          date: entry.wellDate,
+          title: t('nav.attendance.well'),
+          subtitle: course ? getCourseDisplayName(course) : t('nav.attendance.well'),
+          courseId: entry.courseId,
+          course,
+          weekStart: entry.weekStart,
+        });
+      });
+
+    ministrySessions
+      .filter(session => session.serviceDate === dateAttendanceDate)
+      .forEach(session => {
+        const team = ministryTeamById.get(session.teamId);
+        events.push({
+          id: `ministry-${session.id}`,
+          type: 'ministry',
+          date: session.serviceDate,
+          title: session.title || team?.name || t('nav.attendance.ministry'),
+          subtitle: team ? `${team.name} · ${t('nav.attendance.ministry')}` : t('nav.attendance.ministry'),
+          courseId: null,
+          sessionId: session.id,
+          teamId: session.teamId,
+        });
+      });
+
+    return events.sort((a, b) => {
+      const order: Record<DateAttendanceEventType, number> = { class: 1, activation: 2, well: 3, ministry: 4 };
+      return order[a.type] - order[b.type] || a.title.localeCompare(b.title);
+    });
+  }, [courseById, dateAttendanceDate, ministrySessions, ministryTeamById, selectedYearGroupCourses, selectedYearGroupIdSet, t, wellSchedule]);
+  const selectedDateAttendanceEvent = useMemo(
+    () => dateAttendanceEvents.find(event => event.id === selectedDateAttendanceEventId) ?? dateAttendanceEvents[0] ?? null,
+    [dateAttendanceEvents, selectedDateAttendanceEventId]
+  );
+  const dateAttendanceRows = useMemo<DateAttendanceRow[]>(() => {
+    if (!selectedDateAttendanceEvent) return [];
+
+    if ((selectedDateAttendanceEvent.type === 'class' || selectedDateAttendanceEvent.type === 'activation') && selectedDateAttendanceEvent.classId && selectedDateAttendanceEvent.courseId) {
+      const records = classAttendance.filter(record => record.classId === selectedDateAttendanceEvent.classId);
+      const recordsByStudent = new Map(records.map(record => [record.studentId, record]));
+      return getEnrolledStudents(selectedDateAttendanceEvent.courseId, courseStudents, users).map(student => {
+        const record = recordsByStudent.get(student.id);
+        return {
+          student,
+          course: selectedDateAttendanceEvent.course ?? null,
+          status: record?.status ?? 'unmarked',
+          markedAt: record?.markedAt ?? null,
+        };
+      });
+    }
+
+    if (selectedDateAttendanceEvent.type === 'well' && selectedDateAttendanceEvent.courseId && selectedDateAttendanceEvent.weekStart) {
+      const records = theWellSessionAttendance.filter(record =>
+        record.courseId === selectedDateAttendanceEvent.courseId &&
+        record.weekStart === selectedDateAttendanceEvent.weekStart
+      );
+      const recordsByStudent = new Map(records.map(record => [record.studentId, record]));
+      return getEnrolledStudents(selectedDateAttendanceEvent.courseId, courseStudents, users).map(student => {
+        const record = recordsByStudent.get(student.id);
+        return {
+          student,
+          course: selectedDateAttendanceEvent.course ?? null,
+          status: record?.status ?? 'unmarked',
+          markedAt: record?.markedAt ?? null,
+        };
+      });
+    }
+
+    if (selectedDateAttendanceEvent.type === 'ministry' && selectedDateAttendanceEvent.sessionId && selectedDateAttendanceEvent.teamId) {
+      const records = ministryAttendance.filter(record => record.sessionId === selectedDateAttendanceEvent.sessionId);
+      const rowsByStudent = new Map<string, DateAttendanceRow>();
+      records.forEach(record => {
+        const student = userById.get(record.studentId);
+        if (!student) return;
+        rowsByStudent.set(record.studentId, {
+          student,
+          course: null,
+          status: record.status,
+          markedAt: record.markedAt,
+        });
+      });
+
+      ministryRotations
+        .filter(rotation =>
+          rotation.teamId === selectedDateAttendanceEvent.teamId &&
+          rotation.startDate <= selectedDateAttendanceEvent.date &&
+          rotation.endDate >= selectedDateAttendanceEvent.date &&
+          selectedYearGroupIdSet.has(rotation.courseId)
+        )
+        .forEach(rotation => {
+          if (rowsByStudent.has(rotation.studentId)) return;
+          const student = userById.get(rotation.studentId);
+          if (!student) return;
+          rowsByStudent.set(rotation.studentId, {
+            student,
+            course: courseById.get(rotation.courseId) ?? null,
+            status: 'unmarked',
+            markedAt: null,
+          });
+        });
+
+      return Array.from(rowsByStudent.values()).sort((a, b) => a.student.name.localeCompare(b.student.name));
+    }
+
+    return [];
+  }, [
+    classAttendance,
+    courseById,
+    courseStudents,
+    ministryAttendance,
+    ministryRotations,
+    selectedDateAttendanceEvent,
+    selectedYearGroupIdSet,
+    theWellSessionAttendance,
+    userById,
+    users,
+  ]);
+  const dateAttendanceStatusCounts = useMemo(() => ({
+    present: dateAttendanceRows.filter(row => row.status === 'present').length,
+    late: dateAttendanceRows.filter(row => row.status === 'late').length,
+    absent: dateAttendanceRows.filter(row => row.status === 'absent').length,
+    unmarked: dateAttendanceRows.filter(row => row.status === 'unmarked').length,
+  }), [dateAttendanceRows]);
+  useEffect(() => {
+    if (dateAttendanceEvents.length === 0) {
+      setSelectedDateAttendanceEventId(null);
+      return;
+    }
+    if (!selectedDateAttendanceEventId || !dateAttendanceEvents.some(event => event.id === selectedDateAttendanceEventId)) {
+      setSelectedDateAttendanceEventId(dateAttendanceEvents[0].id);
+    }
+  }, [dateAttendanceEvents, selectedDateAttendanceEventId]);
   const dutyWeekRows = useMemo<DutyWeekRow[]>(() => {
     const rows = new Map<string, DutyWeekRow>();
 
@@ -1083,9 +1289,9 @@ export function AttendanceView({
     return stats;
   }, [prayerRows]);
   const activeSummaries = activeCourses.flatMap(course => getCourseSummaries(course.id));
-  const passingCount = activeSummaries.filter(summary => summary.meetsGraduationThreshold).length;
+  const passingCount = activeSummaries.filter(summary => summary.meetsCurrentReadiness).length;
   const averageOverall = activeSummaries.length
-    ? activeSummaries.reduce((sum, summary) => sum + summary.overallScore, 0) / activeSummaries.length
+    ? activeSummaries.reduce((sum, summary) => sum + summary.currentReadinessScore, 0) / activeSummaries.length
     : 1;
   const ministryRows = useMemo<MinistryStudentRow[]>(() => {
     const rows: MinistryStudentRow[] = [];
@@ -1268,6 +1474,11 @@ export function AttendanceView({
       title: t('nav.attendance.classes'),
       eyebrow: t('nav.attendance.classes.desc'),
       description: t('attendance.admin.section.classes.description'),
+    },
+    date: {
+      title: t('nav.attendance.date'),
+      eyebrow: t('nav.attendance.date.desc'),
+      description: t('attendance.admin.section.date.description'),
     },
     well: {
       title: t('nav.attendance.well'),
@@ -1625,6 +1836,12 @@ export function AttendanceView({
       { label: t('attendance.admin.stats.belowRule'), value: summaries.filter(summary => summary.classAttendanceScore < settings.classRequiredPercent).length, detail: t('attendance.admin.stats.percentRequired', { percent: percentInput(settings.classRequiredPercent) }), icon: ShieldCheck, accent: 'bg-[#fff7ed] text-[#ea580c]' },
       { label: t('attendance.admin.stats.missingRecords'), value: missingClassRecords, detail: t('attendance.admin.stats.unmarkedClassSlots'), icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
     ],
+    date: [
+      { label: t('attendance.admin.date.eventsFound'), value: dateAttendanceEvents.length, detail: formatPlatformDate(dateAttendanceDate), icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
+      { label: t('attendance.present'), value: dateAttendanceStatusCounts.present, detail: t('attendance.admin.date.recordsForEvent'), icon: CheckCircle2, accent: 'bg-[#dcfce7] text-[#16a34a]' },
+      { label: t('attendance.late'), value: dateAttendanceStatusCounts.late, detail: t('attendance.admin.date.recordsForEvent'), icon: Activity, accent: 'bg-[#fff7ed] text-[#ea580c]' },
+      { label: t('attendance.unmarked'), value: dateAttendanceStatusCounts.unmarked + dateAttendanceStatusCounts.absent, detail: t('attendance.admin.date.unmarkedHint'), icon: ClipboardList, accent: 'bg-[#fee2e2] text-[#dc2626]' },
+    ],
     well: [
       { label: t('attendance.admin.stats.monthlyCredits'), value: settings.theWellRequiredPerMonth, detail: t('attendance.admin.stats.monthRequirement', { month: formatMonthYear(month.year, month.month) }), icon: Calendar, accent: 'bg-[#dbeaff] text-[#2563eb]' },
       { label: t('attendance.admin.stats.meetingRule'), value: summaries.filter(summary => (summary.gates.find(gate => gate.key === 'the_well')?.status ?? 'failing') === 'passing').length, detail: tCount('attendance.admin.stats.students', summaries.length), icon: ShieldCheck, accent: 'bg-[#dcfce7] text-[#16a34a]' },
@@ -1706,7 +1923,7 @@ export function AttendanceView({
     );
   };
 
-  const renderCourseFilter = () => (
+  const renderCourseFilter = (leadingControl?: React.ReactNode) => (
     <SectionCard className="p-3">
       <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex flex-wrap items-center gap-2">
@@ -1744,17 +1961,20 @@ export function AttendanceView({
             })()
           ))}
         </div>
-        <label className="relative block w-full sm:w-72">
-          <span className="sr-only">{t('attendance.admin.searchStudents')}</span>
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
-          <input
-            type="search"
-            value={search}
-            onChange={event => setSearch(event.target.value)}
-            placeholder={t('attendance.admin.searchStudents')}
-            className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#171717] focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
-          />
-        </label>
+        <div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center xl:w-auto">
+          {leadingControl}
+          <label className="relative block w-full sm:w-72">
+            <span className="sr-only">{t('attendance.admin.searchStudents')}</span>
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+            <input
+              type="search"
+              value={search}
+              onChange={event => setSearch(event.target.value)}
+              placeholder={t('attendance.admin.searchStudents')}
+              className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm text-[#171717] focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
+            />
+          </label>
+        </div>
       </div>
     </SectionCard>
   );
@@ -1798,10 +2018,10 @@ export function AttendanceView({
                   })}
                   <td className="px-4 py-3">
                     <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                      summary.meetsGraduationThreshold ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'
+                      summary.meetsCurrentReadiness ? 'bg-[#dcfce7] text-[#166534]' : 'bg-[#fee2e2] text-[#b91c1c]'
                     }`}>
-                      {summary.meetsGraduationThreshold ? <CheckCircle2 className="h-3 w-3" /> : null}
-                      {summary.meetsGraduationThreshold ? t('attendance.admin.meetsGates') : t('attendance.needsReview')}
+                      {summary.meetsCurrentReadiness ? <CheckCircle2 className="h-3 w-3" /> : null}
+                      {summary.meetsCurrentReadiness ? t('attendance.admin.meetsGates') : t('attendance.needsReview')}
                     </span>
                   </td>
                 </tr>
@@ -1817,6 +2037,155 @@ export function AttendanceView({
       </SectionCard>
     </div>
   );
+
+  const renderDateAttendance = () => {
+    const eventIcon: Record<DateAttendanceEventType, typeof Calendar> = {
+      class: Calendar,
+      activation: ShieldCheck,
+      well: Activity,
+      ministry: HeartHandshake,
+    };
+    const eventTone: Record<DateAttendanceEventType, string> = {
+      class: 'border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8]',
+      activation: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]',
+      well: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
+      ministry: 'border-[#ddd6fe] bg-[#f5f3ff] text-[#6d28d9]',
+    };
+    const statusTone: Record<DateAttendanceRow['status'], string> = {
+      present: 'border-[#bbf7d0] bg-[#f0fdf4] text-[#15803d]',
+      late: 'border-[#fed7aa] bg-[#fff7ed] text-[#c2410c]',
+      absent: 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]',
+      unmarked: 'border-[#e5e7eb] bg-[#f8fafc] text-[#64748b]',
+    };
+    const statusLabel = (status: DateAttendanceRow['status']) => {
+      if (status === 'present') return t('attendance.present');
+      if (status === 'late') return t('attendance.late');
+      if (status === 'absent') return t('attendance.absent');
+      return t('attendance.unmarked');
+    };
+
+    return (
+      <div className="space-y-4">
+        <SectionCard className="p-4">
+          <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+                {t('attendance.admin.date.eventsOnDate', {
+                  date: formatDateAttendanceHeadingDate(dateAttendanceDate, language),
+                })}
+              </p>
+              {dateAttendanceEvents.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] p-4 text-sm text-[#737373]">
+                  {t('attendance.admin.date.noEvents')}
+                </div>
+              ) : (
+                <div className="grid gap-2 md:grid-cols-2 xl:grid-cols-4">
+                  {dateAttendanceEvents.map(event => {
+                    const Icon = eventIcon[event.type];
+                    const selected = selectedDateAttendanceEvent?.id === event.id;
+                    return (
+                      <button
+                        key={event.id}
+                        type="button"
+                        onClick={() => setSelectedDateAttendanceEventId(event.id)}
+                        className={`flex min-w-0 items-center gap-2 rounded-xl border px-2.5 py-2 text-left transition ${
+                          selected ? 'border-[#2563eb] bg-[#eff6ff] shadow-sm' : 'border-[#e5e5e5] bg-white hover:border-[#cbd5e1]'
+                        }`}
+                      >
+                        <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${eventTone[event.type]}`}>
+                          <Icon className="h-4 w-4" />
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block truncate text-[13px] font-semibold text-[#171717]">{event.title}</span>
+                          <span className="mt-0.5 block truncate text-xs text-[#737373]">{event.subtitle}</span>
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+          </div>
+        </SectionCard>
+
+        <SectionCard className="overflow-hidden">
+          <div className="flex flex-col gap-3 border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.date.eventAttendance')}</p>
+              <h3 className="mt-1 text-lg font-semibold text-[#171717]">
+                {selectedDateAttendanceEvent?.title ?? t('attendance.admin.date.chooseEvent')}
+              </h3>
+              {selectedDateAttendanceEvent && (
+                <p className="mt-1 text-sm text-[#737373]">{selectedDateAttendanceEvent.subtitle}</p>
+              )}
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {(['present', 'late', 'absent', 'unmarked'] as const).map(status => (
+                <span key={status} className={`rounded-full border px-2.5 py-1 text-xs font-semibold ${statusTone[status]}`}>
+                  {statusLabel(status)} · {dateAttendanceStatusCounts[status]}
+                </span>
+              ))}
+            </div>
+          </div>
+          {selectedDateAttendanceEvent ? (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+                <thead className="bg-white">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.table.student')}</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.yearGroup')}</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('common.status')}</th>
+                    <th className="px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.date.markedAt')}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[#e5e5e5] bg-white">
+                  {dateAttendanceRows.map(row => (
+                    <tr key={row.student.id}>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-3">
+                          <span className="grid h-9 w-9 place-items-center rounded-full bg-[#f5f5f5] text-xs font-semibold text-[#525252] ring-1 ring-[#e5e5e5]">
+                            {getInitials(row.student.name)}
+                          </span>
+                          <div className="min-w-0">
+                            <button
+                              type="button"
+                              onClick={() => onOpenStudentDashboard?.(row.student.id)}
+                              className="truncate text-left font-semibold text-[#171717] hover:text-[#1d4ed8] hover:underline"
+                            >
+                              {row.student.name}
+                            </button>
+                            <p className="truncate text-xs text-[#737373]">{row.student.email}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3">
+                        {row.course ? <ActiveYearGroupBadge course={row.course} /> : <span className="text-[#737373]">-</span>}
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className={`inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold ${statusTone[row.status]}`}>
+                          {statusLabel(row.status)}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-sm text-[#525252]">
+                        {row.markedAt ? formatPlatformDateTime(row.markedAt) : t('attendance.admin.date.noRecord')}
+                      </td>
+                    </tr>
+                  ))}
+                  {dateAttendanceRows.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-10 text-center text-[#737373]">
+                        {t('attendance.admin.date.chooseEvent')}
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="p-8 text-center text-sm text-[#737373]">{t('attendance.admin.date.chooseEvent')}</div>
+          )}
+        </SectionCard>
+      </div>
+    );
+  };
 
   const renderClasses = () => {
     const sortHeader = (label: string, key: ClassesSortKey, title?: string) => (
@@ -3142,9 +3511,23 @@ export function AttendanceView({
         {renderPageStats()}
         {error && <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
       </SectionCard>
-      {activeSection === 'overview' && renderCourseFilter()}
+      {(activeSection === 'overview' || activeSection === 'date') && renderCourseFilter(
+        activeSection === 'date' ? (
+          <label className="relative block w-full sm:w-48">
+            <span className="sr-only">{t('attendance.admin.date.pickDate')}</span>
+            <Calendar className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+            <input
+              type="date"
+              value={dateAttendanceDate}
+              onChange={event => setDateAttendanceDate(event.target.value)}
+              className="h-9 w-full rounded-full border border-[#e5e5e5] bg-[#f5f5f5] pl-9 pr-3 text-sm font-semibold text-[#171717] focus:border-[#2563eb] focus:bg-white focus:ring-[#2563eb]"
+            />
+          </label>
+        ) : undefined
+      )}
 
       {activeSection === 'overview' && renderOverview()}
+      {activeSection === 'date' && renderDateAttendance()}
       {activeSection === 'classes' && renderClasses()}
       {activeSection === 'well' && renderWell()}
       {activeSection === 'ministry' && renderMinistryTable()}

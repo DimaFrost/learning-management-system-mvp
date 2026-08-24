@@ -43,6 +43,7 @@ export async function queueRoleChangeEmail(params: {
   createdBy: string;
   userId: string;
   newRoles: string[];
+  actionUrl?: string;
 }) {
   return queueNotificationJob({
     type: 'role_change_email',
@@ -50,6 +51,7 @@ export async function queueRoleChangeEmail(params: {
     payload: {
       userId: params.userId,
       newRoles: params.newRoles,
+      actionUrl: params.actionUrl ?? window.location.origin,
     },
   });
 }

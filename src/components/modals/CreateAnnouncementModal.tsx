@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   CalendarClock,
   CheckCircle2,
+  ChevronDown,
   Clock,
   ExternalLink,
   Eye,
@@ -410,6 +411,8 @@ export function CreateAnnouncementModal({
   const [attaching, setAttaching] = useState(false);
   const [previewItem, setPreviewItem] = useState<FilePreviewItem | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const deliveryMenuRef = useRef<HTMLDivElement>(null);
+  const [deliveryMenuOpen, setDeliveryMenuOpen] = useState(false);
 
   const isEditing = editingAnnouncement !== null;
   const isEditingPublished = editingAnnouncement?.status === 'published';
@@ -484,7 +487,21 @@ export function CreateAnnouncementModal({
     setCustomPage(0);
     setNotifyAudience(false);
     setAttaching(false);
+    setDeliveryMenuOpen(false);
   }, [isOpen, editingAnnouncement, courses, isTeacherNotAdmin]);
+
+  useEffect(() => {
+    if (!deliveryMenuOpen) return;
+
+    const handlePointerDown = (event: MouseEvent) => {
+      if (!deliveryMenuRef.current?.contains(event.target as Node)) {
+        setDeliveryMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handlePointerDown);
+    return () => document.removeEventListener('mousedown', handlePointerDown);
+  }, [deliveryMenuOpen]);
 
   const existingCount = announcementId !== null ? existingAttachments.length : 0;
   const totalAttachments = existingCount + pendingAttachments.length + (selectedFile ? 1 : 0);
@@ -655,17 +672,18 @@ export function CreateAnnouncementModal({
     },
   ], [isEditingPublished, language, t]);
 
+  const selectedDeliveryOption = deliveryOptions.find(option => option.id === deliveryMode) ?? deliveryOptions[0];
+  const SelectedDeliveryIcon = selectedDeliveryOption.icon;
+
   const contentLanguageOptions = useMemo(() => ([
     {
       id: 'en' as const,
       label: t('common.language.english'),
-      meta: t('announcements.create.metaDefault'),
       complete: title.trim().length > 0 && content.trim().length > 0,
     },
     {
       id: 'bg' as const,
       label: t('common.language.bulgarian'),
-      meta: t('announcements.create.metaOptional'),
       complete: titleBg.trim().length > 0 && contentBg.trim().length > 0,
     },
   ]), [content, contentBg, language, t, title, titleBg]);
@@ -956,11 +974,6 @@ export function CreateAnnouncementModal({
                       }`}
                     >
                       <span>{option.label}</span>
-                      <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${
-                        selected ? 'bg-white/15 text-white' : 'bg-[#f5f5f5] text-[#737373]'
-                      }`}>
-                        {option.meta}
-                      </span>
                       {option.complete && (
                         <span className={`h-1.5 w-1.5 rounded-full ${selected ? 'bg-[#86efac]' : 'bg-[#16a34a]'}`} />
                       )}
@@ -972,7 +985,6 @@ export function CreateAnnouncementModal({
                 <div className={`${contentLanguage === 'en' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-[#171717]">{t('common.language.english')}</span>
-                    <span className="rounded-full bg-[#eff6ff] px-2 py-0.5 text-[11px] font-semibold text-[#1d4ed8]">{t('announcements.create.metaDefault')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
@@ -1008,7 +1020,6 @@ export function CreateAnnouncementModal({
                 <div className={`${contentLanguage === 'bg' ? 'block' : 'hidden'} rounded-2xl border border-[#e5e5e5] bg-white p-4`}>
                   <div className="mb-3 flex items-center justify-between gap-2">
                     <span className="text-sm font-semibold text-[#171717]">{t('common.language.bulgarian')}</span>
-                    <span className="rounded-full bg-[#f5f5f5] px-2 py-0.5 text-[11px] font-semibold text-[#737373] ring-1 ring-[#e5e5e5]">{t('announcements.create.metaOptional')}</span>
                   </div>
                   <div className="space-y-3">
                     <div>
@@ -1078,60 +1089,6 @@ export function CreateAnnouncementModal({
                 </div>
               </div>
             </div>
-          </section>
-
-          <section className="tbo-panel p-5">
-            <div className="mb-4">
-              <h3 className="text-sm font-semibold text-[#171717]">{t('announcements.create.delivery')}</h3>
-              <p className="mt-0.5 text-xs text-[#737373]">
-                {isEditingPublished
-                  ? t('announcements.create.deliveryPublishedHint')
-                  : t('announcements.create.deliveryDraftHint')}
-              </p>
-            </div>
-
-            <div className="grid gap-3 md:grid-cols-3">
-              {deliveryOptions.map(option => {
-                const Icon = option.icon;
-                const selected = deliveryMode === option.id;
-                return (
-                  <button
-                    key={option.id}
-                    type="button"
-                    onClick={() => setDeliveryMode(option.id)}
-                    className={`tbo-focus rounded-xl border p-4 text-left transition ${
-                      selected ? option.theme.selected : option.theme.idle
-                    }`}
-                  >
-                    <span className="mb-3 flex items-center justify-between gap-3">
-                      <span className={`grid h-9 w-9 place-items-center rounded-lg ring-1 ${option.theme.icon}`}>
-                        <Icon className="h-4 w-4" />
-                      </span>
-                      {selected && <CheckCircle2 className={`h-4 w-4 ${option.theme.check}`} />}
-                    </span>
-                    <span className="block text-sm font-semibold text-[#171717]">{option.label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-[#737373]">{option.description}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {deliveryMode === 'schedule' && (
-              <div className="mt-4">
-                <label htmlFor="announcement-schedule" className="mb-1 block text-sm font-medium text-[#525252]">
-                  {t('announcements.create.scheduledDateTime')}
-                </label>
-                <input
-                  id="announcement-schedule"
-                  type="datetime-local"
-                  value={scheduledAtLocal}
-                  onChange={e => setScheduledAtLocal(e.target.value)}
-                  className="tbo-focus w-full rounded-lg border border-[#d4d4d4] px-3 py-2 text-sm"
-                />
-                {errors.schedule && <p className="mt-1 text-sm text-red-500">{errors.schedule}</p>}
-              </div>
-            )}
-
           </section>
 
           <section className="tbo-panel p-5">
@@ -1447,9 +1404,98 @@ export function CreateAnnouncementModal({
               </div>
             )}
           </section>
+
+          <div className="rounded-2xl border border-[#e5e5e5] bg-white/80 p-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 flex-1 flex-col gap-3 sm:flex-row sm:items-center">
+                <div ref={deliveryMenuRef} className="relative w-full sm:max-w-[310px]">
+                  <button
+                    type="button"
+                    onClick={() => setDeliveryMenuOpen(prev => !prev)}
+                    className={`tbo-focus flex h-11 w-full items-center justify-between gap-3 rounded-xl border px-3 text-left transition ${selectedDeliveryOption.theme.selected}`}
+                    aria-expanded={deliveryMenuOpen}
+                  >
+                    <span className="flex min-w-0 items-center gap-3">
+                      <span className={`grid h-8 w-8 flex-shrink-0 place-items-center rounded-lg ring-1 ${selectedDeliveryOption.theme.icon}`}>
+                        <SelectedDeliveryIcon className="h-4 w-4" />
+                      </span>
+                      <span className="block min-w-0 truncate text-sm font-semibold text-[#171717]">{selectedDeliveryOption.label}</span>
+                    </span>
+                    <ChevronDown className={`h-4 w-4 flex-shrink-0 text-[#737373] transition ${deliveryMenuOpen ? 'rotate-180' : ''}`} />
+                  </button>
+
+                  {deliveryMenuOpen && (
+                    <div className="absolute bottom-[calc(100%+8px)] left-0 z-30 w-full overflow-hidden rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-xl">
+                      {deliveryOptions.map(option => {
+                        const Icon = option.icon;
+                        const selected = deliveryMode === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => {
+                              setDeliveryMode(option.id);
+                              setDeliveryMenuOpen(false);
+                            }}
+                            className={`tbo-focus flex w-full items-center gap-3 rounded-lg border px-3 py-2.5 text-left transition ${
+                              selected ? option.theme.selected : 'border-transparent bg-white hover:bg-[#fafafa]'
+                            }`}
+                          >
+                            <span className={`grid h-9 w-9 flex-shrink-0 place-items-center rounded-lg ring-1 ${option.theme.icon}`}>
+                              <Icon className="h-4 w-4" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate text-sm font-semibold text-[#171717]">{option.label}</span>
+                              <span className="block truncate text-xs text-[#737373]">{option.description}</span>
+                            </span>
+                            {selected && <CheckCircle2 className={`h-4 w-4 flex-shrink-0 ${option.theme.check}`} />}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                {deliveryMode === 'schedule' && (
+                  <div className="w-full sm:max-w-[260px]">
+                    <label htmlFor="announcement-schedule" className="sr-only">
+                      {t('announcements.create.scheduledDateTime')}
+                    </label>
+                    <input
+                      id="announcement-schedule"
+                      type="datetime-local"
+                      value={scheduledAtLocal}
+                      onChange={e => setScheduledAtLocal(e.target.value)}
+                      aria-label={t('announcements.create.scheduledDateTime')}
+                      className="tbo-focus h-11 w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm"
+                    />
+                    {errors.schedule && <p className="mt-1 text-sm text-red-500">{errors.schedule}</p>}
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-end">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="tbo-focus inline-flex h-11 items-center justify-center rounded-xl border border-[#d4d4d4] bg-white px-5 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]"
+                >
+                  {t('common.cancel')}
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting || attaching}
+                  className="tbo-focus inline-flex h-11 items-center justify-center rounded-xl bg-[#171717] px-5 text-sm font-medium text-white shadow-sm hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {submitLabel}
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
 
-        <aside className="space-y-5">
+        <aside className="xl:sticky xl:top-5 xl:self-start">
+          <div className="space-y-5">
           <section className="tbo-panel p-5">
             <div className="flex items-start justify-between gap-4">
               <div className="flex items-start gap-2">
@@ -1562,21 +1608,6 @@ export function CreateAnnouncementModal({
             </button>
           )}
 
-          <div className="flex gap-3">
-            <button
-              type="button"
-              onClick={onClose}
-              className="tbo-focus flex-1 rounded-lg border border-[#d4d4d4] bg-white px-4 py-2 text-sm font-medium text-[#525252] hover:bg-[#f5f5f5]"
-            >
-              {t('common.cancel')}
-            </button>
-            <button
-              type="submit"
-              disabled={submitting || attaching}
-              className="tbo-focus flex-1 rounded-lg bg-[#171717] px-4 py-2 text-sm font-medium text-white hover:bg-[#404040] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {submitLabel}
-            </button>
           </div>
         </aside>
       </form>

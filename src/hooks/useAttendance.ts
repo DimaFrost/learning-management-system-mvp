@@ -39,7 +39,6 @@ import {
   getWeeksBetween,
   calculateClassScore,
   calculateSaturdayScore,
-  calculateTheWellScore,
   calculateSundayScore,
   calculateOverallScore,
   calculateAttendanceCredits,
@@ -70,6 +69,44 @@ function isMissingRelationError(error: { code?: string; message?: string } | nul
     error?.code === 'PGRST205' ||
     error?.message?.toLowerCase().includes('could not find the table') === true ||
     error?.message?.toLowerCase().includes('schema cache') === true;
+}
+
+type GateStatus = AttendanceGateSummary['status'];
+
+function todayKey(): string {
+  return dateToString(new Date());
+}
+
+function dateIsPastOrToday(date: string | null | undefined, today: string): boolean {
+  return Boolean(date) && String(date) <= today;
+}
+
+function monthKey(year: number, month: number): string {
+  return `${year}-${String(month).padStart(2, '0')}`;
+}
+
+function monthsBetween(startDate: string, endDate: string): string[] {
+  if (!startDate || !endDate || startDate > endDate) return [];
+  const [startYear, startMonth] = startDate.split('-').map(Number);
+  const [endYear, endMonth] = endDate.split('-').map(Number);
+  const months: string[] = [];
+  const cursor = new Date(startYear, startMonth - 1, 1);
+  const end = new Date(endYear, endMonth - 1, 1);
+  while (cursor <= end) {
+    months.push(monthKey(cursor.getFullYear(), cursor.getMonth() + 1));
+    cursor.setMonth(cursor.getMonth() + 1);
+  }
+  return months;
+}
+
+function statusFromScore(score: number, passThreshold: number, riskThreshold: number): GateStatus {
+  if (score >= passThreshold) return 'passing';
+  if (score >= riskThreshold) return 'at_risk';
+  return 'failing';
+}
+
+function averageScores(scores: number[]): number {
+  return scores.length ? scores.reduce((sum, score) => sum + score, 0) / scores.length : 1;
 }
 
 type AttendanceSettingsRow = {
@@ -1309,12 +1346,15 @@ export function useAttendance(
       .filter(cs => cs.courseId === courseId)
       .map(cs => cs.studentId);
 
+    const today = todayKey();
     const regularClasses = course.subjects.flatMap(s =>
       s.classes.filter(c => c.date && !isActivationSaturdayClass(c))
     );
     const saturdayClasses = course.subjects.flatMap(s =>
       s.classes.filter(c => isActivationSaturdayClass(c))
     );
+    const elapsedRegularClasses = regularClasses.filter(c => dateIsPastOrToday(c.date, today));
+    const elapsedSaturdayClasses = saturdayClasses.filter(c => dateIsPastOrToday(c.date, today));
 
     return enrolledIds.map(studentId => {
       const student = users.find(u => u.id === studentId);
@@ -1349,19 +1389,36 @@ export function useAttendance(
           ))
           .map(session => session.id)
       );
+      const myElapsedMinistrySessionIds = new Set(
+        ministrySessions
+          .filter(session => dateIsPastOrToday(session.serviceDate, today))
+          .filter(session => myMinistryRotations.some(rotation =>
+            rotation.teamId === session.teamId &&
+            session.serviceDate >= rotation.startDate &&
+            session.serviceDate <= rotation.endDate
+          ))
+          .map(session => session.id)
+      );
       const myMinistryAttendance = ministryAttendance.filter(
         record => record.studentId === studentId && myMinistrySessionIds.has(record.sessionId)
       );
+      const myElapsedMinistryAttendance = ministryAttendance.filter(
+        record => record.studentId === studentId && myElapsedMinistrySessionIds.has(record.sessionId)
+      );
 
       const classScore = calculateClassScore(
-        myClassAtt, regularClasses.length, effectiveSettings
+        myClassAtt.filter(a => elapsedRegularClasses.some(c => c.id === a.classId)),
+        elapsedRegularClasses.length,
+        effectiveSettings
       );
       const satScore = calculateSaturdayScore(
-        mySatAtt, saturdayClasses.length, effectiveSettings
+        mySatAtt.filter(a => elapsedSaturdayClasses.some(c => c.id === a.classId)),
+        elapsedSaturdayClasses.length,
+        effectiveSettings
       );
-      const wellScore = calculateTheWellScore(myWell, effectiveSettings);
       const sunScore = calculateSundayScore(mySunday, effectiveSettings);
       const ministryCredits = calculateAttendanceCredits(myMinistryAttendance, effectiveSettings);
+      const elapsedMinistryCredits = calculateAttendanceCredits(myElapsedMinistryAttendance, effectiveSettings);
       const ministryRequiredCredits = myMinistryRotations.reduce((total, rotation) => {
         const team = ministryTeams.find(t => t.id === rotation.teamId);
         if (!team) return total;
@@ -1373,22 +1430,75 @@ export function useAttendance(
         );
         return total + (Math.ceil(months / team.requirementPeriodMonths) * team.requiredCredits);
       }, 0);
-      const ministryScore = ministryRequiredCredits === 0 ? 1 : Math.min(1, ministryCredits / ministryRequiredCredits);
-      const classCredits = calculateAttendanceCredits(myClassAtt, effectiveSettings);
-      const classRequiredCredits = regularClasses.length * effectiveSettings.classRequiredPercent;
-      const saturdayCredits = calculateAttendanceCredits(mySatAtt, effectiveSettings);
-      const saturdayLostCredits = Math.max(0, saturdayClasses.length - saturdayCredits);
-      const wellCredits = myWell.reduce((sum, record) =>
+      const elapsedMinistryRequiredCredits = myMinistryRotations.reduce((total, rotation) => {
+        const team = ministryTeams.find(t => t.id === rotation.teamId);
+        if (!team) return total;
+        const startDate = rotation.startDate;
+        const endDate = [rotation.endDate, today].sort()[0];
+        if (endDate < startDate) return total;
+        const months = monthsBetween(startDate, endDate).length;
+        return total + (Math.ceil(months / team.requirementPeriodMonths) * team.requiredCredits);
+      }, 0);
+      const ministryScore = elapsedMinistryRequiredCredits === 0 ? 1 : Math.min(1, elapsedMinistryCredits / elapsedMinistryRequiredCredits);
+      const ministryProjectionScore = ministryRequiredCredits === 0 ? 1 : Math.min(1, ministryCredits / ministryRequiredCredits);
+      const elapsedClassAtt = myClassAtt.filter(a => elapsedRegularClasses.some(c => c.id === a.classId));
+      const elapsedSatAtt = mySatAtt.filter(a => elapsedSaturdayClasses.some(c => c.id === a.classId));
+      const classCredits = calculateAttendanceCredits(elapsedClassAtt, effectiveSettings);
+      const classRequiredCredits = elapsedRegularClasses.length * effectiveSettings.classRequiredPercent;
+      const classTotalRequiredCredits = regularClasses.length * effectiveSettings.classRequiredPercent;
+      const classProjectionScore = classScore;
+      const saturdayCredits = calculateAttendanceCredits(elapsedSatAtt, effectiveSettings);
+      const saturdayLostCredits = Math.max(0, elapsedSaturdayClasses.length - saturdayCredits);
+      const saturdayTotalRequiredCredits = Math.max(0, saturdayClasses.length - effectiveSettings.activationMaxLostCredits);
+      const saturdayProjectionStatus: GateStatus = saturdayLostCredits > effectiveSettings.activationMaxLostCredits
+        ? 'failing'
+        : saturdayLostCredits >= effectiveSettings.activationMaxLostCredits
+          ? 'at_risk'
+          : 'passing';
+      const saturdayProjectionScore = saturdayProjectionStatus === 'passing' ? 1 : saturdayProjectionStatus === 'at_risk' ? effectiveSettings.statusAtRiskThreshold : 0;
+
+      const elapsedWellSchedule = wellSchedule.filter(entry =>
+        entry.courseId === courseId &&
+        entry.wellDate >= course.startDate &&
+        entry.wellDate <= course.endDate &&
+        dateIsPastOrToday(entry.wellDate, today)
+      );
+      const elapsedWellSessionsByMonth = elapsedWellSchedule.reduce<Map<string, number>>((map, entry) => {
+        const [year, month] = entry.wellDate.split('-').map(Number);
+        const key = monthKey(year, month);
+        map.set(key, (map.get(key) ?? 0) + 1);
+        return map;
+      }, new Map());
+      const elapsedWellRequiredCredits = Array.from(elapsedWellSessionsByMonth.values()).reduce(
+        (sum, count) => sum + Math.min(count, effectiveSettings.theWellRequiredPerMonth),
+        0
+      );
+      const elapsedWellMonths = new Set(elapsedWellSchedule.map(entry => {
+        const [year, month] = entry.wellDate.split('-').map(Number);
+        return monthKey(year, month);
+      }));
+      const wellCredits = myWell
+        .filter(record => elapsedWellMonths.has(monthKey(record.year, record.month)))
+        .reduce((sum, record) =>
         sum + record.timesAttended + (record.timesLate * effectiveSettings.lateCredit),
         0
       );
-      const wellRequiredCredits = myWell.length * effectiveSettings.theWellRequiredPerMonth;
+      const wellRequiredCredits = elapsedWellRequiredCredits;
       const wellFallbackRequiredCredits = effectiveSettings.theWellFallbackEnabled
-        ? Math.max(0, Math.round(course.subjects.flatMap(s => s.classes).length * 0) || myWell.length * 4 * effectiveSettings.theWellFallbackPercent)
+        ? elapsedWellSchedule.length * effectiveSettings.theWellFallbackPercent
         : wellRequiredCredits;
       const wellPassing = wellRequiredCredits === 0
         ? true
         : wellCredits >= wellRequiredCredits || (effectiveSettings.theWellFallbackEnabled && wellCredits >= wellFallbackRequiredCredits);
+      const currentWellScore = wellRequiredCredits === 0 ? 1 : Math.min(1, wellCredits / wellRequiredCredits);
+      const fullWellMonths = monthsBetween(course.startDate, course.endDate).length;
+      const fullWellRequiredCredits = fullWellMonths * effectiveSettings.theWellRequiredPerMonth;
+      const wellProjectionScore = currentWellScore;
+      const wellProjectionStatus = statusFromScore(
+        wellProjectionScore,
+        1,
+        effectiveSettings.statusAtRiskThreshold
+      );
       const gates: AttendanceGateSummary[] = [
         {
           key: 'classes',
@@ -1396,11 +1506,18 @@ export function useAttendance(
           earnedCredits: classCredits,
           requiredCredits: classRequiredCredits,
           possibleCredits: regularClasses.length,
+          totalRequiredCredits: classTotalRequiredCredits,
+          totalPossibleCredits: regularClasses.length,
           score: classScore,
           status: classCredits >= classRequiredCredits ? 'passing' : classScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          projectionScore: classProjectionScore,
+          projectionStatus: statusFromScore(classProjectionScore, effectiveSettings.classRequiredPercent, effectiveSettings.statusAtRiskThreshold),
           detail: translate('attendance.gate.detail.requiredCredits', {
             earned: classCredits.toFixed(1),
             required: classRequiredCredits.toFixed(1),
+          }),
+          projectionDetail: translate('attendance.gate.detail.paceProjection', {
+            percent: Math.round(classProjectionScore * 100),
           }),
         },
         {
@@ -1408,15 +1525,23 @@ export function useAttendance(
           label: 'The Well',
           earnedCredits: wellCredits,
           requiredCredits: wellRequiredCredits,
-          possibleCredits: myWell.length * effectiveSettings.theWellRequiredPerMonth,
-          score: wellScore,
-          status: wellPassing ? 'passing' : wellScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
-          detail: translate('attendance.gate.detail.monthlyCreditsRecorded', {
-            count: wellCredits.toFixed(1),
+          possibleCredits: elapsedWellSchedule.length,
+          totalRequiredCredits: fullWellRequiredCredits,
+          totalPossibleCredits: fullWellMonths * effectiveSettings.theWellRequiredPerMonth,
+          score: currentWellScore,
+          status: wellPassing ? 'passing' : currentWellScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          projectionScore: wellProjectionScore,
+          projectionStatus: wellProjectionStatus,
+          detail: translate('attendance.gate.detail.requiredCredits', {
+            earned: wellCredits.toFixed(1),
+            required: wellRequiredCredits.toFixed(1),
+          }),
+          projectionDetail: translate('attendance.gate.detail.paceProjection', {
+            percent: Math.round(wellProjectionScore * 100),
           }),
           fallbackDetail: effectiveSettings.theWellFallbackEnabled
             ? translate('attendance.gate.detail.yearlyFallbackRequired', {
-                count: wellFallbackRequiredCredits.toFixed(1),
+                count: Math.max(wellFallbackRequiredCredits, fullWellRequiredCredits * effectiveSettings.theWellFallbackPercent).toFixed(1),
               })
             : undefined,
         },
@@ -1424,24 +1549,44 @@ export function useAttendance(
           key: 'activation',
           label: 'Activation Saturday',
           earnedCredits: saturdayCredits,
-          requiredCredits: Math.max(0, saturdayClasses.length - effectiveSettings.activationMaxLostCredits),
-          possibleCredits: saturdayClasses.length,
+          requiredCredits: Math.max(0, elapsedSaturdayClasses.length - effectiveSettings.activationMaxLostCredits),
+          possibleCredits: elapsedSaturdayClasses.length,
+          totalRequiredCredits: saturdayTotalRequiredCredits,
+          totalPossibleCredits: saturdayClasses.length,
           score: satScore,
           status: saturdayLostCredits <= effectiveSettings.activationMaxLostCredits ? 'passing' : 'failing',
+          projectionScore: saturdayProjectionScore,
+          projectionStatus: saturdayProjectionStatus,
           detail: translate('attendance.gate.detail.lostCreditsMax', {
             lost: saturdayLostCredits.toFixed(1),
             max: effectiveSettings.activationMaxLostCredits,
           }),
+          projectionDetail: translate(
+            saturdayProjectionStatus === 'at_risk'
+              ? 'attendance.gate.detail.noActivationBuffer'
+              : 'attendance.gate.detail.activationBuffer',
+            { count: Math.max(0, effectiveSettings.activationMaxLostCredits - saturdayLostCredits).toFixed(1) }
+          ),
         },
         {
           key: 'ministry',
           label: 'Ministry',
-          earnedCredits: ministryCredits,
-          requiredCredits: ministryRequiredCredits,
-          possibleCredits: Math.max(ministryRequiredCredits, myMinistryAttendance.length),
+          earnedCredits: elapsedMinistryCredits,
+          requiredCredits: elapsedMinistryRequiredCredits,
+          possibleCredits: Math.max(elapsedMinistryRequiredCredits, myElapsedMinistryAttendance.length),
+          totalRequiredCredits: ministryRequiredCredits,
+          totalPossibleCredits: Math.max(ministryRequiredCredits, myMinistryAttendance.length),
           score: ministryScore,
-          status: ministryCredits >= ministryRequiredCredits ? 'passing' : ministryScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
-          detail: ministryRequiredCredits === 0
+          status: elapsedMinistryCredits >= elapsedMinistryRequiredCredits ? 'passing' : ministryScore >= effectiveSettings.statusAtRiskThreshold ? 'at_risk' : 'failing',
+          projectionScore: ministryProjectionScore,
+          projectionStatus: statusFromScore(ministryProjectionScore, 1, effectiveSettings.statusAtRiskThreshold),
+          detail: elapsedMinistryRequiredCredits === 0
+            ? translate('attendance.ministry.noRotationAssigned')
+            : translate('attendance.gate.detail.serviceCredits', {
+                earned: elapsedMinistryCredits.toFixed(1),
+                required: elapsedMinistryRequiredCredits.toFixed(1),
+              }),
+          projectionDetail: ministryRequiredCredits === 0
             ? translate('attendance.ministry.noRotationAssigned')
             : translate('attendance.gate.detail.serviceCredits', {
                 earned: ministryCredits.toFixed(1),
@@ -1449,10 +1594,12 @@ export function useAttendance(
               }),
         },
       ];
-      const overall = calculateOverallScore(
-        classScore, satScore, wellScore, ministryScore
+      const currentReadiness = calculateOverallScore(
+        classScore, satScore, currentWellScore, ministryScore
       );
       const meetsAllGates = gates.every(gate => gate.status === 'passing');
+      const graduationProjection = averageScores(gates.map(gate => gate.projectionScore));
+      const projectedAllGates = gates.every(gate => gate.projectionStatus === 'passing');
 
       return {
         studentId,
@@ -1468,17 +1615,21 @@ export function useAttendance(
         saturdaysAbsent: mySatAtt.filter(a => a.status === 'absent').length,
         saturdayAttendanceScore: satScore,
         theWellMonthsTracked: myWell.length,
-        theWellScore: wellScore,
+        theWellScore: currentWellScore,
         sundayMonthsTracked: mySunday.length,
         sundayScore: sunScore,
         ministryScore,
         gates,
-        overallScore: overall,
+        overallScore: currentReadiness,
+        currentReadinessScore: currentReadiness,
+        graduationProjectionScore: graduationProjection,
         meetsGraduationThreshold: meetsAllGates,
+        meetsCurrentReadiness: meetsAllGates,
+        meetsGraduationProjection: projectedAllGates,
       };
     }).filter((s): s is StudentAttendanceSummary => s !== null);
   }, [courses, courseStudents, users, classAttendance,
-    theWellAttendance, sundayAttendance, ministryRotations, ministrySessions,
+    theWellAttendance, wellSchedule, sundayAttendance, ministryRotations, ministrySessions,
     ministryAttendance, ministryTeams, settings, onlineSettings]);
 
   return {

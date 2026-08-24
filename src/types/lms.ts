@@ -176,6 +176,20 @@ export interface AnnouncementComment {
   createdAt: string;
 }
 
+export interface CalendarEventRecord {
+  id: number;
+  title: string;
+  description: string | null;
+  location: string | null;
+  startsAt: string;
+  endsAt: string | null;
+  allDay: boolean;
+  targetRoles: string[];
+  createdBy: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export type StreamPermission = 'students_post_comment' | 'students_comment' | 'staff_only';
 export type StreamEmailNotificationMode = 'all_posts' | 'staff_and_pinned' | 'pinned_only' | 'none';
 
@@ -787,9 +801,14 @@ export interface AttendanceGateSummary {
   earnedCredits: number;
   requiredCredits: number;
   possibleCredits: number;
+  totalRequiredCredits: number;
+  totalPossibleCredits: number;
   score: number;
   status: 'passing' | 'at_risk' | 'failing';
+  projectionScore: number;
+  projectionStatus: 'passing' | 'at_risk' | 'failing';
   detail: string;
+  projectionDetail?: string;
   fallbackDetail?: string;
 }
 
@@ -823,5 +842,9 @@ export interface StudentAttendanceSummary {
 
   // Overall
   overallScore: number;
+  currentReadinessScore: number;
+  graduationProjectionScore: number;
   meetsGraduationThreshold: boolean;
+  meetsCurrentReadiness: boolean;
+  meetsGraduationProjection: boolean;
 }

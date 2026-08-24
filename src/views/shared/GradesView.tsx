@@ -484,11 +484,11 @@ export function GradesView({
   const totals = rows.reduce((acc, row) => {
     acc.earned += row.earned;
     acc.possible += row.possible;
-    if (row.attendance?.meetsGraduationThreshold) acc.ready += 1;
+    if (row.attendance?.meetsCurrentReadiness) acc.ready += 1;
     return acc;
   }, { earned: 0, possible: 0, ready: 0 });
   const studentRow = scope === 'student' ? rows[0] : null;
-  const studentReadiness = studentRow?.attendance?.overallScore != null ? Math.round(studentRow.attendance.overallScore * 100) : 0;
+  const studentReadiness = studentRow?.attendance?.currentReadinessScore != null ? Math.round(studentRow.attendance.currentReadinessScore * 100) : 0;
   const readyGateCount = studentRow?.attendance?.gates.filter(gate => gate.status === 'passing').length ?? 0;
   const gateCount = studentRow?.attendance?.gates.length ?? 0;
   const studentWorkItems = studentRow
@@ -1196,7 +1196,7 @@ export function GradesView({
         ) : (
           <div className="divide-y divide-[#eeeeee]">
             {rows.map(row => {
-              const readiness = row.attendance?.overallScore != null ? Math.round(row.attendance.overallScore * 100) : 0;
+              const readiness = row.attendance?.currentReadinessScore != null ? Math.round(row.attendance.currentReadinessScore * 100) : 0;
               return (
                 <div key={row.student!.id} className="grid gap-3 p-4 md:grid-cols-[1.4fr_1fr_1fr_auto] md:items-center">
                   <div className="flex min-w-0 items-center gap-3">
@@ -1219,7 +1219,7 @@ export function GradesView({
                       <GraduationCap className="mr-1 inline h-3 w-3" />
                       {readiness}%
                     </span>
-                    {row.attendance?.meetsGraduationThreshold ? <CheckCircle2 className="h-4 w-4 text-[#059669]" /> : null}
+                    {row.attendance?.meetsCurrentReadiness ? <CheckCircle2 className="h-4 w-4 text-[#059669]" /> : null}
                   </div>
                 </div>
               );

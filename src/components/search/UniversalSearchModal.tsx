@@ -19,6 +19,7 @@ const TYPE_LABEL_KEYS: Record<SearchResultType, TranslationKey> = {
   todos: 'search.type.todos',
   messages: 'search.type.messages',
   books: 'search.type.books',
+  calendar: 'search.type.calendar',
   navigation: 'search.type.navigation',
 };
 
@@ -31,6 +32,7 @@ const TYPE_ORDER: SearchResultType[] = [
   'todos',
   'messages',
   'books',
+  'calendar',
   'navigation',
 ];
 

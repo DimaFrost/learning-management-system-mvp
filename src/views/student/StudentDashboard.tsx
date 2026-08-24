@@ -20,6 +20,7 @@ import type {
   BookReadingAssignment,
   BookReadingSubmission,
   BookReadingSubmissionStatus,
+  CalendarEventRecord,
   ClassAttendanceRecord,
   Conversation,
   Course,
@@ -92,6 +93,7 @@ interface StudentDashboardProps {
   classAttendance: ClassAttendanceRecord[];
   theWellSessionAttendance: TheWellSessionRecord[];
   wellSchedule: WellScheduleEntry[];
+  calendarEvents: CalendarEventRecord[];
   bookAssignments: BookReadingAssignment[];
   bookSubmissions: BookReadingSubmission[];
   booksLoading: boolean;
@@ -259,6 +261,7 @@ export function StudentDashboard({
   classAttendance,
   theWellSessionAttendance,
   wellSchedule,
+  calendarEvents,
   bookAssignments,
   bookSubmissions,
   booksLoading,
@@ -281,7 +284,7 @@ export function StudentDashboard({
     [enrolledCourses]
   );
 
-  const calendarEvents = useMemo(
+  const studentCalendarEvents = useMemo(
     () => buildStudentCalendarEvents({
       courses,
       enrolledCourseIds,
@@ -289,8 +292,9 @@ export function StudentDashboard({
       classAttendance,
       theWellSessionAttendance,
       wellSchedule,
+      calendarEvents,
     }),
-    [classAttendance, courses, currentUser.id, enrolledCourseIds, language, theWellSessionAttendance, wellSchedule]
+    [calendarEvents, classAttendance, courses, currentUser.id, enrolledCourseIds, language, theWellSessionAttendance, wellSchedule]
   );
 
   const mySummaries = useMemo(
@@ -372,11 +376,26 @@ export function StudentDashboard({
   const readinessScore = mySummaries.length === 0
     ? 100
     : clampPercent(
-      (mySummaries.filter(summary => summary.meetsGraduationThreshold).length / mySummaries.length) * 100
+      (mySummaries.filter(summary => summary.meetsCurrentReadiness).length / mySummaries.length) * 100
     );
   const averageOverall = mySummaries.length
-    ? mySummaries.reduce((sum, summary) => sum + summary.overallScore, 0) / mySummaries.length
+    ? mySummaries.reduce((sum, summary) => sum + summary.currentReadinessScore, 0) / mySummaries.length
     : 1;
+  const attendanceGraduationProjection = mySummaries.length
+    ? mySummaries.reduce((sum, summary) => sum + summary.graduationProjectionScore, 0) / mySummaries.length
+    : 1;
+  const homeworkSubmittedCount = activeHomework.filter(item => item.status === 'submitted' || item.status === 'graded').length;
+  const homeworkGradedCount = activeHomework.filter(item => item.status === 'graded').length;
+  const homeworkCompletionScore = activeHomework.length === 0 ? 1 : homeworkSubmittedCount / activeHomework.length;
+  const homeworkGradeScore = activeHomework.length === 0 ? 1 : homeworkGradedCount / activeHomework.length;
+  const academicGraduationScore = activeHomework.length === 0
+    ? 1
+    : Math.min(1, (homeworkCompletionScore * 0.7) + (homeworkGradeScore * 0.3));
+  const graduationProjectionScore = Math.min(
+    1,
+    (attendanceGraduationProjection * 0.55) + (academicGraduationScore * 0.45)
+  );
+  const graduationProjectionPercent = clampPercent(graduationProjectionScore * 100);
 
   const upcomingSessions = useMemo(() => {
     const today = startOfToday();
@@ -636,11 +655,20 @@ export function StudentDashboard({
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <MiniMetric
+          label={t('student.dashboard.graduationProjection')}
+          value={`${graduationProjectionPercent}%`}
+          detail={t('student.dashboard.graduationProjectionDetail')}
+          progress={graduationProjectionPercent}
+          icon={GraduationCap}
+          tone={graduationProjectionPercent >= 80 ? 'green' : 'orange'}
+          onClick={() => onNavigate('my-grades')}
+        />
         <MiniMetric
           label={t('sidebar.attendance')}
           value={formatPercent(averageOverall)}
-          detail={mySummaries.every(summary => summary.meetsGraduationThreshold) ? t('attendance.onTrackGraduation') : t('attendance.reviewScores')}
+          detail={mySummaries.every(summary => summary.meetsCurrentReadiness) ? t('attendance.onTrackGraduation') : t('attendance.reviewScores')}
           progress={readinessScore}
           icon={BarChart3}
           tone={readinessScore >= 80 ? 'green' : 'orange'}
@@ -745,7 +773,7 @@ export function StudentDashboard({
           action={<GhostButton onClick={() => onNavigate('my-attendance-breakdown')}>{t('sidebar.attendance')}</GhostButton>}
           className="xl:min-h-[420px]"
         >
-          <StudentMonthCalendar events={calendarEvents} onOpenClass={onOpenClass} />
+          <StudentMonthCalendar events={studentCalendarEvents} onOpenClass={onOpenClass} />
         </SectionCard>
       </div>
 

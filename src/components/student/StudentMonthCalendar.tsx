@@ -20,7 +20,9 @@ const EVENT_TONES: Record<StudentCalendarEventType, { tone: string; icon: typeof
   class: { tone: 'bg-[#dbeaff] text-[#2563eb]', icon: Calendar },
   activation: { tone: 'bg-[#fff7ed] text-[#ea580c]', icon: ShieldCheck },
   well: { tone: 'bg-[#dcfce7] text-[#16a34a]', icon: Activity },
-  ministry: { tone: 'bg-[#f3e8ff] text-[#7c3aed]', icon: HeartHandshake },
+  ministry: { tone: 'bg-[#f3e8ff] text-[#7c3aed]', icon: HeartHandshake },
+
+  custom: { tone: 'bg-[#ecfeff] text-[#0e7490]', icon: Calendar },
 };
 
 const STATUS_STYLES: Record<AttendanceStatus, { icon: typeof Check; className: string }> = {
@@ -37,7 +39,9 @@ function useEventMeta() {
     class: { label: t('attendance.event.class'), ...EVENT_TONES.class },
     activation: { label: t('attendance.gate.activationShort'), ...EVENT_TONES.activation },
     well: { label: t('attendance.gate.the_well'), ...EVENT_TONES.well },
-    ministry: { label: t('attendance.gate.ministry'), ...EVENT_TONES.ministry },
+    ministry: { label: t('attendance.gate.ministry'), ...EVENT_TONES.ministry },
+
+    custom: { label: t('calendar.type.custom'), ...EVENT_TONES.custom },
   }), [language, t]);
 }
 
@@ -130,7 +134,7 @@ function EventRow({
 }) {
   const meta = eventMeta[event.type];
   const Icon = meta.icon;
-  const canOpen = event.classId && event.subjectId && onOpenClass;
+  const canOpen = event.classId && event.subjectId && event.courseId && onOpenClass;
 
   const content = (
     <>
@@ -152,7 +156,7 @@ function EventRow({
     return (
       <button
         type="button"
-        onClick={() => onOpenClass(event.classId!, event.subjectId!, event.courseId)}
+        onClick={() => onOpenClass(event.classId!, event.subjectId!, event.courseId!)}
         className="tbo-focus flex w-full items-center gap-3 rounded-lg border border-[#eeeeee] bg-[#fafafa] px-3 py-2 text-left hover:bg-white"
       >
         {content}
@@ -381,3 +385,4 @@ export function StudentMonthCalendar({
     </div>
   );
 }
+

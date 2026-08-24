@@ -31,6 +31,7 @@ import { submissionDetailTranslations } from './submissionDetail';
 import { submissionsTranslations } from './submissions';
 import { todosTranslations } from './todos';
 import { booksTranslations } from './books';
+import { calendarTranslations } from './calendar';
 import { tuitionTranslations } from './tuition';
 import { usersTranslations } from './users';
 import { workspaceTranslations } from './workspace';
@@ -74,6 +75,7 @@ export const en = {
   ...tuitionTranslations.en,
   ...usersTranslations.en,
   ...booksTranslations.en,
+  ...calendarTranslations.en,
   ...knowledgeBaseTranslations.en,
   ...errorsTranslations.en,
 };
@@ -117,6 +119,7 @@ export const bg: Record<TranslationKey, string> = {
   ...tuitionTranslations.bg,
   ...usersTranslations.bg,
   ...booksTranslations.bg,
+  ...calendarTranslations.bg,
   ...knowledgeBaseTranslations.bg,
   ...errorsTranslations.bg,
 };

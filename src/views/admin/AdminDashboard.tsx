@@ -29,6 +29,7 @@ import {
 } from 'lucide-react';
 import type {
   Announcement,
+  CalendarEventRecord,
   Conversation,
   Course,
   CourseStudent,
@@ -61,6 +62,7 @@ interface AdminDashboardProps {
   todosLoading: boolean;
   attendance: AttendanceController;
   tuition: TuitionController;
+  calendarEvents: CalendarEventRecord[];
   currentUser: User;
   activeWorkspace: WorkspaceId | null;
   getCourseDisplayName: (course: Course) => string;
@@ -134,9 +136,9 @@ type UpcomingDateGroup = {
 type MonthCalendarEvent = {
   id: string;
   title: string;
-  type: 'session' | 'activation';
+  type: 'session' | 'activation' | 'custom';
   yearLabel: string;
-  tone: 'blue' | 'orange';
+  tone: 'blue' | 'orange' | 'green';
   classId?: number;
   subjectId?: number;
   courseId?: number;
@@ -740,6 +742,7 @@ export function AdminDashboard({
   todosLoading,
   attendance,
   tuition,
+  calendarEvents,
   currentUser,
   activeWorkspace,
   getCourseDisplayName,
@@ -1037,10 +1040,27 @@ export function AdminDashboard({
       }
     });
 
+    calendarEvents.forEach(event => {
+      const scheduledDate = new Date(event.startsAt);
+      if (Number.isNaN(scheduledDate.getTime()) || scheduledDate < monthStart || scheduledDate > monthEnd) return;
+      const eventDateKey = dateKey(scheduledDate);
+      events.set(eventDateKey, [
+        ...(events.get(eventDateKey) ?? []),
+        {
+          id: `calendar-event-${event.id}`,
+          title: event.title,
+          type: 'custom',
+          yearLabel: event.location || t('calendar.type.custom'),
+          tone: 'green',
+        },
+      ]);
+    });
+
     return events;
   }, [
     activeWorkspace,
     calendarMonth,
+    calendarEvents,
     currentUser.id,
     getCourseDisplayName,
     upcomingScopeCourses,
@@ -1114,8 +1134,8 @@ export function AdminDashboard({
     }))
   );
   const atRiskStudents = attendanceSummaries
-    .filter(summary => !summary.meetsGraduationThreshold)
-    .sort((a, b) => a.overallScore - b.overallScore)
+    .filter(summary => !summary.meetsCurrentReadiness)
+    .sort((a, b) => a.currentReadinessScore - b.currentReadinessScore)
     .slice(0, 5);
 
   const recentMentorshipLogs = mentorshipLogs.filter(log => daysSince(log.date) <= 7).length;
@@ -1208,7 +1228,7 @@ export function AdminDashboard({
   const attendanceHealth = clampPercent(
     attendanceSummaries.length === 0
       ? 100
-      : (attendanceSummaries.filter(summary => summary.meetsGraduationThreshold).length / attendanceSummaries.length) * 100
+      : (attendanceSummaries.filter(summary => summary.meetsCurrentReadiness).length / attendanceSummaries.length) * 100
   );
   const accessHealth = clampPercent(
     users.length === 0 ? 100 : ((users.length - pendingAccessUsers.length) / users.length) * 100
@@ -1373,6 +1393,11 @@ export function AdminDashboard({
   };
 
   const openCalendarEvent = (event: MonthCalendarEvent) => {
+    if (event.type === 'custom') {
+      closeCalendarDetails();
+      onNavigate('calendar');
+      return;
+    }
     if (!event.classId || !event.subjectId || !event.courseId) return;
     closeCalendarDetails();
     onOpenSubject(event.courseId, event.subjectId);
@@ -2147,13 +2172,13 @@ export function AdminDashboard({
                       <p className="truncate text-xs text-[#737373]">{student.courseName}</p>
                     </div>
                     <span className="text-sm font-semibold text-[#ea580c]">
-                      {Math.round(student.overallScore * 100)}%
+                      {Math.round(student.currentReadinessScore * 100)}%
                     </span>
                   </div>
                   <div className="mt-3 h-2 rounded-full bg-[#f5f5f5]">
                     <div
                       className="h-2 rounded-full bg-[#ea580c]"
-                      style={{ width: `${Math.max(4, Math.round(student.overallScore * 100))}%` }}
+                      style={{ width: `${Math.max(4, Math.round(student.currentReadinessScore * 100))}%` }}
                     />
                   </div>
                 </div>

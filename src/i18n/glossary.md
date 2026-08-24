@@ -27,7 +27,7 @@ English UI copy is **not** changed by this glossary — these are Bulgarian dict
 | People / Directory | Users hub | Хора / Списък | |
 | Attendance | Presence tracking | Присъствие | Already used in i18n |
 | Present / Late / Absent | Attendance status | Присъства / Закъснял / Отсъства | Gender-neutral forms preferred for badges |
-| Classes | Graduation gate | Лекции | Gate label for class attendance |
+| Classes | Attendance gate | Лекции | Gate label for class attendance |
 | The Well | Named Wednesday program | Кладенецът
 | Wednesday gathering | Well subtitle | Кладенец| |
 | Activation Saturday | Named Saturday joint sessions | Събота на активация| |
@@ -39,7 +39,7 @@ English UI copy is **not** changed by this glossary — these are Bulgarian dict
 | On Duty | Duty roster | Дежурство | Already used in i18n (`sidebar.onDuty`) |
 | Attendance keeper | Person marking class/Well attendance |Дежурен | |
 | Fallback | The Well yearly alternate rule | Резервно правило | Not generic “backup” |
-| Graduation gates | Readiness requirements | Условия за завършване | |
+| Attendance gates | Attendance readiness requirements | Условия за присъствие | |
 | Cadence | Mentorship meeting rhythm rules | Ритъм | Already echoed in `sidebar.mentorOps.desc` |
 | Check-in | Mentorship log form | Среща / запис | Existing check-in modal uses „среща“ |
 | Mentee | Mentored student | Менти | Keep loanword used in existing BG copy |

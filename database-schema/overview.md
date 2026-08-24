@@ -2,14 +2,14 @@
 
 # Database Schema Overview
 
-Generated at: 2026-08-20T08:15:20.229Z
+Generated at: 2026-08-24T15:05:35.961Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
 OpenAPI title: standard public schema
 OpenAPI version: 14.5
 
-Exposed tables/views: 55
+Exposed tables/views: 56
 
 | Table | Columns | File |
 | --- | ---: | --- |
@@ -25,6 +25,7 @@ Exposed tables/views: 55
 | book_reading_submission_comments | 5 | [book_reading_submission_comments](./tables/book_reading_submission_comments.md) |
 | book_reading_submissions | 19 | [book_reading_submissions](./tables/book_reading_submissions.md) |
 | books | 17 | [books](./tables/books.md) |
+| calendar_events | 11 | [calendar_events](./tables/calendar_events.md) |
 | class_attendance | 6 | [class_attendance](./tables/class_attendance.md) |
 | class_files | 11 | [class_files](./tables/class_files.md) |
 | class_notes | 8 | [class_notes](./tables/class_notes.md) |

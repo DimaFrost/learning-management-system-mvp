@@ -1,6 +1,7 @@
 import { translate } from '../i18n/translate';
 import type {
   AttendanceStatus,
+  CalendarEventRecord,
   ClassAttendanceRecord,
   Course,
   TheWellSessionRecord,
@@ -16,7 +17,7 @@ function hourSubtitle(hour: string | null | undefined): string {
   return translate('attendance.hour.joint');
 }
 
-export type StudentCalendarEventType = 'class' | 'activation' | 'well' | 'ministry';
+export type StudentCalendarEventType = 'class' | 'activation' | 'well' | 'ministry' | 'custom';
 
 export type StudentCalendarEvent = {
   id: string;
@@ -28,7 +29,7 @@ export type StudentCalendarEvent = {
   status: AttendanceStatus | null;
   classId?: number;
   subjectId?: number;
-  courseId: number;
+  courseId?: number;
   weekStart?: string;
 };
 
@@ -69,6 +70,7 @@ export function buildStudentCalendarEvents({
   classAttendance,
   theWellSessionAttendance,
   wellSchedule,
+  calendarEvents = [],
 }: {
   courses: Course[];
   enrolledCourseIds: number[];
@@ -76,6 +78,7 @@ export function buildStudentCalendarEvents({
   classAttendance: ClassAttendanceRecord[];
   theWellSessionAttendance: TheWellSessionRecord[];
   wellSchedule: WellScheduleEntry[];
+  calendarEvents?: CalendarEventRecord[];
 }): StudentCalendarEvent[] {
   const events: StudentCalendarEvent[] = [];
   const enrolledCourses = courses.filter(course => enrolledCourseIds.includes(course.id));
@@ -128,6 +131,19 @@ export function buildStudentCalendarEvents({
         weekStart: entry.weekStart,
       });
     }
+  }
+
+  for (const event of calendarEvents) {
+    const startsAt = new Date(event.startsAt);
+    if (Number.isNaN(startsAt.getTime())) continue;
+    events.push({
+      id: `custom-${event.id}`,
+      date: `${startsAt.getFullYear()}-${String(startsAt.getMonth() + 1).padStart(2, '0')}-${String(startsAt.getDate()).padStart(2, '0')}`,
+      type: 'custom',
+      title: event.title,
+      subtitle: event.location ?? event.description ?? undefined,
+      status: null,
+    });
   }
 
   return events.sort((a, b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));

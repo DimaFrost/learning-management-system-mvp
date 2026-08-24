@@ -20,6 +20,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | book_reading_submission_comments | id |
 | book_reading_submissions | id |
 | books | id |
+| calendar_events | id |
 | class_attendance | id |
 | class_files | id |
 | class_notes | id |
@@ -94,6 +95,7 @@ This file extracts relationship hints from the Supabase REST OpenAPI schema.
 | book_reading_submissions.reviewed_by | profiles.id |
 | book_reading_submissions.student_id | profiles.id |
 | books.created_by | profiles.id |
+| calendar_events.created_by | profiles.id |
 | class_attendance.class_id | classes.id |
 | class_attendance.marked_by | profiles.id |
 | class_attendance.student_id | profiles.id |

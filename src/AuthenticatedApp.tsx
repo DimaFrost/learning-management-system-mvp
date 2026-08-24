@@ -15,6 +15,7 @@ import { useAnnouncements } from './hooks/useAnnouncements';
 import { useMessages } from './hooks/useMessages';
 import { useTodos } from './hooks/useTodos';
 import { useTuition } from './hooks/useTuition';
+import { useCalendarEvents } from './hooks/useCalendarEvents';
 import { useGradebookConfig } from './hooks/useGradebookConfig';
 import { useBooks } from './hooks/useBooks';
 import { useHomeworkSearch } from './hooks/useHomeworkSearch';
@@ -103,6 +104,7 @@ export function AuthenticatedApp({
   } = useAnnouncements(currentUser, effectiveUser, courseStudents, courses);
   const todos = useTodos(effectiveUser, users, courseStudents, courses);
   const tuition = useTuition(effectiveUser, users, courseStudents, courses);
+  const calendarEvents = useCalendarEvents(effectiveUser);
   const gradebookConfig = useGradebookConfig();
   const searchBooks = useBooks(effectiveUser, courses, courseStudents, users);
   const homeworkSearch = useHomeworkSearch();
@@ -201,6 +203,7 @@ export function AuthenticatedApp({
   });
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [universalSearchOpen, setUniversalSearchOpen] = useState(false);
+  const [restoredActiveViewKey, setRestoredActiveViewKey] = useState<string | null>(null);
   const [activeWorkspace, setActiveWorkspace] = useState<WorkspaceId | null>(() => {
     const storedWorkspace = localStorage.getItem('tbo-active-workspace');
     return isWorkspaceId(storedWorkspace) ? storedWorkspace : null;
@@ -210,6 +213,13 @@ export function AuthenticatedApp({
     activeWorkspace && availableWorkspaces.includes(activeWorkspace)
       ? activeWorkspace
       : availableWorkspaces[0] ?? null;
+  const activeViewStorageKey = selectedWorkspace
+    ? `tbo-active-view:${currentUser.id}:${selectedWorkspace}`
+    : null;
+  const activeViewWorkspaceKey = selectedWorkspace
+    ? `${currentUser.id}:${selectedWorkspace}`
+    : null;
+  const hasRestoredActiveView = activeViewWorkspaceKey !== null && restoredActiveViewKey === activeViewWorkspaceKey;
   const canAssignSessionTranslators = isTranslationMinistryTeamLeader(
     effectiveUser,
     attendance.ministryTeams
@@ -228,12 +238,37 @@ export function AuthenticatedApp({
   }, [activeWorkspace, selectedWorkspace]);
 
   useEffect(() => {
+    if (!activeViewStorageKey || !activeViewWorkspaceKey) return;
+    const storedView = localStorage.getItem(activeViewStorageKey);
+    if (storedView) {
+      setActiveView(storedView);
+    }
+    setRestoredActiveViewKey(activeViewWorkspaceKey);
+  }, [activeViewStorageKey, activeViewWorkspaceKey, setActiveView]);
+
+  useEffect(() => {
+    if (!activeViewStorageKey || !hasRestoredActiveView) return;
+    const transientViews = new Set([
+      'class-detail',
+      'admin-student-dashboard',
+      'announcements-new',
+      'todos-new',
+      'users-new',
+      'curriculum-overview-new',
+      'tuition-payments-new',
+    ]);
+    if (transientViews.has(activeView)) return;
+    localStorage.setItem(activeViewStorageKey, activeView);
+  }, [activeView, activeViewStorageKey, hasRestoredActiveView]);
+
+  useEffect(() => {
+    if (!hasRestoredActiveView) return;
     if (!selectedWorkspace) return;
     const defaultView = WORKSPACE_DEFAULT_VIEW[selectedWorkspace];
     if (activeView === 'dashboard' && defaultView !== 'dashboard') {
       setActiveView(defaultView);
     }
-  }, [activeView, selectedWorkspace, setActiveView]);
+  }, [activeView, hasRestoredActiveView, selectedWorkspace, setActiveView]);
 
   useEffect(() => {
     setLanguage(currentUser.preferredLanguage ?? 'en');
@@ -261,7 +296,9 @@ export function AuthenticatedApp({
 
   const handleWorkspaceChange = (workspace: WorkspaceId) => {
     setActiveWorkspace(workspace);
-    setActiveView(WORKSPACE_DEFAULT_VIEW[workspace]);
+    const storedView = localStorage.getItem(`tbo-active-view:${currentUser.id}:${workspace}`);
+    setActiveView(storedView ?? WORKSPACE_DEFAULT_VIEW[workspace]);
+    setRestoredActiveViewKey(`${currentUser.id}:${workspace}`);
   };
 
   const handleDeleteUser = (id: string) => {
@@ -315,6 +352,7 @@ export function AuthenticatedApp({
     homeworkSubmissions: homeworkSearch.submissions,
     bookAssignments: searchBooks.assignments,
     bookSubmissions: searchBooks.submissions,
+    calendarEvents: calendarEvents.events,
     ministryTeams: attendance.ministryTeams,
     ministryRotations: attendance.ministryRotations,
     ministrySessions: attendance.ministrySessions,
@@ -436,7 +474,7 @@ export function AuthenticatedApp({
           onMobileClose={() => setMobileNavOpen(false)}
         />
         <main className="flex-1 min-w-0 overflow-y-auto px-4 py-5 sm:px-6 lg:px-8 lg:py-8">
-          <div className="tbo-page">
+          <div className={activeView === 'calendar' ? 'w-full' : 'tbo-page'}>
             <AppRouter
               activeView={activeView}
               setActiveView={setActiveView}
@@ -485,6 +523,7 @@ export function AuthenticatedApp({
               setCourseStudents={setCourseStudents}
               assignUserToCourse={assignUserToCourse}
               announcements={announcements}
+              homeworkAssignments={homeworkSearch.assignments}
               announcementsLoading={announcementsLoading}
               addAnnouncement={addAnnouncement}
               updateAnnouncement={updateAnnouncement}
@@ -523,6 +562,9 @@ export function AuthenticatedApp({
               onRefetchCourses={refetchCourses}
               attendance={attendance}
               tuition={tuition}
+              calendarEvents={calendarEvents.events}
+              canManageCalendarEvents={calendarEvents.canManageCalendarEvents}
+              createCalendarEvent={calendarEvents.createCalendarEvent}
               gradebookConfig={gradebookConfig}
               effectiveCurrentDuties={effectiveCurrentDuties}
               nextScheduledDuty={nextScheduledDuty}

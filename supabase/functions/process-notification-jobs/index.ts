@@ -71,6 +71,7 @@ type DirectMessageEmailPayload = {
 type RoleChangeEmailPayload = {
   userId?: string;
   newRoles?: string[];
+  actionUrl?: string | null;
 };
 
 type EnrollmentEmailPayload = {
@@ -128,7 +129,8 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-notification-secret',
 };
 
-const APP_URL = Deno.env.get('APP_URL') ?? 'http://localhost:3000';
+const DEFAULT_APP_URL = 'https://theburningones.pages.dev';
+const APP_URL = Deno.env.get('APP_URL') ?? DEFAULT_APP_URL;
 const BREVO_API_KEY = Deno.env.get('BREVO_API_KEY') ?? '';
 const FROM_EMAIL = Deno.env.get('BREVO_FROM_EMAIL') ?? 'zsml@theburningones.bg';
 const FROM_NAME = Deno.env.get('BREVO_FROM_NAME') ?? 'The Burning Ones';
@@ -509,6 +511,7 @@ async function sendRoleChangeEmail(job: NotificationJob, payload: RoleChangeEmai
     ? payload.newRoles
     : profile.roles;
   const roleText = roles.map(formatRoleLabel).join(', ');
+  const actionUrl = String(payload.actionUrl ?? APP_URL);
   return sendProfileEmail({
     jobId: job.id,
     recipient: profile,
@@ -517,9 +520,9 @@ async function sendRoleChangeEmail(job: NotificationJob, payload: RoleChangeEmai
       kind: 'system',
       title: 'Your portal role has been updated',
       body: `Your current role(s): ${roleText}`,
-      actionUrl: APP_URL,
+      actionUrl,
     }),
-    text: `Your portal role has been updated.\n\nYour current role(s): ${roleText}\n\nOpen: ${APP_URL}`,
+    text: `Your portal role has been updated.\n\nYour current role(s): ${roleText}\n\nOpen: ${actionUrl}`,
     tags: ['role-change', 'portal'],
   });
 }

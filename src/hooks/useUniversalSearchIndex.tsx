@@ -28,6 +28,7 @@ import type {
   Announcement,
   BookReadingAssignment,
   BookReadingSubmission,
+  CalendarEventRecord,
   Class,
   Conversation,
   Course,
@@ -61,6 +62,7 @@ export type SearchResultType =
   | 'todos'
   | 'messages'
   | 'books'
+  | 'calendar'
   | 'navigation';
 
 export type SearchResultTone = 'blue' | 'green' | 'orange' | 'violet' | 'rose' | 'gray';
@@ -94,6 +96,7 @@ export type SearchIndexInput = {
   homeworkSubmissions: HomeworkSubmission[];
   bookAssignments: BookReadingAssignment[];
   bookSubmissions: BookReadingSubmission[];
+  calendarEvents: CalendarEventRecord[];
   ministryTeams: MinistryTeam[];
   ministryRotations: MinistryRotation[];
   ministrySessions: MinistryServiceSession[];
@@ -217,6 +220,7 @@ function navigationResults({
     { view: 'announcements', titleKey: 'sidebar.announcements', subtitleKey: 'search.index.nav.stream.desc', icon: Megaphone },
     { view: 'messages', titleKey: 'sidebar.messages', subtitleKey: 'search.index.nav.messages.desc', icon: MessageSquare },
     { view: 'todos', titleKey: 'sidebar.todos', subtitleKey: 'search.index.nav.todos.desc', icon: ListTodo },
+    { view: 'calendar', titleKey: 'sidebar.calendar', subtitleKey: 'search.index.nav.calendar.desc', icon: Calendar },
     { view: 'settings', titleKey: 'sidebar.settings', subtitleKey: 'search.index.nav.settings.desc', icon: Settings },
   ];
   const admin: NavEntry[] = [
@@ -296,6 +300,7 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
       homeworkSubmissions,
       bookAssignments,
       bookSubmissions,
+      calendarEvents,
       ministryTeams,
       ministryRotations,
       ministrySessions,
@@ -495,6 +500,27 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         tone: todo.priority === 'priority' ? 'orange' : 'violet',
         badge: todo.priority === 'priority' ? t('todos.stats.priority') : t('inbox.type.todo'),
         open: () => onNavigate('todos'),
+      });
+    });
+
+    calendarEvents.forEach(event => {
+      const startsAt = new Date(event.startsAt);
+      const startsDate = Number.isNaN(startsAt.getTime()) ? event.startsAt.slice(0, 10) : startsAt.toISOString().slice(0, 10);
+      results.push({
+        id: `calendar-event-${event.id}`,
+        type: 'calendar',
+        title: event.title,
+        subtitle: compact([
+          event.location,
+          event.allDay ? t('calendar.allDay') : null,
+          startsDate ? formatPlatformDate(startsDate) : null,
+        ]).join(' · '),
+        meta: event.targetRoles.includes('audience:all') ? t('calendar.audience.all') : event.targetRoles.join(', '),
+        keywords: compact([event.title, event.description, event.location, event.targetRoles, startsDate]),
+        icon: Calendar,
+        tone: 'green',
+        badge: t('calendar.type.custom'),
+        open: () => onNavigate('calendar'),
       });
     });
 

@@ -281,28 +281,28 @@ export function MyAttendanceView({
       <SectionCard className="overflow-hidden">
         <div className="grid gap-px bg-[#e5e5e5] lg:grid-cols-[1fr_auto]">
           <div className="bg-white p-5">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.overall.result')}</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.currentReadiness')}</p>
             <div className="mt-3 flex flex-wrap items-end gap-4">
               <p className="text-4xl font-semibold leading-none text-[#171717]">
-                {formatPercent(summary.overallScore)}
+                {formatPercent(summary.currentReadinessScore)}
               </p>
               <span
                 className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${
-                  summary.meetsGraduationThreshold
+                  summary.meetsCurrentReadiness
                     ? 'bg-[#dcfce7] text-[#166534]'
                     : 'bg-[#fee2e2] text-[#b91c1c]'
                 }`}
               >
-                {summary.meetsGraduationThreshold ? (
+                {summary.meetsCurrentReadiness ? (
                   <CheckCircle2 className="h-4 w-4" />
                 ) : (
                   <ClipboardList className="h-4 w-4" />
                 )}
-                {summary.meetsGraduationThreshold ? t('attendance.meetsAllGates') : t('attendance.needsReview')}
+                {summary.meetsCurrentReadiness ? t('attendance.meetsAllGates') : t('attendance.needsReview')}
               </span>
             </div>
             <p className="mt-3 max-w-2xl text-sm text-[#525252]">
-              {t('attendance.overall.requirementGraduation')}
+              {t('attendance.currentReadinessDetail')}
               {passingGates < gateCount
                 ? ` ${tCount('attendance.gates.needAttention', gateCount - passingGates)}`
                 : ` ${t('attendance.gates.allPassing')}`}
@@ -313,8 +313,8 @@ export function MyAttendanceView({
               className="grid h-28 w-28 place-items-center rounded-full"
               style={{
                 background: `conic-gradient(${
-                  summary.meetsGraduationThreshold ? '#16a34a' : '#ea580c'
-                } ${Math.round(summary.overallScore * 100) * 3.6}deg, #f5f5f5 0deg)`,
+                  summary.meetsCurrentReadiness ? '#16a34a' : '#ea580c'
+                } ${Math.round(summary.currentReadinessScore * 100) * 3.6}deg, #f5f5f5 0deg)`,
               }}
             >
               <div className="grid h-20 w-20 place-items-center rounded-full bg-white text-center">

@@ -9,8 +9,10 @@ import type {
   EditingItem,
   Announcement,
   AnnouncementAttachment,
+  CalendarEventRecord,
   Conversation,
   DutyScheduleEntry,
+  HomeworkAssignment,
   TodoAssignmentCategory,
   TodoItem,
   TodoPriority,
@@ -51,6 +53,7 @@ import { MessagesView } from './shared/MessagesView';
 import { TodosView } from './shared/TodosView';
 import { SettingsView } from './shared/SettingsView';
 import { ClassDetailView } from './shared/ClassDetailView';
+import { CalendarView } from './shared/CalendarView';
 import { ClassworkView } from './shared/ClassworkView';
 import { GradesView } from './shared/GradesView';
 import { SubmissionsView } from './shared/SubmissionsView';
@@ -121,6 +124,7 @@ export interface AppRouterProps {
   deleteUser: (id: string) => void;
   updateCourse: (id: number, data: Partial<Course>) => void;
   announcements: Announcement[];
+  homeworkAssignments: HomeworkAssignment[];
   announcementsLoading: boolean;
   addAnnouncement: (data: {
     title: string;
@@ -200,6 +204,17 @@ export interface AppRouterProps {
   onRefetchCourses: () => Promise<Course[]>;
   attendance: ReturnType<typeof useAttendance>;
   tuition: ReturnType<typeof useTuition>;
+  calendarEvents: CalendarEventRecord[];
+  canManageCalendarEvents: boolean;
+  createCalendarEvent: (input: {
+    title: string;
+    description?: string | null;
+    location?: string | null;
+    startsAt: string;
+    endsAt?: string | null;
+    allDay: boolean;
+    targetRoles: string[];
+  }) => Promise<void>;
   effectiveCurrentDuties: DutyScheduleEntry[];
   nextScheduledDuty?: DutyScheduleEntry;
 }
@@ -249,6 +264,7 @@ export function AppRouter({
   deleteUser,
   updateCourse,
   announcements,
+  homeworkAssignments,
   announcementsLoading,
   addAnnouncement,
   updateAnnouncement,
@@ -271,6 +287,7 @@ export function AppRouter({
   canCreateTodos,
   isTodoAdmin,
   createTodo,
+  updateTodo,
   toggleTodoStatus,
   deleteTodo,
   onProfileUpdated,
@@ -286,6 +303,9 @@ export function AppRouter({
   onRefetchCourses,
   attendance,
   tuition,
+  calendarEvents,
+  canManageCalendarEvents,
+  createCalendarEvent,
   effectiveCurrentDuties,
   nextScheduledDuty,
 }: AppRouterProps) {
@@ -422,6 +442,31 @@ export function AppRouter({
         onSend={sendMessage}
         onMarkAsRead={markConversationAsRead}
         onDeleteMessage={deleteMessage}
+      />
+    );
+  }
+
+  if (activeView === 'calendar') {
+    return (
+      <CalendarView
+        currentUser={currentUser}
+        activeWorkspace={activeWorkspace}
+        courses={courses}
+        courseStudents={courseStudents}
+        announcements={announcements}
+        todos={todos}
+        homeworkAssignments={homeworkAssignments}
+        bookAssignments={activeWorkspace === 'student' ? books.myAssignments : books.assignments}
+        dutySchedule={attendance.dutySchedule}
+        prayerSchedule={attendance.prayerSchedule}
+        wellSchedule={attendance.wellSchedule}
+        calendarEvents={calendarEvents}
+        canManageCalendarEvents={canManageCalendarEvents}
+        onCreateCalendarEvent={createCalendarEvent}
+        getCourseDisplayName={getCourseDisplayName}
+        onOpenSubject={openSubjectInClasswork}
+        onOpenHomeworkAssignment={openHomeworkAssignment}
+        onNavigate={setActiveView}
       />
     );
   }
@@ -672,6 +717,7 @@ export function AppRouter({
           classAttendance={attendance.classAttendance}
           theWellSessionAttendance={attendance.theWellSessionAttendance}
           wellSchedule={attendance.wellSchedule}
+          calendarEvents={calendarEvents}
           bookAssignments={books.myAssignments}
           bookSubmissions={books.mySubmissions}
           booksLoading={books.loading}
@@ -890,6 +936,7 @@ export function AppRouter({
         );
       case 'attendance':
       case 'attendance-overview':
+      case 'attendance-date':
       case 'attendance-classes':
       case 'attendance-well':
       case 'attendance-ministry':
@@ -900,7 +947,9 @@ export function AppRouter({
         return (
           <AttendanceView
             activeSection={
-              activeView === 'attendance-classes'
+              activeView === 'attendance-date'
+                ? 'date'
+                : activeView === 'attendance-classes'
                 ? 'classes'
                 : activeView === 'attendance-well'
                   ? 'well'
@@ -930,6 +979,7 @@ export function AppRouter({
             correctionRequests={attendance.correctionRequests}
             classAttendance={attendance.classAttendance}
             theWellAttendance={attendance.theWellAttendance}
+            theWellSessionAttendance={attendance.theWellSessionAttendance}
             sundayAttendance={attendance.sundayAttendance}
             ministryTeams={attendance.ministryTeams}
             ministryRotations={attendance.ministryRotations}
@@ -1013,6 +1063,7 @@ export function AppRouter({
             todosLoading={todosLoading}
             attendance={attendance}
             tuition={tuition}
+            calendarEvents={calendarEvents}
             currentUser={currentUser}
             activeWorkspace={activeWorkspace}
             getCourseDisplayName={getCourseDisplayName}
@@ -1213,6 +1264,7 @@ export function AppRouter({
         classAttendance={attendance.classAttendance}
         theWellSessionAttendance={attendance.theWellSessionAttendance}
         wellSchedule={attendance.wellSchedule}
+        calendarEvents={calendarEvents}
         bookAssignments={books.myAssignments}
         bookSubmissions={books.mySubmissions}
         booksLoading={books.loading}
@@ -1272,6 +1324,7 @@ export function AppRouter({
             classAttendance={attendance.classAttendance}
             theWellSessionAttendance={attendance.theWellSessionAttendance}
             wellSchedule={attendance.wellSchedule}
+            calendarEvents={calendarEvents}
             bookAssignments={books.myAssignments}
             bookSubmissions={books.mySubmissions}
             booksLoading={books.loading}
@@ -1297,6 +1350,7 @@ export function AppRouter({
         todosLoading={todosLoading}
         attendance={attendance}
         tuition={tuition}
+        calendarEvents={calendarEvents}
         currentUser={currentUser}
         activeWorkspace={activeWorkspace}
         getCourseDisplayName={getCourseDisplayName}

@@ -998,7 +998,7 @@ export function useSchoolYearPlanning(courses: Course[]) {
         translatorId: string | null;
         classId: number | null;
       }) {
-        const title = `${params.subjectTitle} - ${params.date}`;
+        const title = params.subjectTitle.trim();
 
         if (params.classId) {
           // Update existing class
