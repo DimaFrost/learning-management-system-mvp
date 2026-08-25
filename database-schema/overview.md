@@ -2,7 +2,7 @@
 
 # Database Schema Overview
 
-Generated at: 2026-08-24T15:05:35.961Z
+Generated at: 2026-08-25T12:15:20.011Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 
@@ -53,7 +53,7 @@ Exposed tables/views: 56
 | prayer_schedule | 6 | [prayer_schedule](./tables/prayer_schedule.md) |
 | profile_invites | 9 | [profile_invites](./tables/profile_invites.md) |
 | profile_private_data | 6 | [profile_private_data](./tables/profile_private_data.md) |
-| profiles | 14 | [profiles](./tables/profiles.md) |
+| profiles | 15 | [profiles](./tables/profiles.md) |
 | settings | 3 | [settings](./tables/settings.md) |
 | stream_course_settings | 8 | [stream_course_settings](./tables/stream_course_settings.md) |
 | student_tuition_accounts | 9 | [student_tuition_accounts](./tables/student_tuition_accounts.md) |

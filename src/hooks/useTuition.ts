@@ -79,6 +79,16 @@ type ReminderRow = {
   created_at: string;
 };
 
+export type TuitionEmailTemplate = {
+  subject: string;
+  title: string;
+  body: string;
+};
+
+export type TuitionEmailTemplates = {
+  reminder: TuitionEmailTemplate;
+};
+
 export type TuitionSummary = {
   expected: number;
   collected: number;
@@ -87,6 +97,26 @@ export type TuitionSummary = {
   unpaidStudents: number;
   nextInstallment: TuitionInstallment | null;
 };
+
+export const DEFAULT_TUITION_EMAIL_TEMPLATES: TuitionEmailTemplates = {
+  reminder: {
+    subject: 'Tuition payment reminder',
+    title: 'Tuition reminder',
+    body: [
+      'Hello {{student_name}},',
+      '',
+      'This is a reminder that your tuition still has an outstanding balance.',
+      '',
+      'Remaining amount: {{remaining_amount}} {{currency}}',
+      'Plan: {{plan_name}}',
+      '{{installment_line}}',
+      '',
+      'You can open the portal to review your tuition record or speak with the school office if anything looks incorrect.',
+    ].join('\n'),
+  },
+};
+
+const TUITION_EMAIL_TEMPLATES_KEY = 'tuition_email_templates';
 
 function toNumber(value: number | string | null | undefined) {
   const numeric = Number(value ?? 0);
@@ -167,6 +197,20 @@ function mapReminder(row: ReminderRow): TuitionReminderLog {
   };
 }
 
+function mergeTuitionEmailTemplates(value: unknown): TuitionEmailTemplates {
+  const settings = value && typeof value === 'object' ? value as Partial<TuitionEmailTemplates> : {};
+  return {
+    reminder: {
+      ...DEFAULT_TUITION_EMAIL_TEMPLATES.reminder,
+      ...(settings.reminder ?? {}),
+    },
+  };
+}
+
+function renderTemplate(template: string, variables: Record<string, string>) {
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => variables[key] ?? '');
+}
+
 function isMissingTuitionTable(error: { code?: string; message?: string } | null) {
   if (!error) return false;
   const message = error.message?.toLowerCase() ?? '';
@@ -191,6 +235,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
   const [accounts, setAccounts] = useState<StudentTuitionAccount[]>([]);
   const [payments, setPayments] = useState<StudentTuitionPayment[]>([]);
   const [reminders, setReminders] = useState<TuitionReminderLog[]>([]);
+  const [emailTemplates, setEmailTemplates] = useState<TuitionEmailTemplates>(DEFAULT_TUITION_EMAIL_TEMPLATES);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const isAdmin = currentUser.roles.includes('administrator');
@@ -208,12 +253,13 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
 
     setLoading(true);
     setError(null);
-    const [plansResult, installmentsResult, accountsResult, paymentsResult, remindersResult] = await Promise.all([
+    const [plansResult, installmentsResult, accountsResult, paymentsResult, remindersResult, templatesResult] = await Promise.all([
       supabase.from('tuition_plans').select('*').order('created_at', { ascending: false }),
       supabase.from('tuition_installments').select('*').order('due_date', { ascending: true }),
       supabase.from('student_tuition_accounts').select('*').order('updated_at', { ascending: false }),
       supabase.from('student_tuition_payments').select('*').order('payment_date', { ascending: false }).order('created_at', { ascending: false }),
       supabase.from('tuition_reminder_logs').select('*').order('created_at', { ascending: false }),
+      supabase.from('settings').select('value').eq('key', TUITION_EMAIL_TEMPLATES_KEY).maybeSingle(),
     ]);
 
     const fetchError = plansResult.error || installmentsResult.error || accountsResult.error || paymentsResult.error || remindersResult.error;
@@ -237,6 +283,12 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
     setAccounts(((accountsResult.data ?? []) as AccountRow[]).map(mapAccount));
     setPayments(((paymentsResult.data ?? []) as PaymentRow[]).map(mapPayment));
     setReminders(((remindersResult.data ?? []) as ReminderRow[]).map(mapReminder));
+    if (!templatesResult.error) {
+      setEmailTemplates(mergeTuitionEmailTemplates(templatesResult.data?.value));
+    } else {
+      console.error('Failed to load tuition email templates', templatesResult.error);
+      setEmailTemplates(DEFAULT_TUITION_EMAIL_TEMPLATES);
+    }
     setLoading(false);
   }, [isAdmin]);
 
@@ -308,6 +360,27 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
     return plan;
   }, [currentUser.id, refetch]);
 
+  const updatePlan = useCallback(async (id: number, input: {
+    name: string;
+    courseId?: number | null;
+    academicYear?: string | null;
+    currency: string;
+    totalAmount: number;
+    status: TuitionPlan['status'];
+  }) => {
+    const { error: updateError } = await supabase.from('tuition_plans').update({
+      name: input.name.trim(),
+      course_id: input.courseId ?? null,
+      academic_year: input.academicYear?.trim() || null,
+      currency: input.currency || 'EUR',
+      total_amount: input.totalAmount,
+      status: input.status,
+      updated_at: new Date().toISOString(),
+    }).eq('id', id);
+    if (updateError) throw updateError;
+    await refetch();
+  }, [refetch]);
+
   const upsertInstallment = useCallback(async (input: Partial<TuitionInstallment> & { planId: number; title: string; amount: number; dueDate: string }) => {
     const row = {
       ...(input.id ? { id: input.id } : {}),
@@ -373,13 +446,27 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
       const expected = Math.max(0, account.expectedAmount - account.discountAmount);
       const remaining = Math.max(0, expected - paid);
       if (remaining <= 0) return;
-      const subject = 'Tuition payment reminder';
-      const body = `This is a tuition reminder for ${student.name}.\n\nRemaining amount: ${remaining.toFixed(2)} ${plans.find(plan => plan.id === account.planId)?.currency ?? 'EUR'}${installment ? `\nInstallment: ${installment.title}\nDue: ${installment.dueDate}` : ''}`;
+      const plan = plans.find(item => item.id === account.planId) ?? null;
+      const variables = {
+        student_name: student.name,
+        student_email: student.email,
+        remaining_amount: remaining.toFixed(2),
+        currency: plan?.currency ?? 'EUR',
+        plan_name: plan?.name ?? '',
+        installment_title: installment?.title ?? '',
+        installment_due_date: installment?.dueDate ?? '',
+        installment_line: installment ? `Installment: ${installment.title}\nDue: ${installment.dueDate}` : '',
+        portal_url: window.location.origin,
+      };
+      const template = emailTemplates.reminder;
+      const subject = renderTemplate(template.subject, variables).trim() || DEFAULT_TUITION_EMAIL_TEMPLATES.reminder.subject;
+      const title = renderTemplate(template.title, variables).trim() || DEFAULT_TUITION_EMAIL_TEMPLATES.reminder.title;
+      const body = renderTemplate(template.body, variables).trim();
       const jobId = await queueWorkflowEmail({
         createdBy: currentUser.id,
         recipientIds: [student.id],
         subject,
-        title: 'Tuition reminder',
+        title,
         body,
         kind: 'system',
       });
@@ -399,7 +486,27 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
       if (insertError) throw insertError;
     }
     await refetch();
-  }, [accounts, currentUser.id, installments, paymentTotalsByAccount, plans, refetch, users]);
+  }, [accounts, currentUser.id, emailTemplates.reminder, installments, paymentTotalsByAccount, plans, refetch, users]);
+
+  const updateEmailTemplate = useCallback(async (key: keyof TuitionEmailTemplates, template: TuitionEmailTemplate) => {
+    const nextTemplates = {
+      ...emailTemplates,
+      [key]: {
+        subject: template.subject.trim() || DEFAULT_TUITION_EMAIL_TEMPLATES[key].subject,
+        title: template.title.trim() || DEFAULT_TUITION_EMAIL_TEMPLATES[key].title,
+        body: template.body.trim() || DEFAULT_TUITION_EMAIL_TEMPLATES[key].body,
+      },
+    };
+    setEmailTemplates(nextTemplates);
+    const { error: saveError } = await supabase.from('settings').update({
+      value: nextTemplates,
+      updated_at: new Date().toISOString(),
+    }).eq('key', TUITION_EMAIL_TEMPLATES_KEY);
+    if (saveError) {
+      setEmailTemplates(emailTemplates);
+      throw saveError;
+    }
+  }, [emailTemplates]);
 
   const activeStudents = useMemo(() => {
     const activeCourseIds = new Set(courses.filter(course => course.status === 'active').map(course => course.id));
@@ -431,6 +538,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
     accounts,
     payments,
     reminders,
+    emailTemplates,
     loading,
     error,
     summary,
@@ -439,9 +547,11 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
     paymentTotalsByAccount,
     refetch,
     createPlan,
+    updatePlan,
     upsertInstallment,
     enrollStudent,
     recordPayment,
     sendReminder,
+    updateEmailTemplate,
   };
 }

@@ -14,6 +14,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string | null;
+  studentNumber?: string | null;
   roles: UserRole[];
   firstName: string;
   lastName: string;

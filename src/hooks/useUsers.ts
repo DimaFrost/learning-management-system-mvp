@@ -16,6 +16,7 @@ type ProfileUserRow = {
   name: string;
   email?: string | null;
   phone?: string | null;
+  student_number?: string | null;
   roles: string[];
   first_name?: string | null;
   last_name?: string | null;
@@ -35,6 +36,7 @@ type ProfileInvitePayload = {
   teachingCourseTypes?: CourseType[];
   isOnlineStudent?: boolean;
   phone?: string | null;
+  studentNumber?: string | null;
   notificationPreferences?: Partial<User['notificationPreferences']>;
 };
 
@@ -56,8 +58,14 @@ function getInvitePayload(user: Partial<User>): ProfileInvitePayload {
     teachingCourseTypes: user.teachingCourseTypes ?? [],
     isOnlineStudent: user.isOnlineStudent ?? false,
     phone: user.phone?.trim() || null,
+    studentNumber: normalizeStudentNumber(user.studentNumber),
     notificationPreferences: user.notificationPreferences,
   };
+}
+
+function normalizeStudentNumber(value: string | null | undefined) {
+  const normalized = (value ?? '').replace(/\s+/g, '').toUpperCase();
+  return normalized || null;
 }
 
 function mapProfileToUser(row: ProfileUserRow): User {
@@ -69,6 +77,7 @@ function mapProfileToUser(row: ProfileUserRow): User {
     name: row.name,
     email: row.email ?? '',
     phone: row.phone ?? null,
+    studentNumber: row.student_number ?? null,
     roles: row.roles as UserRole[],
     firstName: row.first_name ?? '',
     lastName: row.last_name ?? '',
@@ -96,6 +105,7 @@ const SAFE_PROFILE_COLUMNS = [
   'preferred_language',
   'teaching_course_types',
   'is_online_student',
+  'student_number',
 ].join(', ');
 
 function canLoadContactDirectory(currentUser: User) {
@@ -237,6 +247,7 @@ export function useUsers(currentUser: User) {
           ...(user.lastName !== undefined && { last_name: user.lastName }),
           ...(user.teachingCourseTypes !== undefined && { teaching_course_types: user.teachingCourseTypes }),
           ...(user.isOnlineStudent !== undefined && { is_online_student: user.isOnlineStudent }),
+          ...(user.studentNumber !== undefined && { student_number: normalizeStudentNumber(user.studentNumber) }),
         })
         .eq('id', user.id);
 
@@ -274,6 +285,7 @@ export function useUsers(currentUser: User) {
           ...(updates.lastName !== undefined && { last_name: updates.lastName }),
           ...(updates.teachingCourseTypes !== undefined && { teaching_course_types: updates.teachingCourseTypes }),
           ...(updates.isOnlineStudent !== undefined && { is_online_student: updates.isOnlineStudent }),
+          ...(updates.studentNumber !== undefined && { student_number: normalizeStudentNumber(updates.studentNumber) }),
         })
         .eq('id', id);
 

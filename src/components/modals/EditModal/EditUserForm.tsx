@@ -1,4 +1,4 @@
-import { BookOpen, Check, GraduationCap, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
+import { BookOpen, Check, GraduationCap, Hash, HeartHandshake, Mail, Phone, Search, ShieldCheck, User as UserIcon, Users, X } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import type { Course, CourseStudent, CourseType, EditingItem, MinistryTeam, User } from '../../../types/lms';
 import type { FormData } from './EditModal';
@@ -315,7 +315,7 @@ export function EditUserForm({
             {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email}</p>}
           </label>
 
-          <label className="block sm:col-span-2">
+          <label className="block">
             <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
               <Phone className="h-3.5 w-3.5" />
               {t('edit.user.phone')}
@@ -327,6 +327,22 @@ export function EditUserForm({
               className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
               placeholder={t('edit.user.phonePlaceholder')}
             />
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+              <Hash className="h-3.5 w-3.5" />
+              {t('edit.user.studentNumber')}
+            </span>
+            <input
+              type="text"
+              value={formData.studentNumber || ''}
+              onChange={event => onChange('studentNumber', event.target.value.replace(/\s+/g, '').toUpperCase().slice(0, 10))}
+              maxLength={10}
+              className="w-full rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm font-mono uppercase focus:border-transparent focus:ring-2 focus:ring-[#2563eb]"
+              placeholder={t('edit.user.studentNumberPlaceholder')}
+            />
+            {errors.studentNumber && <p className="mt-1 text-sm text-red-500">{errors.studentNumber}</p>}
           </label>
         </div>
       </div>

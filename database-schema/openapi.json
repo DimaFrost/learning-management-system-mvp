@@ -3345,6 +3345,9 @@
             "$ref": "#/parameters/rowFilter.profiles.is_online_student"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.student_number"
+          },
+          {
             "$ref": "#/parameters/select"
           },
           {
@@ -3450,6 +3453,9 @@
             "$ref": "#/parameters/rowFilter.profiles.is_online_student"
           },
           {
+            "$ref": "#/parameters/rowFilter.profiles.student_number"
+          },
+          {
             "$ref": "#/parameters/preferReturn"
           }
         ],
@@ -3505,6 +3511,9 @@
           },
           {
             "$ref": "#/parameters/rowFilter.profiles.is_online_student"
+          },
+          {
+            "$ref": "#/parameters/rowFilter.profiles.student_number"
           },
           {
             "$ref": "#/parameters/body.profiles"
@@ -12137,6 +12146,10 @@
           "default": false,
           "format": "boolean",
           "type": "boolean"
+        },
+        "student_number": {
+          "format": "text",
+          "type": "string"
         }
       },
       "type": "object"
@@ -15972,6 +15985,12 @@
     },
     "rowFilter.profiles.is_online_student": {
       "name": "is_online_student",
+      "required": false,
+      "in": "query",
+      "type": "string"
+    },
+    "rowFilter.profiles.student_number": {
+      "name": "student_number",
       "required": false,
       "in": "query",
       "type": "string"

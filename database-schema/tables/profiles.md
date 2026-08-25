@@ -3,7 +3,7 @@
 # profiles
 
 
-Column count: 14
+Column count: 15
 
 | Column | Type | Required | Nullable | Default | Description |
 | --- | --- | --- | --- | --- | --- |
@@ -21,6 +21,7 @@ Column count: 14
 | phone | string:text | no | no |  |  |
 | teaching_course_types | array:text[] | yes | no |  |  |
 | is_online_student | boolean:boolean | yes | no | false |  |
+| student_number | string:text | no | no |  |  |
 
 ## Raw Definition
 
@@ -106,6 +107,10 @@ Column count: 14
       "default": false,
       "format": "boolean",
       "type": "boolean"
+    },
+    "student_number": {
+      "format": "text",
+      "type": "string"
     }
   },
   "type": "object"

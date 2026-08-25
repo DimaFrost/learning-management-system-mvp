@@ -1039,14 +1039,17 @@ export function AppRouter({
             onOpenStudentDashboard={onOpenAdminStudentDashboard}
             paymentTotalsByAccount={tuition.paymentTotalsByAccount}
             summary={tuition.summary}
+            emailTemplates={tuition.emailTemplates}
             loading={tuition.loading}
             error={tuition.error}
             quickAddAction={activeView === 'tuition-payments-new' ? 'payment' : undefined}
             onCreatePlan={tuition.createPlan}
+            onUpdatePlan={tuition.updatePlan}
             onUpsertInstallment={tuition.upsertInstallment}
             onEnrollStudent={tuition.enrollStudent}
             onRecordPayment={tuition.recordPayment}
             onSendReminder={tuition.sendReminder}
+            onUpdateEmailTemplate={tuition.updateEmailTemplate}
           />
         );
       case 'dashboard':

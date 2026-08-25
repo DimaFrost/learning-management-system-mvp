@@ -6,7 +6,7 @@ import type { User } from '../types/lms';
 async function fetchProfileFromDb(userId: string): Promise<User> {
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('id, name, roles, first_name, last_name, avatar_url, preferred_language, teaching_course_types, is_online_student')
+    .select('id, name, roles, first_name, last_name, avatar_url, preferred_language, teaching_course_types, is_online_student, student_number')
     .eq('id', userId)
     .single();
 
@@ -25,6 +25,7 @@ async function fetchProfileFromDb(userId: string): Promise<User> {
     name: profile.name,
     email: privateData?.email ?? '',
     phone: privateData?.phone ?? null,
+    studentNumber: profile.student_number ?? null,
     roles: profile.roles,
     firstName: profile.first_name ?? '',
     lastName: profile.last_name ?? '',

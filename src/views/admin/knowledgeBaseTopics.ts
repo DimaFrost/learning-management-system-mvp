@@ -289,8 +289,8 @@ const topicSpecs: TopicSpec[] = [
     icon: Mail,
     tone: 'green',
     keywords: 9,
-    essentials: 5,
-    where: 5,
+    essentials: 7,
+    where: 6,
     commonTasks: 5,
     careful: 4,
     visual: [

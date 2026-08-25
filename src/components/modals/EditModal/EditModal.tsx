@@ -138,6 +138,12 @@ export function EditModal({
     if (!formData.email && editingItem && editingItem.type === 'user') {
       newErrors.email = t('edit.error.emailRequired');
     }
+    if (editingItem?.type === 'user' && formData.studentNumber) {
+      const normalizedStudentNumber = String(formData.studentNumber).replace(/\s+/g, '').toUpperCase();
+      if (!/^[A-Z0-9]{1,10}$/.test(normalizedStudentNumber)) {
+        newErrors.studentNumber = t('edit.error.studentNumberInvalid');
+      }
+    }
     if (!formData.title && editingItem && (editingItem.type === 'subject' || (editingItem.type === 'class' && editingItem.classEditMode !== 'translator-only'))) {
       newErrors.title = t('edit.error.titleRequired');
     }
@@ -267,10 +273,16 @@ export function EditModal({
         assignedMenteeKey,
         ...userFormData
       } = formData;
+      const preparedUserFormData = {
+        ...userFormData,
+        studentNumber: typeof userFormData.studentNumber === 'string'
+          ? userFormData.studentNumber.replace(/\s+/g, '').toUpperCase()
+          : userFormData.studentNumber,
+      };
       try {
         if (editingItem.data) {
           const userId = (editingItem.data as User).id;
-          await onUpdateUser(userId, userFormData);
+          await onUpdateUser(userId, preparedUserFormData);
           if (assignedYearGroupId && onSetUserActiveYearGroup) {
             await onSetUserActiveYearGroup(userId, Number(assignedYearGroupId));
           }
@@ -303,7 +315,7 @@ export function EditModal({
             }));
           }
         } else {
-          await onAddUser(userFormData);
+          await onAddUser(preparedUserFormData);
         }
       } catch (err) {
         const message = err instanceof Error && err.message

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   AlertCircle,
   Banknote,
@@ -6,7 +6,10 @@ import {
   CalendarDays,
   CheckCircle2,
   CreditCard,
+  Pencil,
   Plus,
+  RotateCcw,
+  Save,
   Search,
   Settings,
   Users,
@@ -20,7 +23,8 @@ import type {
   TuitionReminderLog,
   User,
 } from '../../types/lms';
-import type { TuitionSummary } from '../../hooks/useTuition';
+import type { TuitionEmailTemplate, TuitionEmailTemplates, TuitionSummary } from '../../hooks/useTuition';
+import { DEFAULT_TUITION_EMAIL_TEMPLATES } from '../../hooks/useTuition';
 import { useLanguage } from '../../i18n/LanguageContext';
 import { formatCurrency } from '../../i18n/formatters';
 import { formatPlatformDate, toLocalDateKey } from '../../utils/dateUtils';
@@ -44,6 +48,7 @@ type TuitionViewProps = {
   };
   paymentTotalsByAccount: Map<number, number>;
   summary: TuitionSummary;
+  emailTemplates: TuitionEmailTemplates;
   loading: boolean;
   error: string | null;
   onOpenStudentDashboard?: (studentId: string) => void;
@@ -57,10 +62,19 @@ type TuitionViewProps = {
     firstDueDate?: string;
     secondDueDate?: string;
   }) => Promise<unknown>;
+  onUpdatePlan: (id: number, input: {
+    name: string;
+    courseId?: number | null;
+    academicYear?: string | null;
+    currency: string;
+    totalAmount: number;
+    status: TuitionPlan['status'];
+  }) => Promise<void>;
   onUpsertInstallment: (input: Partial<TuitionInstallment> & { planId: number; title: string; amount: number; dueDate: string }) => Promise<void>;
   onEnrollStudent: (input: { studentId: string; planId: number; expectedAmount?: number; discountAmount?: number; notes?: string }) => Promise<void>;
   onRecordPayment: (input: { accountId: number; amount: number; paymentDate: string; method: string; reference?: string; note?: string }) => Promise<void>;
   onSendReminder: (accountIds: number[], installmentId?: number | null) => Promise<void>;
+  onUpdateEmailTemplate: (key: keyof TuitionEmailTemplates, template: TuitionEmailTemplate) => Promise<void>;
 };
 
 function currency(amount: number, code = 'EUR') {
@@ -117,19 +131,28 @@ export function TuitionView({
   activeStudentsByCourseType,
   paymentTotalsByAccount,
   summary,
+  emailTemplates,
   loading,
   error,
   onOpenStudentDashboard,
   quickAddAction,
   onCreatePlan,
+  onUpdatePlan,
   onUpsertInstallment,
   onEnrollStudent,
   onRecordPayment,
   onSendReminder,
+  onUpdateEmailTemplate,
 }: TuitionViewProps) {
   const { t, tCount } = useLanguage();
   const [search, setSearch] = useState('');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentMethodFilter, setPaymentMethodFilter] = useState('all');
+  const [paymentYearFilter, setPaymentYearFilter] = useState('all');
+  const [paymentDateFrom, setPaymentDateFrom] = useState('');
+  const [paymentDateTo, setPaymentDateTo] = useState('');
   const [planFormOpen, setPlanFormOpen] = useState(false);
+  const [editingPlan, setEditingPlan] = useState<TuitionPlan | null>(null);
   const [paymentFormOpen, setPaymentFormOpen] = useState(quickAddAction === 'payment');
   const [installmentFormOpen, setInstallmentFormOpen] = useState(false);
   const [accountFormOpen, setAccountFormOpen] = useState(false);
@@ -138,22 +161,100 @@ export function TuitionView({
   const [saving, setSaving] = useState(false);
   const defaultPlan = plans.find(plan => plan.status === 'active') ?? plans[0] ?? null;
   const activeCurrency = defaultPlan?.currency ?? 'EUR';
+  const activeFirstYearCourse = courses.find(course => course.status === 'active' && course.courseType === 'first_year') ?? null;
+  const activeSecondYearCourse = courses.find(course => course.status === 'active' && course.courseType === 'second_year') ?? null;
+  const firstYearStudentIds = useMemo(
+    () => new Set(activeStudentsByCourseType.firstYear.map(student => student.id)),
+    [activeStudentsByCourseType.firstYear]
+  );
+  const secondYearStudentIds = useMemo(
+    () => new Set(activeStudentsByCourseType.secondYear.map(student => student.id)),
+    [activeStudentsByCourseType.secondYear]
+  );
 
   const accountRows = useMemo(() => {
     return accounts.map(account => {
       const student = users.find(user => user.id === account.studentId) ?? null;
       const plan = plans.find(item => item.id === account.planId) ?? null;
+      const yearCourse = firstYearStudentIds.has(account.studentId)
+        ? activeFirstYearCourse
+        : secondYearStudentIds.has(account.studentId)
+          ? activeSecondYearCourse
+          : null;
       const paid = paymentTotalsByAccount.get(account.id) ?? 0;
       const expected = Math.max(0, account.expectedAmount - account.discountAmount);
       const remaining = Math.max(0, expected - paid);
       const planInstallments = installments.filter(item => item.planId === account.planId);
       const isOverdue = remaining > 0 && planInstallments.some(item => item.dueDate < todayKey());
-      return { account, student, plan, paid, expected, remaining, isOverdue };
+      return { account, student, plan, yearCourse, paid, expected, remaining, isOverdue };
     }).filter(row => {
-      const haystack = `${row.student?.name ?? ''} ${row.student?.email ?? ''} ${row.plan?.name ?? ''}`.toLowerCase();
+      const haystack = `${row.student?.name ?? ''} ${row.student?.email ?? ''} ${row.student?.studentNumber ?? ''} ${row.plan?.name ?? ''} ${row.account.notes ?? ''}`.toLowerCase();
       return haystack.includes(search.toLowerCase());
     });
-  }, [accounts, installments, paymentTotalsByAccount, plans, search, users]);
+  }, [accounts, activeFirstYearCourse, activeSecondYearCourse, firstYearStudentIds, installments, paymentTotalsByAccount, plans, search, secondYearStudentIds, users]);
+
+  const getStudentYearCourse = (studentId: string | null | undefined) => {
+    if (!studentId) return null;
+    if (firstYearStudentIds.has(studentId)) return activeFirstYearCourse;
+    if (secondYearStudentIds.has(studentId)) return activeSecondYearCourse;
+    return null;
+  };
+
+  const formatPaymentMethod = (method: string) => {
+    switch (method) {
+      case 'cash':
+        return t('tuition.form.method.cash');
+      case 'card':
+        return t('tuition.form.method.card');
+      case 'bank_transfer':
+        return t('tuition.form.method.bankTransfer');
+      default:
+        return t('tuition.form.method.other');
+    }
+  };
+
+  const paymentRows = useMemo(() => payments.map((payment, index) => {
+    const student = users.find(user => user.id === payment.studentId) ?? null;
+    const account = accounts.find(item => item.id === payment.accountId) ?? null;
+    const plan = plans.find(item => item.id === account?.planId) ?? null;
+    const yearCourse = getStudentYearCourse(payment.studentId);
+    const planInstallments = installments
+      .filter(item => item.planId === account?.planId)
+      .sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const installmentIndex = planInstallments.findIndex(item => payment.paymentDate <= item.dueDate);
+    const installmentNumber = installmentIndex >= 0
+      ? installmentIndex + 1
+      : planInstallments.length > 0
+        ? planInstallments.length
+        : null;
+    return { payment, index, student, account, plan, yearCourse, installmentNumber };
+  }).filter(row => {
+    const searchNeedle = paymentSearch.trim().toLowerCase();
+    const haystack = `${row.student?.name ?? ''} ${row.student?.email ?? ''} ${row.student?.studentNumber ?? ''} ${row.plan?.name ?? ''} ${row.payment.method} ${row.payment.note ?? ''} ${row.payment.reference ?? ''}`.toLowerCase();
+    const matchesSearch = !searchNeedle || haystack.includes(searchNeedle);
+    const matchesMethod = paymentMethodFilter === 'all' || row.payment.method === paymentMethodFilter;
+    const matchesYear = paymentYearFilter === 'all' || row.yearCourse?.courseType === paymentYearFilter;
+    const matchesFrom = !paymentDateFrom || row.payment.paymentDate >= paymentDateFrom;
+    const matchesTo = !paymentDateTo || row.payment.paymentDate <= paymentDateTo;
+    return matchesSearch && matchesMethod && matchesYear && matchesFrom && matchesTo;
+  }), [accounts, activeFirstYearCourse, activeSecondYearCourse, firstYearStudentIds, installments, paymentDateFrom, paymentDateTo, paymentMethodFilter, paymentSearch, paymentYearFilter, payments, plans, secondYearStudentIds, users]);
+
+  const paymentsFiltered = paymentRows.length !== payments.length;
+  const clearPaymentFilters = () => {
+    setPaymentSearch('');
+    setPaymentMethodFilter('all');
+    setPaymentYearFilter('all');
+    setPaymentDateFrom('');
+    setPaymentDateTo('');
+  };
+
+  const paymentMethodTotals = useMemo(() => payments.reduce((totals, payment) => {
+    const key = payment.method === 'card' || payment.method === 'bank_transfer' || payment.method === 'cash'
+      ? payment.method
+      : 'other';
+    totals[key] = (totals[key] ?? 0) + payment.amount;
+    return totals;
+  }, {} as Record<string, number>), [payments]);
 
   const run = async (action: () => Promise<unknown>) => {
     setSaving(true);
@@ -194,7 +295,7 @@ export function TuitionView({
             <CreditCard className="h-4 w-4" />
             {t('tuition.recordPayment')}
           </button>
-          <button type="button" onClick={() => setPlanFormOpen(true)} className="tbo-focus inline-flex items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 py-2 font-semibold text-white hover:bg-[#262626]">
+          <button type="button" onClick={() => { setEditingPlan(null); setPlanFormOpen(true); }} className="tbo-focus inline-flex items-center justify-center gap-2 rounded-xl bg-[#171717] px-3 py-2 font-semibold text-white hover:bg-[#262626]">
             <Plus className="h-4 w-4" />
             {t('tuition.newPlan')}
           </button>
@@ -229,10 +330,13 @@ export function TuitionView({
           <thead className="bg-white text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
             <tr>
               <th className="px-4 py-3">{t('tuition.table.student')}</th>
+              <th className="px-4 py-3">{t('tuition.table.studentNumber')}</th>
+              <th className="px-4 py-3">{t('tuition.table.year')}</th>
               <th className="px-4 py-3">{t('tuition.table.plan')}</th>
               <th className="px-4 py-3">{t('tuition.table.expected')}</th>
               <th className="px-4 py-3">{t('tuition.table.paid')}</th>
               <th className="px-4 py-3">{t('tuition.table.remaining')}</th>
+              <th className="px-4 py-3">{t('tuition.table.notes')}</th>
               <th className="px-4 py-3">{t('common.status')}</th>
               <th className="px-4 py-3 text-right">{t('tuition.table.reminder')}</th>
             </tr>
@@ -249,10 +353,27 @@ export function TuitionView({
                     </div>
                   </div>
                 </td>
+                <td className="px-4 py-3">
+                  {row.student?.studentNumber ? (
+                    <span className="font-mono text-xs font-semibold tracking-[0.08em] text-[#404040]">{row.student.studentNumber}</span>
+                  ) : (
+                    <span className="text-[#a3a3a3]">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  {row.yearCourse ? <ActiveYearGroupBadge course={row.yearCourse} /> : <span className="text-[#a3a3a3]">-</span>}
+                </td>
                 <td className="px-4 py-3 text-[#525252]">{row.plan?.name ?? t('tuition.noPlan')}</td>
                 <td className="px-4 py-3 font-medium text-[#171717]">{currency(row.expected, row.plan?.currency)}</td>
                 <td className="px-4 py-3 text-[#15803d]">{currency(row.paid, row.plan?.currency)}</td>
                 <td className="px-4 py-3 text-[#c2410c]">{currency(row.remaining, row.plan?.currency)}</td>
+                <td className="max-w-[14rem] px-4 py-3 text-xs leading-5 text-[#737373]">
+                  {row.account.notes?.trim() ? (
+                    <span className="line-clamp-2">{row.account.notes}</span>
+                  ) : (
+                    <span className="text-[#a3a3a3]">-</span>
+                  )}
+                </td>
                 <td className="px-4 py-3">
                   <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${row.remaining <= 0 ? 'bg-[#dcfce7] text-[#166534]' : row.isOverdue ? 'bg-[#fee2e2] text-[#b91c1c]' : row.paid > 0 ? 'bg-[#fff7ed] text-[#c2410c]' : 'bg-[#f5f5f5] text-[#525252]'}`}>
                     {row.remaining <= 0 ? t('tuition.status.paid') : row.isOverdue ? t('common.overdue') : row.paid > 0 ? t('tuition.status.partPaid') : t('tuition.status.open')}
@@ -268,7 +389,7 @@ export function TuitionView({
             ))}
             {accountRows.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noAccounts')}</td>
+                <td colSpan={10} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noAccounts')}</td>
               </tr>
             )}
           </tbody>
@@ -319,7 +440,21 @@ export function TuitionView({
                     <p className="font-semibold text-[#171717]">{plan.name}</p>
                     <p className="mt-1 text-xs text-[#737373]">{course ? <ActiveYearGroupBadge course={course} /> : t('tuition.allStudents')}</p>
                   </div>
-                  <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d]">{currency(plan.totalAmount, plan.currency)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="rounded-full bg-[#f0fdf4] px-2.5 py-1 text-xs font-semibold text-[#15803d]">{currency(plan.totalAmount, plan.currency)}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingPlan(plan);
+                        setPlanFormOpen(true);
+                      }}
+                      className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#e5e5e5] text-[#737373] hover:bg-[#fafafa] hover:text-[#171717]"
+                      aria-label={t('tuition.editPlan')}
+                      title={t('tuition.editPlan')}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
               </div>
             );
@@ -332,27 +467,123 @@ export function TuitionView({
   const paymentsPanel = (
     <SectionCard className="overflow-hidden">
       <div className="border-b border-[#e5e5e5] bg-[#fafafa] px-4 py-3">
-        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.paymentsReceived')}</h2>
-      </div>
-      <div className="divide-y divide-[#eeeeee]">
-        {payments.map(payment => {
-          const student = users.find(user => user.id === payment.studentId);
-          const account = accounts.find(item => item.id === payment.accountId);
-          const plan = plans.find(item => item.id === account?.planId);
-          return (
-            <div key={payment.id} className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-center">
-              <div className="flex items-center gap-3">
-                <UserAvatar user={student ?? null} size="sm" />
-                <div>
-                  <p className="font-semibold text-[#171717]">{student?.name ?? t('tuition.unknownStudent')}</p>
-                  <p className="text-xs text-[#737373]">{formatPlatformDate(payment.paymentDate)} · {payment.method}</p>
-                </div>
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.paymentsReceived')}</h2>
+            <p className="text-sm text-[#737373]">{t('tuition.transactionLog')}</p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-3">
+            {[
+              { label: t('tuition.paymentTotal.cash'), value: paymentMethodTotals.cash ?? 0, tone: 'bg-[#f0fdf4] text-[#15803d] ring-[#bbf7d0]' },
+              { label: t('tuition.paymentTotal.card'), value: paymentMethodTotals.card ?? 0, tone: 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]' },
+              { label: t('tuition.paymentTotal.bank'), value: paymentMethodTotals.bank_transfer ?? 0, tone: 'bg-[#fff7ed] text-[#c2410c] ring-[#fed7aa]' },
+            ].map(item => (
+              <div key={item.label} className={`rounded-xl px-3 py-2 ring-1 ${item.tone}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.12em] opacity-80">{item.label}</p>
+                <p className="mt-1 text-sm font-semibold">{currency(item.value, activeCurrency)}</p>
               </div>
-              <p className="font-semibold text-[#15803d]">{currency(payment.amount, plan?.currency)}</p>
-            </div>
-          );
-        })}
-        {payments.length === 0 ? <p className="p-8 text-center text-sm text-[#737373]">{t('tuition.noPayments')}</p> : null}
+            ))}
+          </div>
+        </div>
+        <div className="mt-4 grid gap-2 lg:grid-cols-[minmax(14rem,1.4fr)_repeat(4,minmax(0,1fr))_auto]">
+          <label className="relative block">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
+            <input
+              value={paymentSearch}
+              onChange={event => setPaymentSearch(event.target.value)}
+              placeholder={t('tuition.paymentFilters.search')}
+              className="h-10 w-full rounded-xl border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <select value={paymentMethodFilter} onChange={event => setPaymentMethodFilter(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm text-[#525252] outline-none focus:ring-2 focus:ring-[#bfdbfe]">
+            <option value="all">{t('tuition.paymentFilters.allMethods')}</option>
+            <option value="cash">{t('tuition.form.method.cash')}</option>
+            <option value="card">{t('tuition.form.method.card')}</option>
+            <option value="bank_transfer">{t('tuition.form.method.bankTransfer')}</option>
+            <option value="other">{t('tuition.form.method.other')}</option>
+          </select>
+          <select value={paymentYearFilter} onChange={event => setPaymentYearFilter(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm text-[#525252] outline-none focus:ring-2 focus:ring-[#bfdbfe]">
+            <option value="all">{t('tuition.paymentFilters.allYears')}</option>
+            <option value="first_year">{t('common.yearGroup.first')}</option>
+            <option value="second_year">{t('common.yearGroup.second')}</option>
+          </select>
+          <input
+            value={paymentDateFrom}
+            onChange={event => setPaymentDateFrom(event.target.value)}
+            type="date"
+            aria-label={t('tuition.paymentFilters.from')}
+            className="h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm text-[#525252] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <input
+            value={paymentDateTo}
+            onChange={event => setPaymentDateTo(event.target.value)}
+            type="date"
+            aria-label={t('tuition.paymentFilters.to')}
+            className="h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm text-[#525252] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+          />
+          <button
+            type="button"
+            onClick={clearPaymentFilters}
+            disabled={!paymentsFiltered}
+            className="tbo-focus h-10 rounded-xl border border-[#d4d4d4] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5] disabled:cursor-not-allowed disabled:opacity-45"
+          >
+            {t('common.clear')}
+          </button>
+        </div>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-[#e5e5e5] text-sm">
+          <thead className="bg-white text-left text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">
+            <tr>
+              <th className="px-4 py-3">{t('tuition.table.no')}</th>
+              <th className="px-4 py-3">{t('tuition.table.date')}</th>
+              <th className="px-4 py-3">{t('tuition.table.studentId')}</th>
+              <th className="px-4 py-3">{t('tuition.table.studentName')}</th>
+              <th className="px-4 py-3">{t('tuition.table.year')}</th>
+              <th className="px-4 py-3">{t('tuition.table.amount')}</th>
+              <th className="px-4 py-3">{t('tuition.table.method')}</th>
+              <th className="px-4 py-3">{t('tuition.table.installmentNumber')}</th>
+              <th className="px-4 py-3">{t('tuition.table.notes')}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-[#eeeeee]">
+            {paymentRows.map(row => (
+              <tr key={row.payment.id} className="bg-white hover:bg-[#fafafa]">
+                <td className="px-4 py-3 font-mono text-xs text-[#737373]">{row.index + 1}</td>
+                <td className="whitespace-nowrap px-4 py-3 text-[#525252]">{formatPlatformDate(row.payment.paymentDate)}</td>
+                <td className="px-4 py-3">
+                  {row.student?.studentNumber ? (
+                    <span className="font-mono text-xs font-semibold tracking-[0.08em] text-[#404040]">{row.student.studentNumber}</span>
+                  ) : (
+                    <span className="text-[#a3a3a3]">-</span>
+                  )}
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-3">
+                    <UserAvatar user={row.student} size="sm" />
+                    <span className="font-semibold text-[#171717]">{row.student?.name ?? t('tuition.unknownStudent')}</span>
+                  </div>
+                </td>
+                <td className="px-4 py-3">{row.yearCourse ? <ActiveYearGroupBadge course={row.yearCourse} /> : <span className="text-[#a3a3a3]">-</span>}</td>
+                <td className="whitespace-nowrap px-4 py-3 font-semibold text-[#15803d]">{currency(row.payment.amount, row.plan?.currency)}</td>
+                <td className="px-4 py-3">
+                  <span className="rounded-full bg-[#f5f5f5] px-2.5 py-1 text-xs font-semibold text-[#525252]">
+                    {formatPaymentMethod(row.payment.method)}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-center font-mono text-xs font-semibold text-[#525252]">{row.installmentNumber ?? '-'}</td>
+                <td className="max-w-[16rem] px-4 py-3 text-xs leading-5 text-[#737373]">
+                  {row.payment.note?.trim() ? <span className="line-clamp-2">{row.payment.note}</span> : <span className="text-[#a3a3a3]">-</span>}
+                </td>
+              </tr>
+            ))}
+            {paymentRows.length === 0 ? (
+              <tr>
+                <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noPayments')}</td>
+              </tr>
+            ) : null}
+          </tbody>
+        </table>
       </div>
     </SectionCard>
   );
@@ -393,10 +624,11 @@ export function TuitionView({
         </div>
         <p className="mt-3 text-sm leading-6 text-[#737373]">{t('tuition.settings.defaultsDesc')}</p>
       </SectionCard>
-      <SectionCard className="p-4">
-        <h2 className="text-lg font-semibold text-[#171717]">{t('tuition.settings.reminderTemplate')}</h2>
-        <p className="mt-3 text-sm leading-6 text-[#737373]">{t('tuition.settings.reminderTemplateDesc')}</p>
-      </SectionCard>
+      <TuitionTemplateEditor
+        template={emailTemplates.reminder}
+        saving={saving}
+        onSave={template => run(() => onUpdateEmailTemplate('reminder', template))}
+      />
     </div>
   );
 
@@ -406,7 +638,7 @@ export function TuitionView({
       {error ? <SectionCard className="border-[#fecaca] bg-[#fef2f2] p-4 text-sm font-medium text-[#b91c1c]">{error}</SectionCard> : null}
       {loading ? <SectionCard className="p-8 text-center text-sm text-[#737373]">{t('tuition.loading')}</SectionCard> : null}
       {activeSection === 'overview' ? stats : null}
-      {activeSection === 'overview' ? <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]"><div>{studentsTable}</div><div>{plansPanel}</div></div> : null}
+      {activeSection === 'overview' ? studentsTable : null}
       {activeSection === 'students' ? studentsTable : null}
       {activeSection === 'payments' ? paymentsPanel : null}
       {activeSection === 'installments' ? plansPanel : null}
@@ -414,8 +646,23 @@ export function TuitionView({
       {activeSection === 'settings' ? settingsPanel : null}
 
       {planFormOpen ? (
-        <TuitionModal title={t('tuition.modal.newPlan')} onClose={() => setPlanFormOpen(false)}>
-          <TuitionPlanForm courses={courses} saving={saving} onSubmit={input => run(() => onCreatePlan(input))} />
+        <TuitionModal title={editingPlan ? t('tuition.modal.editPlan') : t('tuition.modal.newPlan')} onClose={() => { setPlanFormOpen(false); setEditingPlan(null); }}>
+          <TuitionPlanForm
+            courses={courses}
+            saving={saving}
+            plan={editingPlan}
+            onSubmit={input => run(() => editingPlan
+              ? onUpdatePlan(editingPlan.id, {
+                  name: input.name,
+                  courseId: input.courseId,
+                  academicYear: input.academicYear,
+                  currency: input.currency,
+                  totalAmount: input.totalAmount,
+                  status: input.status ?? editingPlan.status,
+                })
+              : onCreatePlan(input)
+            ).then(() => setEditingPlan(null))}
+          />
         </TuitionModal>
       ) : null}
       {accountFormOpen ? (
@@ -431,6 +678,7 @@ export function TuitionView({
               studentId,
               planId: input.planId,
               expectedAmount: input.expectedAmount,
+              notes: input.notes,
             }))))}
           />
         </TuitionModal>
@@ -519,6 +767,142 @@ export function TuitionView({
   );
 }
 
+const TUITION_TEMPLATE_VARIABLES = [
+  'student_name',
+  'student_email',
+  'remaining_amount',
+  'currency',
+  'plan_name',
+  'installment_title',
+  'installment_due_date',
+  'installment_line',
+  'portal_url',
+];
+
+function renderTemplatePreview(template: string) {
+  const variables: Record<string, string> = {
+    student_name: 'Francis Scott',
+    student_email: 'student@example.com',
+    remaining_amount: '450.00',
+    currency: 'EUR',
+    plan_name: 'Annual tuition',
+    installment_title: 'Second installment',
+    installment_due_date: '31/10/2026',
+    installment_line: 'Installment: Second installment\nDue: 31/10/2026',
+    portal_url: 'https://portal.example.com',
+  };
+  return template.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key: string) => variables[key] ?? '');
+}
+
+function TuitionTemplateEditor({
+  template,
+  saving,
+  onSave,
+}: {
+  template: TuitionEmailTemplate;
+  saving: boolean;
+  onSave: (template: TuitionEmailTemplate) => void;
+}) {
+  const { t } = useLanguage();
+  const [draft, setDraft] = useState(template);
+
+  useEffect(() => {
+    setDraft(template);
+  }, [template]);
+
+  const resetToDefault = () => setDraft(DEFAULT_TUITION_EMAIL_TEMPLATES.reminder);
+
+  return (
+    <SectionCard className="overflow-hidden xl:col-span-2">
+      <div className="border-b border-[#e5e5e5] bg-[#fafafa] p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full bg-[#fff7ed] px-3 py-1 text-xs font-semibold text-[#c2410c] ring-1 ring-[#fed7aa]">
+              <Bell className="h-3.5 w-3.5" />
+              {t('tuition.settings.emailTemplates')}
+            </p>
+            <h2 className="mt-3 text-lg font-semibold text-[#171717]">{t('tuition.settings.reminderTemplate')}</h2>
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-[#737373]">{t('tuition.settings.reminderTemplateDesc')}</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={resetToDefault}
+              className="tbo-focus inline-flex items-center gap-2 rounded-xl border border-[#d4d4d4] bg-white px-3 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]"
+            >
+              <RotateCcw className="h-4 w-4" />
+              {t('tuition.settings.resetTemplate')}
+            </button>
+            <button
+              type="button"
+              disabled={saving}
+              onClick={() => onSave(draft)}
+              className="tbo-focus inline-flex items-center gap-2 rounded-xl bg-[#171717] px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              <Save className="h-4 w-4" />
+              {saving ? t('common.saving') : t('tuition.settings.saveTemplate')}
+            </button>
+          </div>
+        </div>
+      </div>
+      <div className="grid gap-4 p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(20rem,0.75fr)]">
+        <div className="space-y-3">
+          <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+            {t('tuition.settings.subject')}
+            <input
+              value={draft.subject}
+              onChange={event => setDraft(prev => ({ ...prev, subject: event.target.value }))}
+              className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal normal-case tracking-normal text-[#171717] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+            {t('tuition.settings.emailHeading')}
+            <input
+              value={draft.title}
+              onChange={event => setDraft(prev => ({ ...prev, title: event.target.value }))}
+              className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal normal-case tracking-normal text-[#171717] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+            {t('tuition.settings.body')}
+            <textarea
+              value={draft.body}
+              onChange={event => setDraft(prev => ({ ...prev, body: event.target.value }))}
+              rows={10}
+              className="mt-1 w-full resize-y rounded-xl border border-[#d4d4d4] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[#171717] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+            />
+          </label>
+          <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('tuition.settings.variables')}</p>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {TUITION_TEMPLATE_VARIABLES.map(variable => (
+                <button
+                  key={variable}
+                  type="button"
+                  onClick={() => setDraft(prev => ({ ...prev, body: `${prev.body}${prev.body.endsWith('\n') || prev.body.length === 0 ? '' : '\n'}{{${variable}}}` }))}
+                  className="rounded-full bg-white px-2.5 py-1 font-mono text-[11px] font-semibold text-[#525252] ring-1 ring-[#e5e5e5] hover:bg-[#eff6ff] hover:text-[#1d4ed8]"
+                  title={t('tuition.settings.insertVariable')}
+                >
+                  {`{{${variable}}}`}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <aside className="rounded-2xl border border-[#dbeafe] bg-[#eff6ff] p-4 text-sm text-[#1e3a8a]">
+          <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#1d4ed8]">{t('tuition.settings.preview')}</p>
+          <div className="mt-3 rounded-2xl bg-white p-4 text-[#171717] shadow-sm ring-1 ring-[#bfdbfe]">
+            <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{renderTemplatePreview(draft.subject)}</p>
+            <h3 className="mt-3 text-xl font-semibold">{renderTemplatePreview(draft.title)}</h3>
+            <p className="mt-3 whitespace-pre-line text-sm leading-6 text-[#525252]">{renderTemplatePreview(draft.body)}</p>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-[#1d4ed8]">{t('tuition.settings.previewHint')}</p>
+        </aside>
+      </div>
+    </SectionCard>
+  );
+}
+
 function TuitionModal({ title, children, onClose }: { title: string; children: React.ReactNode; onClose: () => void }) {
   const { t } = useLanguage();
   return (
@@ -532,19 +916,40 @@ function TuitionModal({ title, children, onClose }: { title: string; children: R
   );
 }
 
-function TuitionPlanForm({ courses, saving, onSubmit }: { courses: Course[]; saving: boolean; onSubmit: (input: { name: string; courseId?: number | null; academicYear?: string | null; currency: string; totalAmount: number; firstDueDate?: string; secondDueDate?: string }) => void }) {
+function TuitionPlanForm({
+  courses,
+  saving,
+  plan,
+  onSubmit,
+}: {
+  courses: Course[];
+  saving: boolean;
+  plan?: TuitionPlan | null;
+  onSubmit: (input: {
+    name: string;
+    courseId?: number | null;
+    academicYear?: string | null;
+    currency: string;
+    totalAmount: number;
+    status?: TuitionPlan['status'];
+    firstDueDate?: string;
+    secondDueDate?: string;
+  }) => void;
+}) {
   const { t } = useLanguage();
-  const [name, setName] = useState(() => t('tuition.form.defaultPlanName'));
-  const [courseId, setCourseId] = useState('');
-  const [amount, setAmount] = useState('0');
+  const isEditing = !!plan;
+  const [name, setName] = useState(() => plan?.name ?? t('tuition.form.defaultPlanName'));
+  const [courseId, setCourseId] = useState(() => plan?.courseId ? String(plan.courseId) : '');
+  const [amount, setAmount] = useState(() => plan ? String(plan.totalAmount) : '0');
+  const [status, setStatus] = useState<TuitionPlan['status']>(() => plan?.status ?? 'active');
   const [firstDueDate, setFirstDueDate] = useState('');
   const [secondDueDate, setSecondDueDate] = useState('');
   return (
-    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ name, courseId: courseId ? Number(courseId) : null, currency: 'EUR', totalAmount: Number(amount), firstDueDate, secondDueDate }); }}>
+    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ name, courseId: courseId ? Number(courseId) : null, currency: plan?.currency ?? 'EUR', totalAmount: Number(amount), status, firstDueDate, secondDueDate }); }}>
       <input value={name} onChange={event => setName(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" placeholder={t('tuition.form.planName')} required />
       <select value={courseId} onChange={event => setCourseId(event.target.value)} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm">
         <option value="">{t('tuition.form.allActiveStudents')}</option>
-        {courses.filter(course => course.status === 'active').map(course => <option key={course.id} value={course.id}>{course.courseType === 'first_year' ? t('common.yearGroup.first') : t('common.yearGroup.second')} {course.graduationYear}</option>)}
+        {courses.filter(course => course.status === 'active' || course.id === plan?.courseId).map(course => <option key={course.id} value={course.id}>{course.courseType === 'first_year' ? t('common.yearGroup.first') : t('common.yearGroup.second')} {course.graduationYear}</option>)}
       </select>
       <label className="block text-xs font-semibold text-[#737373]">
         {t('tuition.form.totalAmount')}
@@ -562,11 +967,27 @@ function TuitionPlanForm({ courses, saving, onSubmit }: { courses: Course[]; sav
           />
         </div>
       </label>
-      <div className="grid gap-3 sm:grid-cols-2">
-        <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.firstInstallment')}<input value={firstDueDate} onChange={event => setFirstDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
-        <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.secondInstallment')}<input value={secondDueDate} onChange={event => setSecondDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
-      </div>
-      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{t('tuition.form.createPlan')}</button>
+      {isEditing ? (
+        <label className="block text-xs font-semibold text-[#737373]">
+          {t('common.status')}
+          <select value={status} onChange={event => setStatus(event.target.value as TuitionPlan['status'])} className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]">
+            <option value="draft">{t('tuition.planStatus.draft')}</option>
+            <option value="active">{t('tuition.planStatus.active')}</option>
+            <option value="archived">{t('tuition.planStatus.archived')}</option>
+          </select>
+        </label>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-2">
+          <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.firstInstallment')}<input value={firstDueDate} onChange={event => setFirstDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
+          <label className="text-xs font-semibold text-[#737373]">{t('tuition.form.secondInstallment')}<input value={secondDueDate} onChange={event => setSecondDueDate(event.target.value)} type="date" className="mt-1 h-10 w-full rounded-xl border border-[#d4d4d4] px-3 text-sm font-normal text-[#171717]" /></label>
+        </div>
+      )}
+      {isEditing ? (
+        <p className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2 text-xs leading-5 text-[#737373]">
+          {t('tuition.form.editPlanHint')}
+        </p>
+      ) : null}
+      <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{isEditing ? t('tuition.form.savePlan') : t('tuition.form.createPlan')}</button>
     </form>
   );
 }
@@ -586,13 +1007,14 @@ function TuitionAccountForm({
   plans: TuitionPlan[];
   saving: boolean;
   onOpenStudentDashboard?: (studentId: string) => void;
-  onSubmit: (input: { studentIds: string[]; planId: number; expectedAmount?: number }) => void;
+  onSubmit: (input: { studentIds: string[]; planId: number; expectedAmount?: number; notes?: string }) => void;
 }) {
   const { t, tCount } = useLanguage();
   const [selectedStudentIds, setSelectedStudentIds] = useState<string[]>([]);
   const [selectedGroups, setSelectedGroups] = useState<Array<'first_year' | 'second_year'>>([]);
   const [studentPickerOpen, setStudentPickerOpen] = useState(false);
   const [planId, setPlanId] = useState('');
+  const [notes, setNotes] = useState('');
   const plan = plans.find(item => item.id === Number(planId));
   const firstYearIds = firstYearStudents.map(student => student.id);
   const secondYearIds = secondYearStudents.map(student => student.id);
@@ -622,7 +1044,7 @@ function TuitionAccountForm({
   };
 
   return (
-    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ studentIds: effectiveSelectedStudentIds, planId: Number(planId), expectedAmount: plan?.totalAmount }); }}>
+    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ studentIds: effectiveSelectedStudentIds, planId: Number(planId), expectedAmount: plan?.totalAmount, notes }); }}>
       <div className="relative">
         <p className="text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('tuition.form.studentsLabel')}</p>
         <button
@@ -728,6 +1150,16 @@ function TuitionAccountForm({
         <option value="">{t('tuition.form.choosePlan')}</option>
         {plans.map(planItem => <option key={planItem.id} value={planItem.id}>{planItem.name} - {currency(planItem.totalAmount, planItem.currency)}</option>)}
       </select>
+      <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+        {t('tuition.form.accountNotes')}
+        <textarea
+          value={notes}
+          onChange={event => setNotes(event.target.value)}
+          rows={3}
+          className="mt-1 w-full resize-none rounded-xl border border-[#d4d4d4] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[#171717] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+          placeholder={t('tuition.form.accountNotesPlaceholder')}
+        />
+      </label>
       <button disabled={saving || !plans.length || effectiveSelectedStudentIds.length === 0} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">
         {tCount('tuition.form.addAccounts', effectiveSelectedStudentIds.length || 1, { count: effectiveSelectedStudentIds.length })}
       </button>
@@ -740,8 +1172,9 @@ function TuitionPaymentForm({ rows, saving, onSubmit }: { rows: Array<{ account:
   const [amount, setAmount] = useState('');
   const [paymentDate, setPaymentDate] = useState(todayKey());
   const [method, setMethod] = useState('cash');
+  const [note, setNote] = useState('');
   return (
-    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ accountId: Number(accountId), amount: Number(amount), paymentDate, method }); }}>
+    <form className="grid gap-3" onSubmit={event => { event.preventDefault(); onSubmit({ accountId: Number(accountId), amount: Number(amount), paymentDate, method, note }); }}>
       <select value={accountId} onChange={event => { setAccountId(event.target.value); const row = rows.find(item => item.account.id === Number(event.target.value)); setAmount(row?.remaining ? String(row.remaining) : ''); }} className="h-10 rounded-xl border border-[#d4d4d4] px-3 text-sm" required>
         <option value="">{t('tuition.form.chooseAccount')}</option>
         {rows.map(row => <option key={row.account.id} value={row.account.id}>{row.student?.name ?? t('common.unknown')} · {t('tuition.form.remainingAmount', { amount: currency(row.remaining, row.plan?.currency) })}</option>)}
@@ -765,6 +1198,16 @@ function TuitionPaymentForm({ rows, saving, onSubmit }: { rows: Array<{ account:
         <option value="card">{t('tuition.form.method.card')}</option>
         <option value="other">{t('tuition.form.method.other')}</option>
       </select>
+      <label className="block text-xs font-semibold uppercase tracking-[0.12em] text-[#737373]">
+        {t('tuition.form.paymentNote')}
+        <textarea
+          value={note}
+          onChange={event => setNote(event.target.value)}
+          rows={3}
+          className="mt-1 w-full resize-none rounded-xl border border-[#d4d4d4] px-3 py-2 text-sm font-normal normal-case tracking-normal text-[#171717] outline-none focus:ring-2 focus:ring-[#bfdbfe]"
+          placeholder={t('tuition.form.paymentNotePlaceholder')}
+        />
+      </label>
       <button disabled={saving} className="mt-2 rounded-xl bg-[#171717] px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{t('tuition.form.savePayment')}</button>
     </form>
   );
