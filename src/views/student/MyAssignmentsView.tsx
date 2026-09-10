@@ -29,15 +29,20 @@ type HomeworkCommentRow = {
   author_id?: string | null;
   content: string;
   created_at: string;
-  author?: { id: string; name: string } | null;
+  author?: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
 function mapHomeworkComment(row: HomeworkCommentRow, unknownLabel: string) {
+  const author = firstJoin(row.author);
   return {
     id: row.id,
     submissionId: row.submission_id,
-    authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? unknownLabel,
+    authorId: author?.id ?? row.author_id ?? '',
+    authorName: author?.name ?? unknownLabel,
     content: row.content,
     createdAt: row.created_at,
   };

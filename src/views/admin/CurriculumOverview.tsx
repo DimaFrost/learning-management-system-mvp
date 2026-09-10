@@ -56,7 +56,7 @@ type HomeworkCommentRow = {
   author_id?: string | null;
   content: string;
   created_at: string;
-  author?: { id: string; name: string } | null;
+  author?: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 type ClassFileSummaryRow = {
@@ -67,14 +67,19 @@ type ClassFileSummaryRow = {
 };
 
 function mapHomeworkComment(row: HomeworkCommentRow) {
+  const author = Array.isArray(row.author) ? row.author[0] : row.author;
   return {
     id: row.id,
     submissionId: row.submission_id,
-    authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? translate('common.unknown'),
+    authorId: author?.id ?? row.author_id ?? '',
+    authorName: author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
+}
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
 function sessionHourLabel(hour: string, t: (key: TranslationKey) => string) {
@@ -235,11 +240,13 @@ export function CurriculumOverview({
       console.error('Failed to load curriculum homework submissions', error);
       setHomeworkSubmissions([]);
     } else {
-      setHomeworkSubmissions((data ?? []).map(row => ({
+      setHomeworkSubmissions(((data ?? []) as unknown as Array<typeof data extends Array<infer Row> ? Row : never>).map(row => {
+        const student = firstJoin(row.student);
+        return {
         id: row.id,
         assignmentId: row.assignment_id,
         studentId: row.student_id,
-        studentName: row.student?.name ?? translate('common.unknown'),
+        studentName: student?.name ?? translate('common.unknown'),
         submissionType: row.submission_type,
         driveFileId: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
@@ -255,7 +262,8 @@ export function CurriculumOverview({
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         comments: (row.comments ?? []).map(mapHomeworkComment),
-      })) as HomeworkSubmission[]);
+      };
+      }) as HomeworkSubmission[]);
     }
   }, [homeworkRows]);
 

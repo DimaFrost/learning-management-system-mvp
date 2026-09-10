@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { User } from '../types/lms';
+import { getPublicAppUrl } from './appUrl';
 
 type WorkflowEmailKind = 'assignment' | 'attendance' | 'system';
 const WORKFLOW_EMAIL_MAX_RECIPIENTS = 250;
@@ -51,7 +52,7 @@ export async function queueRoleChangeEmail(params: {
     payload: {
       userId: params.userId,
       newRoles: params.newRoles,
-      actionUrl: params.actionUrl ?? window.location.origin,
+      actionUrl: params.actionUrl ?? getPublicAppUrl(),
     },
   });
 }
@@ -70,7 +71,7 @@ export async function queueProfileInviteEmail(params: {
       email: params.email,
       name: params.name ?? '',
       roles: params.roles ?? [],
-      actionUrl: params.actionUrl ?? window.location.origin,
+      actionUrl: params.actionUrl ?? getPublicAppUrl(),
     },
   });
 }

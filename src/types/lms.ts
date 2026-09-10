@@ -598,7 +598,7 @@ export interface AttendanceSettings {
 }
 
 export type AttendanceStatus = 'present' | 'late' | 'absent';
-export type DutyTransferStatus = 'pending' | 'approved' | 'rejected';
+export type DutyTransferStatus = 'pending' | 'accepted' | 'approved' | 'rejected';
 export type AttendanceCorrectionGate = 'classes' | 'the_well' | 'activation' | 'ministry';
 export type AttendanceCorrectionStatus = 'pending' | 'approved' | 'rejected';
 

@@ -125,6 +125,18 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
                     <p className="mt-4 max-w-md rounded-2xl border border-[#e7e6e1] bg-white px-4 py-3 text-xs font-normal leading-5 text-[#7b7974]">
                       {t('auth.signInDisclaimer')}
                     </p>
+
+                    <div className="mt-6 max-w-md rounded-2xl border border-[#e6dccf] bg-[#fbf7ef] px-5 py-4">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#9c6a4e]">
+                        {t('auth.verse.eyebrow')}
+                      </p>
+                      <blockquote className="mt-3 font-serif text-[21px] font-normal leading-[1.35] text-[#121212]">
+                        <span aria-hidden="true">"</span>
+                        {t('auth.verse.text')}
+                        <span aria-hidden="true">"</span>
+                      </blockquote>
+                      <p className="mt-3 text-xs font-medium text-[#7b7974]">{t('auth.verse.reference')}</p>
+                    </div>
                   </div>
                 </div>
 

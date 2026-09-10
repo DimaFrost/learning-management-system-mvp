@@ -59,13 +59,15 @@ import {
   getThursdayDateForWeek,
   getSchoolYearWeeks,
 } from '../../utils/attendanceUtils';
-import { ActiveYearGroupBadge } from './users/usersShared';
+import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
 import type { OnlineSessionSettings } from '../../hooks/useOnlineSessionSettings';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { PluralKey, TranslationKey } from '../../i18n/translations';
 import type { TranslationParams } from '../../i18n/translate';
 
 type TabId = 'overview' | 'date' | 'classes' | 'well' | 'ministry' | 'activation' | 'duty' | 'prayer' | 'settings';
+type DutyPanel = 'schedule' | 'history' | 'pending' | 'generate';
+type MinistryPanel = 'students' | 'teams' | 'reports' | 'rotations';
 type DateAttendanceEventType = 'class' | 'activation' | 'well' | 'ministry';
 type DateAttendanceEvent = {
   id: string;
@@ -103,6 +105,7 @@ type ActivationSortKey = 'student' | 'present' | 'late' | 'absent' | 'score';
 type SortDirection = 'asc' | 'desc';
 type RotationDateMode = 'month' | 'date';
 type MinistryHealthStatus = 'all' | 'passing' | 'at_risk' | 'failing' | 'unassigned';
+type RotationStatusFilter = 'all' | 'active' | 'upcoming' | 'past';
 
 type MinistryStudentRow = {
   student: User;
@@ -118,6 +121,14 @@ type MinistryStudentRow = {
   health: number;
   healthStatus: MinistryHealthStatus;
   lastService: string | null;
+};
+
+type MinistryRotationRow = {
+  rotation: MinistryRotation;
+  student: User;
+  course: Course | null;
+  team: MinistryTeam | null;
+  status: Exclude<RotationStatusFilter, 'all'>;
 };
 
 type StudentAttendanceSummaryRow = StudentAttendanceSummary & {
@@ -142,6 +153,8 @@ type DutyWeekRow = {
   secondYear: DutyScheduleEntry | null;
 };
 
+const DUTY_TRANSFER_HISTORY_PAGE_SIZE = 8;
+
 export interface AttendanceViewProps {
   activeSection?: TabId;
   courses: Course[];
@@ -154,6 +167,7 @@ export interface AttendanceViewProps {
   dutySchedule: DutyScheduleEntry[];
   prayerSchedule: PrayerScheduleEntry[];
   wellSchedule: WellScheduleEntry[];
+  transferRequests: DutyTransferRequest[];
   pendingTransferRequests: DutyTransferRequest[];
   correctionRequests: AttendanceCorrectionRequest[];
   classAttendance: ClassAttendanceRecord[];
@@ -816,6 +830,7 @@ export function AttendanceView({
   dutySchedule,
   prayerSchedule,
   wellSchedule,
+  transferRequests,
   pendingTransferRequests,
   correctionRequests,
   classAttendance,
@@ -898,6 +913,11 @@ export function AttendanceView({
   const [rotationStartMonth, setRotationStartMonth] = useState(toLocalDateKey().slice(0, 7));
   const [rotationEndMonth, setRotationEndMonth] = useState(toLocalDateKey().slice(0, 7));
   const [editingRotationId, setEditingRotationId] = useState<number | null>(null);
+  const [rotationSearch, setRotationSearch] = useState('');
+  const [rotationTeamFilter, setRotationTeamFilter] = useState('all');
+  const [rotationCourseFilter, setRotationCourseFilter] = useState('all');
+  const [rotationStatusFilter, setRotationStatusFilter] = useState<RotationStatusFilter>('all');
+  const [expandedRotationTeams, setExpandedRotationTeams] = useState<string[]>([]);
   const [ministryTeamFilter, setMinistryTeamFilter] = useState('all');
   const [ministryCourseFilter, setMinistryCourseFilter] = useState('all');
   const [ministryStatusFilter, setMinistryStatusFilter] = useState<MinistryHealthStatus>('all');
@@ -913,6 +933,7 @@ export function AttendanceView({
   const [teamHealthOpen, setTeamHealthOpen] = useState(false);
   const [teamHealthMonth, setTeamHealthMonth] = useState(month);
   const [expandedHealthTeamId, setExpandedHealthTeamId] = useState<number | null>(null);
+  const [ministryPanel, setMinistryPanel] = useState<MinistryPanel>('students');
   const [showTeamForm, setShowTeamForm] = useState(false);
   const [savingTeam, setSavingTeam] = useState(false);
   const [teamFeedback, setTeamFeedback] = useState<{ tone: 'success' | 'error'; message: string } | null>(null);
@@ -920,6 +941,12 @@ export function AttendanceView({
   const [editDutyWeekRow, setEditDutyWeekRow] = useState<DutyWeekRow | null>(null);
   const [editPrayerWeekRow, setEditPrayerWeekRow] = useState<PrayerScheduleEntry | null>(null);
   const [prayerGenerateModalOpen, setPrayerGenerateModalOpen] = useState(false);
+  const [dutyPanel, setDutyPanel] = useState<DutyPanel>('schedule');
+  const [dutyScheduleSearch, setDutyScheduleSearch] = useState('');
+  const [transferHistorySearch, setTransferHistorySearch] = useState('');
+  const [transferHistoryStatus, setTransferHistoryStatus] = useState<'all' | DutyTransferRequest['status']>('all');
+  const [transferHistoryCourseId, setTransferHistoryCourseId] = useState('all');
+  const [transferHistoryPage, setTransferHistoryPage] = useState(0);
   const dutyScheduleScrollRef = useRef<HTMLDivElement | null>(null);
   const prayerScheduleScrollRef = useRef<HTMLDivElement | null>(null);
   const currentDutyRowRef = useRef<HTMLDivElement | null>(null);
@@ -1074,6 +1101,42 @@ export function AttendanceView({
   const courseById = useMemo(() => new Map(courses.map(course => [course.id, course])), [courses]);
   const userById = useMemo(() => new Map(users.map(user => [user.id, user])), [users]);
   const ministryTeamById = useMemo(() => new Map(ministryTeams.map(team => [team.id, team])), [ministryTeams]);
+  const transferHistoryRows = useMemo(() => {
+    const normalized = transferHistorySearch.trim().toLowerCase();
+    return transferRequests
+      .filter(request => transferHistoryStatus === 'all' || request.status === transferHistoryStatus)
+      .filter(request => transferHistoryCourseId === 'all' || request.courseId === Number(transferHistoryCourseId))
+      .filter(request => {
+        if (!normalized) return true;
+        const course = courseById.get(request.courseId);
+        return [
+          request.fromStudentName,
+          request.toStudentName,
+          request.reason ?? '',
+          course ? getCourseDisplayName(course) : '',
+          request.status,
+        ].join(' ').toLowerCase().includes(normalized);
+      })
+      .sort((a, b) => {
+        const bDate = b.resolvedAt ?? b.requestedAt ?? b.weekStart;
+        const aDate = a.resolvedAt ?? a.requestedAt ?? a.weekStart;
+        return bDate.localeCompare(aDate);
+      });
+  }, [courseById, transferHistoryCourseId, transferHistorySearch, transferHistoryStatus, transferRequests]);
+  const transferHistoryPageCount = Math.max(1, Math.ceil(transferHistoryRows.length / DUTY_TRANSFER_HISTORY_PAGE_SIZE));
+  const visibleTransferHistoryRows = transferHistoryRows.slice(
+    transferHistoryPage * DUTY_TRANSFER_HISTORY_PAGE_SIZE,
+    transferHistoryPage * DUTY_TRANSFER_HISTORY_PAGE_SIZE + DUTY_TRANSFER_HISTORY_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setTransferHistoryPage(0);
+  }, [transferHistoryCourseId, transferHistorySearch, transferHistoryStatus]);
+
+  useEffect(() => {
+    setTransferHistoryPage(page => Math.min(page, transferHistoryPageCount - 1));
+  }, [transferHistoryPageCount]);
+
   const dateAttendanceEvents = useMemo<DateAttendanceEvent[]>(() => {
     const events: DateAttendanceEvent[] = [];
     selectedYearGroupCourses.forEach(course => {
@@ -1256,6 +1319,16 @@ export function AttendanceView({
 
     return Array.from(rows.values()).sort((a, b) => a.weekStart.localeCompare(b.weekStart));
   }, [courseById, dutyRows]);
+  const visibleDutyWeekRows = useMemo(() => {
+    const normalized = dutyScheduleSearch.trim().toLowerCase();
+    if (!normalized) return dutyWeekRows;
+    return dutyWeekRows.filter(row => [
+      row.firstYear?.studentName ?? '',
+      row.secondYear?.studentName ?? '',
+      formatDate(row.weekStart),
+      formatDate(row.weekEnd),
+    ].join(' ').toLowerCase().includes(normalized));
+  }, [dutyScheduleSearch, dutyWeekRows]);
   const dutyLoadByStudent = useMemo(() => {
     const stats = new Map<string, { served: number; total: number }>();
     for (const entry of dutyRows) {
@@ -1394,6 +1467,55 @@ export function AttendanceView({
     ministrySortKey,
     search,
   ]);
+
+  const rotationRows = useMemo<MinistryRotationRow[]>(() => {
+    const today = toLocalDateKey();
+    const query = rotationSearch.trim().toLowerCase();
+
+    return ministryRotations
+      .map(rotation => {
+        const student = users.find(user => user.id === rotation.studentId);
+        if (!student) return null;
+        const course = courseById.get(rotation.courseId) ?? null;
+        const team = ministryTeams.find(item => item.id === rotation.teamId) ?? null;
+        const status: MinistryRotationRow['status'] = rotation.startDate > today
+          ? 'upcoming'
+          : rotation.endDate < today
+            ? 'past'
+            : 'active';
+        return { rotation, student, course, team, status };
+      })
+      .filter((row): row is MinistryRotationRow => Boolean(row))
+      .filter(row => {
+        const matchesSearch = !query || [
+          row.student.name,
+          row.team?.name ?? '',
+          row.course ? getCourseDisplayName(row.course) : '',
+        ].join(' ').toLowerCase().includes(query);
+        const matchesTeam = rotationTeamFilter === 'all' || row.team?.id === Number(rotationTeamFilter);
+        const matchesCourse = rotationCourseFilter === 'all' || row.course?.id === Number(rotationCourseFilter);
+        const matchesStatus = rotationStatusFilter === 'all' || row.status === rotationStatusFilter;
+        return matchesSearch && matchesTeam && matchesCourse && matchesStatus;
+      })
+      .sort((a, b) => {
+        const teamCompare = (a.team?.name ?? '').localeCompare(b.team?.name ?? '');
+        if (teamCompare !== 0) return teamCompare;
+        const startCompare = a.rotation.startDate.localeCompare(b.rotation.startDate);
+        if (startCompare !== 0) return startCompare;
+        return a.student.name.localeCompare(b.student.name);
+      });
+  }, [courseById, ministryRotations, ministryTeams, rotationCourseFilter, rotationSearch, rotationStatusFilter, rotationTeamFilter, users]);
+
+  const rotationGroups = useMemo(() => {
+    const groups = new Map<string, { key: string; team: MinistryTeam | null; rows: MinistryRotationRow[] }>();
+    for (const row of rotationRows) {
+      const key = row.team ? String(row.team.id) : 'unassigned';
+      const group = groups.get(key) ?? { key, team: row.team, rows: [] };
+      group.rows.push(row);
+      groups.set(key, group);
+    }
+    return Array.from(groups.values());
+  }, [rotationRows]);
 
   const teamHealthRows = useMemo<MinistryTeamHealth[]>(() => {
     return ministryTeams.map(team => {
@@ -1648,7 +1770,7 @@ export function AttendanceView({
     </div>
   );
 
-  const openRotationModal = (row?: MinistryStudentRow) => {
+  const openRotationModal = (row?: { student: User; course: Course | null; team: MinistryTeam | null; rotation: MinistryRotation | null }) => {
     setRotationDateMode('month');
     if (row?.rotation) {
       setEditingRotationId(row.rotation.id);
@@ -1673,6 +1795,7 @@ export function AttendanceView({
       setRotationStartMonth(monthInputValue(month));
       setRotationEndMonth(monthInputValue(month));
     }
+    setMinistryPanel('rotations');
     setRotationModalOpen(true);
   };
 
@@ -1694,6 +1817,7 @@ export function AttendanceView({
       status: 'active',
       locked: false,
     });
+    setEditingRotationId(null);
     setRotationModalOpen(false);
   };
 
@@ -2223,8 +2347,10 @@ export function AttendanceView({
               </div>
               <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.stats.sessions')}</p>
-                <p className="mt-1 text-xl font-semibold text-[#171717]">{regularClasses.length}</p>
-                <p className="text-xs text-[#737373]">{t('attendance.admin.classes.perDay', { count: settings.classSessionsPerDay })}</p>
+                <p className="mt-1 flex items-baseline gap-2 text-xl font-semibold text-[#171717]">
+                  <span>{regularClasses.length}</span>
+                  <span className="text-xs font-medium text-[#737373]">{t('attendance.admin.classes.perDay', { count: settings.classSessionsPerDay })}</span>
+                </p>
               </div>
               <div className="rounded-xl border border-[#e5e5e5] bg-[#fafafa] px-3 py-2">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('attendance.admin.classes.included')}</p>
@@ -2622,19 +2748,44 @@ export function AttendanceView({
 
     return (
       <div className="space-y-4">
+        <SectionCard className="p-3">
+          <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+            <div className="inline-flex rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-1">
+              {([
+                { id: 'students', label: t('attendance.admin.ministry.tab.students') },
+                { id: 'teams', label: t('attendance.admin.ministry.tab.teams') },
+                { id: 'reports', label: t('attendance.admin.ministry.tab.reports') },
+                { id: 'rotations', label: t('attendance.admin.ministry.tab.rotations') },
+              ] as Array<{ id: MinistryPanel; label: string }>).map(tab => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setMinistryPanel(tab.id)}
+                  className={`h-9 rounded-lg px-4 text-sm font-semibold transition ${
+                    ministryPanel === tab.id
+                      ? 'bg-white text-[#171717] shadow-sm ring-1 ring-[#e5e5e5]'
+                      : 'text-[#737373] hover:text-[#171717]'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setTeamHealthOpen(true)} className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-4 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
+                <BarChart3 className="h-4 w-4" /> {t('attendance.admin.ministry.teamHealth')}
+              </button>
+            </div>
+          </div>
+        </SectionCard>
+
+        {ministryPanel === 'students' && (
+        <>
         <SectionCard className="p-4">
-          <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+          <div>
             <div>
               <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.standingTitle')}</h3>
               <p className="text-sm text-[#737373]">{t('attendance.admin.ministry.standingHint')}</p>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => openRotationModal()} className="inline-flex items-center gap-2 rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">
-                <SlidersHorizontal className="h-4 w-4" /> {t('attendance.admin.ministry.manageRotations')}
-              </button>
-              <button type="button" onClick={() => setTeamHealthOpen(true)} className="inline-flex items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-4 py-2 text-sm font-semibold text-[#171717] hover:bg-[#f5f5f5]">
-                <BarChart3 className="h-4 w-4" /> {t('attendance.admin.ministry.teamHealth')}
-              </button>
             </div>
           </div>
           <div className="mt-4 grid gap-3 md:grid-cols-3 xl:grid-cols-6">
@@ -2751,8 +2902,10 @@ export function AttendanceView({
             </table>
           </div>
         </SectionCard>
+        </>
+        )}
 
-        <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
+        {ministryPanel === 'teams' && (
           <SectionCard className="p-4">
             <div className="flex items-start justify-between gap-3">
               <div>
@@ -2843,7 +2996,9 @@ export function AttendanceView({
               </div>
             )}
           </SectionCard>
+        )}
 
+        {ministryPanel === 'reports' && (
           <SectionCard className="p-4">
             <div className="border-b border-[#e5e5e5] pb-3">
               <h3 className="font-semibold text-[#171717]">{t('attendance.admin.ministry.submittedReports')}</h3>
@@ -2945,7 +3100,157 @@ export function AttendanceView({
               )}
             </div>
           </SectionCard>
-        </div>
+        )}
+
+        {ministryPanel === 'rotations' && (
+          <div className="space-y-4">
+            <SectionCard className="p-4">
+              <div className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between">
+                <div>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('attendance.admin.rotation.eyebrow')}</p>
+                  <h3 className="mt-1 font-semibold text-[#171717]">{t('attendance.admin.ministry.rotationsTitle')}</h3>
+                  <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.ministry.rotationsHint')}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => openRotationModal()}
+                  className="inline-flex h-10 items-center justify-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white shadow-sm hover:bg-[#262626]"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('attendance.admin.rotation.createButton')}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-[minmax(0,1.2fr)_minmax(0,0.8fr)_minmax(0,0.8fr)_minmax(0,0.8fr)]">
+                <label className="relative block">
+                  <span className="sr-only">{t('attendance.admin.rotation.searchPlaceholder')}</span>
+                  <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#737373]" />
+                  <input
+                    value={rotationSearch}
+                    onChange={event => setRotationSearch(event.target.value)}
+                    placeholder={t('attendance.admin.rotation.searchPlaceholder')}
+                    className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm text-[#171717] outline-none transition focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+                  />
+                </label>
+                <select value={rotationTeamFilter} onChange={event => setRotationTeamFilter(event.target.value)} className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm">
+                  <option value="all">{t('attendance.admin.ministry.allTeams')}</option>
+                  {ministryTeams.map(team => <option key={team.id} value={team.id}>{team.name}</option>)}
+                </select>
+                <select value={rotationCourseFilter} onChange={event => setRotationCourseFilter(event.target.value)} className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm">
+                  <option value="all">{t('attendance.admin.ministry.allYears')}</option>
+                  {activeCourses.map(course => <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>)}
+                </select>
+                <select value={rotationStatusFilter} onChange={event => setRotationStatusFilter(event.target.value as RotationStatusFilter)} className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm">
+                  <option value="all">{t('attendance.admin.ministry.allStatuses')}</option>
+                  <option value="active">{t('attendance.admin.rotation.status.active')}</option>
+                  <option value="upcoming">{t('attendance.admin.rotation.status.upcoming')}</option>
+                  <option value="past">{t('attendance.admin.rotation.status.past')}</option>
+                </select>
+              </div>
+            </SectionCard>
+
+            <SectionCard className="overflow-hidden">
+              {rotationGroups.map(group => {
+                const expanded = expandedRotationTeams.includes(group.key);
+                const visibleRows = expanded ? group.rows : group.rows.slice(0, 8);
+                const toggleGroup = () => setExpandedRotationTeams(prev =>
+                  prev.includes(group.key)
+                    ? prev.filter(key => key !== group.key)
+                    : [...prev, group.key]
+                );
+
+                return (
+                  <section key={group.key} className="border-b border-[#e5e5e5] last:border-b-0">
+                    <div className="flex flex-col gap-3 bg-[#fafafa] px-4 py-3 md:flex-row md:items-center md:justify-between">
+                      <div className="min-w-0">
+                        <h4 className="truncate font-semibold text-[#171717]">{group.team?.name ?? t('attendance.admin.ministry.unassigned')}</h4>
+                        <p className="mt-0.5 text-xs text-[#737373]">
+                          {group.team
+                            ? t('attendance.admin.ministry.teamCreditsShort', {
+                                type: group.team.serviceType === 'sunday' ? t('attendance.admin.ministry.sunday') : t('attendance.admin.ministry.nonSunday'),
+                                credits: group.team.requiredCredits,
+                                months: group.team.requirementPeriodMonths,
+                              })
+                            : t('attendance.admin.rotation.noTeamAssigned')}
+                        </p>
+                      </div>
+                      <span className="w-fit rounded-full border border-[#d4d4d4] bg-white px-2.5 py-1 text-xs font-semibold text-[#525252]">
+                        {t('attendance.admin.rotation.rotationCount', { count: group.rows.length })}
+                      </span>
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-left text-sm">
+                        <thead className="bg-white text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                          <tr className="border-y border-[#e5e5e5]">
+                            <th className="px-4 py-2">{t('attendance.table.student')}</th>
+                            <th className="px-4 py-2">{t('attendance.admin.ministry.yearGroup')}</th>
+                            <th className="px-4 py-2">{t('attendance.admin.ministry.rotationPeriod')}</th>
+                            <th className="px-4 py-2">{t('attendance.admin.duty.historyStatus')}</th>
+                            <th className="px-4 py-2 text-right">{t('attendance.admin.ministry.action')}</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#e5e5e5] bg-white">
+                          {visibleRows.map(row => (
+                            <tr key={row.rotation.id} className="align-middle hover:bg-[#fafafa]">
+                              <td className="px-4 py-3">
+                                <div className="flex items-center gap-3">
+                                  <UserAvatar user={row.student} size="sm" />
+                                  <div className="min-w-0">
+                                    <p className="truncate font-semibold text-[#171717]">{row.student.name}</p>
+                                    <p className="truncate text-xs text-[#737373]">{row.student.email}</p>
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3">
+                                {row.course ? <ActiveYearGroupBadge course={row.course} /> : <span className="text-[#737373]">{t('attendance.admin.ministry.noYearGroup')}</span>}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3 text-[#525252]">
+                                {formatDate(row.rotation.startDate)} - {formatDate(row.rotation.endDate)}
+                              </td>
+                              <td className="whitespace-nowrap px-4 py-3">
+                                <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${
+                                  row.status === 'active'
+                                    ? 'bg-[#dcfce7] text-[#166534] ring-[#bbf7d0]'
+                                    : row.status === 'upcoming'
+                                      ? 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]'
+                                      : 'bg-[#f5f5f5] text-[#525252] ring-[#e5e5e5]'
+                                }`}>
+                                  {t(`attendance.admin.rotation.status.${row.status}` as TranslationKey)}
+                                </span>
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => openRotationModal(row)}
+                                  className="inline-flex h-8 items-center gap-2 rounded-lg border border-[#d4d4d4] bg-white px-3 text-xs font-semibold text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  {t('common.edit')}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    {group.rows.length > 8 && (
+                      <button type="button" onClick={toggleGroup} className="w-full border-t border-[#e5e5e5] bg-white px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#fafafa]">
+                        {expanded
+                          ? t('attendance.admin.rotation.showLess')
+                          : t('attendance.admin.rotation.showMore', { count: group.rows.length - visibleRows.length })}
+                      </button>
+                    )}
+                  </section>
+                );
+              })}
+              {rotationGroups.length === 0 && (
+                <div className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-8 text-center text-sm text-[#737373]">
+                  {ministryRotations.length === 0 ? t('attendance.admin.ministry.noRotations') : t('attendance.admin.rotation.noMatches')}
+                </div>
+              )}
+            </SectionCard>
+          </div>
+        )}
       </div>
     );
   };
@@ -2980,25 +3285,296 @@ export function AttendanceView({
         </SectionCard>
       )}
 
-      {pendingTransferRequests.length > 0 && (
-        <SectionCard className="p-4">
-          <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.pendingTransfers')}</h3>
-          <div className="mt-3 space-y-2">
-            {pendingTransferRequests.map(request => (
-              <div key={request.id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-[#e5e5e5] p-3 text-sm">
-                <p>
-                  {t('attendance.admin.duty.transferRequest', { from: request.fromStudentName, to: request.toStudentName, date: formatDate(request.weekStart) })}
-                </p>
-                <div className="flex gap-2">
-                  <button type="button" onClick={() => resolveTransferRequest(request.id, true)} className="rounded-lg bg-[#171717] px-3 py-1.5 text-white">{t('announcements.action.approve')}</button>
-                  <button type="button" onClick={() => resolveTransferRequest(request.id, false)} className="rounded-lg border border-[#e5e5e5] px-3 py-1.5">{t('attendance.admin.reject')}</button>
-                </div>
-              </div>
+      <SectionCard className="p-3">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="inline-flex rounded-xl border border-[#e5e5e5] bg-[#fafafa] p-1">
+            {([
+              { id: 'schedule', label: t('attendance.admin.duty.tab.schedule') },
+              { id: 'history', label: t('attendance.admin.duty.tab.history') },
+            ] as Array<{ id: DutyPanel; label: string }>).map(tab => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => setDutyPanel(tab.id)}
+                className={`h-9 rounded-lg px-4 text-sm font-semibold transition ${
+                  dutyPanel === tab.id
+                    ? 'bg-white text-[#171717] shadow-sm ring-1 ring-[#e5e5e5]'
+                    : 'text-[#737373] hover:text-[#171717]'
+                }`}
+              >
+                {tab.label}
+              </button>
             ))}
           </div>
-        </SectionCard>
+          {(dutyPanel === 'schedule' || dutyPanel === 'history') && (
+            <label className="relative block min-w-0 flex-1 xl:max-w-md">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#a3a3a3]" />
+              <input
+                value={dutyPanel === 'schedule' ? dutyScheduleSearch : transferHistorySearch}
+                onChange={event => {
+                  if (dutyPanel === 'schedule') {
+                    setDutyScheduleSearch(event.target.value);
+                  } else {
+                    setTransferHistorySearch(event.target.value);
+                  }
+                }}
+                placeholder={dutyPanel === 'schedule' ? t('attendance.admin.duty.searchSchedule') : t('attendance.admin.duty.searchTransfers')}
+                className="h-10 w-full rounded-lg border border-[#d4d4d4] bg-white pl-9 pr-3 text-sm outline-none focus:border-[#2563eb] focus:ring-2 focus:ring-[#bfdbfe]"
+              />
+            </label>
+          )}
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setDutyPanel('pending')}
+              className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
+                dutyPanel === 'pending'
+                  ? 'bg-[#eff6ff] text-[#1d4ed8] ring-1 ring-[#bfdbfe]'
+                  : 'border border-[#bfdbfe] bg-white text-[#1d4ed8] hover:bg-[#eff6ff]'
+              }`}
+            >
+              {t('attendance.admin.duty.tab.pending')}
+              <span className={`rounded-full px-2 py-0.5 text-[11px] ${
+                dutyPanel === 'pending' ? 'bg-white text-[#1d4ed8]' : 'bg-[#eff6ff] text-[#1d4ed8]'
+              }`}>
+                {pendingTransferRequests.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setDutyPanel('generate')}
+              className={`inline-flex h-9 items-center justify-center gap-2 rounded-lg px-4 text-sm font-semibold transition ${
+                dutyPanel === 'generate'
+                  ? 'bg-[#171717] text-white shadow-sm'
+                  : 'border border-[#d4d4d4] bg-white text-[#171717] hover:bg-[#f5f5f5]'
+              }`}
+            >
+              <Plus className="h-4 w-4" />
+              {t('attendance.admin.duty.tab.generate')}
+            </button>
+          </div>
+        </div>
+      </SectionCard>
+
+      {dutyPanel === 'pending' && (
+      <SectionCard className="p-4">
+        <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.pendingTimeline')}</h3>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.duty.pendingTimelineHint')}</p>
+          </div>
+          <span className="inline-flex w-fit rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
+            {t('attendance.admin.duty.pendingCount', { count: pendingTransferRequests.length })}
+          </span>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {pendingTransferRequests.map(request => {
+            const fromUser = userById.get(request.fromStudentId) ?? { name: request.fromStudentName, avatarUrl: null };
+            const toUser = userById.get(request.toStudentId) ?? { name: request.toStudentName, avatarUrl: null };
+            const course = courseById.get(request.courseId);
+
+            return (
+              <article key={request.id} className="overflow-hidden rounded-xl border border-[#dbeafe] bg-[#f8fbff]">
+                <div className="flex flex-col gap-3 border-b border-[#dbeafe] bg-white px-4 py-3 lg:flex-row lg:items-center lg:justify-between">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <UserAvatar user={fromUser} size="sm" />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-[#171717]">
+                        {t('attendance.admin.duty.transferRequest', { from: request.fromStudentName, to: request.toStudentName, date: formatDate(request.weekStart) })}
+                      </p>
+                      <p className="mt-0.5 text-xs text-[#737373]">
+                        {course ? getCourseDisplayName(course) : t('student.duty.courseFallback', { id: request.courseId })} · {t('attendance.admin.duty.transferWeek', { date: formatDate(request.weekStart) })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <UserAvatar user={toUser} size="sm" />
+                    <span className="rounded-full bg-[#eff6ff] px-2.5 py-1 text-xs font-semibold text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
+                      {t('admin.dashboard.pending')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="px-4 py-4">
+                  <div className="relative space-y-4 pl-8 before:absolute before:left-[0.94rem] before:top-2 before:h-[calc(100%-1rem)] before:w-px before:bg-[#bfdbfe]">
+                    <div className="relative">
+                      <span className="absolute -left-8 grid h-8 w-8 place-items-center rounded-full bg-[#dbeafe] text-[#1d4ed8] ring-4 ring-[#f8fbff]">
+                        <Users className="h-4 w-4" />
+                      </span>
+                      <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-[#dbeafe]">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.duty.timeline.requested')}</p>
+                          <time className="text-xs font-medium text-[#737373]">{formatPlatformDateTime(request.requestedAt)}</time>
+                        </div>
+                        <p className="mt-1 text-xs text-[#525252]">
+                          {t('attendance.admin.duty.timeline.requestedBy', { from: request.fromStudentName, to: request.toStudentName })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <span className="absolute -left-8 grid h-8 w-8 place-items-center rounded-full bg-white text-[#1d4ed8] ring-1 ring-[#bfdbfe]">
+                        <Calendar className="h-4 w-4" />
+                      </span>
+                      <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-[#dbeafe]">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.duty.timeline.waiting')}</p>
+                          <span className="text-xs font-medium text-[#1d4ed8]">{t('attendance.admin.duty.timeline.now')}</span>
+                        </div>
+                        <p className="mt-1 text-xs text-[#525252]">
+                          {t('attendance.admin.duty.timeline.waitingFor', { to: request.toStudentName })}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="relative">
+                      <span className="absolute -left-8 grid h-8 w-8 place-items-center rounded-full bg-[#f5f5f5] text-[#737373] ring-4 ring-[#f8fbff]">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </span>
+                      <div className="rounded-lg bg-white/80 px-3 py-2 ring-1 ring-[#e5e5e5]">
+                        <p className="text-sm font-semibold text-[#737373]">{t('attendance.admin.duty.timeline.next')}</p>
+                        <p className="mt-1 text-xs text-[#737373]">{t('attendance.admin.duty.timeline.nextHint')}</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {request.reason && (
+                    <p className="mt-4 rounded-lg bg-white px-3 py-2 text-sm text-[#525252] ring-1 ring-[#dbeafe]">
+                      <span className="font-semibold text-[#171717]">{t('attendance.admin.duty.historyReason')}:</span> {request.reason}
+                    </p>
+                  )}
+                </div>
+              </article>
+            );
+          })}
+
+          {pendingTransferRequests.length === 0 && (
+            <div className="rounded-xl border border-dashed border-[#d4d4d4] bg-[#fafafa] px-4 py-10 text-center">
+              <p className="text-sm font-semibold text-[#171717]">{t('attendance.admin.duty.noPendingTimeline')}</p>
+              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.duty.noPendingTimelineHint')}</p>
+            </div>
+          )}
+        </div>
+      </SectionCard>
       )}
 
+      {dutyPanel === 'history' && (
+      <SectionCard className="p-4">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="font-semibold text-[#171717]">{t('attendance.admin.duty.transferHistory')}</h3>
+            <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.duty.transferHistoryHint')}</p>
+          </div>
+          {transferHistoryPageCount > 1 && (
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setTransferHistoryPage(page => Math.max(0, page - 1))}
+                disabled={transferHistoryPage === 0}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
+                aria-label={t('admin.dashboard.previousItems')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <span className="text-xs font-semibold text-[#737373]">
+                {t('admin.dashboard.pageCount', { current: transferHistoryPage + 1, total: transferHistoryPageCount })}
+              </span>
+              <button
+                type="button"
+                onClick={() => setTransferHistoryPage(page => Math.min(transferHistoryPageCount - 1, page + 1))}
+                disabled={transferHistoryPage >= transferHistoryPageCount - 1}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-[#d4d4d4] text-[#525252] hover:bg-[#f5f5f5] disabled:opacity-40"
+                aria-label={t('admin.dashboard.nextItems')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-2 lg:max-w-xl">
+          <select
+            value={transferHistoryStatus}
+            onChange={event => setTransferHistoryStatus(event.target.value as 'all' | DutyTransferRequest['status'])}
+            className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+          >
+            <option value="all">{t('attendance.admin.duty.allStatuses')}</option>
+            <option value="pending">{t('admin.dashboard.pending')}</option>
+            <option value="accepted">{t('attendance.admin.duty.status.accepted')}</option>
+            <option value="approved">{t('attendance.admin.duty.status.approved')}</option>
+            <option value="rejected">{t('attendance.admin.duty.status.rejected')}</option>
+          </select>
+          <select
+            value={transferHistoryCourseId}
+            onChange={event => setTransferHistoryCourseId(event.target.value)}
+            className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-3 text-sm"
+          >
+            <option value="all">{t('attendance.admin.duty.allYearGroups')}</option>
+            {activeCourses.map(course => (
+              <option key={course.id} value={course.id}>{getCourseDisplayName(course)}</option>
+            ))}
+          </select>
+        </div>
+
+        <div className="mt-4 overflow-hidden rounded-xl border border-[#e5e5e5]">
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-sm">
+              <thead className="bg-[#fafafa] text-[10px] font-semibold uppercase tracking-[0.14em] text-[#737373]">
+                <tr>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyDate')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyFrom')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyTo')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyYearGroup')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyStatus')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyResolved')}</th>
+                  <th className="px-3 py-2">{t('attendance.admin.duty.historyReason')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#e5e5e5] bg-white">
+                {visibleTransferHistoryRows.map(request => {
+                  const course = courseById.get(request.courseId);
+                  const resolver = request.resolvedBy ? userById.get(request.resolvedBy) : null;
+                  const statusTone = request.status === 'accepted' || request.status === 'approved'
+                    ? 'bg-[#dcfce7] text-[#166534] ring-[#bbf7d0]'
+                    : request.status === 'rejected'
+                      ? 'bg-[#fef2f2] text-[#991b1b] ring-[#fecaca]'
+                      : 'bg-[#eff6ff] text-[#1d4ed8] ring-[#bfdbfe]';
+                  return (
+                    <tr key={request.id} className="align-top">
+                      <td className="whitespace-nowrap px-3 py-3 text-[#525252]">{formatDate(request.weekStart)}</td>
+                      <td className="px-3 py-3 font-semibold text-[#171717]">{request.fromStudentName}</td>
+                      <td className="px-3 py-3 font-semibold text-[#171717]">{request.toStudentName}</td>
+                      <td className="whitespace-nowrap px-3 py-3 text-[#525252]">{course ? getCourseDisplayName(course) : t('student.duty.courseFallback', { id: request.courseId })}</td>
+                      <td className="whitespace-nowrap px-3 py-3">
+                        <span className={`inline-flex rounded-full px-2 py-1 text-xs font-semibold ring-1 ${statusTone}`}>
+                          {t(`attendance.admin.duty.status.${request.status}` as TranslationKey)}
+                        </span>
+                      </td>
+                      <td className="whitespace-nowrap px-3 py-3 text-[#525252]">
+                        {request.resolvedAt
+                          ? `${formatPlatformDateTime(request.resolvedAt)}${resolver ? ` · ${resolver.name}` : ''}`
+                          : t('attendance.admin.duty.awaitingStudentResponse')}
+                      </td>
+                      <td className="min-w-[14rem] px-3 py-3 text-[#525252]">{request.reason || t('users.detail.none')}</td>
+                    </tr>
+                  );
+                })}
+                {visibleTransferHistoryRows.length === 0 && (
+                  <tr>
+                    <td colSpan={7} className="px-3 py-8 text-center text-sm text-[#737373]">
+                      {t('attendance.admin.duty.noTransferHistory')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </SectionCard>
+      )}
+
+      {dutyPanel === 'generate' && (
       <SectionCard className="p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -3013,7 +3589,9 @@ export function AttendanceView({
           </div>
         </div>
       </SectionCard>
+      )}
 
+      {dutyPanel === 'schedule' && (
       <SectionCard className="overflow-hidden">
         <div className="grid grid-cols-[minmax(136px,0.62fr)_minmax(260px,1fr)_minmax(260px,1fr)_48px] items-center gap-3 border-b border-[#e5e5e5] bg-[#f5f5f5] px-3 py-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373] max-lg:hidden">
           <span>{t('common.week')}</span>
@@ -3023,7 +3601,7 @@ export function AttendanceView({
         </div>
 
         <div ref={dutyScheduleScrollRef} className="tbo-scrollbar max-h-[520px] overflow-y-auto">
-          {dutyWeekRows.map(row => {
+          {visibleDutyWeekRows.map(row => {
             const isCurrentWeek = row.weekStart === currentWeekStart;
             return (
               <div
@@ -3069,14 +3647,19 @@ export function AttendanceView({
             );
           })}
 
-          {dutyWeekRows.length === 0 && (
+          {visibleDutyWeekRows.length === 0 && (
             <div className="px-4 py-10 text-center">
-              <p className="text-sm font-medium text-[#171717]">{t('attendance.admin.duty.noSchedule')}</p>
-              <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.duty.noScheduleHint')}</p>
+              <p className="text-sm font-medium text-[#171717]">
+                {dutyScheduleSearch.trim() ? t('attendance.admin.duty.noScheduleMatches') : t('attendance.admin.duty.noSchedule')}
+              </p>
+              <p className="mt-1 text-sm text-[#737373]">
+                {dutyScheduleSearch.trim() ? t('attendance.admin.duty.noScheduleMatchesHint') : t('attendance.admin.duty.noScheduleHint')}
+              </p>
             </div>
           )}
         </div>
       </SectionCard>
+      )}
     </div>
   );
 
@@ -3360,14 +3943,20 @@ export function AttendanceView({
     if (!rotationModalOpen) return null;
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-        <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
+        <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_24px_80px_rgba(15,23,42,0.22)]">
           <div className="flex items-start justify-between gap-4 border-b border-[#e5e5e5] p-5">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{t('attendance.admin.rotation.eyebrow')}</p>
-              <h3 className="mt-1 text-xl font-semibold text-[#171717]">{editingRotationId ? t('attendance.admin.rotation.editTitle') : t('attendance.admin.rotation.createTitle')}</h3>
+              <h3 className="mt-1 text-xl font-semibold text-[#171717]">
+                {editingRotationId ? t('attendance.admin.rotation.editTitle') : t('attendance.admin.rotation.createTitle')}
+              </h3>
               <p className="mt-1 text-sm text-[#737373]">{t('attendance.admin.rotation.monthModeHint')}</p>
             </div>
-            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]">
+            <button
+              type="button"
+              onClick={() => setRotationModalOpen(false)}
+              className="grid h-9 w-9 place-items-center rounded-lg text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
+            >
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -3425,9 +4014,19 @@ export function AttendanceView({
             </div>
           </div>
 
-          <div className="flex justify-end gap-2 border-t border-[#e5e5e5] p-5">
-            <button type="button" onClick={() => setRotationModalOpen(false)} className="rounded-lg border border-[#d4d4d4] px-4 py-2 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">{t('common.cancel')}</button>
-            <button type="button" onClick={saveRotation} className="rounded-lg bg-[#171717] px-4 py-2 text-sm font-semibold text-white">{t('attendance.admin.ministry.saveRotation')}</button>
+          <div className="flex items-center justify-end gap-2 border-t border-[#e5e5e5] bg-[#fafafa] p-4">
+            <button type="button" onClick={() => setRotationModalOpen(false)} className="h-10 rounded-lg border border-[#d4d4d4] bg-white px-4 text-sm font-semibold text-[#525252] hover:bg-[#f5f5f5]">
+              {t('common.cancel')}
+            </button>
+            <button
+              type="button"
+              onClick={saveRotation}
+              disabled={!rotationDraft.courseId || !rotationDraft.studentId || !rotationDraft.teamId}
+              className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#171717] px-4 text-sm font-semibold text-white hover:bg-[#262626] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+              {t('attendance.admin.ministry.saveRotation')}
+            </button>
           </div>
         </div>
       </div>

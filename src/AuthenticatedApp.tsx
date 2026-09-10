@@ -55,7 +55,7 @@ export function AuthenticatedApp({
   onSignOut,
   onRefetchProfile,
 }: AuthenticatedAppProps) {
-  const { setLanguage, language } = useLanguage();
+  const { t, setLanguage, language } = useLanguage();
   const { confirmationDialog, showConfirmation, closeConfirmation } = useConfirmation();
   const { courses, loading: coursesLoading, error: coursesError, collapsedCourses, collapsedSubjects,
     refetchCourses, addCourse, updateCourse, deleteCourse, addSubject, updateSubject, deleteSubject,
@@ -133,7 +133,10 @@ export function AuthenticatedApp({
       && (d.status === 'active' || d.status === 'transferred')
       && d.studentId === effectiveUser.id
   );
-  const effectiveIsOnDuty = effectiveCurrentDuties.length > 0;
+  const effectiveIncomingDutyTransfers = attendance.pendingTransferRequests.filter(
+    request => request.toStudentId === effectiveUser.id && request.status === 'pending'
+  );
+  const effectiveIsOnDuty = effectiveCurrentDuties.length > 0 || effectiveIncomingDutyTransfers.length > 0;
   const announcementDraftCount = announcements.filter(
     announcement => announcement.status === 'draft' &&
       (announcement.authorId === effectiveUser.id || effectiveUser.roles.includes('administrator'))
@@ -391,6 +394,15 @@ export function AuthenticatedApp({
   const hasNoRoles = !currentUser.roles ||
     currentUser.roles.filter(r => r !== 'dev').length === 0;
 
+  const requestSignOut = () => {
+    showConfirmation(
+      t('header.signOutConfirmTitle'),
+      t('header.signOutConfirmMessage'),
+      t('header.signOut'),
+      () => { void onSignOut(); }
+    );
+  };
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.has('google_docs')) {
@@ -402,7 +414,7 @@ export function AuthenticatedApp({
     return (
       <OnboardingScreen
         userName={currentUser.name}
-        onSignOut={onSignOut}
+        onSignOut={requestSignOut}
       />
     );
   }
@@ -430,7 +442,7 @@ export function AuthenticatedApp({
     <div className="tbo-shell h-screen flex flex-col overflow-hidden text-[#171717]">
       <Header
         currentUser={effectiveUser}
-        onSignOut={onSignOut}
+        onSignOut={requestSignOut}
         isDev={currentUser.roles.includes('dev')}
         previewRoles={previewRoles}
         isViewingAsUser={Boolean(previewUser)}
@@ -458,8 +470,10 @@ export function AuthenticatedApp({
       )}
       <div className="relative flex flex-1 min-h-0 overflow-hidden">
         <Sidebar
+          currentUser={effectiveUser}
           activeView={activeView}
           onNavigate={handleNavigate}
+          onSignOut={requestSignOut}
           hasRole={hasRole}
           totalUnread={totalUnread}
           announcementDraftCount={announcementDraftCount}
@@ -467,6 +481,8 @@ export function AuthenticatedApp({
           pendingUserCount={pendingUserCount}
           isOnDuty={effectiveIsOnDuty}
           activeWorkspace={selectedWorkspace}
+          availableWorkspaces={availableWorkspaces}
+          onWorkspaceChange={handleWorkspaceChange}
           canAssignSessionTranslators={canAssignSessionTranslators}
           mode={sidebarMode}
           onToggleMode={toggleSidebarMode}
@@ -567,6 +583,7 @@ export function AuthenticatedApp({
               createCalendarEvent={calendarEvents.createCalendarEvent}
               gradebookConfig={gradebookConfig}
               effectiveCurrentDuties={effectiveCurrentDuties}
+              effectiveIncomingDutyTransfers={effectiveIncomingDutyTransfers}
               nextScheduledDuty={nextScheduledDuty}
             />
           </div>

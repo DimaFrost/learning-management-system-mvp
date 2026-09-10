@@ -8,6 +8,8 @@ export const appTranslations = defineTranslations({
     'language.english': 'English',
     'language.bulgarian': 'Bulgarian',
     'header.signOut': 'Sign out',
+    'header.signOutConfirmTitle': 'Sign out?',
+    'header.signOutConfirmMessage': 'You will return to the school access screen.',
     'header.switchRole': 'Switch role',
   },
   bg: {
@@ -17,6 +19,8 @@ export const appTranslations = defineTranslations({
     'language.english': 'Английски',
     'language.bulgarian': 'Български',
     'header.signOut': 'Изход',
+    'header.signOutConfirmTitle': 'Изход?',
+    'header.signOutConfirmMessage': 'Ще се върнеш към екрана за училищен достъп.',
     'header.switchRole': 'Смяна на роля',
   },
 });

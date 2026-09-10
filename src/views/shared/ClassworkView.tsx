@@ -45,7 +45,7 @@ type HomeworkCommentRow = {
   author_id?: string | null;
   content: string;
   created_at: string;
-  author?: { id: string; name: string } | null;
+  author?: { id: string; name: string } | { id: string; name: string }[] | null;
 };
 
 type ClassFileSummaryRow = {
@@ -56,14 +56,19 @@ type ClassFileSummaryRow = {
 };
 
 function mapHomeworkComment(row: HomeworkCommentRow) {
+  const author = Array.isArray(row.author) ? row.author[0] : row.author;
   return {
     id: row.id,
     submissionId: row.submission_id,
-    authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? translate('common.unknown'),
+    authorId: author?.id ?? row.author_id ?? '',
+    authorName: author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
+}
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
 interface ClassworkViewProps {
@@ -495,11 +500,13 @@ export function ClassworkView({
       console.error('Failed to load classwork homework submissions', error);
       setHomeworkSubmissions([]);
     } else {
-      setHomeworkSubmissions((data ?? []).map(row => ({
+      setHomeworkSubmissions(((data ?? []) as unknown as Array<typeof data extends Array<infer Row> ? Row : never>).map(row => {
+        const student = firstJoin(row.student);
+        return {
         id: row.id,
         assignmentId: row.assignment_id,
         studentId: row.student_id,
-        studentName: row.student?.name ?? translate('common.unknown'),
+        studentName: student?.name ?? translate('common.unknown'),
         submissionType: row.submission_type,
         driveFileId: row.drive_file_id,
         driveViewUrl: row.drive_view_url,
@@ -517,7 +524,8 @@ export function ClassworkView({
         createdAt: row.created_at,
         updatedAt: row.updated_at,
         comments: (row.comments ?? []).map(mapHomeworkComment),
-      })) as HomeworkSubmission[]);
+      };
+      }) as HomeworkSubmission[]);
     }
   }, [currentUser.id, homeworkRows, scope]);
 
@@ -1130,7 +1138,7 @@ export function ClassworkView({
                       <span className="whitespace-nowrap text-[10px] font-semibold uppercase tracking-[0.14em] text-[#1d4ed8]">{t('classwork.column.assignments')}</span>
                     ) : null}
                   </span>
-                  <span className="text-right">{t('classwork.column.teachers')}</span>
+                  <span className="text-right">{runTeachers.length > 0 ? t('classwork.column.teachers') : null}</span>
                 </div>
                 {groupByCalendarWeek(run.items, item => item.dueDate).map(weekGroup => (
                   <Fragment key={weekGroup.weekStart}>

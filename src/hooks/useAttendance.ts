@@ -49,8 +49,8 @@ import {
 import { isCourseActive } from '../utils/courseUtils';
 
 type SupabaseProfileJoin =
-  | { id: string; name: string; email?: string | null; avatar_url?: string | null }
-  | { id: string; name: string; email?: string | null; avatar_url?: string | null }[]
+  | { id: string; name: string; email?: string | null; phone?: string | null; avatar_url?: string | null }
+  | { id: string; name: string; email?: string | null; phone?: string | null; avatar_url?: string | null }[]
   | null;
 
 function profileName(profile: SupabaseProfileJoin | undefined): string {
@@ -598,7 +598,7 @@ export function useAttendance(
   const isOnDuty = !!myCurrentDuty;
 
   // ============================================
-  // DERIVED: PENDING TRANSFER REQUESTS (for admins)
+  // DERIVED: PENDING TRANSFER REQUESTS
   // ============================================
   const pendingTransferRequests = transferRequests.filter(
     r => r.status === 'pending'
@@ -796,7 +796,7 @@ export function useAttendance(
 
   const resolveTransferRequest = async (
     requestId: number,
-    approved: boolean
+    accepted: boolean
   ): Promise<void> => {
     const request = transferRequests.find(r => r.id === requestId);
     if (!request) return;
@@ -804,14 +804,14 @@ export function useAttendance(
     const { error: updateError } = await supabase
       .from('duty_transfer_requests')
       .update({
-        status: approved ? 'approved' : 'rejected',
+        status: accepted ? 'accepted' : 'rejected',
         resolved_at: new Date().toISOString(),
         resolved_by: currentUser.id,
       })
       .eq('id', requestId);
     if (updateError) throw updateError;
 
-    if (approved) {
+    if (accepted) {
       const { error: dutyError } = await supabase.from('duty_schedule')
         .update({
           student_id: request.toStudentId,
@@ -823,12 +823,12 @@ export function useAttendance(
 
     void queueWorkflowEmail({
       createdBy: currentUser.id,
-      recipientIds: [request.fromStudentId, request.toStudentId],
-      subject: approved ? 'Duty transfer approved' : 'Duty transfer rejected',
-      title: approved ? 'Duty transfer approved' : 'Duty transfer rejected',
-      body: approved
-        ? `The duty transfer for the week starting ${request.weekStart} was approved.`
-        : `The duty transfer for the week starting ${request.weekStart} was rejected.`,
+      recipientIds: [...getAdminIds(users), request.fromStudentId, request.toStudentId],
+      subject: accepted ? 'Duty transfer accepted' : 'Duty transfer declined',
+      title: accepted ? 'Duty transfer accepted' : 'Duty transfer declined',
+      body: accepted
+        ? `${request.toStudentName} accepted the duty transfer from ${request.fromStudentName} for the week starting ${request.weekStart}.`
+        : `${request.toStudentName} declined the duty transfer from ${request.fromStudentName} for the week starting ${request.weekStart}.`,
       kind: 'attendance',
     });
 

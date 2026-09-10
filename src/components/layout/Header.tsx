@@ -1,27 +1,12 @@
-import { useEffect, useRef, useState } from 'react';
 import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { WORKSPACE_LABEL_KEYS } from '../../types/workspace';
-import { LogOut, Code2, Menu, Check, ChevronsUpDown, ChevronDown, CornerDownLeft, Languages, Search, Users } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, ChevronsUpDown, Code2, CornerDownLeft, Languages, Menu, Search, Users } from 'lucide-react';
 import tboLogo from '../../assets/tbo-logo.svg';
 import { useLanguage, type AppLanguage } from '../../i18n/LanguageContext';
 import { ROLE_META } from '../../views/admin/users/usersShared';
 import { formatRoleLabel } from '../../utils/userManagementUtils';
-
-const ROLE_ABBREVS: Record<string, string> = {
-  administrator: 'A',
-  teacher: 'T',
-  translator: 'Tr',
-  mentor: 'M',
-  team_leader: 'TL',
-  student: 'S',
-};
-
-function formatPreviewAbbrev(roles: string[]): string {
-  return roles
-    .map(role => ROLE_ABBREVS[role] ?? role.charAt(0).toUpperCase())
-    .join('+');
-}
 
 interface HeaderProps {
   currentUser: User;
@@ -39,13 +24,11 @@ interface HeaderProps {
 }
 
 export function Header({
-  currentUser,
-  onSignOut,
+  activeWorkspace,
+  availableWorkspaces,
   isDev,
   previewRoles,
   isViewingAsUser = false,
-  activeWorkspace,
-  availableWorkspaces,
   onWorkspaceChange,
   onLanguageChange,
   onOpenDevPanel,
@@ -58,9 +41,11 @@ export function Header({
   const mobileLanguageMenuRef = useRef<HTMLDivElement | null>(null);
   const desktopLanguageMenuRef = useRef<HTMLDivElement | null>(null);
   const { language, t } = useLanguage();
+  const appEnv = import.meta.env.VITE_APP_ENV ?? 'development';
+  const appEnvLabel = import.meta.env.VITE_APP_ENV_LABEL ?? appEnv.replace(/[-_]/g, ' ');
+  const showEnvironmentBadge = appEnv !== 'production';
   const workspaceLabel = activeWorkspace ? t(WORKSPACE_LABEL_KEYS[activeWorkspace]) : t('sidebar.workspace');
   const canSwitchWorkspace = !!activeWorkspace && availableWorkspaces.length > 1;
-  const roleButtonLabel = activeWorkspace ? workspaceLabel : t('header.noRole');
   const activeRoleMeta = activeWorkspace
     ? ROLE_META[activeWorkspace] ?? { icon: Users, className: 'border-[#d4d4d4] bg-white text-[#525252]' }
     : { icon: Users, className: 'border-[#d4d4d4] bg-[#fafafa] text-[#a3a3a3]' };
@@ -96,18 +81,6 @@ export function Header({
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [languageMenuOpen]);
 
-  const avatar = currentUser.avatarUrl ? (
-    <img
-      src={currentUser.avatarUrl}
-      alt={currentUser.name}
-      className="h-8 w-8 rounded-full border border-[#e5e5e5] object-cover"
-    />
-  ) : (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-[#e5e5e5] bg-[#f5f5f5] text-sm font-semibold text-[#171717]">
-      {currentUser.name.charAt(0).toUpperCase()}
-    </div>
-  );
-
   return (
     <div className="flex-shrink-0 border-b border-[#e5e5e5] bg-white/95 px-4 py-3 lg:px-6">
       {/* Mobile header */}
@@ -123,6 +96,11 @@ export function Header({
           </button>
           <img src={tboLogo} alt="" className="h-7 w-7 flex-shrink-0 rounded-full" />
           <h1 className="truncate text-sm font-semibold text-[#171717]">{t('header.brandShort')}</h1>
+          {showEnvironmentBadge && (
+            <span className="rounded-full border border-[#fed7aa] bg-[#fff7ed] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.08em] text-[#c2410c]">
+              {appEnvLabel}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 flex-shrink-0">
           {isDev && (
@@ -147,7 +125,6 @@ export function Header({
           >
             <Search className="h-4 w-4" />
           </button>
-          {avatar}
           <div ref={mobileLanguageMenuRef} className="relative">
             <button
               type="button"
@@ -180,14 +157,6 @@ export function Header({
               </div>
             )}
           </div>
-          <button
-            onClick={onSignOut}
-            className="tbo-focus rounded-lg p-2.5 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            title={t('header.signOut')}
-            aria-label={t('header.signOut')}
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
 
@@ -201,6 +170,11 @@ export function Header({
             <h1 className="text-sm font-semibold text-[#171717]">{t('app.brand')}</h1>
             <p className="text-xs text-[#737373]">{t('app.subtitle')}</p>
           </div>
+          {showEnvironmentBadge && (
+            <span className="rounded-full border border-[#fed7aa] bg-[#fff7ed] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] text-[#c2410c]">
+              {appEnvLabel}
+            </span>
+          )}
         </div>
         <div className="flex min-w-0 items-center gap-3">
           <button
@@ -215,21 +189,11 @@ export function Header({
               <CornerDownLeft className="h-3 w-3 text-[#a3a3a3]" />
             </span>
           </button>
-          <div className="flex items-center gap-2 min-w-0">
-            {avatar}
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-[#171717] max-w-[280px] xl:max-w-md">
-                {currentUser.name}
-              </p>
-            </div>
-          </div>
           <div ref={workspaceMenuRef} className="relative">
             <button
               type="button"
               onClick={() => {
-                if (canSwitchWorkspace) {
-                  setWorkspaceMenuOpen(open => !open);
-                }
+                if (canSwitchWorkspace) setWorkspaceMenuOpen(open => !open);
               }}
               disabled={!canSwitchWorkspace}
               className={`tbo-focus relative flex items-center gap-2 rounded-lg border px-2.5 py-2 text-sm font-semibold ${
@@ -239,18 +203,19 @@ export function Header({
                     : `cursor-default ${activeRoleMeta.className}`
                   : `cursor-default ${activeRoleMeta.className}`
               }`}
-              title={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
-              aria-label={canSwitchWorkspace ? t('header.switchRole') : roleButtonLabel}
+              title={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
+              aria-label={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
               aria-expanded={canSwitchWorkspace ? workspaceMenuOpen : undefined}
             >
               <ActiveRoleIcon className="h-4 w-4" />
-              <span className="max-w-[120px] truncate">{roleButtonLabel}</span>
+              <span className="max-w-[130px] truncate">{workspaceLabel}</span>
               {canSwitchWorkspace && <ChevronsUpDown className="h-3.5 w-3.5 text-[#737373]" />}
             </button>
             {canSwitchWorkspace && workspaceMenuOpen && (
-              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-48 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+              <div className="absolute right-0 top-[calc(100%+0.5rem)] z-50 w-52 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
                 {availableWorkspaces.map(workspace => {
                   const selected = workspace === activeWorkspace;
+                  const Icon = ROLE_META[workspace]?.icon ?? Users;
 
                   return (
                     <button
@@ -266,13 +231,10 @@ export function Header({
                           : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
                       }`}
                     >
-                      <span className={`flex h-6 w-6 items-center justify-center rounded-md border ${
+                      <span className={`flex h-7 w-7 items-center justify-center rounded-md border ${
                         ROLE_META[workspace]?.className ?? 'border-[#d4d4d4] bg-white text-[#525252]'
                       }`}>
-                        {selected ? <Check className="h-3.5 w-3.5" /> : (() => {
-                          const Icon = ROLE_META[workspace]?.icon ?? Users;
-                          return <Icon className="h-3.5 w-3.5" />;
-                        })()}
+                        {selected ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
                       </span>
                       <span className="min-w-0 flex-1 truncate font-medium">
                         {t(WORKSPACE_LABEL_KEYS[workspace]) || formatRoleLabel(workspace)}
@@ -331,20 +293,13 @@ export function Header({
                   <span className="absolute right-1 top-1 h-2 w-2 rounded-full bg-[#ea580c]" />
                   {previewRoles !== null && (
                     <span className="text-xs font-medium text-[#c2410c]">
-                      {formatPreviewAbbrev(previewRoles)}
+                      {previewRoles.length}
                     </span>
                   )}
                 </>
               )}
             </button>
           )}
-          <button
-            onClick={onSignOut}
-            className="tbo-focus rounded-lg border border-[#e5e5e5] bg-white p-2 text-[#737373] hover:bg-[#f5f5f5] hover:text-[#171717]"
-            title={t('header.signOut')}
-          >
-            <LogOut className="w-4 h-4" />
-          </button>
         </div>
       </div>
     </div>

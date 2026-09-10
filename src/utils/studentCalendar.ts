@@ -2,8 +2,10 @@ import { translate } from '../i18n/translate';
 import type {
   AttendanceStatus,
   CalendarEventRecord,
+  Class,
   ClassAttendanceRecord,
   Course,
+  Subject,
   TheWellSessionRecord,
   WellScheduleEntry,
 } from '../types/lms';

@@ -108,7 +108,7 @@ export function SubjectDetailPage({
   onNavigate?: (view: string) => void;
   onCreateAssignment: (subjectId: number, classId: number | null, data: AssignmentComposerPayload) => Promise<void>;
   assignmentSaving: boolean;
-  gradebookConfig: ReturnType<typeof useGradebookConfig>;
+  gradebookConfig?: ReturnType<typeof useGradebookConfig>;
   backLabel?: string;
   curriculumActions?: CurriculumSubjectActions;
   tabAccess?: 'full' | 'sessions-materials';

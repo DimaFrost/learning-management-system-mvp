@@ -12,6 +12,7 @@ import type {
   CalendarEventRecord,
   Conversation,
   DutyScheduleEntry,
+  DutyTransferRequest,
   HomeworkAssignment,
   TodoAssignmentCategory,
   TodoItem,
@@ -37,6 +38,7 @@ import { MyClassesView } from './teacher/MyClassesView';
 import { StaffDashboard } from './shared/StaffDashboard';
 import { AdminDashboard } from './admin/AdminDashboard';
 import { EmailLogView } from './admin/EmailLogView';
+import { EnvironmentStatusView } from './admin/EnvironmentStatusView';
 import { InboxView } from './admin/InboxView';
 import { KnowledgeBaseView } from './admin/KnowledgeBaseView';
 import { CurriculumView } from './admin/CurriculumView';
@@ -216,6 +218,7 @@ export interface AppRouterProps {
     targetRoles: string[];
   }) => Promise<void>;
   effectiveCurrentDuties: DutyScheduleEntry[];
+  effectiveIncomingDutyTransfers: DutyTransferRequest[];
   nextScheduledDuty?: DutyScheduleEntry;
 }
 
@@ -307,6 +310,7 @@ export function AppRouter({
   canManageCalendarEvents,
   createCalendarEvent,
   effectiveCurrentDuties,
+  effectiveIncomingDutyTransfers,
   nextScheduledDuty,
 }: AppRouterProps) {
   const [classworkSubjectTarget, setClassworkSubjectTarget] = useState<{ courseId: number; subjectId: number; classId?: number } | null>(null);
@@ -730,11 +734,12 @@ export function AppRouter({
   }
 
   if (activeView === 'on-duty') {
-    if (effectiveCurrentDuties.length > 0) {
+    if (effectiveCurrentDuties.length > 0 || effectiveIncomingDutyTransfers.length > 0) {
       return (
         <DutyMarkingView
           currentUser={currentUser}
           currentDuties={effectiveCurrentDuties}
+          pendingTransferRequests={effectiveIncomingDutyTransfers}
           courses={courses}
           courseStudents={courseStudents}
           users={users}
@@ -744,6 +749,7 @@ export function AppRouter({
           onMarkClassAttendance={attendance.markClassAttendance}
           onMarkWellSessionAttendance={attendance.markWellSessionAttendance}
           onRequestTransfer={attendance.requestDutyTransfer}
+          onResolveTransfer={attendance.resolveTransferRequest}
           loading={attendance.loading}
         />
       );
@@ -975,6 +981,7 @@ export function AppRouter({
             dutySchedule={attendance.dutySchedule}
             prayerSchedule={attendance.prayerSchedule}
             wellSchedule={attendance.wellSchedule}
+            transferRequests={attendance.transferRequests}
             pendingTransferRequests={attendance.pendingTransferRequests}
             correctionRequests={attendance.correctionRequests}
             classAttendance={attendance.classAttendance}
@@ -1080,6 +1087,8 @@ export function AppRouter({
         return <InboxView currentUser={currentUser} />;
       case 'email-log':
         return <EmailLogView users={users} />;
+      case 'environment-status':
+        return <EnvironmentStatusView currentUser={currentUser} onNavigate={setActiveView} />;
       case 'knowledge-base':
         return <KnowledgeBaseView />;
     }

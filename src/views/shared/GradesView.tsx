@@ -31,49 +31,25 @@ type HomeworkGradeRow = {
   selected_option: string | null;
   status: string;
   comments?: HomeworkCommentRow[] | null;
-  assignment: {
-    id: number;
-    title: string;
-    description: string | null;
-    due_date: string | null;
-    grading_due_date: string | null;
-    class_id: number | null;
-    subject_id: number | null;
-    max_points: number;
-    work_type?: 'assignment' | 'quick_check';
-    question_type?: 'short_answer' | 'multiple_choice' | null;
-    question_options?: Array<string | { prompt: string; options: string[] }>;
-    grade_category_id?: number | null;
-    grading_period_id?: number | null;
-    class: {
-      id: number;
-      teacher_id: string | null;
-      subject: { id: number; title: string; course_id: number | null } | null;
-    } | null;
-  } | null;
+  assignment: HomeworkAssignmentRow | null;
 };
 
-type HomeworkCommentRow = {
+type RawHomeworkGradeRow = Omit<HomeworkGradeRow, 'assignment' | 'comments'> & {
+  comments?: HomeworkCommentRow[] | null;
+  assignment: RawHomeworkAssignmentRow | RawHomeworkAssignmentRow[] | null;
+};
+
+type HomeworkSubjectJoin = { id: number; title: string; course_id: number | null };
+
+type HomeworkClassJoin = {
   id: number;
-  submission_id: number;
-  author_id?: string | null;
-  content: string;
-  created_at: string;
-  author?: { id: string; name: string } | null;
+  teacher_id: string | null;
+  subject: HomeworkSubjectJoin | null;
 };
 
-type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
-
-function mapHomeworkComment(row: HomeworkCommentRow) {
-  return {
-    id: row.id,
-    submissionId: row.submission_id,
-    authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? translate('common.unknown'),
-    content: row.content,
-    createdAt: row.created_at,
-  };
-}
+type RawHomeworkClassJoin = Omit<HomeworkClassJoin, 'subject'> & {
+  subject: HomeworkSubjectJoin | HomeworkSubjectJoin[] | null;
+};
 
 type HomeworkAssignmentRow = {
   id: number;
@@ -89,12 +65,52 @@ type HomeworkAssignmentRow = {
   question_options?: Array<string | { prompt: string; options: string[] }>;
   grade_category_id?: number | null;
   grading_period_id?: number | null;
-  class: {
-    id: number;
-    teacher_id: string | null;
-    subject: { id: number; title: string; course_id: number | null } | null;
-  } | null;
+  class: HomeworkClassJoin | null;
 };
+
+type RawHomeworkAssignmentRow = Omit<HomeworkAssignmentRow, 'class'> & {
+  class: RawHomeworkClassJoin | RawHomeworkClassJoin[] | null;
+};
+
+type HomeworkCommentRow = {
+  id: number;
+  submission_id: number;
+  author_id?: string | null;
+  content: string;
+  created_at: string;
+  author?: { id: string; name: string } | { id: string; name: string }[] | null;
+};
+
+type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
+
+function mapHomeworkComment(row: HomeworkCommentRow) {
+  const author = firstJoin(row.author);
+  return {
+    id: row.id,
+    submissionId: row.submission_id,
+    authorId: author?.id ?? row.author_id ?? '',
+    authorName: author?.name ?? translate('common.unknown'),
+    content: row.content,
+    createdAt: row.created_at,
+  };
+}
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+function normalizeAssignmentRow(assignment: RawHomeworkAssignmentRow | RawHomeworkAssignmentRow[] | HomeworkAssignmentRow | null | undefined): HomeworkAssignmentRow | null {
+  const normalized = firstJoin(assignment);
+  if (!normalized) return null;
+  const classRow = firstJoin(normalized.class);
+  return {
+    ...normalized,
+    class: classRow ? {
+      ...classRow,
+      subject: firstJoin(classRow.subject),
+    } : null,
+  };
+}
 
 interface GradesViewProps {
   scope: GradesScope;
@@ -355,7 +371,14 @@ export function GradesView({
         console.error('Failed to load grades', error);
         setHomeworkRows([]);
       } else {
-        setHomeworkRows((data ?? []) as HomeworkGradeRow[]);
+        setHomeworkRows(((data ?? []) as unknown as RawHomeworkGradeRow[]).map(row => ({
+          ...row,
+          assignment: normalizeAssignmentRow(row.assignment),
+          comments: (row.comments ?? []).map(comment => ({
+            ...comment,
+            author: firstJoin(comment.author),
+          })),
+        })) as HomeworkGradeRow[]);
       }
       setLoading(false);
     };
@@ -389,7 +412,10 @@ export function GradesView({
         console.error('Failed to load grade assignments', error);
         setHomeworkAssignments([]);
       } else {
-        setHomeworkAssignments(((data ?? []) as HomeworkAssignmentRow[]).filter(assignment => {
+        setHomeworkAssignments(((data ?? []) as unknown as RawHomeworkAssignmentRow[])
+          .map(normalizeAssignmentRow)
+          .filter((assignment): assignment is HomeworkAssignmentRow => Boolean(assignment))
+          .filter(assignment => {
           const courseId = assignment.class?.subject?.course_id ?? null;
           const teacherOk = scope !== 'teacher' || assignment.class?.teacher_id === currentUser.id;
           return courseId != null && scopedCourseIds.includes(courseId) && teacherOk;
@@ -581,7 +607,7 @@ export function GradesView({
       courseId: selectedConfigCourseId,
       name: categoryDraft.name.trim(),
       weightPercent: categoryDraft.weightPercent.trim() ? Number(categoryDraft.weightPercent) : null,
-      defaultPoints: categoryDraft.defaultPoints.trim() ? Number(categoryDraft.defaultPoints) : null,
+      defaultPoints: categoryDraft.defaultPoints.trim() ? Number(categoryDraft.defaultPoints) : undefined,
       color: categoryDraft.color,
       active: true,
     });
@@ -609,9 +635,9 @@ export function GradesView({
 
   if (scope === 'student' && selectedHomeworkDetail) {
     const homeworkSubmissionsForDetail = studentWorkItems
-      .filter(item => item.category === 'homework' && item.homeworkSubmission)
-      .map(item => item.homeworkSubmission)
-      .filter((item): item is HomeworkSubmission => Boolean(item));
+      .flatMap(item => item.category === 'homework' && 'homeworkSubmission' in item && item.homeworkSubmission
+        ? [item.homeworkSubmission]
+        : []);
     return (
       <HomeworkAssignmentDetailPage
         selection={selectedHomeworkDetail}

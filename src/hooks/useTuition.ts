@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import { queueWorkflowEmail } from '../utils/notificationJobs';
+import { getPublicAppUrl } from '../utils/appUrl';
 import { toLocalDateKey } from '../utils/dateUtils';
 import type {
   Course,
@@ -351,7 +352,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
     const installmentRows = [
       input.firstDueDate ? { plan_id: plan.id, title: 'First installment', amount: input.totalAmount / 2, due_date: input.firstDueDate, reminder_days_before: 7, sort_order: 1 } : null,
       input.secondDueDate ? { plan_id: plan.id, title: 'Second installment', amount: input.totalAmount / 2, due_date: input.secondDueDate, reminder_days_before: 7, sort_order: 2 } : null,
-    ].filter(Boolean);
+    ].filter((row): row is { plan_id: number; title: string; amount: number; due_date: string; reminder_days_before: number; sort_order: number } => row !== null);
     if (installmentRows.length > 0) {
       const { error: installmentError } = await supabase.from('tuition_installments').insert(installmentRows);
       if (installmentError) throw installmentError;
@@ -456,7 +457,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
         installment_title: installment?.title ?? '',
         installment_due_date: installment?.dueDate ?? '',
         installment_line: installment ? `Installment: ${installment.title}\nDue: ${installment.dueDate}` : '',
-        portal_url: window.location.origin,
+        portal_url: getPublicAppUrl(),
       };
       const template = emailTemplates.reminder;
       const subject = renderTemplate(template.subject, variables).trim() || DEFAULT_TUITION_EMAIL_TEMPLATES.reminder.subject;
@@ -479,7 +480,7 @@ export function useTuition(currentUser: User, users: User[], courseStudents: Cou
         body,
         status: 'queued',
         notification_job_id: jobId,
-      });
+      } as Omit<ReminderRow, 'id' | 'created_at' | 'sent_at'>);
     }));
     if (logs.length > 0) {
       const { error: insertError } = await supabase.from('tuition_reminder_logs').insert(logs);

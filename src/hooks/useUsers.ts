@@ -3,6 +3,7 @@ import { translate } from '../i18n/translate';
 import { supabase } from '../lib/supabase';
 import type { CourseType, User, UserRole } from '../types/lms';
 import { queueProfileInviteEmail, queueRoleChangeEmail } from '../utils/notificationJobs';
+import { getPublicAppUrl } from '../utils/appUrl';
 
 type ShowConfirmation = (
   title: string,
@@ -95,6 +96,14 @@ function mapProfileToUser(row: ProfileUserRow): User {
   };
 }
 
+function rolesChanged(previousRoles: UserRole[], nextRoles?: UserRole[]) {
+  if (!nextRoles) return false;
+  return (
+    nextRoles.length !== previousRoles.length ||
+    nextRoles.some(role => !previousRoles.includes(role))
+  );
+}
+
 const SAFE_PROFILE_COLUMNS = [
   'id',
   'name',
@@ -128,7 +137,7 @@ export function useUsers(currentUser: User) {
 
       if (fetchError) throw fetchError;
 
-      let rows = (profileRows ?? []) as ProfileUserRow[];
+      let rows = (profileRows ?? []) as unknown as ProfileUserRow[];
 
       if (canLoadContactDirectory(currentUser)) {
         const { data: privateRows, error: privateError } = await supabase
@@ -201,7 +210,7 @@ export function useUsers(currentUser: User) {
             email,
             name: user.name,
             roles: user.roles,
-            actionUrl: window.location.origin,
+            actionUrl: getPublicAppUrl(),
           });
           if (!queued) {
             console.warn(`Profile invite was created, but invite email could not be queued for ${email}.`);
@@ -229,13 +238,7 @@ export function useUsers(currentUser: User) {
 
     setError(null);
     try {
-      const rolesChanged = Boolean(
-        user.roles &&
-        (
-          user.roles.length !== existing.roles.length ||
-          user.roles.some(role => !existing.roles.includes(role))
-        )
-      );
+      const profileRolesChanged = rolesChanged(existing.roles, user.roles);
 
       const { error: updateError } = await supabase
         .from('profiles')
@@ -255,7 +258,7 @@ export function useUsers(currentUser: User) {
 
       await refetchUsers();
 
-      if (rolesChanged && user.roles) {
+      if (profileRolesChanged && user.roles) {
         const queued = await queueRoleChangeEmail({
           createdBy: currentUser.id,
           userId: existing.id,
@@ -304,11 +307,11 @@ export function useUsers(currentUser: User) {
 
       await refetchUsers();
 
-      if (updates.roles && affected) {
+      if (affected && rolesChanged(affected.roles, updates.roles)) {
         queueRoleChangeEmail({
           createdBy: currentUser.id,
           userId: affected.id,
-          newRoles: updates.roles,
+          newRoles: updates.roles ?? [],
         }).catch(console.error);
       }
     } catch (err) {

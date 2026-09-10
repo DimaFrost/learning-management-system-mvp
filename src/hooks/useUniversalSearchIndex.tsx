@@ -4,6 +4,7 @@ import type { PluralKey } from '../i18n/translations';
 import { translate } from '../i18n/translate';
 import {
   Banknote,
+  Activity,
   BarChart2,
   BookOpen,
   Calendar,
@@ -231,6 +232,7 @@ function navigationResults({
     { view: 'tuition-overview', titleKey: 'sidebar.tuition', subtitleKey: 'search.index.nav.tuition.desc', icon: Banknote },
     { view: 'inbox', titleKey: 'sidebar.inbox', subtitleKey: 'sidebar.inbox.desc', icon: Inbox },
     { view: 'email-log', titleKey: 'sidebar.emailLog', subtitleKey: 'sidebar.emailLog.desc', icon: MailCheck },
+    { view: 'environment-status', titleKey: 'sidebar.environmentStatus', subtitleKey: 'search.index.nav.environmentStatus.desc', icon: Activity },
     { view: 'knowledge-base', titleKey: 'sidebar.knowledgeBase', subtitleKey: 'search.index.nav.knowledgeBase.desc', icon: BookOpen },
   ];
   const classroom: NavEntry[] = [
@@ -328,7 +330,7 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
       : isTeacher || isTranslator ? staffClassIds : null;
     const userById = new Map(users.map(user => [user.id, user]));
 
-    results.push(...navigationResults({ currentUser, activeWorkspace, ministryTeams, onNavigate, t }));
+    results.push(...navigationResults({ currentUser, activeWorkspace, ministryTeams, onNavigate, t, tCount }));
 
     users.forEach(user => {
       const sameUser = user.id === currentUser.id;
@@ -614,10 +616,10 @@ export function useUniversalSearchIndex(input: SearchIndexInput) {
         results.push({
           id: `well-attendance-${record.id}`,
           type: 'attendance',
-          title: record.studentName,
+          title: userById.get(record.studentId)?.name ?? t('common.unknown'),
           subtitle: t('attendance.well.heading'),
           meta: t('search.index.meta.weekOf', { status: record.status, date: formatPlatformDate(record.weekStart) }),
-          keywords: compact([record.studentName, record.status, record.weekStart, 'well attendance']),
+          keywords: compact([userById.get(record.studentId)?.name, record.status, record.weekStart, 'well attendance']),
           icon: HeartHandshake,
           tone: record.status === 'present' ? 'green' : record.status === 'late' ? 'orange' : 'rose',
           badge: t('nav.attendance.well'),

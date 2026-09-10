@@ -166,7 +166,7 @@ const ROLE_LABEL_KEYS: Partial<Record<UserRole, TranslationKey>> = {
 
 
 
-export function ActiveYearGroupBadge({ course }: { course: Course }) {
+export function ActiveYearGroupBadge({ course, size = 'md' }: { course: Course; size?: 'sm' | 'md' }) {
 
   const { t } = useLanguage();
 
@@ -178,7 +178,7 @@ export function ActiveYearGroupBadge({ course }: { course: Course }) {
 
     <span
 
-      className={`inline-flex items-center gap-1.5 rounded-md border px-2 py-1 text-[11px] font-semibold leading-none ${
+      className={`inline-flex items-center gap-1.5 rounded-md border ${size === 'sm' ? 'px-1.5 py-0.5 text-[10px]' : 'px-2 py-1 text-[11px]'} font-semibold leading-none ${
 
         isSecond
 
@@ -405,4 +405,3 @@ export function StatPill({
   );
 
 }
-

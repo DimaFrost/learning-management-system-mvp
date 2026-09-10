@@ -9,6 +9,19 @@ import type { TranslationKey } from '../../i18n/translations';
 
 type AbsenceScope = 'admin' | 'student';
 
+type NoticeSession = {
+  id: number;
+  class_id: number;
+  class?: {
+    id: number;
+    title: string;
+    date: string;
+    hour: Class['hour'];
+    subject_id: number;
+    subject?: { id: number; title: string; course_id: number | null } | { id: number; title: string; course_id: number | null }[] | null;
+  } | null;
+};
+
 type NoticeRow = {
   id: number;
   student_id: string;
@@ -16,18 +29,14 @@ type NoticeRow = {
   status: 'submitted' | 'acknowledged' | 'archived';
   submitted_at: string;
   student?: { id: string; name: string; avatar_url: string | null } | null;
-  sessions?: {
-    id: number;
-    class_id: number;
-    class?: {
-      id: number;
-      title: string;
-      date: string;
-      hour: Class['hour'];
-      subject_id: number;
-      subject?: { id: number; title: string; course_id: number | null } | null;
-    } | null;
-  }[] | null;
+  sessions?: NoticeSession[] | null;
+};
+
+type RawNoticeRow = Omit<NoticeRow, 'student' | 'sessions'> & {
+  student?: NoticeRow['student'] | NonNullable<NoticeRow['student']>[] | null;
+  sessions?: Array<Omit<NoticeSession, 'class'> & {
+    class?: NoticeSession['class'] | NonNullable<NoticeSession['class']>[] | null;
+  }> | null;
 };
 
 type SessionOption = {
@@ -113,9 +122,21 @@ function getNoticeSessionDate(notice: NoticeRow) {
   return dates[0] ?? notice.submitted_at;
 }
 
-function getSessionCourse(session: NoticeRow['sessions'] extends Array<infer T> ? T : never, courses: Course[]) {
-  const courseId = session.class?.subject?.course_id;
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
+function getSessionSubject(session: NoticeSession) {
+  return firstJoin(session.class?.subject);
+}
+
+function getSessionCourse(session: NoticeSession, courses: Course[]) {
+  const courseId = getSessionSubject(session)?.course_id;
   return courses.find(course => course.id === courseId) ?? null;
+}
+
+function isActivationNoticeSession(session: NoticeSession) {
+  return session.class?.hour === 'both' && Boolean(session.class?.date) && isSaturday(session.class.date);
 }
 
 export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents, users }: AbsenceNoticesViewProps) {
@@ -168,7 +189,14 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
       setError(errorMessages.load);
       setNotices([]);
     } else {
-      setNotices((data ?? []) as NoticeRow[]);
+      setNotices(((data ?? []) as unknown as RawNoticeRow[]).map(row => ({
+        ...row,
+        student: firstJoin(row.student),
+        sessions: (row.sessions ?? []).map(session => ({
+          ...session,
+          class: firstJoin(session.class),
+        })),
+      })));
     }
     setLoading(false);
   }, [currentUser.id, errorMessages.load, scope]);
@@ -234,7 +262,7 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
       .filter(notice => {
         if (!normalized) return true;
         const sessionText = (notice.sessions ?? [])
-          .map(session => `${session.class?.title ?? ''} ${session.class?.subject?.title ?? ''}`)
+          .map(session => `${session.class?.title ?? ''} ${getSessionSubject(session)?.title ?? ''}`)
           .join(' ');
         return `${notice.student?.name ?? ''} ${notice.reason ?? ''} ${sessionText}`.toLowerCase().includes(normalized);
       })
@@ -426,13 +454,13 @@ export function AbsenceNoticesView({ scope, currentUser, courses, courseStudents
                   <div className="grid gap-2">
                     {sessions.map(session => {
                       const course = getSessionCourse(session, courses);
-                      const activation = session.class ? isActivationSession(session.class as Class) : false;
+                      const activation = isActivationNoticeSession(session);
                       return (
                         <div key={session.id} className="grid gap-2 rounded-xl border border-[#e5e5e5] bg-white px-3 py-2 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
                           <div className="min-w-0">
                             <p className="truncate text-sm font-semibold text-[#171717]">{session.class?.title ?? t('absence.sessionFallback')}</p>
                             <p className="mt-1 text-xs text-[#737373]">
-                              {formatPlatformDate(session.class?.date)} · {getHourLabel(session.class?.hour ?? 'first', t)} · {session.class?.subject?.title ?? t('absence.subjectFallback')}
+                              {formatPlatformDate(session.class?.date)} · {getHourLabel(session.class?.hour ?? 'first', t)} · {getSessionSubject(session)?.title ?? t('absence.subjectFallback')}
                               {activation ? ` · ${t('absence.activationSaturday')}` : ''}
                             </p>
                           </div>

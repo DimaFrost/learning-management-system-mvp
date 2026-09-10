@@ -37,6 +37,7 @@ import { usersTranslations } from './users';
 import { workspaceTranslations } from './workspace';
 import { knowledgeBaseTranslations } from './knowledgeBase';
 import { errorsTranslations } from './errors';
+import { environmentStatusTranslations } from './environmentStatus';
 
 export const en = {
   ...commonTranslations.en,
@@ -78,6 +79,7 @@ export const en = {
   ...calendarTranslations.en,
   ...knowledgeBaseTranslations.en,
   ...errorsTranslations.en,
+  ...environmentStatusTranslations.en,
 };
 
 export type TranslationKey = keyof typeof en;
@@ -122,6 +124,7 @@ export const bg: Record<TranslationKey, string> = {
   ...calendarTranslations.bg,
   ...knowledgeBaseTranslations.bg,
   ...errorsTranslations.bg,
+  ...environmentStatusTranslations.bg,
 };
 
 /**

@@ -34,6 +34,7 @@ import { formatCurrency, formatDate, formatDateCapitalized } from '../../i18n/fo
 import type { PluralKey, TranslationKey } from '../../i18n/translations';
 import { formatPlatformDate } from '../../utils/dateUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
+import { getCourseDisplayName } from '../../utils/courseUtils';
 
 type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
 
@@ -76,6 +77,10 @@ type HomeworkRow = HomeworkSubmission & {
   dueDate: string | null;
   classTitle: string;
 };
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
 
 type SessionRow = {
   id: string;
@@ -402,29 +407,62 @@ export function AdminStudentDashboard({
           console.error('Failed to load student homework', error);
           setHomeworkRows([]);
         } else {
-          setHomeworkRows((data ?? []).map(row => ({
-            id: row.id,
-            assignmentId: row.assignment_id,
-            studentId: row.student_id,
-            studentName: student.name,
-            submissionType: row.submission_type,
-            driveFileId: row.drive_file_id,
-            driveViewUrl: row.drive_view_url,
-            fileName: row.file_name,
-            googleDocId: row.google_doc_id,
-            googleDocUrl: row.google_doc_url,
-            status: row.status,
-            submittedAt: row.submitted_at,
-            points: row.points,
-            gradeComment: row.grade_comment,
-            gradedAt: row.graded_at,
-            gradedBy: row.graded_by,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
-            assignmentTitle: row.assignment?.title ?? t('admin.student.fallbackHomework'),
-            dueDate: row.assignment?.due_date ?? null,
-            classTitle: row.assignment?.class?.title ?? t('admin.student.fallbackClassSession'),
-          })));
+          setHomeworkRows(((data ?? []) as unknown as Array<{
+            id: number;
+            assignment_id: number;
+            student_id: string;
+            submission_type: HomeworkSubmission['submissionType'];
+            drive_file_id: string | null;
+            drive_view_url: string | null;
+            file_name: string | null;
+            google_doc_id: string | null;
+            google_doc_url: string | null;
+            status: HomeworkSubmission['status'];
+            submitted_at: string | null;
+            points: number | null;
+            grade_comment: string | null;
+            graded_at: string | null;
+            graded_by: string | null;
+            created_at: string;
+            updated_at: string;
+            assignment?: {
+              title: string;
+              due_date: string | null;
+              class?: { title: string } | { title: string }[] | null;
+            } | {
+              title: string;
+              due_date: string | null;
+              class?: { title: string } | { title: string }[] | null;
+            }[] | null;
+          }>).map(row => {
+            const assignment = firstJoin(row.assignment);
+            const assignmentClass = firstJoin(assignment?.class);
+            return {
+              id: row.id,
+              assignmentId: row.assignment_id,
+              studentId: row.student_id,
+              studentName: student.name,
+              submissionType: row.submission_type,
+              driveFileId: row.drive_file_id,
+              driveViewUrl: row.drive_view_url,
+              fileName: row.file_name,
+              googleDocId: row.google_doc_id,
+              googleDocUrl: row.google_doc_url,
+              status: row.status,
+              submittedAt: row.submitted_at,
+              points: row.points,
+              gradeComment: row.grade_comment,
+              gradedAt: row.graded_at,
+              gradedBy: row.graded_by,
+              responseText: null,
+              selectedOption: null,
+              createdAt: row.created_at,
+              updatedAt: row.updated_at,
+              assignmentTitle: assignment?.title ?? t('admin.student.fallbackHomework'),
+              dueDate: assignment?.due_date ?? null,
+              classTitle: assignmentClass?.title ?? t('admin.student.fallbackClassSession'),
+            };
+          }));
         }
         setHomeworkLoading(false);
       }
@@ -777,7 +815,7 @@ export function AdminStudentDashboard({
               </div>
               <div className="rounded-2xl border border-[#e5e5e5] bg-[#fafafa] p-3">
                 <p className="text-sm font-semibold text-[#171717]">{t('admin.student.activeEnrollment')}</p>
-                <p className="mt-1 text-sm text-[#525252]">{activeEnrollments.map(item => item.course.name).join(', ') || t('admin.student.noActiveYearGroup')}</p>
+                <p className="mt-1 text-sm text-[#525252]">{activeEnrollments.map(item => getCourseDisplayName(item.course)).join(', ') || t('admin.student.noActiveYearGroup')}</p>
               </div>
             </div>
             <div>

@@ -24,10 +24,12 @@ npm run mcp:supabase     # optional live Supabase MCP
 - Frontend: copy `.env.example` → `.env.local`
   - `VITE_SUPABASE_URL`
   - `VITE_SUPABASE_ANON_KEY` (anon/publishable only)
+  - `VITE_APP_ENV`, `VITE_APP_ENV_LABEL` for visible non-production environment badges
 - Tooling / schema sync: copy `.env.mcp.example` → `.env.mcp.local`
   - `MCP_SUPABASE_URL`, `MCP_SUPABASE_SERVICE_ROLE_KEY`
+- Long-lived environments are documented in `ENVIRONMENTS.md`. Cross-environment migration state is tracked in `ENVIRONMENT_MIGRATIONS.md`. Treat the current Supabase project (`meeqknljjrsgsbukdwcm`) as Dev unless the user explicitly says they are working on Member Testing or Production.
 - Never put a `service_role` key in any `VITE_*` variable (Vite exposes those to the browser).
-- Never commit secrets (`.env.local`, `.env.mcp.local`, keys, dumps).
+- Never commit secrets (`.env.local`, `.env.mcp.local`, `.env.*.local`, keys, dumps).
 
 ## Architecture
 
@@ -59,7 +61,9 @@ src/main.tsx
 ## Supabase and schema
 
 - **Source of truth:** the live Supabase project. This repo has **incremental** SQL only under `supabase/migrations/` (no full baseline dump). Helpers such as `is_admin()` may exist remotely but not in-repo.
+- Before creating a fresh Member Testing or Production Supabase project, prepare or verify a schema-only bootstrap from the current Dev database. Do not assume the current incremental migrations can recreate the project from empty.
 - **New migration:** `supabase/migrations/YYYYMMDDHHMMSS_short_snake_description.sql`. Prefer idempotent DDL (`create table if not exists`, `drop policy if exists` … `create policy`, `add column if not exists`).
+- **Environment promotion:** when adding or applying a migration, update `ENVIRONMENT_MIGRATIONS.md` in the same change set with Dev / Member Testing / Production status so pending Supabase changes are not forgotten.
 - **RLS:** enable on new public tables; `grant` to `authenticated` as needed; check `profiles.roles` with `@>` (contains) or `&&` (overlap); scope with `auth.uid()` / `course_students`. Reuse helpers like `can_current_user_write_stream()` for stream writes.
 - **After schema or Data API exposure changes:** run `npm run db:schema:sync` in the same change set. Whenever you apply a DB migration, sync `database-schema/` before committing so the generated docs match the live Supabase project. Culture and limits: `database-schema/README.md`.
 - **Do not hand-edit generated files:** `database-schema/overview.md`, `relationships.md`, `openapi.json`, `database-schema/tables/*`. Put human notes in `database-schema/README.md` or other hand-written docs (e.g. `notification-system.md`).

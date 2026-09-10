@@ -2036,7 +2036,7 @@ function sanitizeReturnTo(value: string) {
   } catch {
     // Fall through to local default.
   }
-  return 'http://localhost:3000/settings';
+  return Deno.env.get('APP_URL') ?? Deno.env.get('PUBLIC_APP_URL') ?? 'https://portal-dev.tbo.bg/settings';
 }
 
 async function createOAuthState(payload: OAuthState) {

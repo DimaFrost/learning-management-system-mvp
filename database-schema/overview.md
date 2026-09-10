@@ -2,7 +2,7 @@
 
 # Database Schema Overview
 
-Generated at: 2026-08-25T12:15:20.011Z
+Generated at: 2026-09-10T11:31:34.547Z
 
 Supabase project: https://meeqknljjrsgsbukdwcm.supabase.co
 

@@ -41,7 +41,7 @@ interface StaffNotesTabProps {
     courseSlug: string;
     subjectSlug: string;
     classSlug: string;
-  }) => Promise<void>;
+  }) => Promise<boolean | void>;
   onDeleteFile: (file: ClassFile) => Promise<void>;
 }
 

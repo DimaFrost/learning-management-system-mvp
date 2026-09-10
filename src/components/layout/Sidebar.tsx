@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import type { User } from '../../types/lms';
 import type { WorkspaceId } from '../../types/workspace';
 import { WORKSPACE_LABEL_KEYS } from '../../types/workspace';
 import {
@@ -21,7 +22,6 @@ import {
   Shield,
   Search,
   X,
-  Sparkles,
   Languages,
   Clock3,
   Activity,
@@ -31,13 +31,19 @@ import {
   MailCheck,
   Banknote,
   Bell,
+  Check,
   CreditCard,
+  LogOut,
 } from 'lucide-react';
 import { useLanguage } from '../../i18n/LanguageContext';
+import { ROLE_META } from '../../views/admin/users/usersShared';
+import { formatRoleLabel } from '../../utils/userManagementUtils';
 
 interface SidebarProps {
+  currentUser: User;
   activeView: string;
   onNavigate: (view: string) => void;
+  onSignOut: () => void;
   hasRole: (role: string) => boolean;
   totalUnread: number;
   announcementDraftCount: number;
@@ -45,6 +51,8 @@ interface SidebarProps {
   pendingUserCount?: number;
   isOnDuty: boolean;
   activeWorkspace: WorkspaceId | null;
+  availableWorkspaces: WorkspaceId[];
+  onWorkspaceChange: (workspace: WorkspaceId) => void;
   canAssignSessionTranslators?: boolean;
   mode: 'locked' | 'collapsed';
   onToggleMode: () => void;
@@ -72,8 +80,10 @@ type NavSection = {
 };
 
 export function Sidebar({
+  currentUser,
   activeView,
   onNavigate,
+  onSignOut,
   hasRole,
   totalUnread,
   announcementDraftCount,
@@ -81,6 +91,8 @@ export function Sidebar({
   pendingUserCount = 0,
   isOnDuty,
   activeWorkspace,
+  availableWorkspaces,
+  onWorkspaceChange,
   canAssignSessionTranslators = false,
   mode,
   onToggleMode,
@@ -89,6 +101,21 @@ export function Sidebar({
 }: SidebarProps) {
   const isExpanded = mode === 'locked';
   const { t } = useLanguage();
+  const [workspaceMenuOpen, setWorkspaceMenuOpen] = useState(false);
+  const workspaceMenuRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!workspaceMenuOpen) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!workspaceMenuRef.current?.contains(event.target as Node)) {
+        setWorkspaceMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => document.removeEventListener('pointerdown', handlePointerDown);
+  }, [workspaceMenuOpen]);
 
   useEffect(() => {
     if (!mobileOpen) return;
@@ -109,18 +136,18 @@ export function Sidebar({
       workspaces: ['administrator'],
     },
     {
-      id: 'attendance-classes',
-      label: t('nav.attendance.classes'),
-      description: t('nav.attendance.classes.desc'),
-      icon: Calendar,
-      roles: ['administrator'],
-      workspaces: ['administrator'],
-    },
-    {
       id: 'attendance-date',
       label: t('nav.attendance.date'),
       description: t('nav.attendance.date.desc'),
       icon: Search,
+      roles: ['administrator'],
+      workspaces: ['administrator'],
+    },
+    {
+      id: 'attendance-classes',
+      label: t('nav.attendance.classes'),
+      description: t('nav.attendance.classes.desc'),
+      icon: Calendar,
       roles: ['administrator'],
       workspaces: ['administrator'],
     },
@@ -556,12 +583,27 @@ export function Sidebar({
           workspaces: ['administrator'],
         },
         {
+          id: 'environment-status',
+          label: t('sidebar.environmentStatus'),
+          description: t('sidebar.environmentStatus.desc'),
+          icon: Activity,
+          roles: ['administrator'],
+          workspaces: ['administrator'],
+        },
+        {
           id: 'knowledge-base',
           label: t('sidebar.knowledgeBase'),
           description: t('sidebar.knowledgeBase.desc'),
           icon: BookOpen,
           roles: ['administrator'],
           workspaces: ['administrator'],
+        },
+        {
+          id: 'settings',
+          label: t('sidebar.settings'),
+          description: t('sidebar.settings.desc'),
+          icon: Settings,
+          shared: true,
         },
       ],
     },
@@ -689,6 +731,23 @@ export function Sidebar({
     activeView.startsWith('tuition-');
   const inSubmodule = inAttendanceModule || inClassworkModule || inCurriculumModule || inMentorshipModule || inMyAttendanceModule || inUsersModule || inTuitionModule;
   const workspaceLabel = activeWorkspace ? t(WORKSPACE_LABEL_KEYS[activeWorkspace]) : t('sidebar.workspace');
+  const canSwitchWorkspace = !!activeWorkspace && availableWorkspaces.length > 1;
+  const activeRoleMeta = activeWorkspace
+    ? ROLE_META[activeWorkspace] ?? { icon: Users, className: 'border-[#d4d4d4] bg-white text-[#525252]' }
+    : { icon: Users, className: 'border-[#d4d4d4] bg-[#fafafa] text-[#a3a3a3]' };
+  const ActiveRoleIcon = activeRoleMeta.icon;
+  const extraWorkspaceCount = Math.max(availableWorkspaces.length - 1, 0);
+  const avatar = currentUser.avatarUrl ? (
+    <img
+      src={currentUser.avatarUrl}
+      alt={currentUser.name}
+      className="h-9 w-9 rounded-full border border-[#e5e5e5] object-cover"
+    />
+  ) : (
+    <div className="flex h-9 w-9 items-center justify-center rounded-full border border-[#e5e5e5] bg-[#f5f5f5] text-sm font-semibold text-[#171717]">
+      {(currentUser.name || currentUser.email || '?').charAt(0).toUpperCase()}
+    </div>
+  );
   const submoduleLabel = inAttendanceModule
     ? t('sidebar.attendance')
     : inClassworkModule
@@ -704,22 +763,6 @@ export function Sidebar({
           : inTuitionModule
             ? t('sidebar.tuition')
             : workspaceLabel;
-  const submoduleDesc = inAttendanceModule
-    ? t('sidebar.attendance.desc')
-    : inClassworkModule
-      ? t('sidebar.classroom.moduleDesc')
-      : inCurriculumModule
-      ? t('sidebar.curriculum.desc')
-      : inMentorshipModule
-        ? t('sidebar.mentorship.desc')
-        : inMyAttendanceModule
-          ? t('sidebar.myAttendance.desc')
-          : inUsersModule
-            ? t('sidebar.users.desc')
-            : inTuitionModule
-              ? t('sidebar.tuition.moduleDesc')
-            : t('sidebar.liveSchoolData');
-
   const handleNavigate = (viewId: string) => {
     onNavigate(viewId);
     onMobileClose?.();
@@ -793,6 +836,171 @@ export function Sidebar({
           </>
         )}
       </button>
+    );
+  };
+
+  const renderAccountFooter = (forceExpanded: boolean) => {
+    const expanded = forceExpanded || isExpanded;
+
+    if (!expanded) {
+      return (
+        <div ref={workspaceMenuRef} className="relative border-t border-[#e5e5e5] p-2">
+          <button
+            type="button"
+            onClick={() => {
+              if (canSwitchWorkspace) setWorkspaceMenuOpen(open => !open);
+            }}
+            className={`tbo-focus relative flex w-full items-center justify-center rounded-lg p-2 transition-colors ${
+              canSwitchWorkspace ? 'hover:bg-[#f5f5f5]' : ''
+            }`}
+            title={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
+            aria-label={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
+          >
+            <span className={`flex h-8 w-8 items-center justify-center rounded-lg border ${activeRoleMeta.className}`}>
+              <ActiveRoleIcon className="h-4 w-4" />
+            </span>
+            {extraWorkspaceCount > 0 && (
+              <span className="absolute right-2 top-2 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#171717] px-1 text-[9px] font-semibold text-white">
+                +{extraWorkspaceCount}
+              </span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={onSignOut}
+            className="tbo-focus mt-1 flex w-full items-center justify-center rounded-lg p-2 text-[#737373] transition-colors hover:bg-[#fff8f6] hover:text-[#b42318]"
+            title={t('header.signOut')}
+            aria-label={t('header.signOut')}
+          >
+            <LogOut className="h-4 w-4" />
+          </button>
+          {canSwitchWorkspace && workspaceMenuOpen && (
+            <div className="absolute bottom-[calc(100%+0.5rem)] left-2 z-50 w-56 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+              {availableWorkspaces.map(workspace => {
+                const selected = workspace === activeWorkspace;
+                const Icon = ROLE_META[workspace]?.icon ?? Users;
+                return (
+                  <button
+                    key={workspace}
+                    type="button"
+                    onClick={() => {
+                      onWorkspaceChange(workspace);
+                      setWorkspaceMenuOpen(false);
+                      onMobileClose?.();
+                    }}
+                    className={`tbo-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                      selected ? 'bg-[#eff6ff] text-[#1d4ed8]' : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                    }`}
+                  >
+                    <span className={`flex h-7 w-7 items-center justify-center rounded-md border ${
+                      ROLE_META[workspace]?.className ?? 'border-[#d4d4d4] bg-white text-[#525252]'
+                    }`}>
+                      {selected ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-medium">
+                      {t(WORKSPACE_LABEL_KEYS[workspace]) || formatRoleLabel(workspace)}
+                    </span>
+                  </button>
+                );
+              })}
+              <div className="my-1 h-px bg-[#e5e5e5]" />
+              <button
+                type="button"
+                onClick={onSignOut}
+                className="tbo-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-[#b42318] transition-colors hover:bg-[#fff8f6]"
+              >
+                <LogOut className="h-4 w-4" />
+                {t('header.signOut')}
+              </button>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div ref={workspaceMenuRef} className="relative border-t border-[#e5e5e5] px-3 py-3">
+        <div className="flex items-center gap-3 px-1">
+          {avatar}
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-sm font-semibold leading-5 text-[#171717]">{currentUser.name}</p>
+            <p className="truncate text-xs leading-5 text-[#737373]">{currentUser.email}</p>
+          </div>
+          <div className="flex flex-shrink-0 items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => {
+                if (canSwitchWorkspace) setWorkspaceMenuOpen(open => !open);
+              }}
+              className={`tbo-focus relative flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
+                canSwitchWorkspace ? 'hover:bg-[#f5f5f5]' : 'cursor-default'
+              }`}
+              title={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
+              aria-label={canSwitchWorkspace ? t('header.switchRole') : workspaceLabel}
+              aria-expanded={canSwitchWorkspace ? workspaceMenuOpen : undefined}
+            >
+              <span className={`inline-flex h-7 w-7 items-center justify-center rounded-lg border ${activeRoleMeta.className}`}>
+                <ActiveRoleIcon className="h-3.5 w-3.5" />
+              </span>
+              {extraWorkspaceCount > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-[#171717] px-1 text-[9px] font-semibold text-white">
+                  +{extraWorkspaceCount}
+                </span>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="tbo-focus flex h-9 w-9 items-center justify-center rounded-lg text-[#737373] transition-colors hover:bg-[#fff8f6] hover:text-[#b42318]"
+              title={t('header.signOut')}
+              aria-label={t('header.signOut')}
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        {workspaceMenuOpen && (
+          <div className="absolute bottom-[calc(100%+0.5rem)] left-3 right-3 z-50 rounded-xl border border-[#e5e5e5] bg-white p-1.5 shadow-[0_16px_40px_rgba(15,23,42,0.14)]">
+            {availableWorkspaces.map(workspace => {
+              const selected = workspace === activeWorkspace;
+              const Icon = ROLE_META[workspace]?.icon ?? Users;
+              return (
+                <button
+                  key={workspace}
+                  type="button"
+                  onClick={() => {
+                    onWorkspaceChange(workspace);
+                    setWorkspaceMenuOpen(false);
+                    onMobileClose?.();
+                  }}
+                  className={`tbo-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors ${
+                    selected ? 'bg-[#eff6ff] text-[#1d4ed8]' : 'text-[#525252] hover:bg-[#f5f5f5] hover:text-[#171717]'
+                  }`}
+                >
+                  <span className={`flex h-7 w-7 items-center justify-center rounded-md border ${
+                    ROLE_META[workspace]?.className ?? 'border-[#d4d4d4] bg-white text-[#525252]'
+                  }`}>
+                    {selected ? <Check className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate font-medium">
+                    {t(WORKSPACE_LABEL_KEYS[workspace]) || formatRoleLabel(workspace)}
+                  </span>
+                </button>
+              );
+            })}
+            <div className="my-1 h-px bg-[#e5e5e5]" />
+            <button
+              type="button"
+              onClick={onSignOut}
+              className="tbo-focus flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm font-medium text-[#b42318] transition-colors hover:bg-[#fff8f6]"
+            >
+              <LogOut className="h-4 w-4" />
+              {t('header.signOut')}
+            </button>
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -947,35 +1155,7 @@ export function Sidebar({
           ))}
         </nav>
 
-        <div className="border-t border-[#e5e5e5] p-2">
-          {renderItem(
-            {
-              id: 'settings',
-              label: t('sidebar.settings'),
-              description: t('sidebar.settings.desc'),
-              icon: Settings,
-              shared: true,
-            },
-            forceExpanded
-          )}
-          {expanded && (
-            <div className="mx-2 mt-2 rounded-xl border border-[#e5e5e5] bg-[#f5f5f5] p-3">
-              <div className="flex items-center gap-2">
-                <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2563eb]">
-                  {inSubmodule ? <Clock3 className="h-3.5 w-3.5" /> : <Sparkles className="h-3.5 w-3.5" />}
-                </span>
-                <div className="min-w-0">
-                  <p className="truncate text-xs font-semibold text-[#171717]">
-                  {inSubmodule ? `${submoduleLabel} ${t('sidebar.module').toLowerCase()}` : t('sidebar.workspaceView', { label: workspaceLabel })}
-                  </p>
-                  <p className="truncate text-[11px] text-[#737373]">
-                    {inSubmodule ? submoduleDesc : t('sidebar.liveSchoolData')}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
-        </div>
+        {renderAccountFooter(forceExpanded)}
       </>
     );
   };

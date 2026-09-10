@@ -250,22 +250,23 @@ export function buildEnrollmentRows({
   courseStudents: CourseStudent[];
   getUserById: (id: string | null) => User | undefined;
 }): EnrollmentRow[] {
-  return courseStudents
+  const rows: EnrollmentRow[] = courseStudents
     .filter(enrollment => enrollment.status === 'active')
-    .map(enrollment => {
+    .reduce<EnrollmentRow[]>((acc, enrollment) => {
       const student = users.find(user => user.id === enrollment.studentId);
       const course = courses.find(item => item.id === enrollment.courseId);
-      if (!student || !course || !isCourseActive(course)) return null;
-      return {
+      if (!student || !course || !isCourseActive(course)) return acc;
+      acc.push({
         id: `${enrollment.courseId}-${enrollment.studentId}`,
         student,
         course,
         enrollment,
         mentor: getUserById(enrollment.mentorId),
-      };
-    })
-    .filter((row): row is EnrollmentRow => row !== null)
-    .sort((a, b) => a.student.name.localeCompare(b.student.name) || a.course.id - b.course.id);
+      });
+      return acc;
+    }, []);
+
+  return rows.sort((a, b) => a.student.name.localeCompare(b.student.name) || a.course.id - b.course.id);
 }
 
 export function buildStaffRosterRows({

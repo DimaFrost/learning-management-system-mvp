@@ -31,6 +31,20 @@ Resolving recipients at send time is intentional. If a student is added to a cou
 
 ## Maintenance Culture
 
+There should be only one active notification processor cron:
+
+- `process-notification-jobs-v2`
+- schedule: every 5 minutes
+- target: `/functions/v1/process-notification-jobs`
+
+The earlier duplicate cron jobs caused `cron.job_run_details` to grow heavily. Keep the cleanup cron active:
+
+- `prune-cron-job-run-details-weekly-retention`
+- schedule: daily
+- retention: delete `cron.job_run_details` rows older than 7 days
+
+If old cron logs are deleted manually, run `vacuum full analyze cron.job_run_details;` once to release the database space.
+
 After applying notification-related migrations, run:
 
 ```bash

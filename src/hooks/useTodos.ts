@@ -63,7 +63,7 @@ type UpdateTodoInput = Partial<{
   status: TodoStatus;
 }>;
 
-const STAFF_ROLES = new Set(['administrator', 'teacher', 'translator', 'mentor']);
+const STAFF_ROLES = new Set(['administrator', 'teacher', 'translator', 'mentor', 'team_leader']);
 
 function getRealRoles(user: User) {
   return user.roles.filter(role => role !== 'dev');
@@ -115,8 +115,6 @@ function isMissingBatchRelationError(error: { message?: string } | null) {
 function getReminderTimeIso(dueDate: string, offsetDays: number) {
   const reminderDate = new Date(`${dueDate}T09:00:00`);
   reminderDate.setDate(reminderDate.getDate() + offsetDays);
-  const now = new Date();
-  if (reminderDate < now) return now.toISOString();
   return reminderDate.toISOString();
 }
 
@@ -217,34 +215,34 @@ export function useTodos(
 
     if (todo.priority !== 'priority' || todo.status === 'completed') return;
 
-    const jobs = [
+    const now = new Date();
+    const scheduledReminders = [
+      { reminderKind: 'day_before', scheduledFor: getReminderTimeIso(todo.dueDate, -1) },
+      { reminderKind: 'due_day', scheduledFor: getReminderTimeIso(todo.dueDate, 0) },
+    ].filter(reminder => {
+      const scheduledAt = new Date(reminder.scheduledFor);
+      if (Number.isNaN(scheduledAt.getTime())) return false;
+      if (reminder.reminderKind === 'day_before' && scheduledAt <= now) return false;
+      return scheduledAt > now;
+    });
+
+    if (scheduledReminders.length === 0) return;
+
+    const jobs = scheduledReminders.map(reminder => (
       {
         type: 'todo_reminder_email',
         status: 'pending',
-        scheduled_for: getReminderTimeIso(todo.dueDate, -1),
+        scheduled_for: reminder.scheduledFor,
         created_by: currentUser.id,
         payload: {
           todoId: todo.id,
-          reminderKind: 'day_before',
+          reminderKind: reminder.reminderKind,
         },
         attempts: 0,
         processed_at: null,
         error_message: null,
-      },
-      {
-        type: 'todo_reminder_email',
-        status: 'pending',
-        scheduled_for: getReminderTimeIso(todo.dueDate, 0),
-        created_by: currentUser.id,
-        payload: {
-          todoId: todo.id,
-          reminderKind: 'due_day',
-        },
-        attempts: 0,
-        processed_at: null,
-        error_message: null,
-      },
-    ];
+      }
+    ));
 
     await supabase.from('notification_jobs').insert(jobs);
   }, [cancelTodoReminderJobs, currentUser.id]);
@@ -432,42 +430,42 @@ export function useTodos(
         description: 'Active first year enrollments',
         userIds: firstYearStudentIds,
         tone: 'blue',
-      },
+      } satisfies TodoAssignmentCategory,
       {
         id: 'course:second_year',
         label: 'Second Year Students',
         description: 'Active second year enrollments',
         userIds: secondYearStudentIds,
         tone: 'violet',
-      },
+      } satisfies TodoAssignmentCategory,
       {
         id: 'role:teacher',
         label: 'Teachers',
         description: 'Users with the teacher role',
         userIds: users.filter(user => user.roles.includes('teacher')).map(user => user.id),
         tone: 'green',
-      },
+      } satisfies TodoAssignmentCategory,
       {
         id: 'role:translator',
         label: 'Translators',
         description: 'Users with the translator role',
         userIds: users.filter(user => user.roles.includes('translator')).map(user => user.id),
         tone: 'orange',
-      },
+      } satisfies TodoAssignmentCategory,
       {
         id: 'role:mentor',
         label: 'Mentors',
         description: 'Users with the mentor role',
         userIds: users.filter(user => user.roles.includes('mentor')).map(user => user.id),
         tone: 'gray',
-      },
+      } satisfies TodoAssignmentCategory,
       {
         id: 'audience:staff',
         label: 'All Staff',
         description: 'Admins, teachers, translators, and mentors',
         userIds: users.filter(isStaffUser).map(user => user.id),
         tone: 'gray',
-      },
+      } satisfies TodoAssignmentCategory,
     ].map(category => ({
       ...category,
       userIds: uniqueIds(category.userIds),

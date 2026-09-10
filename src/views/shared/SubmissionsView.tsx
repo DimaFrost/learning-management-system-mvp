@@ -18,7 +18,23 @@ type HomeworkCommentRow = {
   author_id?: string | null;
   content: string;
   created_at: string;
-  author?: { id: string; name: string } | null;
+  author?: { id: string; name: string } | { id: string; name: string }[] | null;
+};
+
+type SubmissionAssignmentRow = {
+  id: number;
+  title: string;
+  description: string | null;
+  due_date: string | null;
+  grading_due_date: string | null;
+  class_id: number | null;
+  subject_id: number | null;
+  max_points: number | null;
+  work_type?: 'assignment' | 'quick_check';
+  question_type?: 'short_answer' | 'multiple_choice' | null;
+  question_options?: Array<string | { prompt: string; options: string[] }>;
+  grade_category_id?: number | null;
+  grading_period_id?: number | null;
 };
 
 type SubmissionQueueRow = {
@@ -37,32 +53,29 @@ type SubmissionQueueRow = {
   graded_at: string | null;
   comments?: HomeworkCommentRow[] | null;
   student: { id: string; name: string; avatar_url: string | null } | null;
-  assignment: {
-    id: number;
-    title: string;
-    description: string | null;
-    due_date: string | null;
-    grading_due_date: string | null;
-    class_id: number | null;
-    subject_id: number | null;
-    max_points: number;
-    work_type?: 'assignment' | 'quick_check';
-    question_type?: 'short_answer' | 'multiple_choice' | null;
-    question_options?: Array<string | { prompt: string; options: string[] }>;
-    grade_category_id?: number | null;
-    grading_period_id?: number | null;
-  } | null;
+  assignment: SubmissionAssignmentRow | null;
+};
+
+type RawSubmissionQueueRow = Omit<SubmissionQueueRow, 'student' | 'assignment' | 'comments'> & {
+  student: SubmissionQueueRow['student'] | NonNullable<SubmissionQueueRow['student']>[] | null;
+  assignment: SubmissionAssignmentRow | SubmissionAssignmentRow[] | null;
+  comments?: HomeworkCommentRow[] | null;
 };
 
 function mapHomeworkComment(row: HomeworkCommentRow) {
+  const author = Array.isArray(row.author) ? row.author[0] : row.author;
   return {
     id: row.id,
     submissionId: row.submission_id,
-    authorId: row.author?.id ?? row.author_id ?? '',
-    authorName: row.author?.name ?? translate('common.unknown'),
+    authorId: author?.id ?? row.author_id ?? '',
+    authorName: author?.name ?? translate('common.unknown'),
     content: row.content,
     createdAt: row.created_at,
   };
+}
+
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
 }
 
 interface SubmissionsViewProps {
@@ -170,7 +183,15 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
         console.error('Failed to load submissions', error);
         setRows([]);
       } else {
-        setRows((data ?? []) as SubmissionQueueRow[]);
+        setRows(((data ?? []) as unknown as RawSubmissionQueueRow[]).map(row => ({
+          ...row,
+          student: firstJoin(row.student),
+          assignment: firstJoin(row.assignment),
+          comments: (row.comments ?? []).map(comment => ({
+            ...comment,
+            author: firstJoin(comment.author),
+          })),
+        })) as SubmissionQueueRow[]);
       }
       setLoading(false);
     };
@@ -225,7 +246,7 @@ export function SubmissionsView({ scope, currentUser, courses, courseStudents, u
       description: row.assignment.description,
       due_date: row.assignment.due_date,
       grading_due_date: row.assignment.grading_due_date,
-      max_points: row.assignment.max_points,
+      max_points: row.assignment.max_points ?? 0,
       class_id: row.assignment.class_id,
       subject_id: row.assignment.subject_id,
       work_type: row.assignment.work_type,

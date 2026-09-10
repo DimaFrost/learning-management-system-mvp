@@ -1,5 +1,6 @@
 import {
   Archive,
+  Activity,
   Bell,
   BookOpen,
   CalendarDays,
@@ -223,7 +224,7 @@ const topicSpecs: TopicSpec[] = [
     tone: 'amber',
     keywords: 10,
     essentials: 8,
-    steps: 5,
+    steps: 6,
     visual: [
       { icon: CalendarDays, index: 0 },
       { icon: HeartHandshake, index: 1 },
@@ -329,6 +330,22 @@ const topicSpecs: TopicSpec[] = [
       { icon: BookOpen, index: 0 },
       { icon: Library, index: 1 },
       { icon: ShieldCheck, index: 2 },
+    ],
+  },
+  {
+    id: 'environment-status',
+    sectionKey: 'integrations',
+    icon: Activity,
+    tone: 'blue',
+    keywords: 7,
+    essentials: 5,
+    where: 2,
+    commonTasks: 3,
+    careful: 2,
+    visual: [
+      { icon: ShieldCheck, index: 0 },
+      { icon: MailCheck, index: 1 },
+      { icon: CheckCircle2, index: 2 },
     ],
   },
   {

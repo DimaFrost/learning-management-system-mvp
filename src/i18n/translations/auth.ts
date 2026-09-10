@@ -12,6 +12,10 @@ export const authTranslations = defineTranslations({
     'auth.signInWithGoogle': 'Sign in with Google',
     'auth.signInDisclaimer':
       'Signing in does not confirm admission. Access opens only when the school record is approved.',
+    'auth.verse.eyebrow': 'Foundation verse',
+    'auth.verse.text':
+      'Did not our heart burn within us while He talked with us on the road, and while He opened the Scriptures to us?',
+    'auth.verse.reference': 'Luke 24:32 NKJV',
     'auth.stat.knownApplicants': 'Known applicants',
     'auth.stat.reviewed': 'Reviewed',
     'auth.stat.schoolAccess': 'School access',
@@ -40,6 +44,10 @@ export const authTranslations = defineTranslations({
     'auth.signInWithGoogle': 'Вход с Google',
     'auth.signInDisclaimer':
       'Входът не потвърждава прием. Достъпът се отваря само когато училищният запис е одобрен.',
+    'auth.verse.eyebrow': 'Основен стих',
+    'auth.verse.text':
+      'Did not our heart burn within us while He talked with us on the road, and while He opened the Scriptures to us?',
+    'auth.verse.reference': 'Лука 24:32 NKJV',
     'auth.stat.knownApplicants': 'Кандидати',
     'auth.stat.reviewed': 'Прегледани',
     'auth.stat.schoolAccess': 'Училищен достъп',

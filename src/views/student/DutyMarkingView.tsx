@@ -20,6 +20,7 @@ import type {
   ClassAttendanceRecord,
   TheWellSessionRecord,
   DutyScheduleEntry,
+  DutyTransferRequest,
   Subject,
   WellScheduleEntry,
 } from '../../types/lms';
@@ -45,6 +46,7 @@ function OnlineChip() {
 interface DutyMarkingViewProps {
   currentUser: User;
   currentDuties: DutyScheduleEntry[];
+  pendingTransferRequests?: DutyTransferRequest[];
   courses: Course[];
   courseStudents: CourseStudent[];
   users: User[];
@@ -65,6 +67,7 @@ interface DutyMarkingViewProps {
     toStudentId: string;
     reason?: string;
   }) => Promise<void>;
+  onResolveTransfer?: (requestId: number, accepted: boolean) => Promise<void>;
   loading?: boolean;
 }
 
@@ -245,6 +248,7 @@ function buildDutyTimeline(
 export function DutyMarkingView({
   currentUser,
   currentDuties,
+  pendingTransferRequests = [],
   courses,
   courseStudents,
   users,
@@ -254,6 +258,7 @@ export function DutyMarkingView({
   onMarkClassAttendance,
   onMarkWellSessionAttendance,
   onRequestTransfer,
+  onResolveTransfer,
   loading,
 }: DutyMarkingViewProps) {
   const { t } = useLanguage();
@@ -262,6 +267,7 @@ export function DutyMarkingView({
   const [toStudentId, setToStudentId] = useState('');
   const [transferReason, setTransferReason] = useState('');
   const [submittingTransfer, setSubmittingTransfer] = useState(false);
+  const [respondingTransferId, setRespondingTransferId] = useState<number | null>(null);
   const [classDrafts, setClassDrafts] = useState<Record<number, Record<string, AttendanceStatus>>>({});
   const [savingClassId, setSavingClassId] = useState<number | null>(null);
   const [savedClassIds, setSavedClassIds] = useState<Set<number>>(new Set());
@@ -370,6 +376,10 @@ export function DutyMarkingView({
   }, [dutyTimeline, selectedTimelineKey]);
 
   const selectedTimelineItem = dutyTimeline.find(item => getTimelineKey(item) === selectedTimelineKey) ?? dutyTimeline[0];
+  const incomingTransferRequests = useMemo(
+    () => pendingTransferRequests.filter(request => request.toStudentId === currentUser.id && request.status === 'pending'),
+    [currentUser.id, pendingTransferRequests]
+  );
 
   useEffect(() => {
     setClassDrafts(
@@ -494,6 +504,16 @@ export function DutyMarkingView({
       setTransferReason('');
     } finally {
       setSubmittingTransfer(false);
+    }
+  };
+
+  const handleTransferResponse = async (requestId: number, accepted: boolean) => {
+    if (!onResolveTransfer) return;
+    setRespondingTransferId(requestId);
+    try {
+      await onResolveTransfer(requestId, accepted);
+    } finally {
+      setRespondingTransferId(null);
     }
   };
 
@@ -638,19 +658,76 @@ export function DutyMarkingView({
     );
   };
 
-  if (!selectedDuty || !dutyCourse) {
-    return (
-      <div className="text-center py-12">
-        <p className="text-gray-500">{t('student.duty.courseMissing')}</p>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="space-y-6">
         <h2 className="text-2xl font-bold text-gray-900">{t('student.duty.thisWeek')} 🎓</h2>
         <p className="text-sm text-gray-500">{t('attendance.duty.loadingData')}</p>
+      </div>
+    );
+  }
+
+  const transferResponsePanel = incomingTransferRequests.length > 0 ? (
+    <section className="rounded-2xl border border-[#bfdbfe] bg-[#eff6ff] p-4 shadow-[0_18px_45px_rgba(37,99,235,0.08)]">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#1d4ed8]">{t('student.duty.transfer.incoming')}</p>
+          <h3 className="mt-1 text-lg font-semibold text-[#171717]">{t('student.duty.transfer.needsResponse')}</h3>
+          <div className="mt-2 space-y-1 text-sm text-[#525252]">
+            {incomingTransferRequests.map(request => {
+              const course = courses.find(item => item.id === request.courseId);
+              return (
+                <p key={request.id}>
+                  {t('student.duty.transfer.incomingDetail', {
+                    from: request.fromStudentName,
+                    date: formatPlatformDate(request.weekStart),
+                    course: course ? getCourseDisplayName(course) : t('student.duty.courseFallback', { id: request.courseId }),
+                  })}
+                </p>
+              );
+            })}
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {incomingTransferRequests.map(request => {
+            const responding = respondingTransferId === request.id;
+            return (
+              <div key={request.id} className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleTransferResponse(request.id, false)}
+                  disabled={responding}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg border border-[#bfdbfe] bg-white px-3 text-sm font-semibold text-[#525252] hover:bg-[#f8fafc] disabled:opacity-50"
+                >
+                  <X className="h-4 w-4" />
+                  {t('student.duty.transfer.decline')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleTransferResponse(request.id, true)}
+                  disabled={responding}
+                  className="inline-flex h-10 items-center gap-2 rounded-lg bg-[#1d4ed8] px-3 text-sm font-semibold text-white hover:bg-[#1e40af] disabled:opacity-50"
+                >
+                  <CheckCircle className="h-4 w-4" />
+                  {responding ? t('common.saving') : t('student.duty.transfer.accept')}
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  ) : null;
+
+  if (!selectedDuty || !dutyCourse) {
+    return (
+      <div className="space-y-4">
+        {transferResponsePanel}
+        {!transferResponsePanel && (
+          <div className="text-center py-12">
+            <p className="text-gray-500">{t('student.duty.courseMissing')}</p>
+          </div>
+        )}
       </div>
     );
   }
@@ -665,6 +742,7 @@ export function DutyMarkingView({
 
     return (
       <div className="space-y-4">
+        {transferResponsePanel}
         <section className="overflow-hidden rounded-2xl border border-[#e5e5e5] bg-white shadow-[0_18px_45px_rgba(15,23,42,0.05)]">
           <div className="border-b border-[#e5e5e5] bg-[#fafafa] p-4 sm:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

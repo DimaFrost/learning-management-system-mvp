@@ -342,11 +342,13 @@ export function TuitionView({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#eeeeee]">
-            {accountRows.map(row => (
+            {accountRows.map(row => {
+              const studentDisplay = row.student ?? { name: t('tuition.unknownStudent'), avatarUrl: null };
+              return (
               <tr key={row.account.id} className="bg-white hover:bg-[#fafafa]">
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <UserAvatar user={row.student} size="sm" />
+                    <UserAvatar user={studentDisplay} size="sm" />
                     <div>
                       <p className="font-semibold text-[#171717]">{row.student?.name ?? t('tuition.unknownStudent')}</p>
                       <p className="text-xs text-[#737373]">{row.student?.email}</p>
@@ -386,7 +388,8 @@ export function TuitionView({
                   </button>
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {accountRows.length === 0 && (
               <tr>
                 <td colSpan={10} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noAccounts')}</td>
@@ -547,7 +550,9 @@ export function TuitionView({
             </tr>
           </thead>
           <tbody className="divide-y divide-[#eeeeee]">
-            {paymentRows.map(row => (
+            {paymentRows.map(row => {
+              const studentDisplay = row.student ?? { name: t('tuition.unknownStudent'), avatarUrl: null };
+              return (
               <tr key={row.payment.id} className="bg-white hover:bg-[#fafafa]">
                 <td className="px-4 py-3 font-mono text-xs text-[#737373]">{row.index + 1}</td>
                 <td className="whitespace-nowrap px-4 py-3 text-[#525252]">{formatPlatformDate(row.payment.paymentDate)}</td>
@@ -560,7 +565,7 @@ export function TuitionView({
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    <UserAvatar user={row.student} size="sm" />
+                    <UserAvatar user={studentDisplay} size="sm" />
                     <span className="font-semibold text-[#171717]">{row.student?.name ?? t('tuition.unknownStudent')}</span>
                   </div>
                 </td>
@@ -576,7 +581,8 @@ export function TuitionView({
                   {row.payment.note?.trim() ? <span className="line-clamp-2">{row.payment.note}</span> : <span className="text-[#a3a3a3]">-</span>}
                 </td>
               </tr>
-            ))}
+              );
+            })}
             {paymentRows.length === 0 ? (
               <tr>
                 <td colSpan={9} className="px-4 py-10 text-center text-sm text-[#737373]">{t('tuition.noPayments')}</td>

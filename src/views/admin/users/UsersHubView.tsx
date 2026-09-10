@@ -482,7 +482,6 @@ function DirectoryPanel({
   getCourseDisplayName,
   selectedPersonId,
   onSelectedPersonHandled,
-  openCreateOnMount = false,
   onEditUser,
   onOpenStudentDashboard,
   onDeleteUser,

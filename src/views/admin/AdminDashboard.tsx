@@ -144,6 +144,10 @@ type MonthCalendarEvent = {
   courseId?: number;
 };
 
+function firstJoin<T>(value: T | T[] | null | undefined): T | null {
+  return Array.isArray(value) ? value[0] ?? null : value ?? null;
+}
+
 type UpcomingPerson = {
   name: string;
   avatarUrl: string | null;
@@ -174,6 +178,9 @@ type MetricInsight = {
   view: string;
   tone: keyof typeof toneClasses;
 };
+
+const DASHBOARD_TODO_PAGE_SIZE = 2;
+const DASHBOARD_RISK_PAGE_SIZE = 3;
 
 type TFunction = (key: TranslationKey, params?: Record<string, string | number>) => string;
 type TCountFunction = (key: PluralKey, count: number, params?: Record<string, string | number>) => string;
@@ -771,6 +778,8 @@ export function AdminDashboard({
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [selectedMetricInsight, setSelectedMetricInsight] = useState<MetricInsight | null>(null);
   const [quickAddOpen, setQuickAddOpen] = useState(false);
+  const [todoPage, setTodoPage] = useState(0);
+  const [riskPage, setRiskPage] = useState(0);
   const activeCourses = courses.filter(course => course.status === 'active');
 
   useEffect(() => {
@@ -809,6 +818,14 @@ export function AdminDashboard({
         const soon = new Date(today.getTime() + 7 * DAY_MS);
         const activeCourseIdSet = new Set(activeCourses.map(course => course.id));
         const isTeacherWorkspace = activeWorkspace === 'teacher';
+        const normalizeAssignment = (assignment: DashboardHomeworkAssignmentRow | DashboardHomeworkAssignmentRow[] | null | undefined): DashboardHomeworkAssignmentRow | null => {
+          const normalized = firstJoin(assignment);
+          if (!normalized) return null;
+          return {
+            ...normalized,
+            class: firstJoin(normalized.class),
+          };
+        };
         const assignmentInScope = (assignment: DashboardHomeworkAssignmentRow | null | undefined) => {
           if (!assignment) return false;
           const courseId = assignment.class?.subject?.course_id ?? null;
@@ -816,8 +833,12 @@ export function AdminDashboard({
           if (isTeacherWorkspace && assignment.class?.teacher_id !== currentUser.id) return false;
           return true;
         };
-        const assignments = ((assignmentsRes.data ?? []) as DashboardHomeworkAssignmentRow[]).filter(assignmentInScope);
-        const submissions = ((submissionsRes.data ?? []) as DashboardHomeworkSubmissionRow[])
+        const assignments = ((assignmentsRes.data ?? []) as unknown as DashboardHomeworkAssignmentRow[])
+          .map(normalizeAssignment)
+          .filter((assignment): assignment is DashboardHomeworkAssignmentRow => Boolean(assignment))
+          .filter(assignmentInScope);
+        const submissions = ((submissionsRes.data ?? []) as unknown as DashboardHomeworkSubmissionRow[])
+          .map(row => ({ ...row, assignment: normalizeAssignment(row.assignment) }))
           .filter(row => assignmentInScope(row.assignment));
 
         if (!cancelled) {
@@ -920,12 +941,15 @@ export function AdminDashboard({
             date: cls.date,
             title: cls.title || subject.title,
             subjectTitle: subject.title,
-            speaker: speaker ? { name: speaker.name, avatarUrl: speaker.avatarUrl, role: 'Speaker' } : undefined,
-            translator: translator ? { name: translator.name, avatarUrl: translator.avatarUrl, role: 'Translator' } : undefined,
+            speaker: speaker ? { name: speaker.name, avatarUrl: speaker.avatarUrl, role: 'Speaker' as const } : undefined,
+            translator: translator ? { name: translator.name, avatarUrl: translator.avatarUrl, role: 'Translator' as const } : undefined,
           };
           items.push({
             id: `session-${cls.id}`,
             type: 'session',
+            classId: cls.id,
+            subjectId: subject.id,
+            courseId: course.id,
             title: cls.title || subject.title,
             date: cls.date,
             courseType: course.courseType,
@@ -1135,8 +1159,7 @@ export function AdminDashboard({
   );
   const atRiskStudents = attendanceSummaries
     .filter(summary => !summary.meetsCurrentReadiness)
-    .sort((a, b) => a.currentReadinessScore - b.currentReadinessScore)
-    .slice(0, 5);
+    .sort((a, b) => a.currentReadinessScore - b.currentReadinessScore);
 
   const recentMentorshipLogs = mentorshipLogs.filter(log => daysSince(log.date) <= 7).length;
   const dynamicGradingTodo: TodoItem | null = activeWorkspace === 'teacher' && homeworkOps.ungraded > 0 ? {
@@ -1162,15 +1185,32 @@ export function AdminDashboard({
   } : null;
   const openTodos = todos.filter(todo => todo.status === 'open');
   const dashboardTodos = dynamicGradingTodo ? [dynamicGradingTodo, ...todosToday] : [...todosToday];
-  const todoPreview = dashboardTodos
+  const sortedDashboardTodos = dashboardTodos
     .sort((a, b) => {
       const aOverdue = a.dueDate < todayKey;
       const bOverdue = b.dueDate < todayKey;
       if (aOverdue !== bOverdue) return aOverdue ? -1 : 1;
       if (a.priority !== b.priority) return a.priority === 'priority' ? -1 : 1;
       return a.dueDate.localeCompare(b.dueDate);
-    })
-    .slice(0, 2);
+    });
+  const todoPageCount = Math.max(1, Math.ceil(sortedDashboardTodos.length / DASHBOARD_TODO_PAGE_SIZE));
+  const todoPreview = sortedDashboardTodos.slice(
+    todoPage * DASHBOARD_TODO_PAGE_SIZE,
+    todoPage * DASHBOARD_TODO_PAGE_SIZE + DASHBOARD_TODO_PAGE_SIZE
+  );
+  const riskPageCount = Math.max(1, Math.ceil(atRiskStudents.length / DASHBOARD_RISK_PAGE_SIZE));
+  const visibleAtRiskStudents = atRiskStudents.slice(
+    riskPage * DASHBOARD_RISK_PAGE_SIZE,
+    riskPage * DASHBOARD_RISK_PAGE_SIZE + DASHBOARD_RISK_PAGE_SIZE
+  );
+
+  useEffect(() => {
+    setTodoPage(current => Math.min(current, todoPageCount - 1));
+  }, [todoPageCount]);
+
+  useEffect(() => {
+    setRiskPage(current => Math.min(current, riskPageCount - 1));
+  }, [riskPageCount]);
   const tuitionCurrency = tuition.plans.find(plan => plan.status === 'active')?.currency ?? tuition.plans[0]?.currency ?? 'EUR';
   const currentDutyRows = attendance.dutySchedule.filter(duty => {
     if (duty.status !== 'active' && duty.status !== 'transferred') return false;
@@ -1614,13 +1654,35 @@ export function AdminDashboard({
               <div className="min-w-0">
                 <div className="mb-1.5 flex items-center justify-between gap-2">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{t('sidebar.todos')}</p>
-                  <button
-                    type="button"
-                    onClick={() => onNavigate('todos')}
-                    className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
-                  >
-                    {t('admin.dashboard.openCount', { count: openTodos.length + (dynamicGradingTodo ? 1 : 0) })}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    {todoPageCount > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => setTodoPage(page => (page - 1 + todoPageCount) % todoPageCount)}
+                          className="tbo-focus grid h-6 w-6 place-items-center rounded-full border border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] hover:bg-[#dbeafe]"
+                          aria-label={t('admin.dashboard.previousItems')}
+                        >
+                          <ChevronLeft className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setTodoPage(page => (page + 1) % todoPageCount)}
+                          className="tbo-focus grid h-6 w-6 place-items-center rounded-full border border-[#bfdbfe] bg-[#eff6ff] text-[#1d4ed8] hover:bg-[#dbeafe]"
+                          aria-label={t('admin.dashboard.nextItems')}
+                        >
+                          <ChevronRight className="h-3.5 w-3.5" />
+                        </button>
+                      </>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => onNavigate('todos')}
+                      className="tbo-focus rounded-full border border-[#bfdbfe] bg-[#eff6ff] px-2 py-1 text-[11px] font-medium text-[#1d4ed8] hover:bg-[#dbeafe]"
+                    >
+                      {t('admin.dashboard.openCount', { count: openTodos.length + (dynamicGradingTodo ? 1 : 0) })}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid grid-cols-2 gap-1.5">
                   {todosLoading ? (
@@ -2155,7 +2217,34 @@ export function AdminDashboard({
         <SectionCard
           title={t('admin.dashboard.attendanceRisk')}
           subtitle={t('admin.dashboard.threshold')}
-          action={<GhostButton onClick={() => onNavigate('attendance')}>{t('admin.dashboard.review')}</GhostButton>}
+          action={(
+            <div className="flex items-center gap-1.5">
+              {riskPageCount > 1 && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setRiskPage(page => (page - 1 + riskPageCount) % riskPageCount)}
+                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] hover:bg-[#ffedd5]"
+                    aria-label={t('admin.dashboard.previousItems')}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </button>
+                  <span className="px-1 text-xs font-semibold text-[#737373]">
+                    {t('admin.dashboard.pageCount', { current: riskPage + 1, total: riskPageCount })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setRiskPage(page => (page + 1) % riskPageCount)}
+                    className="tbo-focus grid h-8 w-8 place-items-center rounded-lg border border-[#fed7aa] bg-[#fff7ed] text-[#c2410c] hover:bg-[#ffedd5]"
+                    aria-label={t('admin.dashboard.nextItems')}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              <GhostButton onClick={() => onNavigate('attendance')}>{t('admin.dashboard.review')}</GhostButton>
+            </div>
+          )}
         >
           <div className="space-y-2">
             {atRiskStudents.length === 0 ? (
@@ -2164,7 +2253,7 @@ export function AdminDashboard({
                 {t('admin.dashboard.noStudentsBelowThreshold')}
               </div>
             ) : (
-              atRiskStudents.map(student => (
+              visibleAtRiskStudents.map(student => (
                 <div key={`${student.courseName}-${student.studentId}`} className="rounded-xl border border-[#e5e5e5] p-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">

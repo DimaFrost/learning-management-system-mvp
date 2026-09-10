@@ -24,6 +24,7 @@ import type { CourseType, User } from '../../../types/lms';
 import { hasRole } from '../../../utils/userUtils';
 import { isDateInBreak } from '../../../utils/scheduling';
 import { useLanguage } from '../../../i18n/LanguageContext';
+import type { TranslationKey } from '../../../i18n/translations';
 import { translate } from '../../../i18n/translate';
 import { formatDate } from '../../../i18n/formatters';
 import { formatPlatformDate } from '../../../utils/dateUtils';
