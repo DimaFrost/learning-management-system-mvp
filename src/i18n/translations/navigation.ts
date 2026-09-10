@@ -245,7 +245,7 @@ export const navigationTranslations = defineTranslations({
     'nav.users.staff': 'Екип',
     'nav.users.staff.desc': 'Преподаватели, ментори и лидери',
     'nav.mentorship.overview.desc': 'Състояние и покритие',
-    'nav.mentorship.assignments': 'Назначавания',
+    'nav.mentorship.assignments': 'Групиране',
     'nav.mentorship.assignments.desc': 'Двойки студент–ментор',
     'nav.mentorship.followUp': 'Проследяване',
     'nav.mentorship.followUp.desc': 'Наблюдение на риск',
