@@ -9,7 +9,7 @@ English UI copy is **not** changed by this glossary — these are Bulgarian dict
 |---|---|---|---|
 | The Burning Ones | Brand | The Burning Ones | Keep English |
 | TBO | Brand short | TBO | Keep English |
-| Stream | Announcements feed / nav | Известия | Already used in i18n |
+| Announcements | Announcements feed / nav | Известия | Formerly "Stream" in EN UI |
 | Classwork | Classroom module umbrella | Занятия | Covers homework + materials |
 | Classroom | Sidebar submodule | Учебна стая | |
 | Homework | Assignments | Домашна работа | |
@@ -50,7 +50,7 @@ English UI copy is **not** changed by this glossary — these are Bulgarian dict
 | Tuition | Fees module | Такса | |
 | Installment | Tuition payment slice | Вноска | |
 | To-do / To-dos | Task list | Задача / Задачи | Already „Задачи“ in sidebar |
-| Announcement / Post | Stream item | Публикация | |
+| Announcement / Post | Announcements item | Публикация | |
 | Workspace | Role workspace | Работно място | Already used in i18n |
 | Knowledge Base | Admin docs | База знания | |
 | Operations | Sidebar section | Операции | Already used in i18n |

@@ -60,6 +60,7 @@ import {
   getSchoolYearWeeks,
 } from '../../utils/attendanceUtils';
 import { ActiveYearGroupBadge, UserAvatar } from './users/usersShared';
+import { CollapsiblePageHero } from '../../components/ui/CollapsiblePageHero';
 import type { OnlineSessionSettings } from '../../hooks/useOnlineSessionSettings';
 import { useLanguage } from '../../i18n/LanguageContext';
 import type { PluralKey, TranslationKey } from '../../i18n/translations';
@@ -870,6 +871,28 @@ export function AttendanceView({
   const courseOptions = useMemo(() => getCourseOptions(activeCourses), [activeCourses]);
   const defaultCourseId = courseOptions[0]?.id ?? 0;
   const [courseId, setCourseId] = useState(defaultCourseId);
+  const [heroCollapsedBySection, setHeroCollapsedBySection] = useState<Partial<Record<TabId, boolean>>>(() => {
+    const sections: TabId[] = [
+      'overview',
+      'date',
+      'classes',
+      'well',
+      'ministry',
+      'activation',
+      'duty',
+      'prayer',
+      'settings',
+    ];
+    const initial: Partial<Record<TabId, boolean>> = {};
+    for (const section of sections) {
+      try {
+        initial[section] = localStorage.getItem(`tbo.pageHero.attendance.${section}`) === '1';
+      } catch {
+        initial[section] = false;
+      }
+    }
+    return initial;
+  });
   const [selectedYearGroupIds, setSelectedYearGroupIds] = useState<number[]>([]);
   const [dateAttendanceDate, setDateAttendanceDate] = useState(toLocalDateKey());
   const [selectedDateAttendanceEventId, setSelectedDateAttendanceEventId] = useState<string | null>(null);
@@ -2024,27 +2047,13 @@ export function AttendanceView({
     unassignedKeeperSlots, prayerRows, currentWeekStart, prayerLoadByStudent,
   ]);
 
-  const renderPageStats = () => {
-    const stats = pageStats[activeSection];
-    if (!stats || stats.length === 0) return null;
-    return (
-      <div className="grid gap-px bg-[#e5e5e5] sm:grid-cols-2 xl:grid-cols-4">
-        {stats.map(card => (
-          <div key={card.label} className="bg-white p-4">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[#737373]">{card.label}</p>
-                <p className="mt-2 text-2xl font-semibold leading-none text-[#171717]">{card.value}</p>
-              </div>
-              <span className={`grid h-9 w-9 place-items-center rounded-lg ${card.accent}`}>
-                <card.icon className="h-4 w-4" />
-              </span>
-            </div>
-            <p className="mt-2 text-xs text-[#737373]">{card.detail}</p>
-          </div>
-        ))}
-      </div>
-    );
+  const handleHeroCollapsedChange = (collapsed: boolean) => {
+    setHeroCollapsedBySection(prev => ({ ...prev, [activeSection]: collapsed }));
+    try {
+      localStorage.setItem(`tbo.pageHero.attendance.${activeSection}`, collapsed ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
   };
 
   const renderCourseFilter = (leadingControl?: React.ReactNode) => (
@@ -4095,21 +4104,18 @@ export function AttendanceView({
 
   return (
     <div className="space-y-4">
-      <SectionCard className="overflow-hidden">
-        <div className="flex flex-col gap-4 border-b border-[#e5e5e5] p-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#737373]">{sectionMeta[activeSection].eyebrow}</p>
-            <h2 className="mt-1 text-2xl font-semibold text-[#171717]">{sectionMeta[activeSection].title}</h2>
-            <p className="mt-1 max-w-3xl text-sm leading-6 text-[#525252]">{sectionMeta[activeSection].description}</p>
-          </div>
-          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-[#e5e5e5] bg-[#f5f5f5] px-3 py-1.5 text-xs font-medium text-[#525252]">
-            <Activity className="h-3.5 w-3.5 text-[#2563eb]" />
-            {loading ? t('attendance.admin.syncing') : t('attendance.admin.liveData')}
-          </div>
-        </div>
-        {renderPageStats()}
-        {error && <p className="m-4 rounded-lg border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</p>}
-      </SectionCard>
+      <CollapsiblePageHero
+        eyebrow={sectionMeta[activeSection].eyebrow}
+        title={sectionMeta[activeSection].title}
+        description={sectionMeta[activeSection].description}
+        stats={pageStats[activeSection] ?? []}
+        error={error}
+        collapsible
+        collapsed={heroCollapsedBySection[activeSection] ?? false}
+        onCollapsedChange={handleHeroCollapsedChange}
+        collapseLabel={t('attendance.admin.hero.collapse')}
+        expandLabel={t('attendance.admin.hero.expand')}
+      />
       {(activeSection === 'overview' || activeSection === 'date') && renderCourseFilter(
         activeSection === 'date' ? (
           <label className="relative block w-full sm:w-48">

@@ -3,6 +3,7 @@ import { defineTranslations } from '../defineTranslations';
 export const messagesTranslations = defineTranslations({
   en: {
     'messages.title': 'Messages',
+    'messages.subtitle': 'Direct and group conversations with people in the school.',
     'messages.new': 'New Message',
     'messages.newAria': 'New message',
     'messages.search.placeholder': 'Search conversations...',
@@ -40,6 +41,7 @@ export const messagesTranslations = defineTranslations({
   },
   bg: {
     'messages.title': 'Съобщения',
+    'messages.subtitle': 'Директни и групови разговори с хора в училището.',
     'messages.new': 'Ново съобщение',
     'messages.newAria': 'Ново съобщение',
     'messages.search.placeholder': 'Търсене в разговори...',

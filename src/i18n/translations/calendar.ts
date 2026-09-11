@@ -4,7 +4,7 @@ export const calendarTranslations = defineTranslations({
   en: {
     'calendar.eyebrow': 'School calendar',
     'calendar.title': 'Calendar',
-    'calendar.subtitle': 'A month view of sessions, Stream posts, reading due dates, duty, prayer, The Well, and personal to-dos that apply to your workspace.',
+    'calendar.subtitle': 'A month view of sessions, Announcements posts, reading due dates, duty, prayer, The Well, and personal to-dos that apply to your workspace.',
     'calendar.newEvent': 'New event',
     'calendar.createTitle': 'Add calendar event',
     'calendar.createSubtitle': 'Create a free-text school event and choose who should see it.',
@@ -57,7 +57,7 @@ export const calendarTranslations = defineTranslations({
     'calendar.type.session': 'Session',
     'calendar.type.activation': 'Activation',
     'calendar.type.well': 'The Well',
-    'calendar.type.stream': 'Stream',
+    'calendar.type.stream': 'Announcement',
     'calendar.type.todo': 'To-do',
     'calendar.type.assignment': 'Homework',
     'calendar.type.book': 'Reading',

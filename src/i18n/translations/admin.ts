@@ -95,7 +95,7 @@ export const adminTranslations = defineTranslations({
     'admin.dashboard.reviewPeople': 'Review people',
     'admin.dashboard.planCurriculum': 'Plan curriculum',
     'admin.dashboard.checkAttendance': 'Check attendance',
-    'admin.dashboard.postToStream': 'Post to Stream',
+    'admin.dashboard.postToStream': 'Post to Announcements',
     'admin.dashboard.dashboardMetric': 'Dashboard metric',
     'admin.dashboard.whatIsHoldingBack': 'What is holding this back',
     'admin.dashboard.closeMetricExplanation': 'Close metric explanation',

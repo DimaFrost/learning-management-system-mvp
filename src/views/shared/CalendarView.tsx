@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react';
 import { useLanguage, type TranslationKey } from '../../i18n/LanguageContext';
+import { translate } from '../../i18n/translate';
 import type {
   Announcement,
   BookReadingAssignment,
@@ -343,6 +344,27 @@ function canSeeAnnouncement(
   return true;
 }
 
+/** Only attach "Open main page" when the destination exists for this workspace. */
+function openIfAdmin(
+  workspace: WorkspaceId | null,
+  view: string,
+  onNavigate: (view: string) => void
+): (() => void) | undefined {
+  if (workspace !== 'administrator') return undefined;
+  return () => onNavigate(view);
+}
+
+function openForStudentOrAdmin(
+  workspace: WorkspaceId | null,
+  studentView: string,
+  adminView: string,
+  onNavigate: (view: string) => void
+): (() => void) | undefined {
+  if (workspace === 'administrator') return () => onNavigate(adminView);
+  if (workspace === 'student') return () => onNavigate(studentView);
+  return undefined;
+}
+
 function buildCalendarEvents({
   currentUser,
   activeWorkspace,
@@ -406,7 +428,7 @@ function buildCalendarEvents({
       courseType: course.courseType,
       startMinute: 19 * 60,
       endMinute: 21 * 60,
-      onOpen: () => onNavigate(activeWorkspace === 'student' ? 'my-attendance-breakdown' : 'attendance-well'),
+      onOpen: openForStudentOrAdmin(activeWorkspace, 'my-attendance-breakdown', 'attendance-well', onNavigate),
     });
   });
 
@@ -420,7 +442,7 @@ function buildCalendarEvents({
         date: toLocalDateKey(parseDate(date)),
         type: 'stream',
         title: announcement.title,
-        subtitle: announcement.authorName ?? 'Stream',
+        subtitle: announcement.authorName ?? translate('calendar.type.stream'),
         onOpen: () => onNavigate('announcements'),
       });
     });
@@ -482,7 +504,7 @@ function buildCalendarEvents({
         title: assignment.title || assignment.book.title,
         subtitle: course ? getCourseDisplayName(course) : 'Reading',
         courseType: course?.courseType,
-        onOpen: () => onNavigate(activeWorkspace === 'student' ? 'my-books' : 'curriculum-books'),
+        onOpen: openForStudentOrAdmin(activeWorkspace, 'my-books', 'curriculum-books', onNavigate),
       });
     });
 
@@ -497,7 +519,10 @@ function buildCalendarEvents({
       title: activeWorkspace === 'administrator' ? `${entry.studentName} on duty` : 'You are on duty',
       subtitle: `${formatPlatformDate(entry.weekStart)} - ${formatPlatformDate(entry.weekEnd)}`,
       courseType: course.courseType,
-      onOpen: () => onNavigate(activeWorkspace === 'student' ? 'on-duty' : 'attendance-duty'),
+      onOpen:
+        activeWorkspace === 'administrator'
+          ? () => onNavigate('attendance-duty')
+          : () => onNavigate('on-duty'),
     });
   });
 
@@ -512,7 +537,7 @@ function buildCalendarEvents({
         subtitle: dayName,
         startMinute: 8 * 60 + 30,
         endMinute: 9 * 60,
-        onOpen: () => onNavigate('attendance-prayer'),
+        onOpen: openIfAdmin(activeWorkspace, 'attendance-prayer', onNavigate),
       });
     };
     const tuesday = parseDate(entry.weekStart);

@@ -351,6 +351,7 @@ export function ClassworkView({
   const [kind, setKind] = useState<ClassworkKindFilter>('all');
   const [contentFilter, setContentFilter] = useState<ContentFilter>('all');
   const [teacherSubjectFilter, setTeacherSubjectFilter] = useState<TeacherSubjectFilter>('teaching');
+  const [deepLinkFilterNotice, setDeepLinkFilterNotice] = useState(false);
   const [reviewAssignment, setReviewAssignment] = useState<BookReadingAssignment | null>(null);
   const [detailAssignment, setDetailAssignment] = useState<BookReadingAssignment | null>(null);
   const [selectedSubjectRun, setSelectedSubjectRun] = useState<SubjectRun | null>(null);
@@ -754,6 +755,40 @@ export function ClassworkView({
   }, [contentFilter, kind, query, resetKey, subjectRuns.length]);
 
   useEffect(() => {
+    if (!initialSubjectTarget || scope !== 'teacher') return;
+
+    // Ensure the target year group is selected so deep links are not blocked by course chips.
+    if (!selectedYearGroupIds.has(initialSubjectTarget.courseId) && yearGroupOptions.some(course => course.id === initialSubjectTarget.courseId)) {
+      setSelectedYearGroupIds(prev => {
+        const next = new Set(prev);
+        next.add(initialSubjectTarget.courseId);
+        return next;
+      });
+    }
+
+    if (teacherSubjectFilter !== 'teaching') return;
+
+    const course = courses.find(item => item.id === initialSubjectTarget.courseId);
+    const subject = course?.subjects.find(item => item.id === initialSubjectTarget.subjectId);
+    if (!subject) return;
+
+    const teachesSubject = subject.classes.some(cls => cls.teacherId === currentUser.id);
+    if (teachesSubject) return;
+
+    // Target is outside "My subjects" — expand so the session can open.
+    setTeacherSubjectFilter('year_group');
+    setDeepLinkFilterNotice(true);
+  }, [
+    courses,
+    currentUser.id,
+    initialSubjectTarget,
+    scope,
+    selectedYearGroupIds,
+    teacherSubjectFilter,
+    yearGroupOptions,
+  ]);
+
+  useEffect(() => {
     if (!initialSubjectTarget || subjectRuns.length === 0) return;
     const run = subjectRuns.find(item =>
       item.subjectId === initialSubjectTarget.subjectId &&
@@ -884,6 +919,21 @@ export function ClassworkView({
 
       {scope === 'student' && <JoinLiveSessionBanner currentUser={currentUser} />}
 
+      {deepLinkFilterNotice && (
+        <div className="border-b border-[#fde68a] bg-[#fffbeb] px-4 py-2.5">
+          <div className="flex items-start justify-between gap-3">
+            <p className="text-sm text-[#92400e]">{t('classwork.filter.deepLinkExpanded')}</p>
+            <button
+              type="button"
+              onClick={() => setDeepLinkFilterNotice(false)}
+              className="tbo-focus rounded-md px-2 py-1 text-xs font-semibold text-[#b45309] hover:bg-[#fef3c7]"
+            >
+              {t('classwork.filter.deepLinkDismiss')}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="border-y border-[#d4d4d4] bg-white px-4 py-3">
         <div className="flex flex-wrap items-center gap-3">
         <div className="relative min-w-[240px] flex-1">
@@ -900,7 +950,11 @@ export function ClassworkView({
               <input
                 type="checkbox"
                 checked={teacherSubjectFilter === 'teaching'}
-                onChange={event => setTeacherSubjectFilter(event.target.checked ? 'teaching' : 'year_group')}
+                onChange={event => {
+                  const next = event.target.checked ? 'teaching' : 'year_group';
+                  setTeacherSubjectFilter(next);
+                  if (next === 'teaching') setDeepLinkFilterNotice(false);
+                }}
                 className="h-4 w-4 rounded border-[#d4d4d4] text-[#171717] focus:ring-[#171717]"
               />
               <span>{t('classwork.filter.mySubjects')}</span>

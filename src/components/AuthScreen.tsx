@@ -1,10 +1,9 @@
 import {
   ArrowRight,
-  BadgeCheck,
+  ArrowUpRight,
   CheckCircle,
   FileText,
   LogIn,
-  MailCheck,
   ShieldCheck,
   UserCheck,
 } from 'lucide-react';
@@ -36,11 +35,6 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
       description: t('auth.step.workspaceDesc'),
     },
   ];
-  const stats = [
-    { icon: BadgeCheck, label: t('auth.stat.knownApplicants'), value: t('auth.stat.reviewed') },
-    { icon: MailCheck, label: t('auth.stat.schoolAccess'), value: t('auth.stat.roleBased') },
-    { icon: ShieldCheck, label: t('auth.stat.session'), value: t('auth.stat.protected') },
-  ];
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-[#f8f8f6] text-[#121212]">
@@ -49,114 +43,110 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
       </div>
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-5 sm:px-6 lg:px-8">
-        <header className="flex items-center justify-between rounded-lg px-1 py-1">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[#e7e6e1] bg-white">
-              <img src={tboLogo} alt="" className="h-8 w-8 object-contain" />
+        <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
+          <header className="flex items-center justify-between py-1">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center overflow-hidden rounded-lg border border-[#e7e6e1] bg-white">
+                <img src={tboLogo} alt="" className="h-8 w-8 object-contain" />
+              </div>
+              <div>
+                <p className="text-sm font-medium leading-none text-[#121212]">{t('app.brand')}</p>
+                <p className="mt-1 text-[11px] font-normal text-[#7b7974]">{t('auth.schoolAccess')}</p>
+              </div>
             </div>
-            <div>
-              <p className="text-sm font-medium leading-none text-[#121212]">{t('app.brand')}</p>
-              <p className="mt-1 text-[11px] font-normal text-[#7b7974]">{t('auth.schoolAccess')}</p>
-            </div>
-          </div>
-          <span className="hidden items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-[#373734] sm:inline-flex">
-            <span className="h-1.5 w-1.5 rounded-full bg-[#d97757]" />
-            {t('auth.campus')}
-          </span>
-        </header>
+            <a
+              href="https://theburningones.bg"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="group inline-flex items-center gap-1.5 py-1 text-[#373734] transition-colors hover:text-[#121212]"
+            >
+              <span className="relative font-serif text-lg font-normal tracking-tight sm:text-xl">
+                {t('auth.homeLink')}
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 -bottom-0.5 h-px origin-left scale-x-0 bg-[#d97757] transition-transform duration-200 group-hover:scale-x-100"
+                />
+              </span>
+              <ArrowUpRight
+                aria-hidden="true"
+                className="h-4 w-4 text-[#9c9a92] transition-colors duration-200 group-hover:text-[#d97757]"
+              />
+            </a>
+          </header>
 
-        <main className="flex flex-1 items-center justify-center py-10 lg:py-12">
-          <section className="grid w-full max-w-5xl gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.78fr)] lg:items-start">
-            <div className="overflow-hidden rounded-[24px] border border-[#e7e6e1] bg-white shadow-[rgba(0,0,0,0.04)_0px_4px_20px_0px]">
-              <div className="grid min-h-[536px] grid-rows-[auto_1fr_auto]">
-                <div className="flex items-center justify-between border-b border-[#e7e6e1] bg-white px-5 py-4">
-                  <span className="inline-flex items-center gap-2 rounded-lg bg-[#efeeeb] px-3 py-1.5 text-[11px] font-medium text-[#373734]">
-                    <ShieldCheck className="h-3.5 w-3.5 text-[#121212]" />
-                    {t('auth.googleRequired')}
-                  </span>
-                  <span className="hidden text-[11px] font-normal text-[#9c9a92] sm:inline">
-                    {t('auth.roleBasedAccess')}
-                  </span>
-                </div>
+          <main className="flex flex-1 items-start pt-1 pb-8 sm:pt-2 lg:pb-10">
+            <section className="grid w-full gap-5 lg:grid-cols-[minmax(0,0.9fr)_minmax(360px,0.78fr)] lg:items-stretch">
+            <div className="flex h-full flex-col overflow-hidden rounded-[24px] border border-[#e7e6e1] bg-white shadow-[rgba(0,0,0,0.04)_0px_4px_20px_0px]">
+              <div className="flex items-center justify-between border-b border-[#e7e6e1] bg-white px-5 py-4">
+                <span className="inline-flex items-center gap-2 rounded-lg bg-[#efeeeb] px-3 py-1.5 text-[11px] font-medium text-[#373734]">
+                  <ShieldCheck className="h-3.5 w-3.5 text-[#121212]" />
+                  {t('auth.googleRequired')}
+                </span>
+                <span className="hidden text-[11px] font-normal text-[#9c9a92] sm:inline">
+                  {t('auth.roleBasedAccess')}
+                </span>
+              </div>
 
-                <div className="flex flex-col justify-center px-6 py-10 sm:px-8 lg:px-10">
-                  <div className="max-w-lg">
-                    <div className="flex items-center gap-4">
-                      <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#e7e6e1] bg-white p-3">
-                        <img src={tboLogo} alt={t('app.brand')} className="h-full w-full object-contain" />
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#7b7974]">
-                          {t('auth.schoolPortal')}
-                        </p>
-                        <h1 className="mt-2 font-serif text-[30px] font-normal leading-[1.2] text-[#121212] sm:text-[40px]">
-                          {t('app.brand')}
-                        </h1>
-                      </div>
+              <div className="flex flex-1 flex-col justify-start px-6 py-6 sm:px-8 lg:px-10">
+                <div className="max-w-lg">
+                  <div className="flex items-center gap-4">
+                    <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-[#e7e6e1] bg-white p-3">
+                      <img src={tboLogo} alt={t('app.brand')} className="h-full w-full object-contain" />
                     </div>
-
-                    <div className="mt-10 max-w-md">
-                      <h2 className="font-serif text-[30px] font-normal leading-[1.2] text-[#121212]">
-                        {t('auth.signInTitle')}
-                      </h2>
-                      <p className="mt-3 text-[15px] font-normal leading-7 text-[#373734]">
-                        {t('auth.signInBody')}
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#7b7974]">
+                        {t('auth.schoolPortal')}
                       </p>
-                    </div>
-
-                    <div className="mt-7 max-w-md rounded-2xl border border-[#e7e6e1] bg-[#efeeeb] p-2">
-                      {error && (
-                        <p className="mb-2 rounded-lg border border-[#d97757]/40 bg-white px-3 py-2 text-sm font-medium text-[#121212]">
-                          {error}
-                        </p>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={onSignIn}
-                        className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#121212] px-5 py-3 text-[15px] font-medium text-[#f8f8f6] transition-colors hover:bg-[#373734]"
-                      >
-                        <LogIn className="h-4 w-4" />
-                        {t('auth.signInWithGoogle')}
-                        <ArrowRight className="h-4 w-4" />
-                      </button>
-                    </div>
-
-                    <p className="mt-4 max-w-md rounded-2xl border border-[#e7e6e1] bg-white px-4 py-3 text-xs font-normal leading-5 text-[#7b7974]">
-                      {t('auth.signInDisclaimer')}
-                    </p>
-
-                    <div className="mt-6 max-w-md rounded-2xl border border-[#e6dccf] bg-[#fbf7ef] px-5 py-4">
-                      <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-[#9c6a4e]">
-                        {t('auth.verse.eyebrow')}
-                      </p>
-                      <blockquote className="mt-3 font-serif text-[21px] font-normal leading-[1.35] text-[#121212]">
-                        <span aria-hidden="true">"</span>
-                        {t('auth.verse.text')}
-                        <span aria-hidden="true">"</span>
-                      </blockquote>
-                      <p className="mt-3 text-xs font-medium text-[#7b7974]">{t('auth.verse.reference')}</p>
+                      <h1 className="mt-2 font-serif text-[30px] font-normal leading-[1.2] text-[#121212] sm:text-[40px]">
+                        {t('app.brand')}
+                      </h1>
                     </div>
                   </div>
-                </div>
 
-                <div className="grid gap-px border-t border-[#e7e6e1] bg-[#e7e6e1] sm:grid-cols-3">
-                  {stats.map(item => (
-                    <div key={item.label} className="flex items-center gap-3 bg-white px-4 py-3">
-                      <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#efeeeb]">
-                        <item.icon className="h-4 w-4 text-[#121212]" />
-                      </span>
-                      <div>
-                        <p className="text-xs font-normal text-[#7b7974]">{item.label}</p>
-                        <p className="text-sm font-medium text-[#121212]">{item.value}</p>
-                      </div>
-                    </div>
-                  ))}
+                  <div className="mt-6 max-w-md">
+                    <h2 className="font-serif text-[30px] font-normal leading-[1.2] text-[#121212]">
+                      {t('auth.signInTitle')}
+                    </h2>
+                    <p className="mt-3 text-[15px] font-normal leading-7 text-[#373734]">
+                      {t('auth.signInBody')}
+                    </p>
+                  </div>
+
+                  <div className="mt-5 max-w-md rounded-2xl border border-[#e7e6e1] bg-[#efeeeb] p-2">
+                    {error && (
+                      <p className="mb-2 rounded-lg border border-[#d97757]/40 bg-white px-3 py-2 text-sm font-medium text-[#121212]">
+                        {error}
+                      </p>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={onSignIn}
+                      className="flex w-full items-center justify-center gap-2 rounded-lg bg-[#121212] px-5 py-3 text-[15px] font-medium text-[#f8f8f6] transition-colors hover:bg-[#373734]"
+                    >
+                      <LogIn className="h-4 w-4" />
+                      {t('auth.signInWithGoogle')}
+                      <ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+
+                  <p className="mt-4 max-w-md rounded-2xl border border-[#e7e6e1] bg-white px-4 py-3 text-xs font-normal leading-5 text-[#7b7974]">
+                    {t('auth.signInDisclaimer')}
+                  </p>
+
+                  <div className="mt-4 max-w-md rounded-xl border border-[#e6dccf] bg-[#fbf7ef] px-4 py-3">
+                    <blockquote className="font-serif text-[15px] font-normal leading-snug text-[#121212]">
+                      <span aria-hidden="true">"</span>
+                      {t('auth.verse.text')}
+                      <span aria-hidden="true">"</span>
+                    </blockquote>
+                    <p className="mt-1.5 text-[11px] font-medium text-[#7b7974]">{t('auth.verse.reference')}</p>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <aside className="grid gap-5">
+            <aside className="grid h-full gap-5">
               <div className="overflow-hidden rounded-[24px] border border-[#e7e6e1] bg-white shadow-[rgba(0,0,0,0.04)_0px_4px_20px_0px]">
                 <img
                   src={authArtifactImage}
@@ -194,9 +184,10 @@ export function AuthScreen({ onSignIn, error }: AuthScreenProps) {
               </div>
             </aside>
           </section>
-        </main>
+          </main>
+        </div>
 
-        <footer className="py-4 text-center text-xs font-normal text-[#9c9a92] sm:text-left">
+        <footer className="mx-auto w-full max-w-5xl py-4 text-center text-xs font-normal text-[#9c9a92] sm:text-left">
           {t('auth.portalFooter')}
         </footer>
       </div>

@@ -8,7 +8,7 @@ export const navigationTranslations = defineTranslations({
     'sidebar.myWork': 'My Work',
     'sidebar.dashboard': 'Dashboard',
     'sidebar.dashboard.desc': 'Overview',
-    'sidebar.announcements': 'Stream',
+    'sidebar.announcements': 'Announcements',
     'sidebar.announcements.desc': 'Posts and notices',
     'sidebar.messages': 'Messages',
     'sidebar.messages.desc': 'Conversations',

@@ -4,7 +4,7 @@ export const searchTranslations = defineTranslations({
   en: {
     'search.type.people': 'People',
     'search.type.classroom': 'Classroom',
-    'search.type.stream': 'Stream',
+    'search.type.stream': 'Announcement',
     'search.type.attendance': 'Attendance',
     'search.type.tuition': 'Tuition',
     'search.type.todos': 'To-dos',

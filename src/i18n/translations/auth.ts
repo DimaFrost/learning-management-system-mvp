@@ -3,7 +3,7 @@ import { defineTranslations } from '../defineTranslations';
 export const authTranslations = defineTranslations({
   en: {
     'auth.schoolAccess': 'School access',
-    'auth.campus': 'Zoe Sofia',
+    'auth.homeLink': 'Home',
     'auth.googleRequired': 'Google account required',
     'auth.roleBasedAccess': 'Portal access is role based',
     'auth.schoolPortal': 'School Portal',
@@ -12,16 +12,9 @@ export const authTranslations = defineTranslations({
     'auth.signInWithGoogle': 'Sign in with Google',
     'auth.signInDisclaimer':
       'Signing in does not confirm admission. Access opens only when the school record is approved.',
-    'auth.verse.eyebrow': 'Foundation verse',
     'auth.verse.text':
       'Did not our heart burn within us while He talked with us on the road, and while He opened the Scriptures to us?',
     'auth.verse.reference': 'Luke 24:32 NKJV',
-    'auth.stat.knownApplicants': 'Known applicants',
-    'auth.stat.reviewed': 'Reviewed',
-    'auth.stat.schoolAccess': 'School access',
-    'auth.stat.roleBased': 'Role based',
-    'auth.stat.session': 'Session',
-    'auth.stat.protected': 'Protected',
     'auth.artifactAlt': 'The Burning Ones printed school material',
     'auth.afterSignInTitle': 'After Google sign-in',
     'auth.afterSignInBody': 'The app checks your school status before opening a workspace.',
@@ -35,7 +28,7 @@ export const authTranslations = defineTranslations({
   },
   bg: {
     'auth.schoolAccess': 'Училищен достъп',
-    'auth.campus': 'Zoe Sofia',
+    'auth.homeLink': 'Начало',
     'auth.googleRequired': 'Изисква се Google акаунт',
     'auth.roleBasedAccess': 'Достъпът до портала е според ролята',
     'auth.schoolPortal': 'Училищен портал',
@@ -44,16 +37,9 @@ export const authTranslations = defineTranslations({
     'auth.signInWithGoogle': 'Вход с Google',
     'auth.signInDisclaimer':
       'Входът не потвърждава прием. Достъпът се отваря само когато училищният запис е одобрен.',
-    'auth.verse.eyebrow': 'Основен стих',
     'auth.verse.text':
       'Did not our heart burn within us while He talked with us on the road, and while He opened the Scriptures to us?',
     'auth.verse.reference': 'Лука 24:32 NKJV',
-    'auth.stat.knownApplicants': 'Кандидати',
-    'auth.stat.reviewed': 'Прегледани',
-    'auth.stat.schoolAccess': 'Училищен достъп',
-    'auth.stat.roleBased': 'Според роля',
-    'auth.stat.session': 'Сесия',
-    'auth.stat.protected': 'Защитена',
     'auth.artifactAlt': 'Печатни материали на The Burning Ones',
     'auth.afterSignInTitle': 'След вход с Google',
     'auth.afterSignInBody': 'Приложението проверява училищния статус преди отваряне на работно място.',

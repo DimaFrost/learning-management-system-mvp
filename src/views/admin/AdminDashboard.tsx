@@ -1471,12 +1471,6 @@ export function AdminDashboard({
       icon: Banknote,
       view: 'tuition-payments-new',
     },
-    {
-      label: t('admin.dashboard.quickAdd.yearGroup'),
-      description: t('admin.dashboard.quickAdd.yearGroupDesc'),
-      icon: GraduationCap,
-      view: 'curriculum-overview-new',
-    },
   ];
 
   return (
